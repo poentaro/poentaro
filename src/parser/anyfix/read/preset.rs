@@ -7,10 +7,8 @@ use super::read_metadata_field;
 use crate::ast::parsed::{AbbreviationReference, PartDecl, PresetKey};
 use crate::error::{RecoverableError, Span};
 use crate::parser::anyfix::tree::{
-    abbreviation_text, as_field, invalid, list_of, name_span, record_of, span_of, value_text,
-    Field, PresetNode,
+    abbreviation_text, as_field, invalid, list_of, name_span, record_of, span_of, Field, PresetNode,
 };
-use crate::parser::metadata_parser::MetadataLine;
 use crate::parser::preset_parser::{
     collect_presets, finish_preset, known_parts, parse_notation, ParsedPresetSection,
     ParsedPresets, PresetFields,
@@ -84,19 +82,9 @@ fn read_field(
         Some(PresetKey::SoloedParts) => {
             fields.soloed_parts = part_list(&field, declarations, errors);
         }
-        Some(PresetKey::Notation) => match value_text(field.value) {
-            Ok(value) => {
-                let line = MetadataLine {
-                    key: &field.key(),
-                    written_key: &field.written_key(),
-                    value: &value,
-                    key_span: field.key_span,
-                    value_span: span_of(field.value),
-                };
-                fields.notation = parse_notation(&line, errors).or(fields.notation.take());
-            }
-            Err(error) => errors.push(error),
-        },
+        Some(PresetKey::Notation) => {
+            fields.notation = parse_notation(&field, errors).or(fields.notation.take());
+        }
         None => {}
     }
 }

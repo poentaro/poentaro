@@ -7,8 +7,8 @@ use anyfix_expr::{Node, NodeKind};
 use crate::ast::parsed::{PartDecl, PartKind, RangeInstrument, Soundfont};
 use crate::error::{RecoverableError, Span, Spanned};
 use crate::parser::anyfix::tree::{
-    abbreviation_text, as_field, as_part, invalid, list_of, name_span, record_of, span_of,
-    unconverted_error, value_text, PartNode,
+    abbreviation_text, as_field, as_part, invalid, list_of, name_span, percentage, record_of,
+    signed_number, span_of, unconverted_error, value_text, whole_number, PartNode,
 };
 use crate::parser::parts_parser::{
     checked_octave_offset, checked_range_instrument, checked_volume, resolve_declarations,
@@ -232,7 +232,7 @@ fn part_options(
                 },
                 Err(error) => errors.push(error),
             },
-            ["sound"] => match sound_program(value) {
+            ["sound"] => match whole_number(value) {
                 Some(program) => {
                     options.soundfont = validate_soundfont(
                         &sound_label(program, is_percussion, instruments),
@@ -247,22 +247,14 @@ fn part_options(
                     "a sound is a General MIDI number, like `sound : 41`",
                 )),
             },
-            ["volume"] => {
-                match value_text(value)
-                    .ok()
-                    .and_then(|text| text.strip_suffix('%')?.parse::<u16>().ok())
-                {
-                    Some(written) => options.volume = Some(checked_volume(written, span, errors)),
-                    None => errors.push(invalid(
-                        value,
-                        "a volume is a percentage, like `volume : 80%`",
-                    )),
-                }
-            }
-            ["octave"] => match value_text(value)
-                .ok()
-                .and_then(|text| text.parse::<i16>().ok())
-            {
+            ["volume"] => match percentage(value) {
+                Some(written) => options.volume = Some(checked_volume(written, span, errors)),
+                None => errors.push(invalid(
+                    value,
+                    "a volume is a percentage, like `volume : 80%`",
+                )),
+            },
+            ["octave"] => match signed_number(value) {
                 Some(written) => {
                     options.octave_offset = Some(checked_octave_offset(written, span, errors))
                 }
@@ -281,11 +273,4 @@ fn part_options(
         }
     }
     Ok(options)
-}
-
-fn sound_program(node: &Node) -> Option<u8> {
-    match &node.kind {
-        NodeKind::Number(text) => text.parse().ok(),
-        _ => None,
-    }
 }

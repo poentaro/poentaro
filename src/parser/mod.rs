@@ -3,7 +3,6 @@ use crate::error::{IrrecoverableError, RecoverableError};
 
 pub mod anyfix;
 pub mod lyrics;
-pub mod metadata_parser;
 pub mod parts_parser;
 pub mod preset_parser;
 pub mod score;

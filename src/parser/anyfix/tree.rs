@@ -1,6 +1,9 @@
 //! The shapes a `.poentaro` document's anyfix tree is made of. anyfix-expr does
 //! the parsing, so reading a document is telling these shapes apart.
 
+use std::ops::Neg;
+use std::str::FromStr;
+
 use anyfix_expr::{Call, NamePart, Node, NodeKind};
 use itertools::Itertools;
 
@@ -32,7 +35,7 @@ pub(crate) struct Field<'n> {
 }
 
 impl Field<'_> {
-    /// The field's name in the section syntax's spelling.
+    /// The field's name as a keyword: its words joined with `_`.
     pub(crate) fn key(&self) -> String {
         self.words.join("_")
     }
@@ -122,6 +125,44 @@ fn joined_text(node: &Node, separator: &str) -> Result<String, RecoverableError>
             Ok(text)
         }
         _ => Err(invalid(node, "expected a word, number or string here")),
+    }
+}
+
+/// A whole number: `16`.
+pub(crate) fn whole_number<T: FromStr>(node: &Node) -> Option<T> {
+    match &node.kind {
+        NodeKind::Number(text) => text.parse().ok(),
+        _ => None,
+    }
+}
+
+/// A whole number that may carry a sign: `4`, `+4` or `-4`.
+pub(crate) fn signed_number<T: FromStr + Neg<Output = T>>(node: &Node) -> Option<T> {
+    let NodeKind::Call(call) = &node.kind else {
+        return whole_number(node);
+    };
+    let ([NamePart::Word { text: sign, .. }, NamePart::Slot], [number]) =
+        (call.name.as_slice(), call.arguments.as_slice())
+    else {
+        return None;
+    };
+    match sign.as_str() {
+        "+" => whole_number(number),
+        "-" => whole_number(number).map(T::neg),
+        _ => None,
+    }
+}
+
+/// A percentage: `80%`.
+pub(crate) fn percentage<T: FromStr>(node: &Node) -> Option<T> {
+    let NodeKind::Call(call) = &node.kind else {
+        return None;
+    };
+    match (call.name.as_slice(), call.arguments.as_slice()) {
+        ([NamePart::Slot, NamePart::Word { text, .. }], [number]) if text == "%" => {
+            whole_number(number)
+        }
+        _ => None,
     }
 }
 

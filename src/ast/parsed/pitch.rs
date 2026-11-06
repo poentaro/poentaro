@@ -7,6 +7,13 @@ pub struct Offset {
     pub y: i32,
 }
 
+impl std::fmt::Display for Offset {
+    /// As the metadata form's text input shows it: `0 -4`.
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{} {}", self.x, self.y)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum NumberedPitch {
     One,

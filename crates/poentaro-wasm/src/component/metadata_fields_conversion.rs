@@ -6,7 +6,6 @@
 use super::*;
 use poentaro::ast::{grouped, parsed};
 use poentaro::compositor::types::FontFamily;
-use poentaro::parser::metadata_parser::format_offset;
 use poentaro::{grouper, source_edit};
 
 fn font_family_choice_to_wit(family: parsed::FontFamilyChoice) -> FontFamilyChoice {
@@ -170,7 +169,7 @@ fn metadata_defaults_to_wit(defaults: &grouped::Metadata) -> MetadataDefaults {
         merge_duplicate_measures_across_parts: defaults.merge_duplicate_measures_across_parts,
         hide_resting_parts: defaults.hide_resting_parts,
         hide_system_dividers: defaults.hide_system_dividers,
-        directive_row_offset: format_offset(defaults.directive_row_offset),
+        directive_row_offset: defaults.directive_row_offset.to_string(),
     }
 }
 
