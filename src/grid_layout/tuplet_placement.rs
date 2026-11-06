@@ -8,8 +8,8 @@ use super::slur_placement::MeasurePlacement;
 /// Resolves each `TupletSpan` to a `GridElement::TupletBracket`, keyed by
 /// `(system_index, part_index)` like `resolve_slur_spans`'s arc map. Unlike
 /// slur/tie arcs, a tuplet span always resolves within a single measure
-/// (tuplets can't cross a line/system break — see **Tuplet** in
-/// `ARCHITECTURE.md`), so this only ever needs the same-system case of
+/// (tuplets can't cross a line/system break — see the `crate::tuplet`
+/// docs), so this only ever needs the same-system case of
 /// `resolve_slur_spans` — no `TieOrSlurTail`/`TieOrSlurHead` equivalent.
 pub(crate) fn resolve_tuplet_spans(
     tuplet_spans: &[TupletSpan],

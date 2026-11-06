@@ -27,7 +27,7 @@ pub(crate) fn resolve_midi_note(pitch: &NumberedPitch, octave: i8, key: &KeyChan
 /// factors (2, 3, 5); a multiplier that pulls in a larger prime (e.g. `7` for a septuplet)
 /// doesn't divide `quarter_beats * TPQ` evenly, so the result rounds down to the nearest
 /// tick. This is accepted rounding error, not bumped away by raising `TPQ` — see the
-/// **Tuplet** glossary entry in `ARCHITECTURE.md`.
+/// the `crate::tuplet` docs.
 pub(crate) fn duration_to_ticks(quarter_beats: u32, multiplier: u32) -> u32 {
     quarter_beats * (TPQ as u32) / (4 * multiplier)
 }

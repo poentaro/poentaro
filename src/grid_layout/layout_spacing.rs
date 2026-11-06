@@ -22,8 +22,8 @@ pub(crate) const MIN_MEASURE_WIDTH_PT: f32 = 24.0;
 /// column's own [`column_weight`] to form its hard-minimum rod (see
 /// [`column_rod`]) — the "spring and rod" model's rod is real content width
 /// plus a little breathing room, not just the bare glyph width, so a column
-/// never renders flush against whatever follows it (see **Rod and spring**
-/// in `ARCHITECTURE.md`).
+/// never renders flush against whatever follows it (see the `column_geometry`
+/// docs).
 ///
 /// This has to match the padding `coordinate_resolver::resolve::flush_left_padding`
 /// actually uses for that content type (`Metadata::notes_horizontal_padding_pt`/
@@ -95,7 +95,7 @@ fn column_rod(content: &ElementContent, config: &RenderConfig) -> f32 {
 /// A column's spring-and-rod sizing: `weight` is its spring (relative share
 /// of any slack left after every column's rod is satisfied — see
 /// [`column_weight`]), `rod_pt` is its hard-minimum floor in points (see
-/// [`column_rod`]). See **Rod and spring** in `ARCHITECTURE.md`.
+/// [`column_rod`]). See the `column_geometry` docs.
 /// `accidental_lead_pt` is the column's accidental lead: the widest
 /// sharp/flat glyph any part's note head draws ahead of its digit in this
 /// column (see [`accidental_lead`]).
@@ -184,8 +184,8 @@ fn measure_column_sizes(
     }
     // The set of ticks any row actually anchors an element to — an
     // empirical scan of what's in use, not a uniform GCD/divisor of the
-    // measure's durations (see this function's doc comment and **Rod and
-    // spring** in `ARCHITECTURE.md` for why a global divisor would wrongly
+    // measure's durations (see this function's doc comment and the
+    // `column_geometry` docs for why a global divisor would wrongly
     // re-split a coarser region that sits next to a finer one).
     let active_columns: BTreeSet<u32> = block
         .rows
@@ -209,8 +209,7 @@ fn measure_column_sizes(
         for e in &elements {
             // Rod stays concentrated entirely on the element's own start
             // tick — a wide glyph genuinely needs that much *contiguous*
-            // space before anything else can safely start (see **Rod and
-            // spring** in `ARCHITECTURE.md`).
+            // space before anything else can safely start (see the `column_geometry` docs).
             let lead = accidental_lead(&e.content, config);
             if let Some(rod) = bare_rod_by_col.get_mut(e.column as usize) {
                 *rod = rod.max(column_rod(&e.content, config) - lead);
@@ -268,7 +267,7 @@ fn measure_column_sizes(
 ///
 /// `col_count` is not divided by `block`'s tuplet `resolution_multiplier` before use here.
 /// A multiplier > 1 inflates `col_count` (more raw grid columns stand in for the same real
-/// duration — see **Tuplet** in `ARCHITECTURE.md`), but every one of those extra columns
+/// duration — see the `crate::tuplet` docs), but every one of those extra columns
 /// that has no element gets weight `0.0` from `column_weight` and so contributes nothing to
 /// `column_geometry`'s `column_weight_sum` split; the columns that *do* carry weight
 /// (notehead/dash/bar-line) are exactly as many as an equivalent non-tuplet measure would

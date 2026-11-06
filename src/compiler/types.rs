@@ -261,7 +261,7 @@ pub struct SlurSpan {
 /// The full logical extent of one tuplet bracket over a contiguous run of
 /// tuplet-tagged notes/rests sharing the same ratio. Unlike `SlurSpan`,
 /// never crosses a measure or system boundary — tuplets can't span lines
-/// (see **Tuplet** in `ARCHITECTURE.md`) — so one `measure_index` suffices.
+/// (see the `crate::tuplet` docs) — so one `measure_index` suffices.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupletSpan {
     pub part_index: usize,

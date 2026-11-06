@@ -1,3 +1,8 @@
+//! Packs measures into systems. Differing row shapes never force a break, since
+//! a system's rows are the union of its measures' rows. A change in
+//! `merge_duplicate_measures_across_parts` does force one: it changes whether two
+//! parts share a row, so the two measures' row sets are shaped incompatibly.
+
 use super::{
     block_column_width, build_measure_column_layout, chord_part_sub_row_heights, is_chord_only_row,
     is_lyric_row, lyric_row_height, note_part_height_pt, LyricSizing, SystemBands,

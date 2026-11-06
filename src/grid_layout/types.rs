@@ -65,8 +65,8 @@ pub struct MeasureColumnLayout {
     /// width across its columns, never to compare against other measures.
     pub column_weights: Vec<f32>,
     /// This measure's hard-minimum width in points — the "rod" of the
-    /// spring-and-rod spacing model (see **Rod and spring** in
-    /// `ARCHITECTURE.md`): `max(MIN_MEASURE_WIDTH_PT, sum of column_rods)`.
+    /// spring-and-rod spacing model (see the `column_geometry`
+    /// docs): `max(MIN_MEASURE_WIDTH_PT, sum of column_rods)`.
     /// `column_geometry` never renders the measure narrower than this,
     /// giving any remaining page width ("slack") to `weight` proportionally
     /// instead; if a system's summed `rod_pt`s exceed the page's usable
@@ -201,7 +201,7 @@ pub enum GridContent {
     /// Tuplet bracket spanning a contiguous run of tuplet-tagged notes/rests
     /// within one measure: from center of from-column to center of
     /// to-column, like `TieOrSlur`. Never crosses a measure or system
-    /// boundary (see **Tuplet** in `ARCHITECTURE.md`), so unlike
+    /// boundary (see the `crate::tuplet` docs), so unlike
     /// `TieOrSlur` there is no `Tail`/`Head` cross-system variant. `label`
     /// is the tuplet's printed digit, e.g. `"3"` for a triplet.
     TupletBracket {

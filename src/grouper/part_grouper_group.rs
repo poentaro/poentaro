@@ -39,8 +39,8 @@ pub(in crate::grouper) fn group_timed_track(
                 // `validate_and_pad_beats` (parse time) already guarantees this slot's
                 // events sum to exactly one measure's nominal capacity, but tuplet
                 // rescaling can make the *actual* (rescaled) total miss the rescaled
-                // capacity by a beat or two — see the **Tuplet** glossary entry in
-                // ARCHITECTURE.md. `process_event` only flushes on an exact match, so
+                // capacity by a beat or two — see the `crate::tuplet`
+                // docs. `process_event` only flushes on an exact match, so
                 // without this, such a measure would never close and its notes would
                 // bleed into the next measure slot. Force the boundary here instead.
                 grouper.flush_measure();

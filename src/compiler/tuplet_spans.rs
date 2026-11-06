@@ -3,8 +3,8 @@ use crate::compiler::types::TupletSpan;
 
 /// A tuplet-bracket run currently being accumulated: the first and most
 /// recent column tagged with the same `TupletInfo`, within one part slice.
-/// Never carried across measures — tuplets can't span lines (see **Tuplet**
-/// in `ARCHITECTURE.md`), unlike `PendingSlurOpen` in `slur_chains.rs`.
+/// Never carried across measures — tuplets can't span lines (see the `crate::tuplet`
+/// docs), unlike `PendingSlurOpen` in `slur_chains.rs`.
 pub(super) struct PendingTupletSpan {
     from_column: u32,
     to_column: u32,

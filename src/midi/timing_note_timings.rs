@@ -1,3 +1,15 @@
+//! Note timings, keyed by note identity `(source_part_index, note_id)` so the preview
+//! can highlight what's sounding. Ids must agree with the render:
+//!
+//! - `visible_tracks` is what is rendered, applied before ids are built, because hiding
+//!   a part changes indices and can create a rest run. Ids once came from the unfiltered
+//!   score, which stuck the playback cursor on merged rests.
+//! - `enabled_tracks` only mutes within one clip, applied after ids are built.
+//! - Whole-score timings skip navigation expansion, which would renumber ids along the
+//!   repeated timeline, so highlighting is only accurate through the first pass.
+//! - A padded row has no identity (`note_id: None`), but a row re-rendered from
+//!   `absorbed_rows` keeps its own, since those are the part's real notes.
+
 use crate::ast::grouped::Score;
 use crate::error::IrrecoverableError;
 use crate::filters::apply_track_filter;
