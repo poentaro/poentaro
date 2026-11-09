@@ -27,15 +27,15 @@ function tokenAt(
 
 describe('encodeSemanticTokens', () => {
   it('encodes positions relative to the previous token', () => {
-    const source = '# score\nbpm=92 key=C4\n[M] 1\n'
+    const source = 'score\nbpm=92 key=C4\n[M] 1\n'
     const tokens = [
-      tokenAt(source, 'section-header', '# score'),
+      tokenAt(source, 'section-header', 'score'),
       tokenAt(source, 'directive-key', 'bpm'),
       tokenAt(source, 'directive-key', 'key'),
     ]
     expect([...encodeSemanticTokens(source, tokens, tokenTypes)]).toEqual(
       [
-        [0, 0, 7, 0, 0],
+        [0, 0, 5, 0, 0],
         [1, 0, 3, 3, 0],
         [0, 7, 3, 3, 0],
       ].flat(),
@@ -43,12 +43,12 @@ describe('encodeSemanticTokens', () => {
   })
 
   it('counts columns in UTF-16 units after multi-byte text', () => {
-    const source = '# metadata\ntitle = "歌😀" row_height = 30\n'
-    const tokens = [tokenAt(source, 'metadata-key', 'row_height')]
+    const source = 'metadata {\ntitle "歌😀", height 30 }\n'
+    const tokens = [tokenAt(source, 'metadata-key', 'height')]
     expect([...encodeSemanticTokens(source, tokens, tokenTypes)]).toEqual([
       1,
-      'title = "歌😀" '.length,
-      'row_height'.length,
+      'title "歌😀", '.length,
+      'height'.length,
       1,
       0,
     ])

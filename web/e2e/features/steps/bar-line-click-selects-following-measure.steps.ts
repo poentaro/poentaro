@@ -35,19 +35,17 @@ import { Given, Then, When } from './fixtures'
  * Measure 2 : [M] 7 1'      — 2 notes
  */
 const source = [
-  '# metadata',
-  'title = "bar line click test"',
-  'max_measures_per_system = 2',
+  'metadata { title "bar line click test", max measures per system 2 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0
+  'score """',
+  '[M] 1 2 3 4',
   '',
-  '[M] 5 6', // measure 1 — last measure of system 0
+  '[M] 5 6',
   '',
-  "[M] 7 1'", // measure 2 — first measure of system 1
+  "[M] 7 1'",
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
@@ -72,7 +70,7 @@ async function loadFixture(page: import('@playwright/test').Page) {
 async function primeMeasureSpans(page: import('@playwright/test').Page) {
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('9')
+  await page.keyboard.type('6')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,

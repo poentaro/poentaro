@@ -4,17 +4,17 @@ import type { HighlightKind } from '../../../src/poentaroWasm'
 import { Given, Then } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'row_height = 30',
-  'colour = red',
+  'metadata {',
+  '    row height 30,',
+  '    colour: red,',
+  '},',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Echo [E] = follow[M]',
+  'parts ["Melody" [M]: notes, "Echo" [E]: follow [M]],',
   '',
-  '# score',
-  'bpm=92 break',
-  '[M] 1 2 3 4',
+  'score """',
+  '    bpm=92 break',
+  '    [M] 1 2 3 4',
+  '    """,',
 ].join('\n')
 
 function hexToRgb(hex: string): string {
@@ -44,8 +44,9 @@ async function editorTokenColor(page: Page, text: string): Promise<string> {
           let joined = ''
           const colors = new Set<string>()
           for (const span of spans.slice(start)) {
-            joined += (span.textContent ?? '').replaceAll('\u00a0', ' ')
-            colors.add(getComputedStyle(span).color)
+            const text = (span.textContent ?? '').replaceAll('\u00a0', ' ')
+            joined = (joined + text).trimStart()
+            if (text.trim()) colors.add(getComputedStyle(span).color)
             if (joined.startsWith(wanted)) {
               return colors.size === 1 ? [...colors].join() : 'mixed'
             }
@@ -89,7 +90,7 @@ Then(
     // Wait until highlighting has run, so a later keyword color can't
     // still arrive.
     await expect
-      .poll(() => editorTokenColor(page, 'row_height'))
+      .poll(() => editorTokenColor(page, 'height'))
       .toBe(hexToRgb(highlightKindStyles['metadata-key'].foreground))
     const color = await editorTokenColor(page, text)
     expect(color).not.toBe('missing')

@@ -17,7 +17,7 @@ export interface PresetMenuProps {
   nameError: (name: string) => string | undefined
 }
 
-/** Chooses which `# preset` the preview, playback and exports follow. Sits
+/** Chooses which `preset` the preview, playback and exports follow. Sits
  * in the Parts row, since the pills then edit that preset. Hidden while the
  * file has no presets and can't gain one. */
 export function PresetMenu({

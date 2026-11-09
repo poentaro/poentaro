@@ -1,4 +1,4 @@
-//! Edits to `# preset "Name"` sections for the web editor's preset menu:
+//! Edits to `preset "Name"` sections for the web editor's preset menu:
 //! rewriting one preset's `visible_parts`, `soloed_parts` or `notation` line, adding a new
 //! preset, and following a preset renamed in the editor. Each edit touches
 //! only the lines it needs, so the rest of the file keeps its formatting. A
@@ -8,12 +8,8 @@ use itertools::Itertools;
 
 use super::anyfix_edit;
 use crate::ast::parsed::{Notation, PresetKey, DEFAULT_PRESET_NAME};
-use crate::document::is_anyfix;
-use crate::error::Span;
-use crate::parser::metadata_parser::metadata_lines;
-use crate::parser::section_splitter::{split_sections, RawSection, SectionKind};
 
-/// One line a preset menu control writes into a `# preset` section.
+/// One line a preset menu control writes into a `preset` section.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PresetEdit {
     /// The parts shown and heard, in order; an empty list hides every part.
@@ -39,16 +35,6 @@ impl PresetEdit {
         }
     }
 
-    fn line(&self) -> String {
-        let value = self.value();
-        let key = self.key().keyword();
-        if value.is_empty() {
-            format!("{key} =")
-        } else {
-            format!("{key} = {value}")
-        }
-    }
-
     /// Whether writing this edit removes its line instead: only an empty
     /// `soloed_parts`, which solos nothing, the same as no line.
     pub(super) fn removes_line(&self) -> bool {
@@ -66,16 +52,6 @@ pub struct NewPreset {
     pub notation: Notation,
 }
 
-pub(super) fn preset_section(source: &str, name: &str) -> Option<RawSection> {
-    split_sections(source).0.into_iter().find(|section| {
-        section.kind == SectionKind::Preset
-            && section
-                .preset_name
-                .as_ref()
-                .is_some_and(|preset_name| preset_name.text == name)
-    })
-}
-
 /// One entry of the preset menu.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PresetSummary {
@@ -83,33 +59,11 @@ pub struct PresetSummary {
     pub notation: Option<Notation>,
 }
 
-fn notation_of(section: &RawSection) -> Option<Notation> {
-    metadata_lines(&section.content, section.content_offset)
-        .filter_map(Result::ok)
-        .filter(|line| line.key == PresetKey::Notation.keyword())
-        .filter_map(|line| Notation::from_source_value(line.value))
-        .last()
-}
-
 /// The presets the menu lists, in file order. Read from the sections alone,
 /// so a half-typed score doesn't empty the menu. Like the parser, it skips
 /// `"Default"` and every repeat of an earlier name.
 pub fn list_presets(source: &str) -> Vec<PresetSummary> {
-    if is_anyfix(source) {
-        return anyfix_edit::list_presets(source);
-    }
-    split_sections(source)
-        .0
-        .iter()
-        .filter_map(|section| {
-            let name = section.preset_name.as_ref()?;
-            (!name.text.eq_ignore_ascii_case(DEFAULT_PRESET_NAME)).then(|| PresetSummary {
-                name: name.text.clone(),
-                notation: notation_of(section),
-            })
-        })
-        .unique_by(|preset| preset.name.clone())
-        .collect()
+    anyfix_edit::list_presets(source)
 }
 
 /// Why "New preset…" can't use `name`, or `None` when it can.
@@ -159,88 +113,18 @@ pub fn follow_preset_rename(previous_source: &str, source: &str, name: &str) -> 
         .cloned()
 }
 
-fn replace_span(source: &str, span: Span, replacement: &str) -> String {
-    [
-        source.get(..span.start).unwrap_or_default(),
-        replacement,
-        source.get(span.end..).unwrap_or_default(),
-    ]
-    .concat()
-}
-
 /// Rewrites the preset's last `edit.key()` line (the one the parser keeps),
 /// or adds the line under its header. An edit that [removes its
 /// line](PresetEdit::removes_line) deletes every `edit.key()` line instead.
 /// Returns `source` unchanged when no preset is called `name`.
 pub fn update_preset_field(source: &str, name: &str, edit: &PresetEdit) -> String {
-    if is_anyfix(source) {
-        return anyfix_edit::update_preset_field(source, name, edit);
-    }
-    let Some(section) = preset_section(source, name) else {
-        return source.to_owned();
-    };
-    let lines = metadata_lines(&section.content, section.content_offset)
-        .filter_map(Result::ok)
-        .filter(|line| line.key == edit.key().keyword())
-        .map(|line| Span::new(line.key_span.start, line.value_span.end))
-        .collect_vec();
-    if edit.removes_line() {
-        return lines
-            .iter()
-            .rev()
-            .fold(source.to_owned(), |text, span| remove_line(&text, *span));
-    }
-    match lines.last().copied() {
-        Some(span) => replace_span(source, span, &edit.line()),
-        // A header on the source's last line has no `\n` after it.
-        None if section.content_offset > source.len() => {
-            format!("{source}\n{}\n", edit.line())
-        }
-        None => replace_span(
-            source,
-            Span::new(section.content_offset, section.content_offset),
-            &format!("{}\n", edit.line()),
-        ),
-    }
-}
-
-/// Deletes the whole line `span` sits on, its line break included.
-fn remove_line(source: &str, span: Span) -> String {
-    let start = source
-        .get(..span.start)
-        .and_then(|before| before.rfind('\n'))
-        .map_or(0, |line_break| line_break + 1);
-    let end = source
-        .get(span.end..)
-        .and_then(|after| after.find('\n'))
-        .map_or(source.len(), |line_break| span.end + line_break + 1);
-    replace_span(source, Span::new(start, end), "")
-}
-
-/// The preset's part list under `key` as written, `None` when it sets none.
-fn part_list_of(section: &RawSection, key: PresetKey) -> Option<Vec<String>> {
-    metadata_lines(&section.content, section.content_offset)
-        .filter_map(Result::ok)
-        .filter(|line| line.key == key.keyword())
-        .last()
-        .map(|line| {
-            line.value
-                .split(',')
-                .map(str::trim)
-                .filter(|abbreviation| !abbreviation.is_empty())
-                .map(str::to_owned)
-                .collect()
-        })
+    anyfix_edit::update_preset_field(source, name, edit)
 }
 
 /// The named preset's part list under `key`: `None` when no preset has that
 /// name, `Some(None)` when it sets none.
 fn preset_part_list(source: &str, name: &str, key: PresetKey) -> Option<Option<Vec<String>>> {
-    if is_anyfix(source) {
-        return anyfix_edit::has_preset(source, name)
-            .then(|| anyfix_edit::part_list_of(source, name, key));
-    }
-    preset_section(source, name).map(|section| part_list_of(&section, key))
+    anyfix_edit::has_preset(source, name).then(|| anyfix_edit::part_list_of(source, name, key))
 }
 
 /// A part pill clicked under a preset: which part, and whether it now shows.
@@ -313,56 +197,9 @@ pub fn set_preset_part_soloed(
     update_preset_field(source, name, &PresetEdit::SoloedParts(parts))
 }
 
-/// The new section goes after the last `# preset`, else before the first
-/// `# score` or `# sequence`, else at the end.
-fn new_section_offset(source: &str) -> usize {
-    let sections = split_sections(source).0;
-    let after_last_preset = sections
-        .iter()
-        .rfind(|section| section.kind == SectionKind::Preset)
-        .map(|section| section.content_offset + section.content.len());
-    let before_music = || {
-        sections
-            .iter()
-            .find(|section| matches!(section.kind, SectionKind::Score | SectionKind::Sequence))
-            .map(|section| section.header_span.start)
-    };
-    after_last_preset
-        .or_else(before_music)
-        .unwrap_or(source.len())
-        .min(source.len())
-}
-
-/// Adds a `# preset` section holding `preset`'s parts, solos and notation.
+/// Adds a preset holding `preset`'s parts, solos and notation.
 pub fn add_preset_section(source: &str, preset: NewPreset) -> String {
-    if is_anyfix(source) {
-        return anyfix_edit::add_preset_section(source, preset);
-    }
-    let offset = new_section_offset(source);
-    let before = source.get(..offset).unwrap_or_default();
-    let separator = if before.is_empty() || before.ends_with("\n\n") {
-        ""
-    } else if before.ends_with('\n') {
-        "\n"
-    } else {
-        "\n\n"
-    };
-    let trailing_blank_line = if offset < source.len() { "\n" } else { "" };
-    let soloed_parts = PresetEdit::SoloedParts(preset.soloed_parts);
-    let lines = [
-        Some(PresetEdit::VisibleParts(preset.visible_parts)),
-        (!soloed_parts.removes_line()).then_some(soloed_parts),
-        Some(PresetEdit::Notation(preset.notation)),
-    ]
-    .into_iter()
-    .flatten()
-    .map(|edit| format!("{}\n", edit.line()))
-    .join("");
-    let section = format!(
-        "{separator}# preset \"{}\"\n{lines}{trailing_blank_line}",
-        preset.name,
-    );
-    replace_span(source, Span::new(offset, offset), &section)
+    anyfix_edit::add_preset_section(source, preset)
 }
 
 #[cfg(test)]

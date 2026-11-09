@@ -107,7 +107,7 @@ fn sequence_line_renders_label_and_omit_parts_spans() {
 }
 
 /// `Metadata::sequence`'s `bold`/`italic`/`underline` must style the label
-/// spans on the `# sequence` summary line — previously the line was
+/// spans on the `sequence` summary line — previously the line was
 /// hardcoded to reuse `section_label`'s style, so `sequence`'s own toggles
 /// had no rendering effect (see `syntax.md`'s "Text styles" section).
 #[test]

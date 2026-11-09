@@ -1,6 +1,6 @@
 Feature: Part focus editor
 
-  # Edits one part of the `# score` as a single stream, one measure per line,
+  # Edits one part of the `score` as a single stream, one measure per line,
   # in place of the main editor. Every other part shows as read-only ghost
   # lines around each measure, and the stream is re-barred as you type.
 

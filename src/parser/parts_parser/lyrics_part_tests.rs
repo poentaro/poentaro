@@ -1,6 +1,16 @@
-use super::parse_parts;
 use crate::ast::parsed::PartKind;
 use crate::error::RecoverableErrorKind;
+
+fn parse_parts(
+    source: &str,
+    instruments: &[super::InstrumentInfo],
+) -> (
+    Vec<crate::ast::parsed::PartDecl>,
+    Vec<crate::error::RecoverableError>,
+) {
+    let read = crate::parser::read_document(source, instruments);
+    (read.declarations, read.parts_parse_errors)
+}
 
 fn abbreviations(decls: &[crate::ast::parsed::PartDecl]) -> Vec<&str> {
     decls
@@ -11,8 +21,9 @@ fn abbreviations(decls: &[crate::ast::parsed::PartDecl]) -> Vec<&str> {
 
 #[test]
 fn lyrics_parts_are_parts_of_their_own_linked_to_their_target() {
-    let content = "bass [b] = notes\nVerse 1 [v1] = lyrics[b]\nVerse 2 [v2] = lyrics[b]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["bass" [b]: notes, "Verse 1" [v1]: lyrics [b], "Verse 2" [v2]: lyrics [b]]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(abbreviations(&decls), ["b", "v1", "v2"]);
     assert_eq!(decls[1].display_name, "Verse 1");
@@ -32,8 +43,9 @@ fn lyrics_parts_are_parts_of_their_own_linked_to_their_target() {
 
 #[test]
 fn lyrics_parts_sit_directly_after_their_target_whatever_the_declaration_order() {
-    let content = "A = notes\nB = notes\nlb = lyrics[B]\nla = lyrics[A]\nlb2 = lyrics[B]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes, "B": notes, "lb": lyrics [B], "la": lyrics [A], "lb2": lyrics [B]]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(abbreviations(&decls), ["A", "la", "B", "lb", "lb2"]);
     assert_eq!(
@@ -58,8 +70,9 @@ fn lyrics_parts_sit_directly_after_their_target_whatever_the_declaration_order()
 
 #[test]
 fn lyrics_part_may_target_a_follow_part_or_chords() {
-    let content = "A = notes\nB = follow[A]\nC = chords\nlb = lyrics[B]\nlc = lyrics[C]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes, "B": follow [A], "C": chords, "lb": lyrics [B], "lc": lyrics [C]]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(abbreviations(&decls), ["A", "B", "lb", "C", "lc"]);
     assert_eq!(
@@ -78,8 +91,9 @@ fn lyrics_part_may_target_a_follow_part_or_chords() {
 
 #[test]
 fn lyrics_with_unknown_target_emits_error_at_the_target() {
-    let content = "A = notes\nl = lyrics[Z]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes, "l": lyrics [Z]]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert_eq!(abbreviations(&decls), ["A"]);
     assert_eq!(errors.len(), 1);
     assert!(matches!(
@@ -92,31 +106,33 @@ fn lyrics_with_unknown_target_emits_error_at_the_target() {
 
 #[test]
 fn lyrics_targeting_percussion_or_a_later_part_is_an_error() {
-    let content = "l1 = lyrics[P]\nP = percussion\nl2 = lyrics[P]\nA = notes\n";
-    let (_decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["l1": lyrics [P], "P": percussion, "l2": lyrics [P], "A": notes]
+"#;
+    let (_decls, errors) = parse_parts(content, &[]);
     assert_eq!(errors.len(), 2);
 }
 
 #[test]
 fn lyrics_targeting_another_lyrics_part_is_an_error() {
-    let content = "A = notes\nl1 = lyrics[A]\nl2 = lyrics[l1]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes, "l1": lyrics [A], "l2": lyrics [l1]]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert_eq!(abbreviations(&decls), ["A", "l1"]);
     assert_eq!(errors.len(), 1);
 }
 
 #[test]
 fn lyrics_part_rejects_settings() {
-    let content = "A = notes\nl = lyrics[A] 50%\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = "parts [\"A\" : notes, \"l\" : lyrics [A] { volume : 50% }],\n";
+    let (decls, errors) = parse_parts(content, &[]);
     assert_eq!(abbreviations(&decls), ["A"]);
     assert_eq!(errors.len(), 1);
 }
 
 #[test]
 fn lyrics_abbreviation_cannot_duplicate_a_part_abbreviation() {
-    let content = "A = notes\nA = lyrics[A]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = "parts [\"A\" : notes, \"A\" : lyrics [A]],\n";
+    let (decls, errors) = parse_parts(content, &[]);
     assert_eq!(abbreviations(&decls), ["A"]);
     assert_eq!(errors.len(), 1);
 }

@@ -250,7 +250,7 @@ pub enum GridContent {
         underline: bool,
         font_family: crate::compositor::types::FontFamily,
     },
-    /// The resolved `# sequence` playback order, rendered as "Sequence: "
+    /// The resolved `sequence` playback order, rendered as "Sequence: "
     /// followed by each label (styled like an inline section label) joined
     /// by " › ".
     SequenceLine {
@@ -276,7 +276,7 @@ pub struct Header {
     pub author: Option<String>,
     pub part_list: Vec<PartListEntry>,
     pub parts_list_columns: u32,
-    /// The resolved `# sequence` playback order, one entry per label
+    /// The resolved `sequence` playback order, one entry per label
     /// reference (e.g. `["A", "B", "A"]`), if present. Rendered as a line
     /// near the top of the score; does not affect SVG/PDF measure order.
     pub sequence: Option<Vec<SequenceEntryInfo>>,
@@ -286,7 +286,7 @@ pub struct Header {
     pub subtitle_font_size: f32,
     /// Font size in points for `author` (see `Metadata::author_font_size`).
     pub author_font_size: f32,
-    /// Font size in points for the `# sequence` summary line (see
+    /// Font size in points for the `sequence` summary line (see
     /// `Metadata::sequence_font_size`).
     pub sequence_font_size: f32,
     /// Font size in points for the part-name legend entries (see
@@ -315,7 +315,7 @@ pub struct Header {
     /// Extra space (points) added above and below each part legend row (see
     /// `Metadata::part_legend.vertical_padding_pt`).
     pub part_legend_vertical_padding_pt: f32,
-    /// Extra space (points) added above and below the `# sequence` summary
+    /// Extra space (points) added above and below the `sequence` summary
     /// line (see `Metadata::sequence.vertical_padding_pt`).
     pub sequence_vertical_padding_pt: f32,
     /// Extra space (points) added above and below the title row and the shared subtitle/author
@@ -342,7 +342,7 @@ pub struct MeasureHighlight {
 }
 
 /// One inclusive `global_measure_index` range to highlight in the SVG
-/// preview. A `# sequence` chain selection (e.g. range-selecting "C" -> "A"
+/// preview. A `sequence` chain selection (e.g. range-selecting "C" -> "A"
 /// across "A, B, C, A") can highlight several disjoint measures at once, so
 /// callers pass a `Vec<MeasureRange>` rather than a single range — see
 /// `compute_measure_highlights_for_range`.

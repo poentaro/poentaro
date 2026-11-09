@@ -130,7 +130,15 @@ impl GeneratedScore {
                 lines.join("\n")
             })
             .join("\n\n");
-        format!("# parts\nM = notes\nL = lyrics[M]\nB = notes\n\n# score\ntime=4/4\n{score}\n")
+        format!(
+            r#"parts ["M": notes, "L": lyrics [M], "B": notes],
+
+score """
+    time=4/4
+    {score}
+    """,
+"#
+        )
     }
 }
 

@@ -215,7 +215,7 @@ export function usePoentaroWorkerRenderRequests({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: workerRef/sourceRef/highlightRenderRequestIdRef/latestHighlightRenderIdRef are stable refs passed in as params
   useEffect(() => {
-    // A `# sequence` chain selection carries its own exact disjoint
+    // A `sequence` chain selection carries its own exact disjoint
     // highlight ranges (`highlightRanges`, from `computeSequenceSelectionMeasureRanges`)
     // — bypassing the caret-only gate below entirely, since it's the only
     // caller that ever needs a real (non-caret) range highlighted. Every

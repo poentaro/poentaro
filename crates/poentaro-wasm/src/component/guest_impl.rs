@@ -281,9 +281,8 @@ impl Guest for Component {
         source: String,
         abbreviation: String,
         settings: PartSettings,
-        raw_instruments: Vec<InstrumentInfo>,
     ) -> String {
-        update_part_declaration(source, abbreviation, settings, raw_instruments)
+        update_part_declaration(source, abbreviation, settings)
     }
 
     fn list_sound_choices(raw_instruments: Vec<InstrumentInfo>) -> SoundChoices {

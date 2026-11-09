@@ -3,17 +3,15 @@ import { rectVariantSelector, tagSelector } from '../../../src/dataAttributes'
 import { Given, When } from './fixtures'
 
 const SINGLE_MEASURE_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody = notes',
-  'Bass = notes',
+  'parts ["Melody": notes, "Bass": notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[Melody] 1 2 3 4',
-  '[Bass] 5 6 7 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [Melody] 1 2 3 4',
+  '    [Bass] 5 6 7 1',
+  '    """,',
 ].join('\n')
 
 // A tied note whose continuation is written as a bare repeat atom (`_`),
@@ -22,45 +20,41 @@ const SINGLE_MEASURE_SOURCE = [
 // comment in the Rust parser. Regression coverage for the "octave up then
 // down doesn't restore a tied note" bug.
 const SINGLE_MEASURE_TIED_REPEAT_NOTE_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody = notes',
+  'parts ["Melody": notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[Melody] 1~ _ 5 5',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [Melody] 1~ _ 5 5',
+  '    """,',
 ].join('\n')
 
 // Same shape as `SINGLE_MEASURE_SOURCE`, but each part has a pair of
 // adjacent same-pitch notes the "Tie/Untie" toolbar action can tie.
 const SINGLE_MEASURE_REPEATED_PITCH_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody = notes',
-  'Bass = notes',
+  'parts ["Melody": notes, "Bass": notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[Melody] 1 3 3 4',
-  '[Bass] 5 5 7 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [Melody] 1 3 3 4',
+  '    [Bass] 5 5 7 1',
+  '    """,',
 ].join('\n')
 
 const TWO_MEASURE_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody = notes',
+  'parts ["Melody": notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[Melody] 1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [Melody] 1 2 3 4',
   '',
-  '[Melody] 5 6 7 1',
+  '    [Melody] 5 6 7 1',
+  '    """,',
 ].join('\n')
 
 // Same shape as `part-label-click-selects-notes.steps.ts`'s two-part
@@ -72,20 +66,17 @@ const TWO_MEASURE_SOURCE = [
 // shifted everything" assertion can require `'` on every shifted note
 // without also matching a marker that was already there before the click.
 const TWO_MEASURE_CLICK_TEST_SOURCE = [
-  '# metadata',
-  'title = "part label click test"',
-  'max_measures_per_system = 48',
+  'metadata { title "part label click test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
+  'score """',
+  '[M] 1 2',
   '[H] 5 6',
   '',
-  '[M] 3 4', // measure 1
+  '[M] 3 4',
   '[H] 7 1',
+  '""",',
 ].join('\n')
 
 async function loadSource(page: import('@playwright/test').Page, src: string) {
@@ -122,7 +113,7 @@ async function findDragCoords(
       const model = ed?.getModel()
       if (!ed || !model) throw new Error('editor not mounted')
       const text = model.getValue()
-      const dataLinesStart = text.indexOf('[')
+      const dataLinesStart = text.indexOf('[', text.indexOf('score """'))
       const startIndex = text.indexOf(startNeedle, dataLinesStart)
       const endIndex = text.indexOf(endNeedle, startIndex) + endNeedle.length
       const startPos = model.getPositionAt(startIndex)
@@ -240,7 +231,7 @@ Given(
     // use) so the SVG has settled before the click step hit-tests it.
     await focusEditor()
     await page.keyboard.press('Control+g')
-    await page.keyboard.type('10')
+    await page.keyboard.type('7')
     await page.keyboard.press('Enter')
     await expect(page.locator('button.play-measure-btn')).toHaveText(
       /Measure/,
@@ -291,7 +282,7 @@ async function selectPreciselyBetween(
       const monacoApi = window.monaco
       if (!ed || !model || !monacoApi) throw new Error('editor not mounted')
       const text = model.getValue()
-      const dataLinesStart = text.indexOf('[')
+      const dataLinesStart = text.indexOf('[', text.indexOf('score """'))
       const startIndex = text.indexOf(startNeedle, dataLinesStart)
       const endIndex = text.indexOf(endNeedle, startIndex) + endNeedle.length
       const startPos = model.getPositionAt(startIndex)
@@ -350,7 +341,7 @@ When(
         const monacoApi = window.monaco
         if (!ed || !model || !monacoApi) throw new Error('editor not mounted')
         const text = model.getValue()
-        const dataLinesStart = text.indexOf('[')
+        const dataLinesStart = text.indexOf('[', text.indexOf('score """'))
         const firstIndex = text.indexOf(firstNeedle, dataLinesStart)
         const secondIndex = text.indexOf(
           secondNeedle,

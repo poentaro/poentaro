@@ -36,29 +36,25 @@ fn measure_with_chord_bass_note_is_wider_than_measure_without() {
     // difference here is purely from the two measures' positions in the
     // system (e.g. the first measure absorbing the leading bar-line
     // column), not from chord content.
-    let control = concat!(
-        "# parts\n",
-        "c = chords \n",
-        "\n",
-        "# score\n",
-        "\n",
-        "[c] 1\n",
-        "\n",
-        "[c] 1\n",
-    );
+    let control = r#"parts ["c": chords],
+
+score """
+    [c] 1
+
+    [c] 1
+    """,
+"#;
     let (control_first, control_second) = two_measure_widths(control);
 
     // Experiment: second measure's chord has a bass note (`2m/5`).
-    let experiment = concat!(
-        "# parts\n",
-        "c = chords \n",
-        "\n",
-        "# score\n",
-        "\n",
-        "[c] 1\n",
-        "\n",
-        "[c] 2m/5\n",
-    );
+    let experiment = r#"parts ["c": chords],
+
+score """
+    [c] 1
+
+    [c] 2m/5
+    """,
+"#;
     let (experiment_first, experiment_second) = two_measure_widths(experiment);
 
     assert!(

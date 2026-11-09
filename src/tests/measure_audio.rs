@@ -7,20 +7,17 @@ use super::*;
 static SF2_BYTES: &[u8] = include_bytes!("../../fonts/GeneralUser_GS.sf2");
 
 fn two_measure_source() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "\n",
-        "[Melody] 5 6 7 1\n",
-    )
+    r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+
+    [Melody] 5 6 7 1
+    """,
+"#
 }
 
 #[test]
@@ -53,23 +50,19 @@ fn find_measure_at_byte_offset_returns_none_for_header() {
 }
 
 fn two_part_source() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Chord = chords\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Chord] 1\n",
-        "[Melody] 1 2 3 4\n",
-        "\n",
-        "[Chord] 5\n",
-        "[Melody] 5 6 7 1\n",
-    )
+    r#"metadata { title "t", author "a" },
+
+parts ["Chord": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chord] 1
+    [Melody] 1 2 3 4
+
+    [Chord] 5
+    [Melody] 5 6 7 1
+    """,
+"#
 }
 
 #[test]
@@ -86,35 +79,29 @@ fn find_measure_at_byte_offset_finds_measure_on_second_part_line() {
 }
 
 fn twinkle_source() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"Twinkle Twinkle Little Star\"\n",
-        "author = \"Mozart\"\n",
-        "row_height = 24\n",
-        "\n",
-        "# parts\n",
-        "Chord = chords\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Chord] 1 - - -\n",
-        "[Melody] 1 1 5 5\n",
-        "[Melodyv1] twin- kle twin- kle\n",
-        "\n",
-        "[Chord] 5 - - -\n",
-        "[Melody] 6 6 5-\n",
-        "[Melodyv1] lit- tle star\n",
-        "\n",
-        "[Chord] 4 - - -\n",
-        "[Melody] 4 4 3 3\n",
-        "[Melodyv1] how I won- der\n",
-        "\n",
-        "[Chord] 4 - - -\n",
-        "[Melody] 2 2 1-\n",
-        "[Melodyv1] what you are\n",
-    )
+    r#"metadata { title "Twinkle Twinkle Little Star", author "Mozart", row height 24 },
+
+parts ["Chord": chords, "Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chord] 1 - - -
+    [Melody] 1 1 5 5
+    [Melodyv1] twin- kle twin- kle
+
+    [Chord] 5 - - -
+    [Melody] 6 6 5-
+    [Melodyv1] lit- tle star
+
+    [Chord] 4 - - -
+    [Melody] 4 4 3 3
+    [Melodyv1] how I won- der
+
+    [Chord] 4 - - -
+    [Melody] 2 2 1-
+    [Melodyv1] what you are
+    """,
+"#
 }
 
 #[test]

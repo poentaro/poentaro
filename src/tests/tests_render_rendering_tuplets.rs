@@ -8,11 +8,15 @@ fn triplet_of_sixteenth_notes_gets_double_underline_matching_written_duration() 
     // not a substitute for the beam reflecting each note's written value. Padded with
     // "2:{1=2=}" and "5:4:{1=1=1=1=1=} 2_3_4_" (from demo/12-tuplets.poentaro) so the
     // measure's nominal duration sum still fills the 4/4 bar (2 + 3 + 5 + 6 = 16).
-    let source = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nS = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[S] 2:{1=2=} 3:{1=2=3=} 5:4:{1=1=1=1=1=} 2_3_4_\n",
-    );
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["S": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 2:{1=2=} 3:{1=2=3=} 5:4:{1=1=1=1=1=} 2_3_4_
+    """,
+"#;
     let score = compile(source, "test", &[]).unwrap();
     let config = render_config::RenderConfig::from_metadata(&score.metadata);
     let header = grid_layout::types::Header {

@@ -1,5 +1,6 @@
 use super::*;
 use crate::ast::parsed::{ParsedTimedTrack, ParsedTrack};
+use crate::error::DocumentSection;
 
 fn notes_track(doc: &ParsedDocument) -> &ParsedTimedTrack {
     doc.tracks
@@ -31,20 +32,16 @@ fn lyrics_track<'a>(doc: &'a ParsedDocument, abbreviation: &str) -> &'a ParsedTi
 
 #[test]
 fn parses_full_document() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"hello world\"\n",
-        "author = \"foo\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] 你好wo rld\n",
-    );
+    let input = r#"metadata { title "hello world", author "foo" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] 你好wo rld
+    """,
+"#;
     let doc = parse(input, "test.poentaro", &[]).unwrap();
     assert_eq!(doc.metadata.title, Some("hello world".to_string()));
     assert_eq!(doc.metadata.author, Some("foo".to_string()));
@@ -65,23 +62,30 @@ fn parses_full_document() {
 }
 
 #[test]
-fn unknown_section_recoverable() {
-    let input = "# unknown\nfoo\n\n# score\n";
-    let doc = parse(input, "test.poentaro", &[]).expect("unknown section must not abort parsing");
+fn an_unknown_top_level_form_is_reported() {
+    let input = "unknown { foo : 1 },\n\nscore \"\",\n";
+    let doc = parse(input, "test.poentaro", &[]).expect("an unknown form must not abort parsing");
     assert!(doc
         .section_structure_errors
         .iter()
-        .any(|e| matches!(&e.kind, crate::error::RecoverableErrorKind::SectionUnknown { name } if name == "unknown")));
+        .any(|e| e.message().contains("found `unknown _` at the top level")));
 }
 
 #[test]
 fn duplicate_score_section_recoverable() {
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Melody] 1 2 3 4\n\n",
-        "# score\n[Melody] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    """,
+
+score """
+    [Melody] 5 6 7 1
+    """,
+"#;
     let doc =
         parse(input, "test.poentaro", &[]).expect("duplicate score section must not abort parsing");
     assert!(doc
@@ -92,15 +96,14 @@ fn duplicate_score_section_recoverable() {
 
 #[test]
 fn sections_may_appear_in_any_order() {
-    let input = r#"# score
-time=4/4 key=C4 bpm=120
-[Melody] 1 2 3 4
+    let input = r#"score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    """,
 
-# metadata
-title = "hello world"
+metadata { title "hello world" },
 
-# parts
-Melody = notes
+parts ["Melody": notes],
 "#;
     let doc =
         parse(input, "test.poentaro", &[]).expect("out-of-order sections must not abort parsing");
@@ -108,7 +111,6 @@ Melody = notes
         !doc.section_structure_errors.iter().any(|e| matches!(
             &e.kind,
             crate::error::RecoverableErrorKind::SectionMissing { .. }
-                | crate::error::RecoverableErrorKind::SectionUnknown { .. }
                 | crate::error::RecoverableErrorKind::SectionDuplicate { .. }
         )),
         "out-of-order sections must not produce a structure error: {:?}",
@@ -121,10 +123,13 @@ Melody = notes
 
 #[test]
 fn missing_metadata_section_is_allowed() {
-    let input = concat!(
-        "# parts\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Melody] 1 2 3 4\n"
-    );
+    let input = r#"parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    """,
+"#;
     let doc = parse(input, "test.poentaro", &[])
         .expect("missing metadata section must not abort parsing");
     assert!(
@@ -133,21 +138,23 @@ fn missing_metadata_section_is_allowed() {
             crate::error::RecoverableErrorKind::SectionMissing { section }
                 if *section == DocumentSection::Metadata
         )),
-        "missing #metadata must not produce an error"
+        "missing metadata must not produce an error"
     );
     assert_eq!(doc.metadata.title, None);
 }
 
 #[test]
 fn parses_two_named_parts() {
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nSoprano = notes\nAlto = notes\n\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Soprano] 1 2 3 4\n",
-        "[Alto] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Soprano": notes, "Alto": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Alto] 5 6 7 1
+    """,
+"#;
     let doc = parse(input, "test.poentaro", &[]).unwrap();
     assert_eq!(doc.tracks.len(), 2);
     let soprano = doc
@@ -175,18 +182,15 @@ fn parses_two_named_parts() {
 fn too_many_lines_recoverable_error_span_points_to_absolute_file_position() {
     // One notes part but two data lines in a group → recoverable error.
     // The error span must point to the extra line's position in the *full* input.
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melody] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    [Melody] 1 2 3 4
+    [Melody] 5 6 7 1
+    """,
+"#;
     let expected_offset = input.rfind("5 6 7 1").unwrap();
     let doc = parse(input, "test.poentaro", &[]).expect("too-many-lines must not abort parsing");
     let error = doc.per_measure_parse_errors[0]
@@ -202,18 +206,15 @@ fn too_many_lines_recoverable_error_span_points_to_absolute_file_position() {
 #[test]
 fn too_many_lines_recoverable_error_lists_declared_parts() {
     // One notes part but two data lines → recoverable error should name the declared part.
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melody] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    [Melody] 1 2 3 4
+    [Melody] 5 6 7 1
+    """,
+"#;
     let doc = parse(input, "test.poentaro", &[]).expect("too-many-lines must not abort parsing");
     let error = doc.per_measure_parse_errors[0]
         .as_ref()
@@ -227,20 +228,16 @@ fn too_many_lines_recoverable_error_lists_declared_parts() {
 
 #[test]
 fn single_unnamed_part_remains_compatible() {
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b c d\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b c d
+    """,
+"#;
     let doc = parse(input, "test.poentaro", &[]).unwrap();
     assert_eq!(doc.tracks.len(), 2);
     let notes = notes_track(&doc);
@@ -251,9 +248,10 @@ fn single_unnamed_part_remains_compatible() {
 
 #[test]
 fn accepts_zero_vertical_and_horizontal_padding() {
-    let content = "title = { vertical_padding_pt: 0, horizontal_padding_pt: 0 }\n";
-    let (meta, errors) = metadata_parser::parse_metadata(content, 0);
-    assert!(errors.is_empty());
-    assert_eq!(meta.title_style.vertical_padding_pt, Some(0));
-    assert_eq!(meta.title_style.horizontal_padding_pt, Some(0));
+    let source =
+        "metadata { title style : { vertical padding pt : 0, horizontal padding pt : 0 } },\n";
+    let read = read_document(source, &[]);
+    assert!(read.metadata_parse_errors.is_empty());
+    assert_eq!(read.metadata.title_style.vertical_padding_pt, Some(0));
+    assert_eq!(read.metadata.title_style.horizontal_padding_pt, Some(0));
 }

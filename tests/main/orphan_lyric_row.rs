@@ -2,26 +2,22 @@
 use poentaro::grid_layout::types::{GridContent, Header};
 use poentaro::render_config::RenderConfig;
 
-const SOURCE: &str = concat!(
-    "# parts\n",
-    "Soprano [s1] = notes\n",
-    "Soprano [s2] = follow[s1]\n",
-    "Alto 1[a1] = follow[s1]\n",
-    "Alto 2 [a2] = follow[s1]\n",
-    "Tenor [t] = follow[s1]\n",
-    "\n",
-    "# groups\n",
-    "Alto [a] = a1 a2\n",
-    "Soprano [s] = s1 s2\n",
-    "Vocal [v] = a s\n",
-    "\n",
-    "# score\n",
-    "[t] 6,\n",
-    "[a2] 6,\n",
-    "[a1] 3\n",
-    "[s2] 6\n",
-    "[s1] 0\n",
-);
+const SOURCE: &str = r#"parts [
+    "Soprano" [s1] : notes,
+    "Soprano" [s2] : follow [s1],
+    "Alto 1" [a1] : follow [s1],
+    "Alto 2" [a2] : follow [s1],
+    "Tenor" [t] : follow [s1],
+],
+
+score """
+    [t] 6,
+    [a2] 6,
+    [a1] 3
+    [s2] 6
+    [s1] 0
+    """,
+"#;
 
 /// Reported bug: the rendered score shows an unexplained vertical gap between
 /// the `s2` row and the `a1` row that isn't present between any other pair of

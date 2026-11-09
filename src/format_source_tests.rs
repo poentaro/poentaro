@@ -1,24 +1,22 @@
-//! Tests for [`super::format_score`].
+//! Tests for [`super::format_measures`], through the document formatter.
 
-use super::*;
+use crate::format_anyfix::format_anyfix as format_score;
 
 #[test]
 fn drops_a_trailing_all_rest_measure_for_a_plain_notes_part() {
     // Melody's second-measure rest line is entirely redundant with
     // implicit-fill; Bass has real content in the same measure group, so
     // the group isn't left empty and the drop can actually happen.
-    let source = "\
-# parts
-Melody = notes
-Bass = notes
+    let source = r#"parts ["Melody": notes, "Bass": notes],
 
-# score
-[Melody] 1 2 3 4
-[Bass] 5 6 7 1
+score """
+    [Melody] 1 2 3 4
+    [Bass] 5 6 7 1
 
-[Melody] 0 0 0 0
-[Bass] 3 3 3 3
-";
+    [Melody] 0 0 0 0
+    [Bass] 3 3 3 3
+    """,
+"#;
     let formatted = format_score(source);
     assert!(
         !formatted.contains("[Melody] 0 0 0 0"),
@@ -30,17 +28,16 @@ Bass = notes
 
 #[test]
 fn keeps_a_non_trailing_all_rest_verse_when_a_later_verse_has_content() {
-    let source = "\
-# parts
-Melody = notes
+    let source = r#"parts ["Melody": notes],
 
-# score
-[Melody] 1 2 3 4
-_ _ _ _
-hel lo world here
-";
+score """
+    [Melody] 1 2 3 4
+    _ _ _ _
+    hel lo world here
+    """,
+"#;
     let formatted = format_score(source);
-    let score_section = formatted.split("# score").nth(1).unwrap();
+    let score_section = formatted.split("score").nth(1).unwrap();
     assert_eq!(
         score_section.matches("[Melody]").count(),
         1,
@@ -55,15 +52,13 @@ hel lo world here
 
 #[test]
 fn never_drops_an_explicit_all_rest_line_on_a_follow_part() {
-    let source = "\
-# parts
-Melody = notes
-Echo = follow[Melody]
+    let source = r#"parts ["Melody": notes, "Echo": follow [Melody]],
 
-# score
-[Melody] 1 2 3 4
-[Echo] 0 0 0 0
-";
+score """
+    [Melody] 1 2 3 4
+    [Echo] 0 0 0 0
+    """,
+"#;
     let formatted = format_score(source);
     assert!(
         formatted.contains("[Echo] 0 0 0 0"),
@@ -73,13 +68,12 @@ Echo = follow[Melody]
 
 #[test]
 fn collapses_irregular_whitespace_on_data_lines() {
-    let source = "\
-# parts
-Melody = notes
+    let source = r#"parts ["Melody": notes],
 
-# score
-[Melody]   1    2  3   4
-";
+score """
+    [Melody]   1    2  3   4
+    """,
+"#;
     let formatted = format_score(source);
     assert!(
         formatted.contains("[Melody] 1 2 3 4"),
@@ -89,14 +83,13 @@ Melody = notes
 
 #[test]
 fn collapses_irregular_whitespace_on_a_directive_line_with_a_quoted_label() {
-    let source = "\
-# parts
-Melody = notes
+    let source = r#"parts ["Melody": notes],
 
-# score
-bpm=92    key=C4   label=\"Two   Words\"
-[Melody] 1 2 3 4
-";
+score """
+    bpm=92    key=C4   label="Two   Words"
+    [Melody] 1 2 3 4
+    """,
+"#;
     let formatted = format_score(source);
     assert!(
         formatted.contains("bpm=92 key=C4 label=\"Two   Words\""),
@@ -106,17 +99,15 @@ bpm=92    key=C4   label=\"Two   Words\"
 
 #[test]
 fn keeps_at_least_one_data_line_when_every_line_would_otherwise_be_dropped() {
-    let source = "\
-# parts
-Melody = notes
-Bass = notes
+    let source = r#"parts ["Melody": notes, "Bass": notes],
 
-# score
-[Melody] 0 0 0 0
-[Bass] 0 0 0 0
-";
+score """
+    [Melody] 0 0 0 0
+    [Bass] 0 0 0 0
+    """,
+"#;
     let formatted = format_score(source);
-    let score_section = formatted.split("# score").nth(1).unwrap();
+    let score_section = formatted.split("score").nth(1).unwrap();
     let data_line_count = score_section
         .lines()
         .filter(|l| l.trim_start().starts_with('['))
@@ -129,15 +120,13 @@ Bass = notes
 
 #[test]
 fn formatting_an_already_formatted_document_is_idempotent() {
-    let source = "\
-# parts
-Melody = notes
-Bass = notes
+    let source = r#"parts ["Melody": notes, "Bass": notes],
 
-# score
-[Melody] 1 2 3 4
-[Bass] 5 6 7 1
-";
+score """
+    [Melody] 1 2 3 4
+    [Bass] 5 6 7 1
+    """,
+"#;
     let once = format_score(source);
     let twice = format_score(&once);
     assert_eq!(once, twice);
@@ -145,18 +134,16 @@ Bass = notes
 
 #[test]
 fn formatted_output_still_parses_and_compiles_correctly() {
-    let source = "\
-# parts
-Melody = notes
-Bass = notes
+    let source = r#"parts ["Melody": notes, "Bass": notes],
 
-# score
-[Melody]   1  2   3  4
-[Bass]  5 6 7 1
+score """
+    [Melody]   1  2   3  4
+    [Bass]  5 6 7 1
 
-[Melody] 0 0 0 0
-[Bass] 3 3 3 3
-";
+    [Melody] 0 0 0 0
+    [Bass] 3 3 3 3
+    """,
+"#;
     let formatted = format_score(source);
     assert!(!formatted.contains("[Melody] 0 0 0 0"));
 

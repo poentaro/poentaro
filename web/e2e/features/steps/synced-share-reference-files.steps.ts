@@ -29,15 +29,14 @@ BeforeScenario(async () => {
 
 function scoreTitled(title: string): string {
   return [
-    '# metadata',
-    `title = "${title}"`,
+    `metadata { title "${title}" },`,
     '',
-    '# parts',
-    'Melody = notes',
+    'parts ["Melody": notes],',
     '',
-    '# score',
-    '(time=4/4 key=C4 bpm=120)',
-    '5 6 7 1',
+    'score """',
+    '    (time=4/4 key=C4 bpm=120)',
+    '    5 6 7 1',
+    '    """,',
   ].join('\n')
 }
 

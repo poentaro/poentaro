@@ -1,31 +1,30 @@
 import { expect, type Page } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
-const COMMENTED_HEADERS_SOURCE = [
-  '# metadata // song info',
-  'title = "Test"',
+const COMMENTED_SOURCE = [
+  '# about the song',
+  'metadata { title "Test" },',
   '',
-  '# parts // note',
-  'Melody [M] = notes',
+  '# about the parts',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    """,',
 ].join('\n')
 
-// `  # parts` is not a header (a header's `#` must be at column 0), so only
-// the real `# parts` line gets a link.
-const INDENTED_HEADER_LIKE_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+// The score string's text is not a section, so only the real `parts` gets a link.
+const PARTS_LIKE_SCORE_LINE_SOURCE = [
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
-  '  # parts',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    parts ["Harmony" [H]: notes],',
+  '    """,',
 ].join('\n')
 
 async function loadSource(page: Page, source: string) {
@@ -49,16 +48,16 @@ function codeLensLinks(page: Page, title: string) {
 }
 
 Given(
-  'the section-header CodeLens fixture with commented headers is loaded',
+  'the section-header CodeLens fixture with comments is loaded',
   async ({ page }) => {
-    await loadSource(page, COMMENTED_HEADERS_SOURCE)
+    await loadSource(page, COMMENTED_SOURCE)
   },
 )
 
 Given(
-  'the section-header CodeLens fixture with an indented header-like line is loaded',
+  'the section-header CodeLens fixture with a parts-like score line is loaded',
   async ({ page }) => {
-    await loadSource(page, INDENTED_HEADER_LIKE_SOURCE)
+    await loadSource(page, PARTS_LIKE_SCORE_LINE_SOURCE)
   },
 )
 

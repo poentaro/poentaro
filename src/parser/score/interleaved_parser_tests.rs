@@ -9,20 +9,16 @@ use super::test_helpers::{
 
 #[test]
 fn chord_line_parses_spaced_slur_group() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Chord = chords\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Chord] (1 - 6m -)\n",
-        "[Melody] 1 1 5 5\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Chord": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chord] (1 - 6m -)
+    [Melody] 1 1 5 5
+    """,
+"#;
     let doc = crate::parser::parse(input, "test.poentaro", &[]).unwrap();
     let chord_events: Vec<_> = all_events(chord_track(&doc.tracks, "Chord"))
         .into_iter()

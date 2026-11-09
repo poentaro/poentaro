@@ -11,7 +11,7 @@ import { Given, Then, When } from './fixtures'
  * `useSectionNavigation`'s `selectSectionRange`.
  *
  * Uses the same two-section (A, B) source as section-jump-select.spec.ts,
- * plus a passthrough `# sequence` (`A, B`) so the resolved sequence entries
+ * plus a passthrough `sequence [...]` (`A, B`) so the resolved sequence entries
  * map 1:1 onto the same measure ranges as the section buttons — letting
  * this test assert the exact same line numbers that test already
  * establishes for the Section toolbar.
@@ -28,25 +28,23 @@ import { Given, Then, When } from './fixtures'
  *   19: 4 3 2 1                                  ← measure 3
  */
 const source = [
-  '# metadata',
-  'title = "test"',
+  'metadata { title "test" },',
   '',
-  '# parts',
-  'M = notes',
+  'parts ["M": notes],',
   '',
-  '# sequence',
-  'A, B',
+  'sequence ["A", "B"],',
   '',
-  '# score',
-  'time=4/4 key=C4 bpm=120 label="A"',
-  '1 2 3 4',
+  'score """',
+  '    time=4/4 key=C4 bpm=120 label="A"',
+  '    1 2 3 4',
   '',
-  "5 6 7 1'",
+  "    5 6 7 1'",
   '',
-  'label="B"',
-  "1' 7 6 5",
+  '    label="B"',
+  "    1' 7 6 5",
   '',
-  '4 3 2 1',
+  '    4 3 2 1',
+  '    """,',
 ].join('\n')
 
 async function getEditorSelection(page: import('@playwright/test').Page) {

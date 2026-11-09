@@ -12,5 +12,5 @@ Feature: Measure label
 
   Scenario: Detects measure when cursor is at end of last character of a Chinese lyric line
     Given the Chinese-lyric measure-label test fixture is loaded
-    When I jump to line 16, press End, and wait for the selection debounce
+    When I jump to line 13, press End, and wait for the selection debounce
     Then the play-measure button shows "Measure 1"

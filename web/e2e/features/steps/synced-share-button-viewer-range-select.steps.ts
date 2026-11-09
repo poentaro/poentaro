@@ -15,19 +15,17 @@ Given(
   'the file store is seeded with a multi-measure synced range-select score',
   async ({ page }) => {
     const rangeSource = [
-      '# metadata',
-      'title = "Synced Range-Select Score"',
-      'max_measures_per_system = 48',
+      'metadata { title "Synced Range-Select Score", max measures per system 48 },',
       '',
-      '# parts',
-      'Melody [M] = notes',
+      'parts ["Melody" [M]: notes],',
       '',
-      '# score',
-      '[M] 1_ 1_ 1= 1= 1= 1= 1 -',
+      'score """',
+      '    [M] 1_ 1_ 1= 1= 1= 1= 1 -',
       '',
-      '[M] 1. 2_ 1_. 2= 0',
+      '    [M] 1. 2_ 1_. 2= 0',
       '',
-      '[M] 1 - - -',
+      '    [M] 1 - - -',
+      '    """,',
     ].join('\n')
     await seedSyncedCloudFile(page, 'synced-range-test', rangeSource)
   },

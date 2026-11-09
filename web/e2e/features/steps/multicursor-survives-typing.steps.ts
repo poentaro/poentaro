@@ -75,14 +75,14 @@ Then(
     note: string,
   ) => {
     // Fixed line numbers from `measure-click-selects-notes.steps.ts`'s
-    // `clickTestSource`: measure 0 is line 9, measure 1 is line 11, measure 2
-    // is line 13 (blank lines in between). `measure0` etc. are asserted in
+    // `clickTestSource`: measure 0 is line 6, measure 1 is line 8, measure 2
+    // is line 10 (blank lines in between). `measure0` etc. are asserted in
     // the Gherkin step text purely for readability; the actual indices below
     // are fixed to that fixture's known layout.
     void measure0
     const lines = await getModelLines(page)
-    expect(lines[8]).toBe(`[M] ${note}`)
-    expect(lines[10]).toBe(`[M] ${note}`)
-    expect(lines[12]).toBe(`[M] ${note}`)
+    expect(lines[5]).toBe(`[M] ${note}`)
+    expect(lines[7]).toBe(`[M] ${note}`)
+    expect(lines[9]).toBe(`[M] ${note}`)
   },
 )

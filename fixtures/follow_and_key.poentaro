@@ -1,43 +1,42 @@
-# metadata
-title = "follow and key syntax examples"
-author = "test"
+metadata { title "follow and key syntax examples", author "test" },
 
-# parts
-Soprano [S] = notes
-Soprano lyrics [Sv1] = lyrics[S]
-Alto [A] = follow[S]
-Alto lyrics [Av1] = lyrics[A]
-Tenor [T] = notes
-Tenor lyrics [Tv1] = lyrics[T]
-Bass [B] = notes
+parts [
+    "Soprano" [S]: notes,
+    "Soprano lyrics" [Sv1]: lyrics [S],
+    "Alto" [A]: follow [S],
+    "Alto lyrics" [Av1]: lyrics [A],
+    "Tenor" [T]: notes,
+    "Tenor lyrics" [Tv1]: lyrics [T],
+    "Bass" [B]: notes,
+],
 
-# score
+score """
+    label="Case 1: follow part not mentioned — row suppressed"
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [Sv1] do re mi fa
 
-label="Case 1: follow part not mentioned — row suppressed"
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
-[Sv1] do re mi fa
+    label="Case 2: follow part with notes-only key override — lyrics not copied from target"
+    [S] 1 2 3 4
+    [Sv1] do re mi fa
+    [A] 5 6 7 1
 
-label="Case 2: follow part with notes-only key override — lyrics not copied from target"
-[S] 1 2 3 4
-[Sv1] do re mi fa
-[A] 5 6 7 1
+    label="Case 3: follow part with full key override — both rows shown"
+    [S] 1 2 3 4
+    [Sv1] do re mi fa
+    [A] 5 6 7 1
+    [Av1] sol la si do
 
-label="Case 3: follow part with full key override — both rows shown"
-[S] 1 2 3 4
-[Sv1] do re mi fa
-[A] 5 6 7 1
-[Av1] sol la si do
+    label="Case 4: non-follow non-first part explicitly mentioned"
+    [S] 1 2 3 4
+    [Sv1] do re mi fa
+    [T] 3 4 5 6
+    [Tv1] mi fa sol la
+    [B] 5 6 7 1
 
-label="Case 4: non-follow non-first part explicitly mentioned"
-[S] 1 2 3 4
-[Sv1] do re mi fa
-[T] 3 4 5 6
-[Tv1] mi fa sol la
-[B] 5 6 7 1
-
-label="Case 5: non-follow non-first part not mentioned — rest fill, suppressed"
-[S] 1 2 3 4
-[Sv1] do re mi fa
-[T] 3 4 5 6
-[Tv1] mi fa sol la
+    label="Case 5: non-follow non-first part not mentioned — rest fill, suppressed"
+    [S] 1 2 3 4
+    [Sv1] do re mi fa
+    [T] 3 4 5 6
+    [Tv1] mi fa sol la
+    """,

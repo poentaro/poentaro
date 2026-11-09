@@ -1,4 +1,4 @@
-//! The `# metadata` section's key vocabulary (see `syntax.md`). Each keyword
+//! The `metadata` section's key vocabulary (see `syntax.md`). Each keyword
 //! is spelled exactly once, in a `keyword_enum!` table, and everything else
 //! (the parser, `source_edit::metadata_edit`'s writer, the wasm boundary)
 //! dispatches on these enums.
@@ -41,7 +41,7 @@ keyword_enum! {
 }
 
 keyword_enum! {
-    /// Positive-integer `# metadata` keys.
+    /// Positive-integer `metadata` keys.
     pub enum MetadataNumberKey {
         RowHeight => "row_height",
         MaxMeasuresPerSystem => "max_measures_per_system",
@@ -53,7 +53,7 @@ keyword_enum! {
 }
 
 keyword_enum! {
-    /// `yes`/`no` `# metadata` keys.
+    /// `yes`/`no` `metadata` keys.
     pub enum MetadataFlagKey {
         MergeDuplicateMeasuresAcrossParts => "merge_duplicate_measures_across_parts",
         HideRestingParts => "hide_resting_parts",

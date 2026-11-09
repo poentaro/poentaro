@@ -77,14 +77,13 @@ export function assignActualName(displayName: string): string {
 export function idempotentSharingSource(name: string): string {
   const title = name.replace(/\.poentaro$/, '')
   return [
-    '# metadata',
-    `title = "${title}"`,
+    `metadata { title "${title}" },`,
     '',
-    '# parts',
-    'Melody = notes',
+    'parts ["Melody": notes],',
     '',
-    '# score',
-    '(time=4/4 key=C4 bpm=120)',
-    '1 2 3 4',
+    'score """',
+    '    (time=4/4 key=C4 bpm=120)',
+    '    1 2 3 4',
+    '    """,',
   ].join('\n')
 }

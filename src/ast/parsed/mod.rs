@@ -43,7 +43,7 @@ impl Soundfont {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PartDecl {
     pub abbreviation: String,
-    /// Byte span of the abbreviation token on its `# parts` declaration line,
+    /// Byte span of the abbreviation token on its `parts` declaration line,
     /// used by rename-symbol to locate the declaration site.
     pub abbreviation_span: Span,
     pub display_name: String,
@@ -155,7 +155,7 @@ pub struct ParsedSlurGroup {
 }
 
 /// One `[Abbrev]` key-prefix reference to a part or group abbreviation in the
-/// `# score` section, with the abbreviation text's own byte span (excluding
+/// `score` section, with the abbreviation text's own byte span (excluding
 /// the surrounding brackets and whitespace). Used by rename-symbol to locate
 /// this reference site; kept separate from the wider bracket span used by
 /// `RecoverableError::part_key_unknown`, which must keep covering `[Abbrev]`.
@@ -171,7 +171,7 @@ pub struct ParsedDocument {
     pub declarations: Vec<PartDecl>,
     pub tracks: Vec<ParsedTrack>,
     pub directive_events_per_measure: Vec<Vec<Spanned<ScoreEvent>>>,
-    /// Every `[Abbrev]` key-prefix reference found in the `# score` section,
+    /// Every `[Abbrev]` key-prefix reference found in the `score` section,
     /// in file order. Used by rename-symbol to find all reference sites.
     pub abbreviation_references: Vec<AbbreviationReference>,
     /// Per-measure recoverable errors from desugaring (e.g. missing lyrics line).
@@ -182,14 +182,14 @@ pub struct ParsedDocument {
     pub parts_parse_errors: Vec<RecoverableError>,
     /// Recoverable errors from section structure validation (unknown/duplicate/missing sections).
     pub section_structure_errors: Vec<RecoverableError>,
-    /// The parsed `# sequence` section, if present: an ordered list of
+    /// The parsed `sequence` section, if present: an ordered list of
     /// section-label references defining explicit playback order.
     pub sequence: Option<crate::parser::sequence_parser::SequenceSection>,
-    /// Recoverable errors from parsing the `# sequence` section (e.g. empty entries).
+    /// Recoverable errors from parsing the `sequence` section (e.g. empty entries).
     pub sequence_parse_errors: Vec<RecoverableError>,
-    /// Every valid `# preset` section, in file order.
+    /// Every valid `preset` section, in file order.
     pub presets: Vec<ParsedPreset>,
-    /// Errors and warnings from the `# preset` sections.
+    /// Errors and warnings from the `preset` sections.
     pub preset_diagnostics: Vec<Diagnostic>,
 }
 
@@ -252,7 +252,7 @@ pub struct ParsedMetadata {
     pub subtitle_style: TextStyle,
     /// Author text style.
     pub author_style: TextStyle,
-    /// `# sequence` summary line text style.
+    /// `sequence` summary line text style.
     pub sequence_style: TextStyle,
     /// Part-name legend entry text style.
     pub part_legend_style: TextStyle,
@@ -286,7 +286,7 @@ pub struct ParsedMetadata {
     pub hide_system_dividers: Option<bool>,
     /// Translation in points applied to every rendered directive row (bar number, section
     /// label, key, bpm, time signature, nav markers), after layout (see
-    /// `renderer::new_renderer::render_directive_line`). Not applied to the `# sequence`
+    /// `renderer::new_renderer::render_directive_line`). Not applied to the `sequence`
     /// summary header. Default: `(0, 0)`.
     pub directive_row_offset: Option<Offset>,
 }

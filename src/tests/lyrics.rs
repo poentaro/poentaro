@@ -3,24 +3,23 @@ use crate::ast::parsed::PartKind;
 
 #[test]
 fn explicit_lyrics_keep_lyric_row() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano = notes\n",
-        "Soprano lyrics [Sopranov1] = lyrics[Soprano]\n",
-        "Alto = notes\n",
-        "Alto lyrics [Altov1] = lyrics[Alto]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Soprano] 1 2 3 4\n",
-        "[Sopranov1] do re mi fa\n",
-        "[Alto] 5 6 7 1\n",
-        "[Altov1] la la la la\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts [
+    "Soprano": notes,
+    "Soprano lyrics" [Sopranov1]: lyrics [Soprano],
+    "Alto": notes,
+    "Alto lyrics" [Altov1]: lyrics [Alto],
+],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Sopranov1] do re mi fa
+    [Alto] 5 6 7 1
+    [Altov1] la la la la
+    """,
+"#;
     let score = compile(input, "test.poentaro", &[]).unwrap();
     let parts = &score.measures[0].parts;
     assert_eq!(parts.len(), 4, "each lyric part is a part of its own");
@@ -42,20 +41,20 @@ fn explicit_lyrics_keep_lyric_row() {
 /// Each lyric part of one target is its own part, in declaration order.
 #[test]
 fn multiple_lyric_parts_of_one_target_are_separate_parts() {
-    let input = r#"# metadata
-title = "t"
-author = "a"
+    let input = r#"metadata { title "t", author "a" },
 
-# parts
-Melody = notes
-Melody verse 1 [Melodyv1] = lyrics[Melody]
-Melody verse 2 [Melodyv2] = lyrics[Melody]
+parts [
+    "Melody": notes,
+    "Melody verse 1" [Melodyv1]: lyrics [Melody],
+    "Melody verse 2" [Melodyv2]: lyrics [Melody],
+],
 
-# score
-time=4/4 key=C4 bpm=120
-[Melody] 1 2 3 4
-[Melodyv1] do re mi fa
-[Melodyv2] one two three four
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] do re mi fa
+    [Melodyv2] one two three four
+    """,
 "#;
     let score = compile(input, "test.poentaro", &[]).unwrap();
     let parts = &score.measures[0].parts;
@@ -81,18 +80,15 @@ time=4/4 key=C4 bpm=120
 /// that carries no lyrics.
 #[test]
 fn lyric_part_syllables_reach_its_own_part_slice() {
-    let input = r#"# metadata
-title = "t"
-author = "a"
+    let input = r#"metadata { title "t", author "a" },
 
-# parts
-Melody = notes
-Melody lyrics [Melodyv1] = lyrics[Melody]
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
 
-# score
-time=4/4 key=C4 bpm=120
-[Melody] 1 2 3 4
-[Melodyv1] la la la la
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] la la la la
+    """,
 "#;
     let score = compile(input, "test.poentaro", &[]).unwrap();
     assert!(matches!(
@@ -121,23 +117,23 @@ time=4/4 key=C4 bpm=120
 /// padded in as a blank verse row rather than triggering an early break.
 #[test]
 fn verse_count_change_does_not_force_new_system() {
-    let input = r#"# metadata
-title = "t"
-author = "a"
+    let input = r#"metadata { title "t", author "a" },
 
-# parts
-Melody = notes
-Melody verse 1 [Melodyv1] = lyrics[Melody]
-Melody verse 2 [Melodyv2] = lyrics[Melody]
+parts [
+    "Melody": notes,
+    "Melody verse 1" [Melodyv1]: lyrics [Melody],
+    "Melody verse 2" [Melodyv2]: lyrics [Melody],
+],
 
-# score
-time=4/4 key=C4 bpm=120
-[Melody] 1 2 3 4
-[Melodyv1] do re mi fa
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] do re mi fa
 
-[Melody] 5 6 7 1
-[Melodyv1] one two three four
-[Melodyv2] uno dos tres cuatro
+    [Melody] 5 6 7 1
+    [Melodyv1] one two three four
+    [Melodyv2] uno dos tres cuatro
+    """,
 "#;
     let score = compile(input, "test.poentaro", &[]).unwrap();
     let compile_result = compiler::compile(&score);
@@ -154,15 +150,13 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn lyric_parts_are_not_listed_as_editable_part_declarations() {
-    let input = concat!(
-        "# parts\n",
-        "Melody [M] = notes\n",
-        "Verse 1 [v1] = lyrics[M]\n",
-        "\n",
-        "# score\n",
-        "[M] 1 2 3 4\n",
-        "[v1] do re mi fa\n",
-    );
+    let input = r#"parts ["Melody" [M]: notes, "Verse 1" [v1]: lyrics [M]],
+
+score """
+    [M] 1 2 3 4
+    [v1] do re mi fa
+    """,
+"#;
     let declarations = list_part_declarations_from_source(input, "test.poentaro", &[]).unwrap();
     assert_eq!(declarations.len(), 1);
     assert_eq!(declarations[0].abbreviation, "M");

@@ -21,29 +21,25 @@ import { Given, Then, When } from './fixtures'
  * swept range, on both verses.
  */
 const source = [
-  '# metadata',
-  'title = "lyric lyriclabel range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "lyric lyriclabel range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody verse 1 [Mv1] = lyrics[M]',
-  'Melody verse 2 [Mv2] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody verse 1" [Mv1]: lyrics [M], "Melody verse 2" [Mv2]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1', // measure 0 — system 0
-  '[Mv1] do', // verse 0
-  '[Mv2] la', // verse 1
+  'score """',
+  '[M] 1',
+  '[Mv1] do',
+  '[Mv2] la',
   '',
   'break',
-  '[M] 2', // measure 1 — system 1
-  '[Mv1] re', // verse 0
-  '[Mv2] ti', // verse 1
+  '[M] 2',
+  '[Mv1] re',
+  '[Mv2] ti',
   '',
   'break',
-  '[M] 3', // measure 2 — system 2, distractor
-  '[Mv1] mi', // verse 0
-  '[Mv2] sol', // verse 1
+  '[M] 3',
+  '[Mv1] mi',
+  '[Mv2] sol',
+  '""",',
 ].join('\n')
 
 function lyricInVerse(page: import('@playwright/test').Page, verse: number) {

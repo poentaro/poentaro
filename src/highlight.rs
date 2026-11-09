@@ -2,24 +2,18 @@
 //! keyword, found by the same lexers the parser uses, so the editor never
 //! re-spells the vocabulary. See `ARCHITECTURE.md` ("Highlight token").
 
-use itertools::Itertools;
-
-use crate::document::is_anyfix;
 use crate::error::Span;
-use crate::parser::metadata_parser::{metadata_key_spans, preset_key_spans};
-use crate::parser::parts_parser::part_kind_spans;
-use crate::parser::score::interleaved_parser::directive_keyword_spans;
-use crate::parser::section_splitter::{split_sections, RawSection, SectionKind};
+use crate::parser::section::SectionKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HighlightKind {
-    /// A known `# <section>` header line.
+    /// A section's name.
     SectionHeader,
-    /// A recognized `# metadata` key.
+    /// A recognized metadata key.
     MetadataKey,
-    /// A `# parts` part-kind keyword (`notes`, `chords`, `percussion`, `follow`).
+    /// A part-kind keyword (`notes`, `chords`, `percussion`, `follow`).
     PartKind,
-    /// A `# score` directive keyword (`bpm`, `key`, …, `break`).
+    /// A score directive keyword (`bpm`, `key`, …, `break`).
     DirectiveKey,
 }
 
@@ -29,85 +23,23 @@ pub struct HighlightToken {
     pub span: Span,
 }
 
-fn section_tokens(section: &RawSection) -> Vec<HighlightToken> {
-    let RawSection {
-        kind,
-        header_span,
-        content,
-        content_offset,
-        preset_name: _,
-    } = section;
-    let (body_kind, body_spans) = match kind {
-        SectionKind::Metadata => (
-            HighlightKind::MetadataKey,
-            metadata_key_spans(content, *content_offset),
-        ),
-        SectionKind::Parts => (
-            HighlightKind::PartKind,
-            part_kind_spans(content, *content_offset),
-        ),
-        SectionKind::Score => (
-            HighlightKind::DirectiveKey,
-            directive_keyword_spans(content, *content_offset),
-        ),
-        SectionKind::Sequence => (HighlightKind::SectionHeader, Vec::new()),
-        SectionKind::Preset => (
-            HighlightKind::MetadataKey,
-            preset_key_spans(content, *content_offset),
-        ),
-    };
-    std::iter::once(HighlightToken {
-        kind: HighlightKind::SectionHeader,
-        span: *header_span,
-    })
-    .chain(body_spans.into_iter().map(|span| HighlightToken {
-        kind: body_kind,
-        span,
-    }))
-    .collect()
-}
-
 /// Every keyword in `source`, ordered by position. Each token lies on a
 /// single line.
 pub fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
-    if is_anyfix(source) {
-        return anyfix_highlight::highlight_tokens(source);
-    }
-    let (sections, _) = split_sections(source);
-    sections
-        .iter()
-        .flat_map(section_tokens)
-        .sorted_by_key(|token| token.span.start)
-        .collect()
+    anyfix_highlight::highlight_tokens(source)
 }
 
-/// A known `# <section>` header line: which section it opens, and its span
-/// (the same span its `HighlightKind::SectionHeader` token has).
+/// A known section: which one, and its header's span (the same span its
+/// `HighlightKind::SectionHeader` token has).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SectionHeader {
     pub kind: SectionKind,
     pub span: Span,
 }
 
-/// Every known section header in `source`, ordered by position — exactly the
-/// headers `split_sections` recognizes, so a header-like line the parser
-/// ignores (e.g. an indented `  # parts`) is never reported.
+/// Every known section header in `source`, ordered by position.
 pub fn section_headers(source: &str) -> Vec<SectionHeader> {
-    if is_anyfix(source) {
-        return anyfix_highlight::section_headers(source);
-    }
-    let (sections, _) = split_sections(source);
-    sections
-        .into_iter()
-        .map(|section| SectionHeader {
-            kind: section.kind,
-            span: section.header_span,
-        })
-        .collect()
+    anyfix_highlight::section_headers(source)
 }
 
 mod anyfix_highlight;
-
-#[cfg(test)]
-#[path = "highlight_tests.rs"]
-mod highlight_tests;

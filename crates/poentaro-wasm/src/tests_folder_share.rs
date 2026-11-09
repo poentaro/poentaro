@@ -16,7 +16,15 @@ fn snapshot(file_count: usize, content: &str) -> FolderSnapshot {
 
 #[test]
 fn a_folder_snapshot_round_trips_through_the_link_suffix() {
-    let original = snapshot(3, "# metadata\ntitle = \"O Come\"\n\n# score\n1 2 3 4");
+    let original = snapshot(
+        3,
+        r#"metadata { title "O Come" },
+
+score """
+    1 2 3 4
+    """,
+"#,
+    );
     let suffix = encode_folder_snapshot(&original).unwrap();
     assert!(suffix
         .chars()

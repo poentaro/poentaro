@@ -52,23 +52,19 @@ import { Given, Then, When } from './fixtures'
  * next one.
  */
 const source = [
-  '# metadata',
-  'title = "measure range-select hidden part index mismatch"',
-  'max_measures_per_system = 1',
+  'metadata { title "measure range-select hidden part index mismatch", max measures per system 1 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
-  'Bass [B] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes, "Bass" [B]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0 — system 0
-  '[H] 5', // 1 note/measure
-  '[B] 3 4', // 2 notes/measure
+  'score """',
+  '[M] 1 2',
+  '[H] 5',
+  '[B] 3 4',
   '',
-  '[M] 3 4', // measure 1 — system 1
+  '[M] 3 4',
   '[H] 7',
   '[B] 5 6',
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {

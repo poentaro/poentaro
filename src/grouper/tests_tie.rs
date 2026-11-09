@@ -8,8 +8,19 @@ fn parse_and_group(input: &str) -> Score {
     group(doc).unwrap()
 }
 
-fn header() -> &'static str {
-    "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n# score\ntime=4/4 key=C4 bpm=120\n"
+/// A document whose score is the directives, then `measures`.
+fn with_measures(measures: &str) -> String {
+    format!(
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    {measures}
+    """,
+"#
+    )
 }
 
 fn note_at(score: &Score, measure_idx: usize, event_idx: usize) -> &GroupedNote {
@@ -44,7 +55,7 @@ fn measure_error_spans(score: &Score, measure_idx: usize) -> Vec<Span> {
 #[test]
 fn valid_chained_tie() {
     // 4~4~4 1: three tied 4s followed by 1, all same pitch — no errors
-    let score = parse_and_group(&format!("{}[Melody] 4~4~4 1\n", header()));
+    let score = parse_and_group(&with_measures("[Melody] 4~4~4 1"));
     assert_eq!(score.measures.len(), 1);
     assert!(
         note_at(&score, 0, 0).tie_to_next(),
@@ -67,7 +78,7 @@ fn valid_chained_tie() {
 #[test]
 fn pitch_mismatch_clears_tie_and_emits_error() {
     // 4~3 1 2: note 4 tied to note 3 — pitch mismatch
-    let input = format!("{}[Melody] 4~3 1 2\n", header());
+    let input = with_measures("[Melody] 4~3 1 2");
     let score = parse_and_group(&input);
     assert_eq!(score.measures.len(), 1);
     assert!(
@@ -101,7 +112,7 @@ fn pitch_mismatch_clears_tie_and_emits_error() {
 #[test]
 fn octave_mismatch_clears_tie_and_emits_error() {
     // 4'~4 1 2: note 4 at octave +1 tied to note 4 at octave 0 — octave mismatch
-    let input = format!("{}[Melody] 4'~4 1 2\n", header());
+    let input = with_measures("[Melody] 4'~4 1 2");
     let score = parse_and_group(&input);
     assert_eq!(score.measures.len(), 1);
     assert!(
@@ -132,7 +143,7 @@ fn octave_mismatch_clears_tie_and_emits_error() {
 #[test]
 fn dangling_tie_at_end_of_part_emits_error() {
     // 1 2 3 4~: last note has ~ with no following note in the part
-    let input = format!("{}[Melody] 1 2 3 4~\n", header());
+    let input = with_measures("[Melody] 1 2 3 4~");
     let score = parse_and_group(&input);
     assert_eq!(score.measures.len(), 1);
     assert!(

@@ -27,18 +27,16 @@ import { Given, Then, When } from './fixtures'
  * reproduce the boundary.
  */
 const source = [
-  '# metadata',
-  'title = "cross system part label range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "cross system part label range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0 — system 0
+  'score """',
+  '[M] 1 2',
   '',
   'break',
-  '[M] 3 4', // measure 1 — system 1
+  '[M] 3 4',
+  '""",',
 ].join('\n')
 
 function partLabelInSystem(

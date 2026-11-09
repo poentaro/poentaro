@@ -47,7 +47,7 @@ fn lyric_part_max_font_size(
 }
 
 /// Every lyric row gets its own label at column 0: the lyric part's own
-/// abbreviation from `# parts` (e.g. `v1`). `system.first()` always has a
+/// abbreviation from `parts` (e.g. `v1`). `system.first()` always has a
 /// `part_idx` entry matching this row's own template (only ever called for
 /// an `is_lyric_row` row). Split out of `expand_lyric_part` to keep it under
 /// the max function-length lint.

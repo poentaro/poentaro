@@ -1,5 +1,5 @@
-//! [`format_score`]: a best-effort formatter for the Zipped (normal) editor
-//! view. Three independent cleanups run per `# score` measure group:
+//! [`format_measures`]: a best-effort formatter for a score's measures. Three
+//! independent cleanups run per measure group:
 //!
 //! 1. **Redundant-line removal.** A `[Key]` data line is dropped when it is
 //!    exactly what the existing implicit-fill machinery
@@ -9,7 +9,7 @@
 //!    occurrence. `follow[X]` parts are never touched (their
 //!    implicit fill is the follow target's content, not rest).
 //! 2. **Part-order sorting.** A key's surviving line is moved to the position
-//!    matching its part's order in `# parts` (a lyric part right after its
+//!    matching its part's order in `parts` (a lyric part right after its
 //!    target), regardless of how the lines were interleaved in the source. A key
 //!    that can't be resolved to a declared part keeps its original relative
 //!    position, ordered after every recognised part.
@@ -23,9 +23,6 @@
 //! lines are stripped from the raw input, feeding the result back through
 //! `desugar_groups` fills the dropped slots correctly for free.
 //!
-//! Infallible / best-effort, mirroring `source_edit::update_part_declaration`'s
-//! "not found -> unchanged" convention: a missing `# parts`/`# score` section,
-//! or any internal parse failure, returns `source` unchanged.
 
 use crate::ast::parsed::{PartDecl, ScoreLineRole};
 use crate::desugar;
@@ -34,46 +31,6 @@ use crate::parser;
 /// A raw, not-yet-desugared score line paired with its byte offset within
 /// its containing section, matching `measure_group::collect_groups`'s output.
 type RawSourceLine = (String, usize);
-
-/// Formats `source`'s `# score` section: drops `[Key]` data lines that are
-/// entirely redundant with implicit-fill, and collapses whitespace to single
-/// spaces on every surviving directive/data line. Returns `source` unchanged
-/// if `# parts`/`# score` can't be resolved.
-pub fn format_score(source: &str) -> String {
-    let (sections, _section_errors) = parser::load_document_sections(source);
-    let (parts_content, parts_offset) = sections.parts;
-    let (score_content, score_offset) = sections.score;
-    if score_content.trim().is_empty() {
-        return source.to_string();
-    }
-
-    let (declarations, _parts_errors) =
-        parser::parts_parser::parse_parts(&parts_content, parts_offset, &[]);
-    if declarations.is_empty() {
-        return source.to_string();
-    }
-
-    let Some(new_score_content) = format_measures(&score_content, score_offset, &declarations)
-    else {
-        return source.to_string();
-    };
-
-    let mut result = String::with_capacity(
-        score_offset
-            + new_score_content.len()
-            + source
-                .len()
-                .saturating_sub(score_offset + score_content.len()),
-    );
-    result.push_str(source.get(..score_offset).unwrap_or(source));
-    result.push_str(&new_score_content);
-    result.push_str(
-        source
-            .get(score_offset + score_content.len()..)
-            .unwrap_or(""),
-    );
-    result
-}
 
 /// Formats measures in the current score syntax (measure groups split by
 /// blank lines) with the three cleanups in the module docs. `None` when the
@@ -180,7 +137,7 @@ fn is_removable(role: ScoreLineRole, content: &str) -> bool {
 /// Builds the filtered/reordered/whitespace-normalized raw measure group for
 /// `group`: directive line(s) normalized, unparseable data lines passed
 /// through untouched, eligible trailing redundant `[Key]` lines dropped, and
-/// surviving `[Key]` blocks sorted into `# parts` declaration order (see
+/// surviving `[Key]` blocks sorted into `parts` declaration order (see
 /// module docs).
 fn format_group(group: &[RawSourceLine], declarations: &[PartDecl]) -> Vec<RawSourceLine> {
     let directive_count = parser::score::measure_group::directive_line_count(group);
@@ -242,7 +199,7 @@ enum DataLineBlockKey<'a> {
 /// Groups surviving data lines into blocks — every occurrence of a key
 /// travels together, regardless of how interleaved with other keys' lines
 /// it was in the source — and orders the blocks by the part's position in
-/// `# parts`. A block for an unrecognised or unparseable key keeps its
+/// `parts`. A block for an unrecognised or unparseable key keeps its
 /// original relative position, ordered after every recognised part (its
 /// content isn't touched here; any resulting invalid document is caught by
 /// `format_score`'s `desugar_groups` safety net).

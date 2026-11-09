@@ -1,6 +1,6 @@
 Feature: Presets
 
-  # The fixture has a "Melody only" preset (visible_parts = M, Mv1), a
+  # The fixture has a "Melody only" preset (visible parts [M, Mv1]), a
   # "Violin" preset (notation = violin) and the parts Melody [M], Melody
   # lyrics [Mv1] and Chords [C].
 
@@ -14,31 +14,31 @@ Feature: Presets
     And the "M" part pill is on
     And the preview does not contain the chord content
 
-  Scenario: Turning a pill off under a preset rewrites visible_parts, and undo restores it
+  Scenario: Turning a pill off under a preset rewrites visible parts, and undo restores it
     Given the presets fixture is loaded
     When I choose the "Melody only" preset
     And I turn the "Mv1" part pill off
-    Then the "Melody only" preset has the line "visible_parts = M"
-    And the stored file's "Melody only" preset has the line "visible_parts = M"
+    Then the "Melody only" preset has "visible parts [M]"
+    And the stored file's "Melody only" preset has "visible parts [M]"
     And the "Mv1" part pill is off
     When I press undo in the main editor
-    Then the "Melody only" preset has the line "visible_parts = M, Mv1"
+    Then the "Melody only" preset has "visible parts [M, Mv1]"
     And the "Mv1" part pill is on
 
-  Scenario: Soloing a part under a preset rewrites soloed_parts, and undo restores it
+  Scenario: Soloing a part under a preset rewrites soloed parts, and undo restores it
     Given the presets fixture is loaded
     When I choose the "Melody only" preset
     And I solo the "C" part pill
-    Then the "Melody only" preset has the line "soloed_parts = C"
-    And the stored file's "Melody only" preset has the line "soloed_parts = C"
+    Then the "Melody only" preset has "soloed parts [C]"
+    And the stored file's "Melody only" preset has "soloed parts [C]"
     And the "C" part pill is soloed
     And the preview contains the chord content
     When I unsolo the "C" part pill
-    Then the "Melody only" preset has no "soloed_parts" line
+    Then the "Melody only" preset has no "soloed parts"
     And the "C" part pill is not soloed
     And the preview does not contain the chord content
     When I press undo in the main editor
-    Then the "Melody only" preset has the line "soloed_parts = C"
+    Then the "Melody only" preset has "soloed parts [C]"
     And the "C" part pill is soloed
 
   Scenario: On Default, soloing stays in this browser and the file doesn't change
@@ -74,8 +74,8 @@ Feature: Presets
     Given the presets fixture is loaded
     When I turn the "Mv1" part pill off
     And I create a new preset called "No lyrics"
-    Then the "No lyrics" preset has the line "visible_parts = M, C"
-    And the "No lyrics" preset has the line "notation = numbered"
+    Then the "No lyrics" preset has "visible parts [M, C]"
+    And the "No lyrics" preset has "notation: numbered"
     And the preset menu shows "No lyrics"
     And the "Mv1" part pill is off
 
@@ -97,7 +97,7 @@ Feature: Presets
     Given the presets fixture is loaded
     When I choose the "Melody only" preset
     And I switch the preview notation to "cello"
-    Then the "Melody only" preset has the line "notation = cello"
+    Then the "Melody only" preset has "notation: cello"
     And the preview shows a staff notation page
 
   Scenario: In a shared link, picking a notation under a preset changes only the preview
@@ -127,9 +127,9 @@ Feature: Presets
     Then the edit metadata modal contains "Edit Metadata (Melody only)"
     And the metadata "Title *" field is empty with the placeholder "Test"
     When I fill the metadata "Title *" field with "Tune"
-    Then the "Melody only" preset has the line "title = \"Tune\""
-    And the "Melody only" preset has the line "visible_parts = M, Mv1"
-    And the editor source and stored source both contain "title = \"Test\""
+    Then the "Melody only" preset has "title \"Tune\""
+    And the "Melody only" preset has "visible parts [M, Mv1]"
+    And the editor source and stored source both contain "title \"Test\""
     When I reset the metadata "Title *" field
     Then the metadata "Title *" field is empty with the placeholder "Test"
-    And the "Melody only" preset has no "title" line
+    And the "Melody only" preset has no "title"

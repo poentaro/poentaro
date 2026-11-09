@@ -1,4 +1,4 @@
-//! Part stream editing: edit **one part** of the `# score` as a single
+//! Part stream editing: edit **one part** of the `score` as a single
 //! continuous stream of musical elements (no measure groups, no barlines, no
 //! directives), then apply it back into the measure-grouped source.
 //!
@@ -73,7 +73,7 @@ pub struct PartStream {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PartStreamError {
-    /// `# parts` / `# score` could not be resolved.
+    /// `parts` / `score` could not be resolved.
     SourceDoesNotParse { message: String },
     /// No part with this abbreviation is declared.
     UnknownPart { abbreviation: String },

@@ -42,15 +42,18 @@ Then(
   },
 )
 
+/** `text` as the score's last line, right before its closing `"""`. */
+const lastScoreLine = (text: string) => new RegExp(`${text}\\s*""",?\\s*$`)
+
 Then(
   'the History diff compares the current text ending in {string} with the version ending in {string}',
   async ({ page }, current: string, version: string) => {
     await expect
       .poll(() => diffSide(page, 'original'))
-      .toMatch(new RegExp(`${current}\\n?$`))
+      .toMatch(lastScoreLine(current))
     await expect
       .poll(() => diffSide(page, 'modified'))
-      .toMatch(new RegExp(`${version}\\n?$`))
+      .toMatch(lastScoreLine(version))
   },
 )
 

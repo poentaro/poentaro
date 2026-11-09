@@ -235,7 +235,16 @@ mod tests {
 
     fn make_two_part_score(soprano: &str, alto: &str) -> Vec<MultiPartMeasure> {
         let input = format!(
-            "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nSoprano = notes\nAlto = notes\n\n# score\ntime=4/4 key=C4 bpm=120\n[Soprano] {soprano}\n[Alto] {alto}\n"
+            r#"metadata {{ title "t", author "a" }},
+
+parts ["Soprano": notes, "Alto": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] {soprano}
+    [Alto] {alto}
+    """,
+"#
         );
         let doc = parser::parse(&input, "test.poentaro", &[]).unwrap();
         grouper::group(doc).unwrap().measures
@@ -259,13 +268,16 @@ mod tests {
     fn beat_overflow_in_one_part_attaches_error_to_measure() {
         // Alto has 5 notes in a 4/4 bar — overflow is recoverable; the measure
         // gets an error and the 5th note is trimmed.
-        let input = concat!(
-            "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nSoprano = notes\nAlto = notes\n\n",
-            "# score\n",
-            "time=4/4 key=C4 bpm=120\n",
-            "[Soprano] 1 2 3 4\n",
-            "[Alto] 5 6 7 1 5\n",
-        );
+        let input = r#"metadata { title "t", author "a" },
+
+parts ["Soprano": notes, "Alto": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Alto] 5 6 7 1 5
+    """,
+"#;
         let doc = parser::parse(input, "test.poentaro", &[])
             .expect("beat overflow must not abort parsing");
         let score = grouper::group(doc).expect("grouping must succeed");

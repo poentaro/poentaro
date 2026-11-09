@@ -2,17 +2,15 @@ import { expect, type Page } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Staff View Test"',
+  'metadata { title "Staff View Test" },',
   '',
-  '# parts',
-  'Soprano [S] = notes',
-  'Alto [A] = notes',
+  'parts ["Soprano" [S]: notes, "Alto" [A]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[S] 1 2 3 4',
-  '[A] 5, 6, 7, 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [S] 1 2 3 4',
+  '    [A] 5, 6, 7, 1',
+  '    """,',
 ].join('\n')
 
 const SOURCE_NOTE_COUNT = 8

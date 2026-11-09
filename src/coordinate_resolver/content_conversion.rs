@@ -43,7 +43,7 @@ fn sans_serif_text(content: String, style: SansSerifTextStyle) -> AbsoluteConten
 
 /// Builds the text span for a section label (bold + italic), matching how a
 /// `label="..."` directive is rendered inline on a measure. Used by the
-/// `# sequence` header line at `font_size` (see `Metadata::sequence_font_size`);
+/// `sequence` header line at `font_size` (see `Metadata::sequence_font_size`);
 /// the directive line's own label is rendered as an independent text element
 /// (see [`AbsoluteContent::DirectiveLine`], `label`/`label_x_offset`) rather
 /// than through this span.

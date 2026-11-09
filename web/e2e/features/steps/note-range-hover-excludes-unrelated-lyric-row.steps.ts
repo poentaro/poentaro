@@ -20,18 +20,15 @@ import { Given, Then, When } from './fixtures'
  * note rows, Harmony's `x y z` syllables must stay unhighlighted.
  */
 const source = [
-  '# metadata',
-  'title = "note hover lyric exclusion test"',
+  'metadata { title "note hover lyric exclusion test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
-  'Harmony lyrics [Hv1] = lyrics[H]',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes, "Harmony lyrics" [Hv1]: lyrics [H]],',
   '',
-  '# score',
-  '[M] 1 2 3',
-  '[H] 4 5 6',
-  '[Hv1] x y z',
+  'score """',
+  '    [M] 1 2 3',
+  '    [H] 4 5 6',
+  '    [Hv1] x y z',
+  '    """,',
 ].join('\n')
 
 // A note group carries a sibling `Tag::Note` group for its

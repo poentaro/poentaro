@@ -179,7 +179,7 @@ struct ResolvedTextStyles {
 
 /// Resolves every text kind's `TextStyle`, applying each documented default
 /// (see `Metadata`'s per-kind field docs) to whichever components the
-/// `# metadata` section left unset.
+/// `metadata` section left unset.
 fn resolve_text_styles(metadata: &ParsedMetadata, row_height: u32) -> ResolvedTextStyles {
     let (
         title_style,

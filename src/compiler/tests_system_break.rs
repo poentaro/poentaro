@@ -8,22 +8,20 @@ fn score_from(source: &str) -> crate::ast::grouped::Score {
 #[test]
 fn break_directive_sets_system_break_only_on_its_own_measure() {
     let score = score_from(
-        "# metadata
-title=\"t\"
-author=\"a\"
+        r#"metadata { title "t", author "a" },
 
-# parts
-S = notes
+parts ["S": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
 
-break
-[S] 5 6 7 1
+    break
+    [S] 5 6 7 1
 
-[S] 1 2 3 4
-",
+    [S] 1 2 3 4
+    """,
+"#,
     );
     let result = compile(&score);
     let blocks = result.blocks;
@@ -38,20 +36,18 @@ break
 #[test]
 fn break_directive_combines_with_other_directives_on_same_line() {
     let score = score_from(
-        "# metadata
-title=\"t\"
-author=\"a\"
+        r#"metadata { title "t", author "a" },
 
-# parts
-S = notes
+parts ["S": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
 
-bpm=100 break
-[S] 5 6 7 1
-",
+    bpm=100 break
+    [S] 5 6 7 1
+    """,
+"#,
     );
     let result = compile(&score);
     let blocks = result.blocks;
@@ -68,24 +64,22 @@ fn break_directive_on_a_measure_absorbed_by_a_rest_run_still_starts_a_fresh_run(
     // run measure 1-2 would otherwise form, so the forced boundary lands
     // exactly where the user wrote it.
     let score = score_from(
-        "# metadata
-title=\"t\"
-author=\"a\"
+        r#"metadata { title "t", author "a" },
 
-# parts
-S = notes
+parts ["S": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
 
-[S] 0 0 0 0
+    [S] 0 0 0 0
 
-break
-[S] 0 0 0 0
+    break
+    [S] 0 0 0 0
 
-[S] 0 0 0 0
-",
+    [S] 0 0 0 0
+    """,
+"#,
     );
     let result = compile(&score);
     let blocks = result.blocks;

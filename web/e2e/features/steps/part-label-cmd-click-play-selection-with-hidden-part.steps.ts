@@ -5,19 +5,18 @@ import { stableBoundingBox } from '../../rangeSelectHelpers'
 import { Given, Then, When } from './fixtures'
 
 const source = [
-  '# metadata',
-  'title = "part label cmd click play selection hidden part test"',
-  'max_measures_per_system = 1',
+  'metadata {',
+  '    title "part label cmd click play selection hidden part test",',
+  '    max measures per system 1,',
+  '},',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
-  'Bass [B] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes, "Bass" [B]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
-  '[H] 5', // 1 note/measure
-  '[B] 3 4', // 2 notes/measure
+  'score """',
+  '[M] 1 2',
+  '[H] 5',
+  '[B] 3 4',
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
@@ -77,7 +76,7 @@ async function captureEnabledTracks(page: import('@playwright/test').Page) {
 export async function primeMeasureSpans(page: import('@playwright/test').Page) {
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('11')
+  await page.keyboard.type('9')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,

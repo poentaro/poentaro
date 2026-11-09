@@ -2,33 +2,30 @@ use crate::part_stream::{
     extract_part_stream, format_part_stream, FormattedPartStream, StreamCursor,
 };
 
-const THREE_MEASURES: &str = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
-Accompaniment [A] = follow[M]
+const THREE_MEASURES: &str = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M], "Accompaniment" [A]: follow [M]],
 
-# score
-[M] 1 2 3 4
-[W] a b c d
+score """
+    [M] 1 2 3 4
+    [W] a b c d
 
-[M] 5 6 7 1
-[W] e f g h
+    [M] 5 6 7 1
+    [W] e f g h
 
-[M] 3 4 5 6
-[A] 1 1 1 1
-";
+    [M] 3 4 5 6
+    [A] 1 1 1 1
+    """,
+"#;
 
-const CHORDS_AND_WORDS: &str = r"# parts
-Chords [C] = chords
-Words [W] = lyrics[C]
+const CHORDS_AND_WORDS: &str = r#"parts ["Chords" [C]: chords, "Words" [W]: lyrics [C]],
 
-# score
-[C] 1 - 4 -
-[W] (天) 空  好 (藍)
+score """
+    [C] 1 - 4 -
+    [W] (天) 空  好 (藍)
 
-[C] 0 5 - -
-[W] 我 （在）想 你
-";
+    [C] 0 5 - -
+    [W] 我 （在）想 你
+    """,
+"#;
 
 fn apply_edits(stream: &str, formatted: &FormattedPartStream) -> String {
     formatted
@@ -104,16 +101,16 @@ fn a_stream_with_an_error_is_left_as_typed() {
 
 #[test]
 fn deleting_a_note_pulls_a_held_note_back_across_the_barline() {
-    let source = r"# parts
-Melody [M] = notes
+    let source = r#"parts ["Melody" [M]: notes],
 
-# score
-[M] 1 2 3 4
+score """
+    [M] 1 2 3 4
 
-[M] 5 - 6 7
+    [M] 5 - 6 7
 
-[M] 1 2 3 4
-";
+    [M] 1 2 3 4
+    """,
+"#;
     assert_eq!(
         formatted(source, "M", "2 3 4\n5 - 6 7\n1 2 3 4"),
         "2 3 4 5 -\n6 7 1 2\n3 4"
@@ -227,19 +224,18 @@ fn a_cursor_among_deleted_placeholders_moves_to_the_last_kept_syllable() {
 
 #[test]
 fn a_measure_without_lyric_slots_adds_no_blank_line() {
-    let source = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
+    let source = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
 
-# score
-[M] 1 2 3 4
-[W] a b c d
+score """
+    [M] 1 2 3 4
+    [W] a b c d
 
-[M] 0 0 0 0
+    [M] 0 0 0 0
 
-[M] 5 6 7 1
-[W] e f g h
-";
+    [M] 5 6 7 1
+    [W] e f g h
+    """,
+"#;
     assert_eq!(
         formatted(source, "W", "a b c d e f g h"),
         "a b c d\ne f g h"

@@ -4,10 +4,17 @@ use crate::ast::parsed::NumberedPitch;
 #[test]
 fn suffix_dash_after_rest_is_allowed() {
     // `0---` is conventional numbered notation for a rest held across the whole measure.
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\na = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[a] 0---\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["a": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [a] 0---
+    """,
+"#,
+    );
     assert_eq!(
         score.measures[0].diagnostics.len(),
         0,
@@ -27,20 +34,18 @@ fn suffix_dash_after_rest_is_allowed() {
 #[test]
 fn standalone_dash_after_rest_is_allowed() {
     // `0 - - -` is the space-separated equivalent of `0---`.
-    let score = parse_and_group(concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 0 - - -\n",
-        "[Melodyv1] _\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 0 - - -
+    [Melodyv1] _
+    """,
+"#,
+    );
     assert_eq!(
         score.measures[0].diagnostics.len(),
         0,
@@ -61,10 +66,19 @@ fn standalone_dash_after_rest_is_allowed() {
 fn standalone_tie_marker_after_extension_that_flushes_measure() {
     // `(6---` fills a 4/4 measure exactly; `7)` closes the cross-measure group.
     // The outgoing tie on 6 must carry into the next measure.
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Melody] (6---\n\n[Melody] 7) 0 0 0\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] (6---
+
+    [Melody] 7) 0 0 0
+    """,
+"#,
+    );
     let notes_m0 = first_part_notes(&score, 0);
     match notes_m0.last().unwrap() {
         NoteEvent::Note(n) => assert!(n.slur, "note 6 in measure 0 should be tied"),
@@ -77,10 +91,17 @@ fn standalone_tie_marker_after_extension_that_flushes_measure() {
 #[test]
 fn standalone_tie_marker_sets_tie_on_preceding_note() {
     // `(6-7)` means note 6 extended by one beat, slurred into note 7
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Melody] (6-7) 0\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] (6-7) 0
+    """,
+"#,
+    );
     let notes = first_part_notes(&score, 0);
     match &notes[0] {
         NoteEvent::Note(n) => {
@@ -102,10 +123,17 @@ fn standalone_tie_marker_sets_tie_on_preceding_note() {
 #[test]
 fn notes_extension_no_preceding_event_is_recoverable() {
     use crate::error::{Diagnostic, RecoverableErrorKind};
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nn = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[n] - 2 3 4\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["n": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [n] - 2 3 4
+    """,
+"#,
+    );
     assert!(
         score.measures[0].diagnostics.iter().any(|d| matches!(
             d,
@@ -122,18 +150,15 @@ fn notes_extension_no_preceding_event_is_recoverable() {
 
 #[test]
 fn measure_span_covers_first_note_byte_offset() {
-    let source = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-    );
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    """,
+"#;
     let score = parse_and_group(source);
     let span = &score.measures[0].source_span;
     let first_note_offset = source.find("1 2 3 4").unwrap();
@@ -145,20 +170,17 @@ fn measure_span_covers_first_note_byte_offset() {
 
 #[test]
 fn second_measure_span_covers_its_first_note() {
-    let source = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "\n",
-        "[Melody] 5 6 7 1\n",
-    );
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+
+    [Melody] 5 6 7 1
+    """,
+"#;
     let score = parse_and_group(source);
     assert_eq!(score.measures.len(), 2);
     let span = &score.measures[1].source_span;

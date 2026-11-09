@@ -1,10 +1,19 @@
 use super::*;
 
-// Group 1e — `# sequence` section errors
+// Group 1e — `sequence` section errors
 
 fn fixture_with_sequence(score_section: &str, sequence: &str) -> String {
     format!(
-        "# metadata\ntitle = \"t\"\nauthor = \"a\"\n\n# parts\nMelody = notes\n\n# sequence\n{sequence}\n\n# score\n{score_section}\n"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["Melody": notes],
+
+sequence ["{sequence}"],
+
+score """
+    {score_section}
+    """,
+"#
     )
 }
 

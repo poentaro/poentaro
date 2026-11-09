@@ -4,17 +4,16 @@ use crate::part_stream::{
     StreamDiagnosticSeverity,
 };
 
-const TWO_MEASURES: &str = r"# parts
-Chords [C] = chords
-Words [W] = lyrics[C]
+const TWO_MEASURES: &str = r#"parts ["Chords" [C]: chords, "Words" [W]: lyrics [C]],
 
-# score
-[C] 1 - 4 -
-[W] (天) 空  好 (藍)
+score """
+    [C] 1 - 4 -
+    [W] (天) 空  好 (藍)
 
-[C] 0 5 - -
-[W] 我 （在）想 你
-";
+    [C] 0 5 - -
+    [W] 我 （在）想 你
+    """,
+"#;
 
 fn spans_with_severity(
     result: &PartStreamApplyResult,
@@ -59,16 +58,15 @@ fn extracts_one_measure_per_line_ended_by_a_barline() {
 
 #[test]
 fn a_measure_the_part_does_not_write_shows_as_underscore() {
-    let source = r"# parts
-Chords [C] = chords
-Words [W] = lyrics[C]
+    let source = r#"parts ["Chords" [C]: chords, "Words" [W]: lyrics [C]],
 
-# score
-[C] 1 - - -
-[W] (a) b
+score """
+    [C] 1 - - -
+    [W] (a) b
 
-[C] 5 - - -
-";
+    [C] 5 - - -
+    """,
+"#;
     let stream = extract_part_stream(source, "W").unwrap();
     assert_eq!(stream.text, "(a) b |\n_");
     let result = apply_part_stream(source, "W", &stream.text);
@@ -82,17 +80,16 @@ fn moving_a_barline_moves_syllables_between_measures() {
     assert_eq!(result.changed_measure_count, 2);
     assert_eq!(
         applied(result),
-        r"# parts
-Chords [C] = chords
-Words [W] = lyrics[C]
+        r#"parts ["Chords" [C]: chords, "Words" [W]: lyrics [C]],
 
-# score
-[C] 1 - 4 -
-[W] (天) 空 好
+score """
+    [C] 1 - 4 -
+    [W] (天) 空 好
 
-[C] 0 5 - -
-[W] 藍 我 （在）想 你
-"
+    [C] 0 5 - -
+    [W] 藍 我 （在）想 你
+    """,
+"#
     );
 }
 
@@ -174,23 +171,22 @@ fn measures_past_the_end_of_the_score_are_appended() {
     assert_eq!(result.changed_measure_count, 3);
     assert_eq!(
         applied(result),
-        r"# parts
-Chords [C] = chords
-Words [W] = lyrics[C]
+        r#"parts ["Chords" [C]: chords, "Words" [W]: lyrics [C]],
 
-# score
-[C] 1 - 4 -
-[W] (天) 空  好 (藍)
+score """
+    [C] 1 - 4 -
+    [W] (天) 空  好 (藍)
 
-[C] 0 5 - -
-[W] 我 （在）想 你
+    [C] 0 5 - -
+    [W] 我 （在）想 你
 
-[W] 天 空
+    [W] 天 空
 
-[W] _
+    [W] _
 
-[W] 好 藍
-"
+    [W] 好 藍
+    """,
+"#
     );
 }
 
@@ -222,23 +218,22 @@ fn a_shorter_stream_warns_and_drops_the_later_measures_lyrics() {
     );
     assert_eq!(
         applied(result),
-        r"# parts
-Chords [C] = chords
-Words [W] = lyrics[C]
+        r#"parts ["Chords" [C]: chords, "Words" [W]: lyrics [C]],
 
-# score
-[C] 1 - 4 -
-[W] (天) 空  好 (藍)
+score """
+    [C] 1 - 4 -
+    [W] (天) 空  好 (藍)
 
-[C] 0 5 - -
-"
+    [C] 0 5 - -
+    """,
+"#
     );
 }
 
 #[test]
 fn underscore_writes_a_measure_without_lyrics() {
     let result = apply_part_stream(TWO_MEASURES, "W", "(天) 空 好 (藍) | _");
-    assert!(applied(result).ends_with("[C] 0 5 - -\n[W] _\n"));
+    assert!(applied(result).ends_with("[C] 0 5 - -\n    [W] _\n    \"\"\",\n"));
 }
 
 #[test]

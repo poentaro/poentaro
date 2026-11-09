@@ -2,16 +2,14 @@ use super::*;
 
 #[test]
 fn span_covers_each_syllables_own_source_text() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Melody [M] = notes
-Melody lyrics [Mv1] = lyrics[M]
+parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],
 
-# score
-[M] 1 2 3 4
-[Mv1] a b c d
+score """
+    [M] 1 2 3 4
+    [Mv1] a b c d
+    """,
 "#;
     let spans = list_lyric_spans_from_source(source, "test.poentaro", None)
         .unwrap()
@@ -34,16 +32,14 @@ Melody lyrics [Mv1] = lyrics[M]
 
 #[test]
 fn tie_continuation_note_consumes_no_extra_syllable() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Melody [M] = notes
-Melody lyrics [Mv1] = lyrics[M]
+parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],
 
-# score
-[M] 4~4 3 2
-[Mv1] la di dum
+score """
+    [M] 4~4 3 2
+    [Mv1] la di dum
+    """,
 "#;
     let spans = list_lyric_spans_from_source(source, "test.poentaro", None)
         .unwrap()
@@ -66,18 +62,15 @@ Melody lyrics [Mv1] = lyrics[M]
 
 #[test]
 fn each_lyric_part_produces_its_own_spans_sharing_note_ids() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Melody [M] = notes
-Melody verse 1 [Mv1] = lyrics[M]
-Melody verse 2 [Mv2] = lyrics[M]
+parts ["Melody" [M]: notes, "Melody verse 1" [Mv1]: lyrics [M], "Melody verse 2" [Mv2]: lyrics [M]],
 
-# score
-[M] 1 2
-[Mv1] a b
-[Mv2] one two
+score """
+    [M] 1 2
+    [Mv1] a b
+    [Mv2] one two
+    """,
 "#;
     let spans = list_lyric_spans_from_source(source, "test.poentaro", None)
         .unwrap()
@@ -244,19 +237,18 @@ fn output_is_sorted_by_part_then_measure() {
 
 #[test]
 fn note_ids_skip_the_notes_of_a_measure_without_lyrics() {
-    let source = r#"# parts
-M = notes
-L = lyrics[M]
+    let source = r#"parts ["M": notes, "L": lyrics [M]],
 
-# score
-time=4/4
-[M] 6,~---
-[L] a
+score """
+    time=4/4
+    [M] 6,~---
+    [L] a
 
-[M] 6, 5 5 5
+    [M] 6, 5 5 5
 
-[M] 6, 3_2_ 1 6,
-[L] A B C D E
+    [M] 6, 3_2_ 1 6,
+    [L] A B C D E
+    """,
 "#;
     let spans = list_lyric_spans_from_source(source, "test.poentaro", None)
         .unwrap()

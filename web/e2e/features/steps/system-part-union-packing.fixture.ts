@@ -72,22 +72,26 @@ export const NOTE_TOKEN_COUNT = 4
  * where the score content starts) varies with `hide_resting_parts`. */
 function buildSource(): { source: string; firstMeasureLine: number } {
   const lines: string[] = [
-    '# metadata',
-    'title = "system part union packing test"',
-    `max_measures_per_system = ${state.maxMeasuresPerSystem}`,
+    'metadata {',
+    '  title "system part union packing test",',
+    `  max measures per system ${state.maxMeasuresPerSystem},`,
   ]
   if (state.hideRestingParts !== null) {
-    lines.push(`hide_resting_parts = ${state.hideRestingParts ? 'yes' : 'no'}`)
+    lines.push(
+      `  hide resting parts: ${state.hideRestingParts ? 'yes' : 'no'},`,
+    )
   }
+  lines.push('},')
   lines.push('')
-  lines.push('# parts')
-  lines.push('Melody [M] = notes')
-  lines.push('Melody verse 1 [Mv1] = lyrics[M]')
-  lines.push('Melody verse 2 [Mv2] = lyrics[M]')
-  lines.push('Harmony [H] = notes')
-  lines.push('Bass [B] = notes')
+  lines.push('parts [')
+  lines.push('  "Melody" [M]: notes,')
+  lines.push('  "Melody verse 1" [Mv1]: lyrics [M],')
+  lines.push('  "Melody verse 2" [Mv2]: lyrics [M],')
+  lines.push('  "Harmony" [H]: notes,')
+  lines.push('  "Bass" [B]: notes,')
+  lines.push('],')
   lines.push('')
-  lines.push('# score')
+  lines.push('score """')
 
   const firstMeasureLine = lines.length + 1
 
@@ -117,6 +121,7 @@ function buildSource(): { source: string; firstMeasureLine: number } {
   })
 
   lines.push(groups.join('\n\n'))
+  lines.push('""",')
   return { source: lines.join('\n'), firstMeasureLine }
 }
 

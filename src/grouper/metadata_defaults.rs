@@ -4,7 +4,7 @@ use crate::ast::parsed::{ParsedMetadata, TextStyle, TextStyleKind};
 use super::resolve_metadata;
 
 /// What each field of a metadata section resolves to when left unset there,
-/// given `inherited` (the song's `# metadata` when the section is a preset,
+/// given `inherited` (the song's `metadata` when the section is a preset,
 /// else nothing) and the rest of the section, `own`, as written: e.g.
 /// `notes`' default `font_size` follows an explicit `lyrics` font size, and
 /// the `row_height`-scaled font sizes follow an explicit `row_height`. Every

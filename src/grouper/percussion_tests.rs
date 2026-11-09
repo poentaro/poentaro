@@ -7,8 +7,19 @@ fn parse_and_group(input: &str) -> Score {
     group(doc).unwrap()
 }
 
-fn header() -> &'static str {
-    "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nSnare = percussion \"38: Acoustic Snare\"\n\n# score\ntime=4/4 key=C4 bpm=120\n"
+/// A document whose score is the directives, then `measures`.
+fn with_measures(measures: &str) -> String {
+    format!(
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["Snare": percussion {{ sound 38 }}],
+
+score """
+    time=4/4 key=C4 bpm=120
+    {measures}
+    """,
+"#
+    )
 }
 
 fn percussion_events(score: &Score, measure_idx: usize) -> Vec<&NoteEvent> {
@@ -29,7 +40,7 @@ fn hit_at(score: &Score, measure_idx: usize, event_idx: usize) -> &GroupedPercus
 
 #[test]
 fn groups_hits_and_rests() {
-    let source = format!("{}[Snare] x 0 x 0\n", header());
+    let source = with_measures("[Snare] x 0 x 0");
     let score = parse_and_group(&source);
     let events = percussion_events(&score, 0);
     assert_eq!(events.len(), 4);
@@ -41,7 +52,7 @@ fn groups_hits_and_rests() {
 
 #[test]
 fn each_hit_has_one_beat_duration_by_default() {
-    let source = format!("{}[Snare] x x x x\n", header());
+    let source = with_measures("[Snare] x x x x");
     let score = parse_and_group(&source);
     for i in 0..4 {
         assert_eq!(hit_at(&score, 0, i).duration, 4);
@@ -50,7 +61,7 @@ fn each_hit_has_one_beat_duration_by_default() {
 
 #[test]
 fn dash_extension_adds_to_previous_hit_duration() {
-    let source = format!("{}[Snare] x- x x\n", header());
+    let source = with_measures("[Snare] x- x x");
     let score = parse_and_group(&source);
     let events = percussion_events(&score, 0);
     assert_eq!(events.len(), 3);
@@ -59,7 +70,7 @@ fn dash_extension_adds_to_previous_hit_duration() {
 
 #[test]
 fn tie_between_hits_marks_slur() {
-    let source = format!("{}[Snare] (x~x) x x\n", header());
+    let source = with_measures("[Snare] (x~x) x x");
     let score = parse_and_group(&source);
     let first = hit_at(&score, 0, 0);
     assert!(first.tie_to_next());

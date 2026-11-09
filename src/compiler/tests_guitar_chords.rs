@@ -25,13 +25,13 @@ fn diagram_frets(result: &CompileResult) -> Vec<Option<String>> {
 
 fn chords(key: &str, chords: &str) -> String {
     format!(
-        "# parts
-C = chords
+        r#"parts ["C": chords],
 
-# score
-time=4/4 key={key} bpm=120
-[C] {chords}
-"
+score """
+    time=4/4 key={key} bpm=120
+    [C] {chords}
+    """,
+"#
     )
 }
 

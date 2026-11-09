@@ -4,19 +4,16 @@ use crate::parser::parse;
 
 #[test]
 fn all_rest_notes_measure_keeps_all_rows_when_hide_resting_parts_is_yes() {
-    let source = concat!(
-        "# metadata\n",
-        "hide_resting_parts = yes\n",
-        "\n",
-        "# parts\n",
-        "Notes [N] = notes\n",
-        "Chords [C] = chords\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[N] 0 0 0 0\n",
-        "[C] 0 0 0 0\n",
-    );
+    let source = r#"metadata { hide resting parts: yes },
+
+parts ["Notes" [N]: notes, "Chords" [C]: chords],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [N] 0 0 0 0
+    [C] 0 0 0 0
+    """,
+"#;
     let score = group(parse(source, "test", &[]).unwrap()).unwrap();
     let rows = &compile(&score).blocks[0].rows;
 
@@ -28,19 +25,16 @@ fn all_rest_notes_measure_keeps_all_rows_when_hide_resting_parts_is_yes() {
 
 #[test]
 fn all_rest_notes_measure_keeps_all_rows_when_hide_resting_parts_is_no() {
-    let source = concat!(
-        "# metadata\n",
-        "hide_resting_parts = no\n",
-        "\n",
-        "# parts\n",
-        "Notes [N] = notes\n",
-        "Chords [C] = chords\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[N] 0 0 0 0\n",
-        "[C] 0 0 0 0\n",
-    );
+    let source = r#"metadata { hide resting parts: no },
+
+parts ["Notes" [N]: notes, "Chords" [C]: chords],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [N] 0 0 0 0
+    [C] 0 0 0 0
+    """,
+"#;
     let score = group(parse(source, "test", &[]).unwrap()).unwrap();
     let rows = &compile(&score).blocks[0].rows;
 
@@ -51,21 +45,17 @@ fn all_rest_notes_measure_keeps_all_rows_when_hide_resting_parts_is_no() {
 
 #[test]
 fn measure_whose_only_visible_parts_are_blank_lyric_parts_keeps_them_all() {
-    let source = concat!(
-        "# metadata\n",
-        "hide_resting_parts = yes\n",
-        "\n",
-        "# parts\n",
-        "Notes [N] = notes\n",
-        "Verse 1 [V1] = lyrics[N]\n",
-        "Verse 2 [V2] = lyrics[N]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[N] 0 0 0 0\n",
-        "[V1] _\n",
-        "[V2] _\n",
-    );
+    let source = r#"metadata { hide resting parts: yes },
+
+parts ["Notes" [N]: notes, "Verse 1" [V1]: lyrics [N], "Verse 2" [V2]: lyrics [N]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [N] 0 0 0 0
+    [V1] _
+    [V2] _
+    """,
+"#;
     let mut score = group(parse(source, "test", &[]).unwrap()).unwrap();
     let tracks: Vec<String> = vec!["V1".to_string(), "V2".to_string()];
     crate::apply_track_filter(&mut score, Some(&tracks));
@@ -79,18 +69,15 @@ fn measure_whose_only_visible_parts_are_blank_lyric_parts_keeps_them_all() {
 
 #[test]
 fn mixed_blank_lyric_and_resting_notes_keeps_all() {
-    let source = concat!(
-        "# metadata\n",
-        "hide_resting_parts = yes\n",
-        "\n",
-        "# parts\n",
-        "Notes [N] = notes\n",
-        "Verse 1 [V1] = lyrics[N]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[N] 0 0 0 0\n",
-    );
+    let source = r#"metadata { hide resting parts: yes },
+
+parts ["Notes" [N]: notes, "Verse 1" [V1]: lyrics [N]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [N] 0 0 0 0
+    """,
+"#;
     let score = group(parse(source, "test", &[]).unwrap()).unwrap();
     let rows = &compile(&score).blocks[0].rows;
 

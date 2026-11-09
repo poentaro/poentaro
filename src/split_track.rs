@@ -13,7 +13,7 @@ pub fn sanitize_track_name(name: &str) -> String {
     name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "-")
 }
 
-/// Abbreviation → display name from `# parts` declarations.
+/// Abbreviation → display name from `parts` declarations.
 pub fn part_display_name_map(
     source: &str,
     filename: &str,
@@ -92,7 +92,7 @@ pub fn split_pdf_filename(base_name: &str, label: &str) -> String {
 }
 
 /// Track list for split export: `selection.tracks` when given, else every
-/// score track (falling back to the `# parts` declarations when the score has
+/// score track (falling back to the `parts` declarations when the score has
 /// no named parts), narrowed to the preset's `visible_parts`.
 pub fn split_track_names(
     source: &str,
@@ -129,12 +129,12 @@ pub struct SplitPdfEntry {
     pub pdf: Vec<u8>,
 }
 
-/// Which tracks a split export writes, and the `# preset` it exports under.
+/// Which tracks a split export writes, and the `preset` it exports under.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SplitSelection<'a> {
     /// Empty → all tracks; non-empty → only these abbreviations.
     pub tracks: &'a [String],
-    /// Overlays that `# preset`'s metadata on every file, keeps only its
+    /// Overlays that `preset`'s metadata on every file, keeps only its
     /// `visible_parts` (unless `tracks` is given), and names the files after it.
     pub preset_name: Option<&'a str>,
 }

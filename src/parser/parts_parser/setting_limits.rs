@@ -1,4 +1,4 @@
-//! The valid ranges of a `# parts` line's numeric settings. The parser clamps
+//! The valid ranges of a `parts` line's numeric settings. The parser clamps
 //! an out-of-range value into its range (reporting a diagnostic), so nothing
 //! downstream of it — MIDI, audio, the Edit Parts modal — ever sees one.
 
@@ -29,7 +29,7 @@ impl<T: Copy + Into<i32> + TryFrom<i32>> PartSettingRange<T> {
     }
 }
 
-/// The valid range of every numeric `# parts` setting.
+/// The valid range of every numeric `parts` setting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PartSettingLimits {
     /// The `N%` suffix. `0%` silences a part; `100%` is full MIDI volume.

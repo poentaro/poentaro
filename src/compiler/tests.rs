@@ -7,17 +7,31 @@ fn score_from(source: &str) -> crate::ast::grouped::Score {
     group(doc).unwrap()
 }
 
-/// Minimal one-part (notes) document. `score_content` is everything after `# score\n`.
+/// Minimal one-part (notes) document. `score_content` is everything after `score\n`.
 fn notes_doc(score_content: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nS = notes\n\n# score\n{score_content}"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["S": notes],
+
+score """
+    {score_content}
+    """,
+"#
     )
 }
 
 /// Chord-part document with one track.
 fn chord_doc(score_content: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nC = chords\n\n# score\n{score_content}"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["C": chords],
+
+score """
+    {score_content}
+    """,
+"#
     )
 }
 
@@ -192,21 +206,17 @@ fn not_mentioned_chord_part_is_omitted_when_other_parts_have_notes() {
     // B (chord) is not mentioned in this key-based measure, so it gets rest-filled.
     // Because A and C have actual notes, B should be omitted from the rendered rows.
     let score = score_from(
-        "# metadata
-title=\"t\"
-author=\"a\"
+        r#"metadata { title "t", author "a" },
 
-# parts
-A = notes
-B = chords
-C = notes
+parts ["A": notes, "B": chords, "C": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[A] 1 2 3 4
-la la la la
-[C] 1
-",
+score """
+    time=4/4 key=C4 bpm=120
+    [A] 1 2 3 4
+    la la la la
+    [C] 1
+    """,
+"#,
     );
     let result = compile(&score);
     let blocks = result.blocks;
@@ -222,22 +232,17 @@ la la la la
 #[test]
 fn not_mentioned_part_is_kept_when_hide_resting_parts_is_disabled() {
     let score = score_from(
-        "# metadata
-title=\"t\"
-author=\"a\"
-hide_resting_parts = no
+        r#"metadata { title "t", author "a", hide resting parts: no },
 
-# parts
-A = notes
-B = chords
-C = notes
+parts ["A": notes, "B": chords, "C": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[A] 1 2 3 4
-la la la la
-[C] 1
-",
+score """
+    time=4/4 key=C4 bpm=120
+    [A] 1 2 3 4
+    la la la la
+    [C] 1
+    """,
+"#,
     );
     let result = compile(&score);
     let blocks = result.blocks;

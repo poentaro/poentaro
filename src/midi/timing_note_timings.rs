@@ -91,7 +91,7 @@ fn new_part_timing_cursors(score: &Score) -> Vec<PartTimingCursor> {
 /// heard when `score` is played back, keyed by `(source_part_index,
 /// note_id)` — the same identity `ColumnElement::note_id` uses.
 ///
-/// Playback order follows `# sequence`/D.C.-al-Coda-Fine navigation exactly
+/// Playback order follows `sequence`/D.C.-al-Coda-Fine navigation exactly
 /// like [`super::write_midi`] does (via
 /// [`expand_navigation_with_note_positions`]), so a repeated or reordered
 /// written measure produces one [`NoteTiming`] per occurrence it's actually
@@ -186,7 +186,7 @@ pub fn note_timings_seconds(
 /// [`super::write_midi_for_measure_range`].
 ///
 /// `start_pos`/`end_pos` are *playback positions* — i.e. already resolved
-/// against `# sequence`/D.C.-al-Coda-Fine navigation, exactly like
+/// against `sequence`/D.C.-al-Coda-Fine navigation, exactly like
 /// [`super::expand_for_measure_range`] resolves them for
 /// [`super::write_midi_for_measure_range`]'s caller — not raw written
 /// measure indices. Unlike that caller, `score` here must still be the
@@ -267,7 +267,7 @@ pub fn note_timings_seconds_for_range(
 }
 
 /// Same as [`note_timings_seconds_for_range`], but for a range that ignores
-/// `# sequence`/D.C.-al-Coda-Fine navigation entirely (`respect_sequence:
+/// `sequence`/D.C.-al-Coda-Fine navigation entirely (`respect_sequence:
 /// false` in [`super::MeasureRangeSelection`]) — the "play current measure"
 /// case. `start_index`/`end_index` are literal indices into `score.measures`
 /// (not playback positions), matching what
@@ -275,7 +275,7 @@ pub fn note_timings_seconds_for_range(
 /// `respect_sequence` is `false`. Unlike [`note_timings_seconds_for_range`],
 /// this never re-derives the expanded (playback-order) timeline: each
 /// measure's own written index is its origin, so a written measure that also
-/// happens to recur elsewhere in `# sequence` (e.g. selecting "C" when the
+/// happens to recur elsewhere in `sequence` (e.g. selecting "C" when the
 /// sequence is `A, B, B, C`) still resolves to its own `note_id`s rather than
 /// to whichever measure occupies that same position in the expanded
 /// timeline. See [`note_timings_seconds`] for how `visible_tracks` (applied

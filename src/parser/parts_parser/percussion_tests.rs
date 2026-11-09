@@ -1,10 +1,21 @@
-use super::parse_parts;
 use crate::ast::parsed::{PartKind, Soundfont};
+
+fn parse_parts(
+    source: &str,
+    instruments: &[super::InstrumentInfo],
+) -> (
+    Vec<crate::ast::parsed::PartDecl>,
+    Vec<crate::error::RecoverableError>,
+) {
+    let read = crate::parser::read_document(source, instruments);
+    (read.declarations, read.parts_parse_errors)
+}
 
 #[test]
 fn parses_percussion_track() {
-    let content = "Snare = percussion \"38: Acoustic Snare\"\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Snare": percussion { sound 38 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls.len(), 1);
     assert_eq!(decls[0].abbreviation, "Snare");
@@ -28,16 +39,18 @@ fn percussion_soundfont_number_skips_instrument_catalog_validation() {
         articulation: String::new(),
     }];
 
-    let content = "Snare = percussion \"38: Acoustic Snare\"\n";
-    let (decls, errors) = parse_parts(content, 0, &instruments);
+    let content = r#"parts ["Snare": percussion { sound 38 }]
+"#;
+    let (decls, errors) = parse_parts(content, &instruments);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls[0].soundfont, Soundfont(38));
 }
 
 #[test]
 fn percussion_without_soundfont_uses_default() {
-    let content = "Snare = percussion\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Snare": percussion]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls[0].kind, PartKind::Percussion);
     assert_eq!(decls[0].soundfont, Soundfont::ACOUSTIC_SNARE);
@@ -45,9 +58,9 @@ fn percussion_without_soundfont_uses_default() {
 
 #[test]
 fn multiple_percussion_parts_parse_independently() {
-    let content =
-        "Snare = percussion \"38: Acoustic Snare\"\nKick = percussion \"36: Bass Drum 1\"\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Snare": percussion { sound 38 }, "Kick": percussion { sound 36 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls.len(), 2);
     assert_eq!(decls[0].soundfont, Soundfont(38));

@@ -12,7 +12,7 @@ export interface SelectedMeasures extends MeasureRange {
 }
 
 /** The staff view's counterpart of the numbered measure highlight: paints the
- * editor's selected measures (a `# sequence` chain's exact disjoint ranges
+ * editor's selected measures (a `sequence` chain's exact disjoint ranges
  * when it has them) over Verovio's pages, re-applied whenever those pages
  * are swapped in, along with each measure's hover target. The highlight is
  * skipped while a click-and-click gesture is anchored: its

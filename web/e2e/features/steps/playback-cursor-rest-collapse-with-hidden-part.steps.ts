@@ -43,21 +43,18 @@ const PLAYBACK_CURSOR_FILL = 'rgba(220,38,38,0.25)'
  * instead of advancing to Melody's real notes in measure 2.
  */
 const source = [
-  '# metadata',
-  'title = "playback cursor rest collapse hidden part test"',
-  'max_measures_per_system = 48',
+  'metadata { title "playback cursor rest collapse hidden part test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
+  'score """',
   'bpm=60 key=C4 time=4/4',
-  '[H] 1 2 3 4', // measure 0: Harmony plays, Melody implicitly rests
+  '[H] 1 2 3 4',
   '',
-  "[H] 5 6 7 1'", // measure 1: Harmony plays, Melody implicitly rests
+  "[H] 5 6 7 1'",
   '',
-  '[M] 1 2 3 4', // measure 2: Melody plays, Harmony implicitly rests
+  '[M] 1 2 3 4',
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {

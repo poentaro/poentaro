@@ -10,7 +10,14 @@ fn score_from(source: &str) -> crate::ast::grouped::Score {
 /// Lyrics-part document with one track.
 fn lyrics_doc(score_content: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nS = notes\nSv = lyrics[S]\n\n# score\n{score_content}"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["S": notes, "Sv": lyrics [S]],
+
+score """
+    {score_content}
+    """,
+"#
     )
 }
 
@@ -96,16 +103,15 @@ fn lyrics_underflow_in_first_measure_only() {
 fn malformed_parts_line_is_recoverable_and_valid_part_still_renders() {
     use crate::error::RecoverableErrorKind;
 
-    let source = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\n",
-        "no-equals-sign\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-    );
+    let source = r#"metadata { title "t", author "a" },
+
+parts [ no_kind, "Melody" : notes ],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    """,
+"#;
     let doc = parse(source, "test", &[]).expect("malformed parts line must not abort parsing");
     assert_eq!(doc.declarations.len(), 1, "valid declaration must survive");
     assert_eq!(doc.declarations[0].abbreviation, "Melody");
@@ -113,18 +119,19 @@ fn malformed_parts_line_is_recoverable_and_valid_part_still_renders() {
     assert!(
         matches!(
             doc.parts_parse_errors[0].kind,
-            RecoverableErrorKind::PartsMalformedLine { .. }
+            RecoverableErrorKind::AnyfixInvalid { .. }
         ),
-        "expected PartsMalformedLine error, got: {:?}",
+        "expected AnyfixInvalid error, got: {:?}",
         doc.parts_parse_errors[0].kind
     );
+    let doc_error = doc.parts_parse_errors[0].message();
     let score = group(doc).unwrap();
     assert!(
         score
             .document_diagnostics
             .iter()
-            .any(|d| d.message().contains("expected track declaration")),
-        "malformed-line error must appear in document_diagnostics"
+            .any(|d| d.message() == doc_error),
+        "malformed-part error must appear in document_diagnostics"
     );
 }
 
@@ -132,15 +139,15 @@ fn malformed_parts_line_is_recoverable_and_valid_part_still_renders() {
 fn all_parts_invalid_renders_empty_document_with_error() {
     use crate::error::RecoverableErrorKind;
 
-    let source = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\n",
-        "no-equals-sign\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "1 2 3 4\n",
-    );
+    let source = r#"metadata { title "t", author "a" },
+
+parts [],
+
+score """
+    time=4/4 key=C4 bpm=120
+    1 2 3 4
+    """,
+"#;
     let doc = parse(source, "test", &[]).expect("all-invalid parts must not abort parsing");
     assert!(
         doc.declarations.is_empty(),
@@ -157,7 +164,7 @@ fn all_parts_invalid_renders_empty_document_with_error() {
         score
             .document_diagnostics
             .iter()
-            .any(|d| d.message().contains("at least one track")),
+            .any(|d| d.message().contains("at least one part")),
         "empty-section error must appear in document_diagnostics"
     );
 }

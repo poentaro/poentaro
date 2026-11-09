@@ -4,11 +4,18 @@ use crate::ast::parsed::PartKind;
 #[test]
 fn chord_invalid_token_is_recoverable() {
     use crate::error::{Diagnostic, RecoverableErrorKind};
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nChords = chords\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Chords] @ 0 0 0\n[Melody] 1 2 3 4\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Chords": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chords] @ 0 0 0
+    [Melody] 1 2 3 4
+    """,
+"#,
+    );
     assert!(score.measures[0].diagnostics.iter().any(|d| matches!(
         d,
         Diagnostic::Error(e) if matches!(e.kind, RecoverableErrorKind::ChordExpectedDegreeDigit { .. })
@@ -19,11 +26,18 @@ fn chord_invalid_token_is_recoverable() {
 #[test]
 fn chord_expected_degree_digit_is_recoverable() {
     use crate::error::{Diagnostic, RecoverableErrorKind};
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nChords = chords\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Chords] 8 2 3 4\n[Melody] 1 2 3 4\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Chords": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chords] 8 2 3 4
+    [Melody] 1 2 3 4
+    """,
+"#,
+    );
     assert!(score.measures[0].diagnostics.iter().any(|d| matches!(
         d,
         Diagnostic::Error(e) if matches!(e.kind, RecoverableErrorKind::ChordExpectedDegreeDigit { .. })
@@ -44,11 +58,18 @@ fn chord_expected_degree_digit_is_recoverable() {
 #[test]
 fn chord_unknown_suffix_is_recoverable() {
     use crate::error::{Diagnostic, WarningKind};
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nChords = chords\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Chords] 1z 2 3 4\n[Melody] 1 2 3 4\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Chords": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chords] 1z 2 3 4
+    [Melody] 1 2 3 4
+    """,
+"#,
+    );
     assert!(score.measures[0]
         .diagnostics
         .iter()
@@ -58,11 +79,18 @@ fn chord_unknown_suffix_is_recoverable() {
 #[test]
 fn chord_invalid_bass_is_recoverable() {
     use crate::error::{Diagnostic, WarningKind};
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nChords = chords\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Chords] 1/X 2 3 4\n[Melody] 1 2 3 4\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Chords": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chords] 1/X 2 3 4
+    [Melody] 1 2 3 4
+    """,
+"#,
+    );
     assert!(score.measures[0]
         .diagnostics
         .iter()
@@ -72,11 +100,18 @@ fn chord_invalid_bass_is_recoverable() {
 #[test]
 fn chord_bass_unexpected_char_is_recoverable() {
     use crate::error::{Diagnostic, WarningKind};
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nChords = chords\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Chords] 1/5x 2 3 4\n[Melody] 1 2 3 4\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Chords": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chords] 1/5x 2 3 4
+    [Melody] 1 2 3 4
+    """,
+"#,
+    );
     assert!(score.measures[0].diagnostics.iter().any(
         |d| matches!(d, Diagnostic::Warning(w) if w.kind == WarningKind::ChordBassUnexpectedChar)
     ));
@@ -85,11 +120,18 @@ fn chord_bass_unexpected_char_is_recoverable() {
 #[test]
 fn chord_bass_trailing_chars_is_recoverable() {
     use crate::error::{Diagnostic, WarningKind};
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nChords = chords\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Chords] 1/5bb 2 3 4\n[Melody] 1 2 3 4\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Chords": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chords] 1/5bb 2 3 4
+    [Melody] 1 2 3 4
+    """,
+"#,
+    );
     assert!(score.measures[0].diagnostics.iter().any(
         |d| matches!(d, Diagnostic::Warning(w) if w.kind == WarningKind::ChordBassTrailingChars)
     ));
@@ -98,10 +140,18 @@ fn chord_bass_trailing_chars_is_recoverable() {
 #[test]
 fn chord_extension_no_preceding_event_is_recoverable() {
     use crate::error::{Diagnostic, RecoverableErrorKind};
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nc = chords\nn = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[c] - 1 - -\n[n] 1 2 3 4\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["c": chords, "n": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [c] - 1 - -
+    [n] 1 2 3 4
+    """,
+"#,
+    );
     assert!(
         score.measures[0].diagnostics.iter().any(|d| matches!(
             d,
@@ -119,7 +169,16 @@ fn chord_extension_no_preceding_event_is_recoverable() {
 #[test]
 fn chord_part_produces_one_chord_event_per_measure() {
     use crate::ast::grouped::PartRow;
-    let input = "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nchord = chords\nMelody = notes\n\n# score\ntime=4/4 key=C4 bpm=120\n[chord] 1 - - -\n[Melody] 1---\n";
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["chord": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [chord] 1 - - -
+    [Melody] 1---
+    """,
+"#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).unwrap();
     let measure = &score.measures[0];

@@ -11,14 +11,14 @@ Feature: Edit Metadata modal
     When I open the Edit Metadata modal
     And I fill the title field with "New Title"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "title = \"New Title\""
+    Then the editor source and stored source both contain "title \"New Title\""
 
   Scenario: Editing a numeric field updates the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I fill the Row Height numeric field with "30"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "row_height = 30"
+    Then the editor source and stored source both contain "row height 30"
 
   Scenario: Clearing an optional field removes it from the source
     Given the edit-metadata-modal test fixture is loaded
@@ -32,112 +32,112 @@ Feature: Edit Metadata modal
     When I open the Edit Metadata modal
     And I uncheck the merge_duplicate_measures_across_parts checkbox
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "merge_duplicate_measures_across_parts = no"
+    Then the editor source and stored source both contain "merge duplicate measures across parts: no"
 
   Scenario: Re-checking merge_duplicate_measures_across_parts writes = yes to the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I uncheck then re-check the merge_duplicate_measures_across_parts checkbox
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "merge_duplicate_measures_across_parts = yes"
+    Then the editor source and stored source both contain "merge duplicate measures across parts: yes"
 
   Scenario: Unchecking hide_resting_parts writes = no to the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I uncheck the hide_resting_parts checkbox
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "hide_resting_parts = no"
+    Then the editor source and stored source both contain "hide resting parts: no"
 
   Scenario: Re-checking hide_resting_parts writes = yes to the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I uncheck then re-check the hide_resting_parts checkbox
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "hide_resting_parts = yes"
+    Then the editor source and stored source both contain "hide resting parts: yes"
 
   Scenario: Checking hide_system_dividers writes = yes to the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I check the hide_system_dividers checkbox
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "hide_system_dividers = yes"
+    Then the editor source and stored source both contain "hide system dividers: yes"
 
   Scenario: Unchecking hide_system_dividers writes = no to the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I check then uncheck the hide_system_dividers checkbox
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "hide_system_dividers = no"
+    Then the editor source and stored source both contain "hide system dividers: no"
 
   Scenario: Editing the Part Label Width updates the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I fill the "Part Label Width" field with "60"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "part_label_width_pt = 60"
+    Then the editor source and stored source both contain "part label width pt 60"
 
   Scenario: Editing the Page Margin updates the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I fill the "Page Margin" field with "40"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "page_margin_pt = 40"
+    Then the editor source and stored source both contain "page margin pt 40"
 
   Scenario: Editing the Measure Number Style's Font Size updates the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I fill the "Measure Number Style Font Size" field with "14"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "measure_number = { font_size: 14 }"
+    Then the editor source and stored source both contain "measure number style { font size 14 }"
 
   Scenario: Editing the Section Label Style's Font Size updates the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I fill the "Section Label Style Font Size" field with "16"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "section_label = { font_size: 16 }"
+    Then the editor source and stored source both contain "section label style { font size 16 }"
 
   Scenario: Editing the Part Label Style's Font Size updates the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I fill the "Part Label Style Font Size" field with "18"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "part_label = { font_size: 18 }"
+    Then the editor source and stored source both contain "part label style { font size 18 }"
 
   Scenario: Editing the Page Number Style's Font Size updates the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I fill the "Page Number Style Font Size" field with "20"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "page_number = { font_size: 20 }"
+    Then the editor source and stored source both contain "page number style { font size 20 }"
 
   Scenario: Editing the Lyrics Style's V. Padding updates the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I fill the "Lyrics Style V. Padding" field with "20"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "lyrics = { vertical_padding_pt: 20 }"
+    Then the editor source and stored source both contain "lyrics style { vertical padding pt 20 }"
 
   Scenario: Choosing a style's Font Family writes its source keyword
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I choose "Sans Serif" in the "Title Style Font Family" dropdown
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "title = { font_family: sans_serif }"
+    Then the editor source and stored source both contain "title style { font family: sans serif }"
 
   Scenario: Pressing a style's Underline toggle writes = yes to the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I press the "Section Label Style Underline" toggle
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "section_label = { underline: yes }"
+    Then the editor source and stored source both contain "section label style { underline: yes }"
 
   Scenario: Editing directive_row_offset writes "x y" to the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
     And I fill the directive_row_offset field with "0 12"
     And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "directive_row_offset = 0 12"
+    Then the editor source and stored source both contain "directive row offset (0, 12)"
 
   Scenario: Font Size placeholders follow an edited row_height
     Given the edit-metadata-modal test fixture is loaded

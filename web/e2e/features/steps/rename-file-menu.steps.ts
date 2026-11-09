@@ -5,15 +5,14 @@ import { Given, Then, When } from './fixtures'
 const renameAnswers = new WeakMap<Page, string | null>()
 
 const SOURCE = [
-  '# metadata',
-  'title = "Rename Menu Test"',
+  'metadata { title "Rename Menu Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 Given(

@@ -27,21 +27,18 @@ import { Given, Then, When } from './fixtures'
  * reproduce the boundary.
  */
 const source = [
-  '# metadata',
-  'title = "cross system lyric label range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "cross system lyric label range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0 — system 0
-  '[Mv1] do re', // verse 0
+  'score """',
+  '[M] 1 2',
+  '[Mv1] do re',
   '',
   'break',
-  '[M] 3 4', // measure 1 — system 1
-  '[Mv1] la ti', // verse 0
+  '[M] 3 4',
+  '[Mv1] la ti',
+  '""",',
 ].join('\n')
 
 function verseLabelInSystem(

@@ -4,7 +4,7 @@
 
 use super::*;
 use poentaro::highlight;
-use poentaro::parser::section_splitter;
+use poentaro::parser::section;
 
 fn highlight_kind_to_wit(kind: highlight::HighlightKind) -> HighlightKind {
     match kind {
@@ -25,13 +25,13 @@ pub(super) fn highlight_token_to_wit(token: highlight::HighlightToken) -> Highli
     }
 }
 
-fn section_kind_to_wit(kind: section_splitter::SectionKind) -> SectionKind {
+fn section_kind_to_wit(kind: section::SectionKind) -> SectionKind {
     match kind {
-        section_splitter::SectionKind::Metadata => SectionKind::Metadata,
-        section_splitter::SectionKind::Parts => SectionKind::Parts,
-        section_splitter::SectionKind::Score => SectionKind::Score,
-        section_splitter::SectionKind::Sequence => SectionKind::Sequence,
-        section_splitter::SectionKind::Preset => SectionKind::Preset,
+        section::SectionKind::Metadata => SectionKind::Metadata,
+        section::SectionKind::Parts => SectionKind::Parts,
+        section::SectionKind::Score => SectionKind::Score,
+        section::SectionKind::Sequence => SectionKind::Sequence,
+        section::SectionKind::Preset => SectionKind::Preset,
     }
 }
 

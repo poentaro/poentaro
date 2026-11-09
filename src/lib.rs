@@ -41,7 +41,6 @@ mod lyric_slots;
 pub mod lyric_spans;
 pub mod measure_spans;
 pub mod mei_export;
-pub mod migrate_lyrics;
 pub mod note_spans;
 pub mod parser;
 mod part_info;
@@ -128,9 +127,9 @@ pub fn compile(
     grouper::group(doc)
 }
 
-/// Like [`compile`], with `# metadata` overlaid by the `# preset` named
+/// Like [`compile`], with `metadata` overlaid by the `preset` named
 /// `preset_name`. `None`, or a name no preset has, compiles the song's own
-/// `# metadata`.
+/// `metadata`.
 pub fn compile_with_preset(
     source: &str,
     filename: &str,
@@ -144,7 +143,7 @@ pub fn compile_with_preset(
     })
 }
 
-/// The `# preset` named `preset_name`, for [`resolve_part_visibility`].
+/// The `preset` named `preset_name`, for [`resolve_part_visibility`].
 /// `None` when the source has no such preset (the menu then shows Default).
 pub fn chosen_preset_from_source(
     source: &str,

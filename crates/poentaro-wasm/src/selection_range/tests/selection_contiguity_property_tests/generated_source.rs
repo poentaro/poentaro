@@ -102,13 +102,13 @@ fn onsets(events: &[GeneratedEvent], measure_onset: usize) -> impl Iterator<Item
     })
 }
 
-/// The `# parts` section: each lyric part right after its target, unless it
+/// The `parts` section: each lyric part right after its target, unless it
 /// is declared last.
 fn parts_section(score: &GeneratedScore) -> String {
-    let notes_part_line = |index: usize| format!("{} = notes", NOTES_PART_NAMES[index]);
+    let notes_part_line = |index: usize| format!("\"{}\" : notes", NOTES_PART_NAMES[index]);
     let lyric_part_line = |index: usize, part: &GeneratedLyricPart| {
         format!(
-            "{} = lyrics[{}]",
+            "\"{}\" : lyrics [{}]",
             lyric_part_name(index),
             NOTES_PART_NAMES[part.target]
         )
@@ -132,7 +132,7 @@ fn parts_section(score: &GeneratedScore) -> String {
                 .filter(|(_, part)| part.declared_last)
                 .map(|(index, part)| lyric_part_line(index, part)),
         )
-        .join("\n")
+        .join(", ")
 }
 
 fn notes_line(part: &GeneratedNotesPart, index: usize, measure_index: usize) -> Line {
@@ -202,11 +202,9 @@ fn lyric_line<'a>(
 
 pub(super) fn to_source(score: &GeneratedScore) -> GeneratedSource {
     let mut text = format!(
-        "# metadata\n\
-         merge_duplicate_measures_across_parts = {}\n\
-         hide_resting_parts = {}\n\n\
-         # parts\n{}\n\n\
-         # score\n",
+        "metadata {{ merge duplicate measures across parts : {}, hide resting parts : {} }},\n\n\
+         parts [{}],\n\n\
+         score \"\"\"\n",
         yes_no(score.merge_duplicate_measures),
         yes_no(score.hide_resting_parts),
         parts_section(score),
@@ -251,6 +249,7 @@ pub(super) fn to_source(score: &GeneratedScore) -> GeneratedSource {
             text.push('\n');
         }
     }
+    text.push_str("\"\"\",\n");
     GeneratedSource {
         text,
         timing_by_start_byte,

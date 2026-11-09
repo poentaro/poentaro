@@ -61,6 +61,7 @@ export async function focusEditor(page: Page) {
  * typing, then verifies the typed text landed by reading the model value
  * back. If it didn't, it restores the model to its pre-attempt value and
  * retries the whole focus → move → type sequence. */
+/** Types `text` after the last line of notes, inside the score string. */
 export async function typeAtEditorEnd(page: Page, text: string) {
   for (let attempt = 0; attempt < 5; attempt++) {
     await focusEditor(page)
@@ -70,19 +71,23 @@ export async function typeAtEditorEnd(page: Page, text: string) {
       throw new Error('typeAtEditorEnd: no active Monaco editor model')
     }
 
-    await page.keyboard.press('Control+End')
-    await page.waitForFunction(() => {
-      const ed = window.monaco?.editor.getEditors()[0]
-      const model = ed?.getModel()
-      const pos = ed?.getPosition()
-      if (!model || !pos) return false
-      const end = model.getFullModelRange().getEndPosition()
-      return pos.lineNumber === end.lineNumber && pos.column === end.column
-    })
+    const expected = await page.evaluate((text) => {
+      const editor = window.monaco?.editor.getEditors()[0]
+      const model = editor?.getModel()
+      if (!editor || !model) throw new Error('no active Monaco editor model')
+      const lines = model.getLinesContent()
+      const isLastNote = (line: string) =>
+        line.trim() !== '' && !line.trim().startsWith('"""')
+      const lineNumber = lines.findLastIndex(isLastNote) + 1
+      const column = model.getLineMaxColumn(lineNumber)
+      editor.setPosition({ lineNumber, column })
+      const offset = model.getOffsetAt({ lineNumber, column })
+      const value = model.getValue()
+      return value.slice(0, offset) + text + value.slice(offset)
+    }, text)
 
     await page.keyboard.type(text)
 
-    const expected = before + text
     try {
       await page.waitForFunction(
         (expected) =>

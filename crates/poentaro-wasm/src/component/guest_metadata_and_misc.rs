@@ -213,7 +213,7 @@ fn offsets_to_wit(offsets: &[usize]) -> Vec<u32> {
 }
 
 pub(super) fn format_score(source: String) -> String {
-    poentaro::document::formatted(&source)
+    poentaro::format_anyfix::format_anyfix(&source)
 }
 
 // Same underlying `crate::part_declarations::list_part_declarations_response`/
@@ -238,17 +238,11 @@ pub(super) fn update_part_declaration(
     source: String,
     abbreviation: String,
     settings: PartSettings,
-    raw_instruments: Vec<InstrumentInfo>,
 ) -> String {
-    let instruments: Vec<poentaro::parser::parts_parser::InstrumentInfo> = raw_instruments
-        .into_iter()
-        .map(instrument_info_from_wit)
-        .collect();
     crate::part_declarations::update_part_declaration_source(
         &source,
         &abbreviation,
         &part_settings_from_wit(settings),
-        &instruments,
     )
 }
 

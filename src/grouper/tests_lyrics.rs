@@ -4,20 +4,16 @@ use crate::parser;
 #[test]
 fn lyrics_overflow_recovers_with_error_on_measure() {
     // 2 notes but 4 syllables → should not Err, should attach error to measure
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 0 0\n",
-        "[Melodyv1] a b c d e f\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 0 0
+    [Melodyv1] a b c d e f
+    """,
+"#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).expect("overflow must not abort grouping");
     assert_eq!(score.measures.len(), 1);
@@ -34,20 +30,16 @@ fn lyrics_overflow_recovers_with_error_on_measure() {
 #[test]
 fn lyrics_underflow_recovers_with_error_on_measure() {
     // 4 notes but only 2 syllables → should not Err, should attach error to measure
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b
+    """,
+"#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).expect("underflow must not abort grouping");
     assert_eq!(score.measures.len(), 1);
@@ -65,20 +57,16 @@ fn lyrics_underflow_recovers_with_error_on_measure() {
 fn lyrics_underflow_error_span_covers_lyrics_line_not_notes() {
     // 4 notes but only 2 syllables → underflow error span must point at the
     // lyrics line ("a b"), not the notes line ("1 2 3 4").
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b
+    """,
+"#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).expect("underflow must not abort grouping");
 
@@ -102,20 +90,16 @@ fn lyrics_underflow_error_span_covers_lyrics_line_not_notes() {
 
 #[test]
 fn measures_without_lyrics_underflow_have_no_errors() {
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b c d\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b c d
+    """,
+"#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).unwrap();
     assert!(score.measures[0].diagnostics.is_empty());
@@ -126,20 +110,16 @@ fn explicit_no_lyrics_marker_produces_no_paired_syllables() {
     // `_` means "zero syllables for this measure" (syntax.md), so a measure
     // with real notes paired against `_` must not get any placeholder
     // syllables — otherwise it would render as a spurious empty lyric row.
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] _\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] _
+    """,
+"#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).unwrap();
     assert!(score.measures[0].diagnostics.is_empty());
@@ -163,11 +143,16 @@ fn follow_part_with_no_lyric_line_gets_no_implicit_syllables() {
     // must not produce placeholder syllables for either part — this is the
     // exact path that caused an orphan empty lyric row to appear between
     // unrelated parts in a real score.
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nMelody [m] = notes\nHarmony [h] = follow[m]\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[m] 1 2 3 4\n[h] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody" [m]: notes, "Harmony" [h]: follow [m]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [m] 1 2 3 4
+    [h] 5 6 7 1
+    """,
+"#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).unwrap();
     let harmony = score.measures[0]
@@ -195,21 +180,18 @@ fn cross_measure_tilde_tie_closing_note_does_not_consume_syllable() {
     // 4~ ends measure 1; the 4 opening measure 2 is a tie continuation and
     // must not consume a lyric syllable. Measure 2 has notes 4 (tied), 5, 6, 7,
     // so "ha ko da" (3 syllables) is exactly sufficient — no underflow.
-    let input = r#"# metadata
-title="t"
-author="a"
+    let input = r#"metadata { title "t", author "a" },
 
-# parts
-Melody = notes
-Melody lyrics [Melodyv1] = lyrics[Melody]
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
 
-# score
-time=4/4 key=C4 bpm=120
-[Melody] 1 2 3 4~
-[Melodyv1] la la la la
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4~
+    [Melodyv1] la la la la
 
-[Melody] 4 5 6 7
-[Melodyv1] ha ko da
+    [Melody] 4 5 6 7
+    [Melodyv1] ha ko da
+    """,
 "#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).unwrap();
@@ -229,23 +211,20 @@ fn tie_state_does_not_leak_across_a_lyric_less_measure() {
     // notes (`4`->`c`, `5`->`d`), since the tie from measure 1 was already
     // resolved by measure 2's own (lyric-less) notes and must not leak
     // through untouched into measure 3.
-    let input = r#"# metadata
-title="t"
-author="a"
+    let input = r#"metadata { title "t", author "a" },
 
-# parts
-Melody = notes
-Melody lyrics [Melodyv1] = lyrics[Melody]
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
 
-# score
-time=4/4 key=C4 bpm=120
-[Melody] 1 2~
-[Melodyv1] a b
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2~
+    [Melodyv1] a b
 
-[Melody] 2 3
+    [Melody] 2 3
 
-[Melody] 4 5
-[Melodyv1] c d
+    [Melody] 4 5
+    [Melodyv1] c d
+    """,
 "#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).unwrap();
@@ -264,23 +243,19 @@ fn cross_measure_slur_note_consumes_syllable() {
     // (5 ... 5) is a slur, not a tie — the closing 5) still plays as its own
     // note and must consume a lyric syllable. Measure 2 has notes 5, 6, 7, 0 (rest),
     // so "hi ha ho" (3 syllables) is exactly sufficient — no underflow.
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 (5\n",
-        "[Melodyv1] fa fo fi fu\n",
-        "\n",
-        "[Melody] 5) 6 7 0\n",
-        "[Melodyv1] hi ha ho\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 (5
+    [Melodyv1] fa fo fi fu
+
+    [Melody] 5) 6 7 0
+    [Melodyv1] hi ha ho
+    """,
+"#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
     let score = group(doc).unwrap();
     assert_eq!(score.measures.len(), 2);

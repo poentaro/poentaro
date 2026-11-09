@@ -76,7 +76,7 @@ export interface EditorHandle {
   /**
    * Select a disjoint set of whole-line ranges (Monaco multicursor) by
    * 1-indexed line numbers — the line-range analogue of `setSelections`,
-   * for callers (e.g. a `# sequence` chain selection spanning out-of-order
+   * for callers (e.g. a `sequence` chain selection spanning out-of-order
    * sections) that resolve to lines rather than byte offsets. Reveals
    * `revealStartLine` (defaulting to the first range's start) — two
    * disjoint ranges can sit too far apart in the source to both fit on

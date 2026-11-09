@@ -4,15 +4,14 @@ import { DEFAULT_E2E_EMAIL } from '../../e2eAccounts.ts'
 
 export const SYNCED_FILE_BASE_NAME = 'synced-test'
 export const SYNCED_SOURCE = [
-  '# metadata',
-  'title = "Synced Score"',
+  'metadata { title "Synced Score" },',
   '',
-  '# parts',
-  'Melody = notes',
+  'parts ["Melody": notes],',
   '',
-  '# score',
-  '(time=4/4 key=C4 bpm=120)',
-  '1 2 3 4',
+  'score """',
+  '    (time=4/4 key=C4 bpm=120)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 /** Seeds `baseName` as a real cloud file owned by the default e2e

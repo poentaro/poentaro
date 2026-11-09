@@ -26,19 +26,15 @@ import { Given, Then, When } from './fixtures'
  * unioning every verse wholesale.
  */
 const source = [
-  '# metadata',
-  'title = "note lyric cross verse range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "note lyric cross verse range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody verse 1 [Mv1] = lyrics[M]',
-  'Melody verse 2 [Mv2] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody verse 1" [Mv1]: lyrics [M], "Melody verse 2" [Mv2]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — note ids 0-3
-  '[Mv1] a b c d', // verse 0
-  '[Mv2] e f g h', // verse 1
+  'score """',
+  '[M] 1 2 3 4',
+  '[Mv1] a b c d',
+  '[Mv2] e f g h',
+  '""",',
 ].join('\n')
 
 function noteClickTarget(

@@ -13,11 +13,11 @@ Feature: Instrument range
     Given the instrument-range fixture with a part naming no instrument is loaded
     When I open the Edit Parts modal, as seen in edit parts modal
     And I change the instrument select for part "V" to "guzheng 古箏"
-    Then the editor source and stored source both contain "Violin [V] = notes guzheng", as seen in edit parts modal
+    Then the editor source and stored source both contain "\"Violin\" [V]: notes { instrument: guzheng }", as seen in edit parts modal
 
   Scenario: Picking an instrument gives a part with no soundfont that instrument's sound
     Given the instrument-range fixture with a part naming no instrument is loaded
     When I open the Edit Parts modal, as seen in edit parts modal
     And I change the instrument select for part "V" to "guzheng 古箏"
     Then the soundfont select for part "V" shows "107: Koto"
-    And the editor source and stored source both contain "Violin [V] = notes guzheng", as seen in edit parts modal
+    And the editor source and stored source both contain "\"Violin\" [V]: notes { instrument: guzheng }", as seen in edit parts modal

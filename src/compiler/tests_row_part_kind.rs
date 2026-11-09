@@ -5,23 +5,18 @@ use crate::parser::parse;
 
 #[test]
 fn compiled_rows_carry_their_parts_kind() {
-    let source = concat!(
-        "# metadata\n",
-        "hide_resting_parts = no\n",
-        "\n",
-        "# parts\n",
-        "S = notes\n",
-        "V = lyrics[S]\n",
-        "C = chords\n",
-        "D = percussion\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S] 1 2 3 4\n",
-        "[V] la la la la\n",
-        "[C] 1 - - -\n",
-        "[D] 1 1 1 1\n",
-    );
+    let source = r#"metadata { hide resting parts: no },
+
+parts ["S": notes, "V": lyrics [S], "C": chords, "D": percussion],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [V] la la la la
+    [C] 1 - - -
+    [D] 1 1 1 1
+    """,
+"#;
     let score = group(parse(source, "test", &[]).unwrap()).unwrap();
     let kinds: Vec<(String, PartKind)> = compile(&score).blocks[0]
         .rows

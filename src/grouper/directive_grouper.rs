@@ -15,8 +15,8 @@ pub(super) struct DirectiveGrouper {
 
 impl DirectiveGrouper {
     /// `merge_duplicate_measures_across_parts`/`hide_resting_parts` seed the sticky
-    /// carry-forward state with the score-wide `#metadata` default (or its hardcoded
-    /// default when unset in `#metadata`); a directive line can override either from
+    /// carry-forward state with the score-wide `metadata` default (or its hardcoded
+    /// default when unset in `metadata`); a directive line can override either from
     /// the measure it appears on until the next occurrence.
     pub(super) fn new(
         merge_duplicate_measures_across_parts: bool,

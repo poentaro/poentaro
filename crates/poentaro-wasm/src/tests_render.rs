@@ -6,20 +6,16 @@ use types::DiagnosticSeverity;
 
 #[test]
 fn ok_response_has_svgs() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b c d\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b c d
+    """,
+"#;
     let resp = render_response(
         input,
         &ResolvedPartVisibility::default(),
@@ -37,24 +33,23 @@ fn ok_response_has_svgs() {
 
 #[test]
 fn render_without_a_lyric_part_hides_its_lyrics() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano = notes\n",
-        "Soprano lyrics [Sopranov1] = lyrics[Soprano]\n",
-        "Alto = notes\n",
-        "Alto lyrics [Altov1] = lyrics[Alto]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Soprano] 1 2 3 4\n",
-        "[Sopranov1] sop sop sop sop\n",
-        "[Alto] 5 6 7 1\n",
-        "[Altov1] alt alt alt alt\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts [
+    "Soprano": notes,
+    "Soprano lyrics" [Sopranov1]: lyrics [Soprano],
+    "Alto": notes,
+    "Alto lyrics" [Altov1]: lyrics [Alto],
+],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Sopranov1] sop sop sop sop
+    [Alto] 5 6 7 1
+    [Altov1] alt alt alt alt
+    """,
+"#;
     let all = match render_response(
         input,
         &ResolvedPartVisibility::default(),
@@ -82,20 +77,16 @@ fn render_without_a_lyric_part_hides_its_lyrics() {
 
 #[test]
 fn render_with_enabled_tracks_filters_parts() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano = notes\n",
-        "Alto = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Soprano] 1 2 3 4\n",
-        "[Alto] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Soprano": notes, "Alto": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Alto] 5 6 7 1
+    """,
+"#;
     let all = match render_response(
         input,
         &ResolvedPartVisibility::default(),
@@ -143,20 +134,16 @@ fn err_response_has_structured_diagnostic() {
 #[test]
 fn recoverable_error_produces_warning_severity_view_zone() {
     // lyrics underflow is a recoverable error
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b
+    """,
+"#;
     let resp = render_response(
         input,
         &ResolvedPartVisibility::default(),
@@ -226,20 +213,16 @@ fn reference_poentaro_renders() {
 fn diagnostic_span_is_utf8_byte_offset() {
     // 'z' in a notes line is a recoverable error (LexUnexpectedChar),
     // so render returns Ok with a warning diagnostic.
-    let source = concat!(
-        "# metadata\n",
-        "title = \"你好\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 z 4\n",
-        "[Melodyv1] a b c d\n",
-    );
+    let source = r#"metadata { title "你好", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 z 4
+    [Melodyv1] a b c d
+    """,
+"#;
     let token_byte_start = source.find('z').expect("error token in source");
     let resp = render_response(
         source,
@@ -275,31 +258,29 @@ fn follow_part_with_explicit_override_in_some_sections_renders_ok() {
     // In the second section (time=4/4), only [s1] and [a] appear; the follow
     // parts (p2, s2) and their leaders (p1) are absent and should be filled
     // implicitly / via follow resolution.
-    let input = concat!(
-        "# metadata\n",
-        "title = \"\"\n",
-        "author = \"\"\n",
-        "\n",
-        "# parts\n",
-        "Pluck [p1] = notes\n",
-        "Pluck 2 [p2] = follow[p1]\n",
-        "String [s1] = notes\n",
-        "String 2 [s2] = follow[s1]\n",
-        "Accompaniment [a] = chords\n",
-        "\n",
-        "\n",
-        "# score\n",
-        "time=2/4\n",
-        "[p1]12\n",
-        "[p2]12\n",
-        "[s1]1'2'\n",
-        "[s2]67\n",
-        "[a]4 5 \n",
-        "\n",
-        "time=4/4\n",
-        "[s1] 5---\n",
-        "[a] 1---\n",
-    );
+    let input = r#"metadata { title "", author "" },
+
+parts [
+    "Pluck" [p1]: notes,
+    "Pluck 2" [p2]: follow [p1],
+    "String" [s1]: notes,
+    "String 2" [s2]: follow [s1],
+    "Accompaniment" [a]: chords,
+],
+
+score """
+    time=2/4
+    [p1]12
+    [p2]12
+    [s1]1'2'
+    [s2]67
+    [a]4 5
+
+    time=4/4
+    [s1] 5---
+    [a] 1---
+    """,
+"#;
     let resp = render_response(
         input,
         &ResolvedPartVisibility::default(),
@@ -342,24 +323,20 @@ fn two_parts_with_non_four_four_first_section_has_no_diagnostics() {
     // present in the second section.  The renderer must not emit any
     // diagnostics — the bug caused spurious "measure count mismatch" and
     // "beat overflow" errors whenever the first section was not 4/4.
-    let input = concat!(
-        "# metadata\n",
-        "title = \"\"\n",
-        "author = \"\"\n",
-        "\n",
-        "# parts\n",
-        "A [a] = notes\n",
-        "B [b] = notes\n",
-        "\n",
-        "# score\n",
-        "time=2/4\n",
-        "[a]12\n",
-        "[b]12\n",
-        "\n",
-        "time=4/4\n",
-        "[a] 5\n",
-        "[b] 1\n",
-    );
+    let input = r#"metadata { title "", author "" },
+
+parts ["A" [a]: notes, "B" [b]: notes],
+
+score """
+    time=2/4
+    [a]12
+    [b]12
+
+    time=4/4
+    [a] 5
+    [b] 1
+    """,
+"#;
     let resp = render_response(
         input,
         &ResolvedPartVisibility::default(),

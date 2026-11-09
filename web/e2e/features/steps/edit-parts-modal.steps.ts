@@ -2,50 +2,45 @@ import { expect } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Chords [C] = chords',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M], "Chords" [C]: chords],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
-  '[Mv1] twin- kle twin- kle',
-  '[C] 1 - - -',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    [Mv1] twin- kle twin- kle',
+  '    [C] 1 - - -',
+  '    """,',
 ].join('\n')
 
 const FOLLOW_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Chords [C] = follow[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M], "Chords" [C]: follow [M]],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
-  '[Mv1] twin- kle twin- kle',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    [Mv1] twin- kle twin- kle',
+  '    """,',
 ].join('\n')
 
 const MULTI_FOLLOW_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Harmony [H] = notes',
-  'Chords [C] = follow[M]',
+  'parts [',
+  '    "Melody" [M]: notes,',
+  '    "Melody lyrics" [Mv1]: lyrics [M],',
+  '    "Harmony" [H]: notes,',
+  '    "Chords" [C]: follow [M],',
+  '],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
-  '[Mv1] twin- kle twin- kle',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    [Mv1] twin- kle twin- kle',
+  '    """,',
 ].join('\n')
 
 async function loadSource(
@@ -282,9 +277,9 @@ Then(
   },
 )
 
-// Navigate to SOURCE line 10 ("1 - - -") and select to end of line.
+// Navigate to SOURCE line 7 ("[M] 1 1 5 5") and select to end of line.
 Given(
-  'the caret is placed on line 10 of the edit-parts-modal fixture with the line selected',
+  'the caret is placed on line 7 of the edit-parts-modal fixture with the line selected',
   async ({ page, focusEditor }) => {
     await waitForEditor(page)
     const codeLensLink = page.locator('.codelens-decoration a', {
@@ -294,21 +289,20 @@ Given(
 
     await focusEditor()
     await page.keyboard.press('Control+g')
-    await page.keyboard.type('10')
+    await page.keyboard.type('7')
     await page.keyboard.press('Enter')
-    await page.keyboard.press('Home')
     await page.keyboard.press('Shift+End')
     await page.waitForTimeout(300)
   },
 )
 
 Then(
-  'the editor selection spans line 10 from column 1 to the end of the line',
+  'the editor selection spans line 7 from column 1 to the end of the line',
   async ({ page }) => {
     const selectionBefore = await getSelection(page)
-    expect(selectionBefore?.startLineNumber).toBe(10)
+    expect(selectionBefore?.startLineNumber).toBe(7)
     expect(selectionBefore?.startColumn).toBe(1)
-    expect(selectionBefore?.endLineNumber).toBe(10)
+    expect(selectionBefore?.endLineNumber).toBe(7)
     expect(selectionBefore?.endColumn).toBeGreaterThan(1)
   },
 )

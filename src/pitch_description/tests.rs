@@ -3,7 +3,7 @@ use super::*;
 /// Byte range of the `occurrence`-th (0-based) match of `token` on the line
 /// starting with `line_prefix`.
 fn token_range(source: &str, line_prefix: &str, token: &str, occurrence: usize) -> ByteRange {
-    let line_start = source.find(&format!("\n{line_prefix}")).unwrap() + 1 + line_prefix.len();
+    let line_start = source.find(&format!("\n    {line_prefix}")).unwrap() + 5 + line_prefix.len();
     let line_end = line_start + source[line_start..].find('\n').unwrap();
     let start = line_start
         + source[line_start..line_end]
@@ -19,24 +19,24 @@ fn token_range(source: &str, line_prefix: &str, token: &str, occurrence: usize) 
 
 fn notes_score(key: &str, notes: &str) -> String {
     format!(
-        r#"# parts
-Melody [M] = notes
+        r#"parts ["Melody" [M]: notes],
 
-# score
-key={key}
-[M] {notes}
+score """
+    key={key}
+    [M] {notes}
+    """,
 "#
     )
 }
 
 fn chords_score(key: &str, chords: &str) -> String {
     format!(
-        r#"# parts
-Chords [C] = chords
+        r#"parts ["Chords" [C]: chords],
 
-# score
-key={key}
-[C] {chords}
+score """
+    key={key}
+    [C] {chords}
+    """,
 "#
     )
 }
@@ -97,17 +97,17 @@ fn octave_markers_do_not_change_the_letter_name() {
 
 #[test]
 fn letter_name_follows_the_measure_key() {
-    let source = r#"# parts
-Melody [M] = notes
+    let source = r#"parts ["Melody" [M]: notes],
 
-# score
-key=C4
-[M] 1 2 3 4
+score """
+    key=C4
+    [M] 1 2 3 4
 
-key=G4
-[M] 1 2 3 4
+    key=G4
+    [M] 1 2 3 4
+    """,
 "#;
-    assert_eq!(describe_note(source, "key=G4\n[M] ", "1", 0), "G");
+    assert_eq!(describe_note(source, "key=G4\n    [M] ", "1", 0), "G");
 }
 
 #[test]

@@ -3,41 +3,30 @@ import { stableBoundingBox } from '../../rangeSelectHelpers'
 import { Given, Then, When } from './fixtures'
 
 /**
- * Source with a `# sequence` section that replays "B" twice
+ * Source with a `sequence [...]` section that replays "B" twice
  * (`A, B, B`), so the resolved playback order (A, B, B) diverges from
  * written order (A, B) — this is what distinguishes the sequence jump
  * toolbar (SequenceJumpToolbar) from the plain section jump toolbar
  * (SectionJumpToolbar), which only ever shows one button per written label.
- *
- * Lines (1-based):
- *   7:  # sequence
- *   8:  A, B, B
- *   10: # score
- *   11: time=4/4 key=C4 bpm=120 label="A"   ← measure 0
- *   12: 1 2 3 4
- *   14: label="B"                           ← measure 1
- *   15: 5 6 7 1'
  */
 const source = [
-  '# metadata',
-  'title = "test"',
+  'metadata { title "test" },',
   '',
-  '# parts',
-  'M = notes',
+  'parts ["M": notes],',
   '',
-  '# sequence',
-  'A, B, B',
+  'sequence ["A", "B", "B"],',
   '',
-  '# score',
-  'time=4/4 key=C4 bpm=120 label="A"',
-  '1 2 3 4',
+  'score """',
+  '    time=4/4 key=C4 bpm=120 label="A"',
+  '    1 2 3 4',
   '',
-  'label="B"',
-  "5 6 7 1'",
+  '    label="B"',
+  "    5 6 7 1'",
+  '    """,',
 ].join('\n')
 
 // The section jump toolbar (always present when labels exist) and the
-// sequence jump toolbar (only present when a `# sequence` section resolves)
+// sequence jump toolbar (only present when a `sequence [...]` section resolves)
 // both render `button.section-jump-btn` elements inside their own
 // `[role="toolbar"]`. `SequenceJumpToolbar` is mounted after
 // `SectionJumpToolbar` in App.tsx, so it is the second toolbar in the DOM.
@@ -115,7 +104,7 @@ Then(
 )
 
 // The two "B" buttons (indices 1 and 2) both map to the same written measure
-// (index 1), since `# sequence` just replays that span twice. Clicking one
+// (index 1), since `sequence [...]` just replays that span twice. Clicking one
 // must highlight only that specific occurrence — proving selection is keyed
 // by sequence position, not by label or by measure range.
 Then(

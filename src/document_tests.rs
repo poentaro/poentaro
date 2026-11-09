@@ -1,8 +1,7 @@
 use itertools::Itertools;
 
-use super::{anyfix_errors, is_anyfix};
+use super::anyfix_errors;
 use crate::ast::parsed::{MetadataTextKey, Notation};
-use crate::parser::anyfix::convert;
 use crate::part_stream::{apply_part_stream, extract_part_stream};
 use crate::source_edit::{
     self, MetadataEdit, NewPreset, PartMode, PartSettings, PartShown, PresetEdit,
@@ -47,26 +46,18 @@ fn assert_reads(text: &str) {
 }
 
 #[test]
-fn text_with_a_section_header_is_not_anyfix() {
-    let text = "# metadata\ntitle = \"Song\"\n";
-    assert!(!is_anyfix(text));
-    assert!(anyfix_errors(text, &[]).is_empty());
+fn text_in_the_old_section_syntax_opens_with_syntax_errors() {
+    let text =
+        "# metadata\ntitle = \"Song\"\n\n# parts\nMelody = notes\n\n# score\n[Melody] 1 2 3 4\n";
+    assert!(!anyfix_errors(text, &[]).is_empty());
+    let score = crate::compile(text, "test.poentaro", &[]).unwrap();
+    assert!(!score.document_diagnostics.is_empty());
+    assert_eq!(crate::format_anyfix::format_anyfix(text), text);
 }
 
 #[test]
-fn blank_text_is_not_anyfix() {
-    assert!(!is_anyfix(" \n"));
-}
-
-#[test]
-fn a_comment_that_looks_like_a_header_stays_a_comment() {
-    assert!(is_anyfix("# score\nscore \"\",\n"));
-    assert!(is_anyfix("# metadata\nmetadata { title : \"Song\" },\n"));
-}
-
-#[test]
-fn text_with_a_typo_in_a_section_name_is_anyfix() {
-    assert!(is_anyfix("metdata { title : \"Song\" },\n"));
+fn blank_text_opens() {
+    assert!(crate::compile(" \n", "test.poentaro", &[]).is_ok());
 }
 
 #[test]
@@ -81,17 +72,12 @@ fn measures_appended_to_an_empty_one_line_string_make_it_a_raw_string() {
 }
 
 #[test]
-fn every_demo_reads_after_conversion() {
+fn every_demo_reads() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("demo");
     for entry in std::fs::read_dir(root).unwrap() {
         let path = entry.unwrap().path();
         let source = std::fs::read_to_string(&path).unwrap();
-        let text = if is_anyfix(&source) {
-            source
-        } else {
-            convert(&source)
-        };
-        let errors = anyfix_errors(&text, &[]);
+        let errors = anyfix_errors(&source, &[]);
         assert!(errors.is_empty(), "{path:?}: {errors:?}");
     }
 }
@@ -257,7 +243,7 @@ fn a_part_edit_rewrites_its_kind_and_keeps_the_score() {
         volume: 80,
         octave_offset: -1,
     };
-    let edited = source_edit::update_part_declaration(DOCUMENT, "A", &settings, &[]).unwrap();
+    let edited = source_edit::update_part_declaration(DOCUMENT, "A", &settings).unwrap();
     assert_reads(&edited);
     let alto = crate::list_part_declarations_from_source(&edited, "test.poentaro", &[])
         .unwrap()
@@ -281,7 +267,7 @@ fn editing_a_part_that_does_not_exist_changes_nothing() {
         octave_offset: 0,
     };
     assert_eq!(
-        source_edit::update_part_declaration(DOCUMENT, "Nope", &settings, &[]),
+        source_edit::update_part_declaration(DOCUMENT, "Nope", &settings),
         None
     );
 }

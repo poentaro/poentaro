@@ -49,11 +49,11 @@ impl Arbitrary for GeneratedCase {
 
         let declarations = note_parts
             .iter()
-            .map(|abbreviation| format!("Part {abbreviation} [{abbreviation}] = notes"))
+            .map(|abbreviation| format!("\"Part {abbreviation}\" [{abbreviation}] : notes"))
             .chain(lyric_parts.iter().map(|(abbreviation, target)| {
-                format!("Words {abbreviation} [{abbreviation}] = lyrics[{target}]")
+                format!("\"Words {abbreviation}\" [{abbreviation}] : lyrics [{target}]")
             }))
-            .join("\n");
+            .join(", ");
 
         let measures = (0..measure_count)
             .map(|_| {
@@ -83,7 +83,7 @@ impl Arbitrary for GeneratedCase {
             })
             .join("\n\n");
 
-        let source = format!("# parts\n{declarations}\n\n# score\n{measures}\n");
+        let source = format!("parts [{declarations}],\n\nscore \"\"\"\n{measures}\n\"\"\",\n");
         let abbreviations: Vec<String> = note_parts
             .into_iter()
             .chain(
@@ -291,7 +291,12 @@ fn a_selection_never_plays_a_hidden_part() {
 
 #[test]
 fn a_bare_caret_selects_nothing() {
-    let source = "# parts\nMelody [M] = notes\n\n# score\n[M] 1 2 3 4\n";
+    let source = r#"parts ["Melody" [M]: notes],
+
+score """
+    [M] 1 2 3 4
+    """,
+"#;
     let spans = list_note_spans_from_source(source, "test.jianpu", None)
         .unwrap()
         .spans;

@@ -17,23 +17,19 @@ import { Given, Then, When } from './fixtures'
  * Measure 1: Melody "3 4" + lyrics "mi fa", Harmony "7 1'" (2 notes)
  */
 const source = [
-  '# metadata',
-  'title = "part label range-select lyric test"',
-  'max_measures_per_system = 48',
+  'metadata { title "part label range-select lyric test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M], "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
-  '[Mv1] do re', // verse 0
+  'score """',
+  '[M] 1 2',
+  '[Mv1] do re',
   '[H] 5 6',
   '',
-  '[M] 3 4', // measure 1
-  '[Mv1] mi fa', // verse 0
+  '[M] 3 4',
+  '[Mv1] mi fa',
   "[H] 7 1'",
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
@@ -56,7 +52,7 @@ async function loadFixture(page: import('@playwright/test').Page) {
 async function primeMeasureSpans(page: import('@playwright/test').Page) {
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('11')
+  await page.keyboard.type('6')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,

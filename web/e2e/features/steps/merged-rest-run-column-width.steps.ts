@@ -30,14 +30,11 @@ function denseMeasureTokens(noteCount: number): string {
 
 function buildSource(): string {
   const lines: string[] = [
-    '# metadata',
-    'title = "merged rest run column width test"',
-    `max_measures_per_system = ${state.maxMeasuresPerSystem}`,
+    `metadata { title "merged rest run column width test", max measures per system ${state.maxMeasuresPerSystem} },`,
     '',
-    '# parts',
-    'Melody [M] = notes',
+    'parts ["Melody" [M]: notes],',
     '',
-    '# score',
+    'score """',
   ]
   for (const measure of state.measures) {
     const tokens =
@@ -46,7 +43,7 @@ function buildSource(): string {
         : '0 0 0 0'
     lines.push(`[M] ${tokens}`, '')
   }
-  return lines.join('\n')
+  return [...lines, '""",'].join('\n')
 }
 
 Given('parts Melody [M] are declared', async () => {

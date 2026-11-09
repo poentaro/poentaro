@@ -13,24 +13,22 @@ import { Given, Then, When } from './fixtures'
  * Self-contained source (not a demo file) with a generous "max measures per
  * system" so all measures render in one row and stay within the viewport.
  *
- * Measure 0 : [M] 1 2 3 4   — 4 notes — line 9
- * Measure 1 : [M] 5 6       — 2 notes — line 11
- * Measure 2 : [M] 7 1'      — 2 notes — line 13
+ * Measure 0 : [M] 1 2 3 4   — 4 notes — line 6
+ * Measure 1 : [M] 5 6       — 2 notes — line 8
+ * Measure 2 : [M] 7 1'      — 2 notes — line 10
  */
 const editorSelectionTestSource = [
-  '# metadata',
-  'title = "editor selection test"',
-  'max_measures_per_system = 48',
+  'metadata { title "editor selection test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — line 9
+  'score """',
+  '[M] 1 2 3 4',
   '',
-  '[M] 5 6', // measure 1 — line 11
+  '[M] 5 6',
   '',
-  "[M] 7 1'", // measure 2 — line 13
+  "[M] 7 1'",
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
@@ -68,7 +66,7 @@ When(
     // Jump to measure 1's line ("[M] 5 6") and select the whole line — a
     // plain text selection made in the editor itself, no preview interaction.
     await page.keyboard.press('Control+g')
-    await page.keyboard.type('11')
+    await page.keyboard.type('8')
     await page.keyboard.press('Enter')
     // Wait for the go-to-line jump to actually land (same priming dance the
     // click specs use — see `primeMeasureSpans`) before selecting, otherwise

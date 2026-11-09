@@ -15,7 +15,7 @@ use crate::parser::preset_parser::{
     collect_presets, finish_preset, known_parts, parse_notation, ParsedPresetSection,
     ParsedPresets, PresetFields,
 };
-use crate::parser::section_splitter::PresetName;
+use crate::parser::section::PresetName;
 
 pub(super) fn read_presets(presets: &[PresetNode], declarations: &[PartDecl]) -> ParsedPresets {
     let named = presets

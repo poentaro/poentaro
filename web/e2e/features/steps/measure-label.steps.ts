@@ -20,31 +20,28 @@ Given(
      * a multi-byte-UTF-8 (CJK) lyric line that is also the last line of the
      * measure.
      *
-     * The lyric line "白陽旗旛在大道盛宏" is line 16 (1-based) in the source
+     * The lyric line "白陽旗旛在大道盛宏" is line 13 (1-based) in the source
      * below. Pressing End places the cursor after "宏" (3-byte UTF-8 char).
      */
     const source = [
-      '# metadata',
-      'title = "abc"',
-      'author = "author"',
+      'metadata { title "abc", author "author" },',
       '',
-      '# parts',
-      'Chord [C] = chords',
-      'Alto 1 & Tenor [A1,T] = notes',
-      'Alto 1 & Tenor lyrics [A1,Tv1] = lyrics[A1,T]',
+      'parts [',
+      '    "Chord" [C]: chords,',
+      '    "Alto 1 & Tenor" ["A1,T"]: notes,',
+      '    "Alto 1 & Tenor lyrics" ["A1,Tv1"]: lyrics ["A1,T"],',
+      '],',
       '',
+      'score """',
+      '    bpm=80 key=C4 time=4/4 label="Verse 1"',
+      '    [C] 1 - - -',
+      '    [A1,T] 5_ 5_ 5_ 5= 5= 5_ 3_ 2_ (3_',
+      '    [A1,Tv1] 白陽旗旛在大道盛宏',
       '',
-      '# score',
-      '',
-      '',
-      'bpm=80 key=C4 time=4/4 label="Verse 1"',
-      '[C] 1 - - -',
-      '[A1,T] 5_ 5_ 5_ 5= 5= 5_ 3_ 2_ (3_',
-      '[A1,Tv1] 白陽旗旛在大道盛宏',
-      '',
-      '[C] 6m/3',
-      '[A1,T] 3_) (1_1-) 0_ 1= 1=',
-      '[A1,Tv1] 昌花花',
+      '    [C] 6m/3',
+      '    [A1,T] 3_) (1_1-) 0_ 1= 1=',
+      '    [A1,Tv1] 昌花花',
+      '    """,',
     ].join('\n')
 
     await page.addInitScript((src) => {

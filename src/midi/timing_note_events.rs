@@ -43,7 +43,7 @@ impl PartTimingCursor {
 ///
 /// This is computed once over the written score (so it agrees with
 /// `ColumnElement::note_id`) and then reused for every playback occurrence
-/// of a given written event when walking the `# sequence`/D.C.-expanded
+/// of a given written event when walking the `sequence`/D.C.-expanded
 /// timeline in `note_timings_seconds`, since a repeated or reordered measure
 /// is still the same written notes, just sounding again at a different time.
 pub(super) fn build_written_note_id_lookup(score: &Score) -> HashMap<(usize, usize, usize), usize> {

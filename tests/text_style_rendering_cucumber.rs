@@ -1,15 +1,9 @@
 //! Cucumber harness for `tests/features/text_style_rendering.feature`:
-//! verifies each `TextStyle` component (see
-//! `tests/features/text_style_metadata_syntax.feature`) has a real
-//! rendering/layout effect, not just a resolved config value.
-//!
-//! Each scenario's `# metadata` overrides are spliced into a minimal
-//! `.poentaro` document and run through the full pipeline —
-//! `compile` → `compiler::compile` → `consolidator::consolidate` →
-//! `grid_layout::layout` → `coordinate_resolver::resolve` →
-//! `renderer::new_renderer::render_new`. "Then" steps compare the configured
-//! run against a freshly rendered baseline (default metadata, or an explicit
-//! zero vertical padding) rather than a hardcoded expected number.
+//! verifies each `TextStyle` component has a real rendering/layout effect,
+//! not just a resolved config value. Each scenario's `metadata` overrides are
+//! spliced into a minimal document and run through the full pipeline. "Then"
+//! steps compare the configured run against a freshly rendered baseline
+//! rather than a hardcoded expected number.
 //! Clippy's `allow-*-in-tests` skips cucumber steps, hence the allows.
 #![allow(
     clippy::unwrap_used,
@@ -20,7 +14,11 @@
     clippy::needless_pass_by_value
 )]
 
+#[path = "support/metadata_field.rs"]
+mod metadata_field;
+
 use cucumber::{given, then, when, World as _};
+use metadata_field::metadata_field;
 use poentaro::compositor::types::{AbsoluteContent, AbsolutePage};
 use poentaro::grid_layout::types::{GridContent, GridPage};
 use poentaro::renderer::new_renderer::render_new;
@@ -48,15 +46,15 @@ fn element_paddings(
 }
 
 fn zero_vertical_padding(kind: &str) -> String {
-    format!("{kind} = {{ vertical_padding_pt: 0 }}")
+    metadata_field(kind, "{ vertical_padding_pt: 0 }")
 }
 
 fn render_source(metadata_lines: &[String], title: &str, score_body: &str) -> RenderResult {
     let mut lines = metadata_lines.to_vec();
-    lines.push(format!("title = {title:?}"));
-    let metadata_block = lines.join("\n");
+    lines.push(format!("title {title:?}"));
+    let metadata_block = lines.join(", ");
     let source =
-        format!("# metadata\n{metadata_block}\n\n# parts\nS = notes\n\n# score\n{score_body}\n");
+        format!("metadata {{ {metadata_block} }},\n\nparts [\"S\" : notes],\n\nscore \"\"\"\n{score_body}\n\"\"\",\n");
     let score = poentaro::compile(&source, "test.poentaro", &[])
         .unwrap_or_else(|err| panic!("compile returned an irrecoverable error: {}", err.message()));
     let config = poentaro::render_config::RenderConfig::from_metadata(&score.metadata);
@@ -145,7 +143,7 @@ fn given_metadata_line(
     key: String,
     value: String,
 ) {
-    world.metadata_lines.push(format!("{key} = {value}"));
+    world.metadata_lines.push(metadata_field(&key, &value));
 }
 
 #[given(expr = "the score has a note followed by a dash")]
@@ -174,10 +172,9 @@ fn given_minimal_score_using_kind(world: &mut TextStyleRenderingWorld, kind: Str
 #[given(expr = "a score with a title, subtitle and author")]
 fn given_score_with_title_subtitle_author(world: &mut TextStyleRenderingWorld) {
     world.title = "T".to_string();
-    world.metadata_lines.extend([
-        "subtitle = \"Sub\"".to_string(),
-        "author = \"Au\"".to_string(),
-    ]);
+    world
+        .metadata_lines
+        .extend(["subtitle \"Sub\"".to_string(), "author \"Au\"".to_string()]);
     world.score_body = "time=4/4 key=C4 bpm=120\n[S] 1\n".to_string();
 }
 
@@ -254,7 +251,7 @@ fn page_number_box_height_pt(result: &RenderResult) -> f32 {
 }
 
 /// Height of the first page's header row holding the element `is_target`
-/// matches — the part legend entry or the `# sequence` summary line.
+/// matches — the part legend entry or the `sequence` summary line.
 fn header_row_height_pt(result: &RenderResult, is_target: impl Fn(&GridContent) -> bool) -> f32 {
     result.grid_pages[0]
         .rows
@@ -381,7 +378,7 @@ fn then_header_row_grows(world: &mut TextStyleRenderingWorld, kind: String, padd
     let zero_padding_metadata: Vec<String> = world
         .metadata_lines
         .iter()
-        .filter(|line| !line.contains("vertical_padding_pt"))
+        .filter(|line| !line.contains("vertical padding pt"))
         .cloned()
         .chain(["title", "subtitle", "author"].map(zero_vertical_padding))
         .collect();

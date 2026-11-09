@@ -15,20 +15,17 @@ import { Given, Then, When } from './fixtures'
  *   System 1 (measure 1): Melody "3 4", Harmony "7 1'"
  */
 const source = [
-  '# metadata',
-  'title = "part label range-select system boundary test"',
-  'max_measures_per_system = 1',
+  'metadata { title "part label range-select system boundary test", max measures per system 1 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
+  'score """',
+  '[M] 1 2',
   '[H] 5 6',
   '',
-  '[M] 3 4', // measure 1
+  '[M] 3 4',
   "[H] 7 1'",
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
@@ -53,7 +50,7 @@ async function loadFixture(page: import('@playwright/test').Page) {
 async function primeMeasureSpans(page: import('@playwright/test').Page) {
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('10')
+  await page.keyboard.type('6')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,

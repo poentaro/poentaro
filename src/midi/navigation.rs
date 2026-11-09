@@ -2,11 +2,11 @@ use crate::ast::grouped::Score;
 use crate::ast::parsed::KeyChange;
 use crate::error::IrrecoverableError;
 
-/// Rebuilds `score.measures` to reflect a `# sequence` section's resolved
+/// Rebuilds `score.measures` to reflect a `sequence` section's resolved
 /// playback order, so downstream MIDI/WAV generation replays measures in
 /// actual playback order instead of written order.
 ///
-/// - No `# sequence` section present: returns the score unchanged.
+/// - No `sequence` section present: returns the score unchanged.
 /// - Otherwise: returns a score whose measures are the expanded playback
 ///   sequence, with each occurrence's `(-abbrev ...)` part omissions applied.
 pub fn expand_navigation(score: &Score) -> Result<Score, IrrecoverableError> {
@@ -81,7 +81,7 @@ pub fn expand_navigation_with_note_positions(
 /// `None` until the first measure that sets one.
 ///
 /// [`build_expanded`] uses this to backfill a played measure's missing
-/// `bpm`/`key` when `# sequence` navigation skips over the written measures
+/// `bpm`/`key` when `sequence` navigation skips over the written measures
 /// between it and the previous played one (e.g. an intro before the
 /// sequence's first listed section, or a gap between two labeled sections):
 /// without a written measure actually being processed there, nothing would
@@ -166,7 +166,7 @@ fn build_expanded(
 /// written `source_part_index` rather than a part's position among the
 /// surviving parts. Mirrors [`build_expanded`]'s `omit_parts` retain, but
 /// keyed by inclusion (`enabled_tracks`) instead of exclusion, and applied
-/// uniformly to every measure rather than per-`# sequence`-entry.
+/// uniformly to every measure rather than per-`sequence`-entry.
 ///
 /// `None` keeps every part (no-op). Every `origin.part_written_indices` must
 /// already be the same length as its measure's `parts` (true for both

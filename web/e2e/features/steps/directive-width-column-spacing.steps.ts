@@ -25,19 +25,17 @@ import { Given, Then } from './fixtures'
  * a directive line in the same system for the overlap check.
  */
 const source = [
-  '# metadata',
-  'title = "directive width overflow test"',
-  'max_measures_per_system = 2',
+  'metadata { title "directive width overflow test", max measures per system 2 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
+  'score """',
   'bpm=92 key=C4 time=4/4 label="Verse 1"',
-  '[M] 1', // measure 0 — one note, auto-extended to fill the bar
+  '[M] 1',
   '',
   'key=D4',
-  '[M] 2 3 4 5', // measure 1 — has its own directive line (key change)
+  '[M] 2 3 4 5',
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
@@ -127,22 +125,20 @@ Then(
  * share a system are checked against each other.
  */
 const twoAdjacentDirectivesSource = [
-  '# metadata',
-  'title = "two adjacent directives test"',
-  'max_measures_per_system = 3',
+  'metadata { title "two adjacent directives test", max measures per system 3 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  'bpm=92 key=C4 time=4/4 label="Verse 1 begins here"',
-  '[M] 1',
+  'score """',
+  '    bpm=92 key=C4 time=4/4 label="Verse 1 begins here"',
+  '    [M] 1',
   '',
-  'label="Pre-Chorus transition"',
-  '[M] 2',
+  '    label="Pre-Chorus transition"',
+  '    [M] 2',
   '',
-  'label="Chorus hits hard"',
-  '[M] 3',
+  '    label="Chorus hits hard"',
+  '    [M] 3',
+  '    """,',
 ].join('\n')
 
 Given(

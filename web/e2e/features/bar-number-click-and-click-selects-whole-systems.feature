@@ -18,7 +18,7 @@ Feature: Click-and-click from a bar number selects whole systems
   # not stop at measure 2. And Harmony's notes must come along too, even
   # though neither click ever lands on Harmony's row.
   #
-  # `max_measures_per_system = 2` groups measures into two-measure systems:
+  # `max measures per system 2` groups measures into two-measure systems:
   #
   #   System 0 (measures 0-1): Melody "1 2 3 4", Harmony "5 6 7 1'"
   #   System 1 (measures 2-3): Melody "5 6 7 1'", Harmony "1' 7 6 5"

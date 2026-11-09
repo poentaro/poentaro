@@ -23,18 +23,7 @@ enum Commands {
     Check {
         input: PathBuf,
     },
-    /// Rewrite positional lyric lines into `lyrics[...]` parts. Rewrites the
-    /// given files in place; with no files, filters stdin to stdout.
-    MigrateLyrics {
-        paths: Vec<PathBuf>,
-    },
-    /// Write each file as `<name>.anyfix`, in anyfix expressions (see
-    /// `anyfix-syntax.md`). Every command reads `.anyfix` files too.
-    ConvertAnyfix {
-        paths: Vec<PathBuf>,
-    },
-    /// Format each file in place. An `.anyfix` file is laid out by
-    /// anyfix-expr's formatter first, then its score strings are formatted.
+    /// Format each file in place: anyfix-expr's layout first, then the score.
     Format {
         paths: Vec<PathBuf>,
     },
@@ -50,7 +39,7 @@ enum GenerateFormat {
         tracks: Vec<String>,
         #[arg(
             long,
-            help = "Export with this # preset's metadata and visible parts (--tracks overrides its parts)"
+            help = "Export with this preset's metadata and visible parts (--tracks overrides its parts)"
         )]
         preset: Option<String>,
         #[arg(
@@ -67,7 +56,7 @@ enum GenerateFormat {
         tracks: Vec<String>,
         #[arg(
             long,
-            help = "Export with this # preset's metadata and visible parts (--tracks overrides its parts)"
+            help = "Export with this preset's metadata and visible parts (--tracks overrides its parts)"
         )]
         preset: Option<String>,
         #[arg(
@@ -85,7 +74,7 @@ enum GenerateFormat {
         tracks: Vec<String>,
         #[arg(
             long,
-            help = "Export with this # preset's metadata and visible parts (--tracks overrides its parts)"
+            help = "Export with this preset's metadata and visible parts (--tracks overrides its parts)"
         )]
         preset: Option<String>,
     },
@@ -97,7 +86,7 @@ enum GenerateFormat {
         tracks: Vec<String>,
         #[arg(
             long,
-            help = "Export with this # preset's metadata and visible parts (--tracks overrides its parts)"
+            help = "Export with this preset's metadata and visible parts (--tracks overrides its parts)"
         )]
         preset: Option<String>,
         #[arg(
@@ -114,7 +103,7 @@ enum GenerateFormat {
         tracks: Vec<String>,
         #[arg(
             long,
-            help = "Export with this # preset's metadata and visible parts (--tracks overrides its parts)"
+            help = "Export with this preset's metadata and visible parts (--tracks overrides its parts)"
         )]
         preset: Option<String>,
         #[arg(
@@ -131,7 +120,7 @@ enum GenerateFormat {
         tracks: Vec<String>,
         #[arg(
             long,
-            help = "Export with this # preset's metadata and visible parts (--tracks overrides its parts)"
+            help = "Export with this preset's metadata and visible parts (--tracks overrides its parts)"
         )]
         preset: Option<String>,
         #[arg(
@@ -148,18 +137,9 @@ fn main() -> ExitCode {
     let result = match args.command {
         Commands::Generate { format } => run_generate(format).map(|()| true),
         Commands::Check { input } => run_check(&input),
-        Commands::MigrateLyrics { paths } => run_migrate_lyrics(&paths).map(|()| true),
         Commands::Format { paths } => paths
             .iter()
             .try_for_each(|path| poentaro::cli::format_file(path))
-            .map(|()| true),
-        Commands::ConvertAnyfix { paths } => paths
-            .iter()
-            .try_for_each(|path| {
-                let output = poentaro::cli::convert_to_anyfix(path)?;
-                println!("{}", output.display());
-                Ok(())
-            })
             .map(|()| true),
     };
 
@@ -171,26 +151,6 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
-}
-
-fn run_migrate_lyrics(paths: &[PathBuf]) -> Result<(), jg::error::IrrecoverableError> {
-    if paths.is_empty() {
-        let mut source = String::new();
-        std::io::Read::read_to_string(&mut std::io::stdin(), &mut source).map_err(|error| {
-            jg::error::IrrecoverableError::new(jg::error::IrrecoverableErrorKind::IoReadFailed {
-                span: jg::error::Span::new(0, 0),
-                path: PathBuf::from("<stdin>"),
-                source: error.to_string(),
-            })
-        })?;
-        print!("{}", jg::migrate_lyrics::migrate_lyrics_syntax(&source));
-        return Ok(());
-    }
-    paths.iter().try_for_each(|path| {
-        let source = poentaro::cli::read_source(path)?;
-        let migrated = jg::migrate_lyrics::migrate_lyrics_syntax(&source);
-        poentaro::cli::write_file(path, migrated.as_bytes())
-    })
 }
 
 /// Returns `Ok(true)` when the file parses with no errors, `Ok(false)` when it

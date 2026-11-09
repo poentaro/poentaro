@@ -33,19 +33,17 @@ import { Given, Then } from './fixtures'
  * leaving measure 1's positions 2-3 (indices 10, 11, 14, 15) unselected.
  */
 const crossMeasureRestSource = [
-  '# metadata',
-  'title = "cross measure rest range test"',
+  'metadata { title "cross measure rest range test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 0 0 0', // measure 0 — notes 0-3 (note at position 0)
-  '[H] 2 0 0 0', // measure 0 — notes 4-7 (note at position 0)
+  'score """',
+  '[M] 1 0 0 0',
+  '[H] 2 0 0 0',
   '',
-  '[M] 0 3 0 0', // measure 1 — notes 8-11 (note at position 1)
-  '[H] 0 4 0 0', // measure 1 — notes 12-15 (note at position 1)
+  '[M] 0 3 0 0',
+  '[H] 0 4 0 0',
+  '""",',
 ].join('\n')
 
 function noteRects(page: import('@playwright/test').Page) {

@@ -2,25 +2,23 @@ import { expect, test } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 /**
- * Same `# sequence` source as sequence-jump-toolbar.spec.ts — see that file
+ * Same `sequence [...]` source as sequence-jump-toolbar.spec.ts — see that file
  * for the annotated line breakdown.
  */
 const source = [
-  '# metadata',
-  'title = "test"',
+  'metadata { title "test" },',
   '',
-  '# parts',
-  'M = notes',
+  'parts ["M": notes],',
   '',
-  '# sequence',
-  'A, B, B',
+  'sequence ["A", "B", "B"],',
   '',
-  '# score',
-  'time=4/4 key=C4 bpm=120 label="A"',
-  '1 2 3 4',
+  'score """',
+  '    time=4/4 key=C4 bpm=120 label="A"',
+  '    1 2 3 4',
   '',
-  'label="B"',
-  "5 6 7 1'",
+  '    label="B"',
+  "    5 6 7 1'",
+  '    """,',
 ].join('\n')
 
 Given(

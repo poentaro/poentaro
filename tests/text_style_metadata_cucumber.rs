@@ -7,7 +7,7 @@
 //! separate flat scalar field (not part of any `TextStyle` object), since
 //! it's a layout constant rather than a text style component.
 //!
-//! Each scenario's `# metadata` lines are spliced into a minimal otherwise-valid
+//! Each scenario's `metadata` lines are spliced into a minimal otherwise-valid
 //! `.poentaro` document and run through the public `compile` entry point, so
 //! "then" steps can read the fully-resolved `Metadata` (`score.metadata`)
 //! directly, rather than only checking that parsing produced no error.
@@ -26,7 +26,11 @@
     clippy::needless_pass_by_value
 )]
 
+#[path = "support/metadata_field.rs"]
+mod metadata_field;
+
 use cucumber::{given, then, when, World as _};
+use metadata_field::metadata_field;
 use poentaro::ast::grouped::{Metadata, TextStyle};
 use poentaro::compile;
 
@@ -39,14 +43,14 @@ struct TextStyleWorld {
 
 #[given(expr = "{string} sets {string} to {string}")]
 fn given_metadata_line(world: &mut TextStyleWorld, _section: String, key: String, value: String) {
-    world.metadata_lines.push(format!("{key} = {value}"));
+    world.metadata_lines.push(metadata_field(&key, &value));
 }
 
 #[when(expr = "it is compiled")]
 fn when_compiled(world: &mut TextStyleWorld) {
-    let metadata_block = world.metadata_lines.join("\n");
+    let metadata_block = world.metadata_lines.join(", ");
     let source = format!(
-        "# metadata\n{metadata_block}\n\n# parts\nMelody = notes\n\n# score\n[Melody] 1 2 3 4\n"
+        "metadata {{ {metadata_block} }},\n\nparts [\"Melody\" : notes],\n\nscore \"\"\"\n[Melody] 1 2 3 4\n\"\"\",\n"
     );
     let score =
         compile(&source, "test.poentaro", &[]).unwrap_or_else(|err| panic!("{}", err.message()));
@@ -58,7 +62,7 @@ fn when_compiled(world: &mut TextStyleWorld) {
     world.metadata = Some(score.metadata);
 }
 
-/// Looks up one kind's resolved `TextStyle` on `metadata` by its `# metadata`
+/// Looks up one kind's resolved `TextStyle` on `metadata` by its `metadata`
 /// key name (e.g. `"lyrics"`, `"part_label"`).
 fn text_style_of<'a>(metadata: &'a Metadata, kind: &str) -> &'a TextStyle {
     match kind {
@@ -79,7 +83,7 @@ fn text_style_of<'a>(metadata: &'a Metadata, kind: &str) -> &'a TextStyle {
     }
 }
 
-/// Reads one component off a resolved `TextStyle` by its `# metadata`
+/// Reads one component off a resolved `TextStyle` by its `metadata`
 /// object-literal field name (e.g. `"horizontal_padding_pt"`).
 fn text_style_field(style: &TextStyle, field: &str) -> u32 {
     match field {

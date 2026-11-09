@@ -50,7 +50,9 @@ async function openViewer(
         'poentaro:files:v1',
         JSON.stringify({
           active: `${folder}/mine.poentaro`,
-          userFiles: { [`${folder}/mine.poentaro`]: '# score\n1 2 3 4' },
+          userFiles: {
+            [`${folder}/mine.poentaro`]: 'score """\n    1 2 3 4\n    """\n',
+          },
           bin: {},
           fileIds: { [`${folder}/mine.poentaro`]: crypto.randomUUID() },
           folders: [],

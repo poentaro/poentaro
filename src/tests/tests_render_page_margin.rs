@@ -9,9 +9,9 @@ const MEASURE: &str = "[S] 1_ 2_ 3_ 4_ 5_ 6_ 7_ 1'_";
 /// A titled score of `measure_count` dense measures, with `page_margin_pt`
 /// set when `margin` is `Some`.
 fn source(margin: Option<u32>, measure_count: usize) -> String {
-    let margin_line = margin.map_or(String::new(), |pt| format!("page_margin_pt = {pt}\n"));
+    let margin_line = margin.map_or(String::new(), |pt| format!("page margin pt : {pt}, "));
     format!(
-        "# metadata\ntitle = \"{TITLE}\"\nmax_measures_per_system = 8\n{margin_line}\n# parts\nS = notes\n\n# score\n{}\n",
+        "metadata {{ {margin_line}title \"{TITLE}\", max measures per system : 8 }},\n\nparts [\"S\" : notes],\n\nscore \"\"\"\n{}\n\"\"\",\n",
         std::iter::repeat_n(MEASURE, measure_count).join("\n\n")
     )
 }

@@ -1,5 +1,5 @@
 //! Cucumber harness for `tests/features/sequence_intro_key_context.feature`:
-//! a `key=` directive written on a measure that `# sequence` never lists
+//! a `key=` directive written on a measure that `sequence` never lists
 //! (an intro before the first listed section, under no label or one the
 //! sequence omits) must still carry forward as context for the measures
 //! that ARE played — the same accumulated-context treatment BPM/key already
@@ -65,7 +65,7 @@ fn when_audio_generated(world: &mut AudioKeyWorld) {
     let score = compile(&world.source, "test.poentaro", &[])
         .unwrap_or_else(|err| panic!("compile returned an irrecoverable error: {}", err.message()));
     // Same order the web app's `generate_wav`/`generate_mp3` wasm bindings
-    // use (see `write_wav_from_source_filtered`): expand `# sequence`
+    // use (see `write_wav_from_source_filtered`): expand `sequence`
     // navigation, then synthesize.
     let score = expand_navigation(&score).unwrap_or_else(|err| {
         panic!(

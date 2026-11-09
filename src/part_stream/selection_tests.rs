@@ -3,17 +3,16 @@ use crate::part_stream::{
     apply_part_stream, part_stream_ranges_to_source, source_ranges_to_part_stream,
 };
 
-const MELODY_AND_BASS: &str = r"# parts
-Melody [M] = notes
-Bass [B] = notes
+const MELODY_AND_BASS: &str = r#"parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-[M]   1  2 3 4   // intro
-[B] 5 5 5 5
+score """
+    [M]   1  2 3 4   // intro
+    [B] 5 5 5 5
 
-[M] 5 6 7 1 // second
-[B] 3 3 3 3
-";
+    [M] 5 6 7 1 // second
+    [B] 3 3 3 3
+    """,
+"#;
 
 /// Where the first `needle` after the first `after` sits in `text`.
 fn span_of(text: &str, after: &str, needle: &str) -> Span {
@@ -80,12 +79,12 @@ fn ranges_map_into_the_draft_once_the_stream_is_edited() {
 
 #[test]
 fn spelled_out_padding_has_nothing_to_select_in_the_source() {
-    let source = r"# parts
-Melody [M] = notes
+    let source = r#"parts ["Melody" [M]: notes],
 
-# score
-[M] 1 2
-";
+score """
+    [M] 1 2
+    """,
+"#;
     let stream = "1 2 - -";
     let padding = part_stream_ranges_to_source(source, "M", stream, &[span_of(stream, "", "- -")]);
     assert_eq!(padding, Vec::<Span>::new());
@@ -96,16 +95,15 @@ Melody [M] = notes
 
 #[test]
 fn a_caret_in_a_measure_the_part_does_not_write_lands_on_its_measure_group() {
-    let source = r"# parts
-Melody [M] = notes
-Bass [B] = notes
+    let source = r#"parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-[M] 1 2 3 4
-[B] 5 5 5 5
+score """
+    [M] 1 2 3 4
+    [B] 5 5 5 5
 
-[B] 3 3 3 3
-";
+    [B] 3 3 3 3
+    """,
+"#;
     let stream = "1 2 3 4\n0 0 0 0";
     let caret = stream.len() - 1;
     let ranges = part_stream_ranges_to_source(source, "M", stream, &[Span::new(caret, caret)]);
@@ -177,17 +175,16 @@ fn another_parts_note_adds_no_caret_where_the_part_is_selected() {
 
 #[test]
 fn lyric_syllables_map_both_ways() {
-    let source = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
+    let source = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
 
-# score
-[M] 1 2 3 4
-[W] twin  kle twin kle
+score """
+    [M] 1 2 3 4
+    [W] twin  kle twin kle
 
-[M] 5 5 6 6
-[W] lit tle star how
-";
+    [M] 5 5 6 6
+    [W] lit tle star how
+    """,
+"#;
     let stream = "twin kle twin kle\nlit tle star how";
     let to_source =
         part_stream_ranges_to_source(source, "W", stream, &[span_of(stream, "lit", "tle star")]);
@@ -199,14 +196,13 @@ Words [W] = lyrics[M]
 
 #[test]
 fn offsets_past_the_stream_or_inside_a_character_are_clamped() {
-    let source = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
+    let source = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
 
-# score
-[M] 1 2 3 4
-[W] 你 好 世 界
-";
+score """
+    [M] 1 2 3 4
+    [W] 你 好 世 界
+    """,
+"#;
     let stream = "你 好 世 界";
     let ranges = part_stream_ranges_to_source(source, "W", stream, &[Span::new(1, 99)]);
     assert_eq!(texts(source, &ranges), vec!["你 好 世 界"]);

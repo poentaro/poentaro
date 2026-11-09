@@ -4,17 +4,16 @@ use crate::part_stream::{
     StreamDiagnostic, StreamDiagnosticSeverity,
 };
 
-const TWO_MEASURES: &str = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
+const TWO_MEASURES: &str = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
 
-# score
-[M] 1 2 3 4
-[W] a b c d
+score """
+    [M] 1 2 3 4
+    [W] a b c d
 
-[M] 5 6 7 1
-[W] e f g h
-";
+    [M] 5 6 7 1
+    [W] e f g h
+    """,
+"#;
 
 fn with_severity(
     result: &PartStreamApplyResult,
@@ -45,24 +44,23 @@ fn ineligible_reason(source: &str, abbreviation: &str) -> Option<String> {
 
 #[test]
 fn extracts_cjk_and_latin_lyrics_by_the_targets_slots() {
-    let source = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
+    let source = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
 
-# score
-[M] 1 2 3 4
-[W] 你 好 世 界
+score """
+    [M] 1 2 3 4
+    [W] 你 好 世 界
 
-[M] 5 6 7 1~
-[W] twin-   kle - star
+    [M] 5 6 7 1~
+    [W] twin-   kle - star
 
-[M] 1 2 3 4
-[W] up a bove
+    [M] 1 2 3 4
+    [W] up a bove
 
-[M] 0 0 0 0
+    [M] 0 0 0 0
 
-[M] 3 3 3 3
-";
+    [M] 3 3 3 3
+    """,
+"#;
     let stream = extract_part_stream(source, "W").unwrap();
     assert_eq!(stream.text, "你 好 世 界\ntwin- kle - star\nup a bove\n_");
     assert_eq!(stream.measure_starts, vec![0, 16, 33, 42, 43]);
@@ -90,7 +88,7 @@ fn inserting_a_syllable_shifts_later_syllables_into_the_next_measure() {
     assert_eq!(result.changed_measure_count, 2);
     let source = applied(result);
     assert!(
-        source.contains("[W] z a b c\n\n[M] 5 6 7 1\n[W] d e f g\n"),
+        source.contains("[W] z a b c\n\n    [M] 5 6 7 1\n    [W] d e f g\n"),
         "{source}"
     );
 }
@@ -105,23 +103,22 @@ fn held_dashes_count_as_syllables() {
 
 #[test]
 fn a_tie_across_a_barline_takes_no_syllable() {
-    let source = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
+    let source = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
 
-# score
-[M] 1 2 3 4~
-[W] a b c d
+score """
+    [M] 1 2 3 4~
+    [W] a b c d
 
-[M] 4 5 6 7
-[W] e f g
-";
+    [M] 4 5 6 7
+    [W] e f g
+    """,
+"#;
     assert_eq!(
         extract_part_stream(source, "W").unwrap().text,
         "a b c d\ne f g"
     );
     let result = apply_part_stream(source, "W", "x a b c d e f");
-    assert!(applied(result).contains("[W] x a b c\n\n[M] 4 5 6 7\n[W] d e f\n"));
+    assert!(applied(result).contains("[W] x a b c\n\n    [M] 4 5 6 7\n    [W] d e f\n"));
 }
 
 #[test]
@@ -130,27 +127,26 @@ fn an_underscore_measure_has_no_lyrics() {
     assert_eq!(result.measure_starts, vec![0, 2]);
     let source = applied(result);
     assert!(
-        source.contains("[W] _\n\n[M] 5 6 7 1\n[W] a b c d\n"),
+        source.contains("[W] _\n\n    [M] 5 6 7 1\n    [W] a b c d\n"),
         "{source}"
     );
 }
 
 #[test]
 fn a_measure_without_slots_gets_an_empty_chunk() {
-    let source = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
+    let source = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
 
-# score
-[M] 1 2 3 4
-[W] a b c d
+score """
+    [M] 1 2 3 4
+    [W] a b c d
 
-[M] 0 0 0 0
-[W] _
+    [M] 0 0 0 0
+    [W] _
 
-[M] 5 6 7 1
-[W] e f g h
-";
+    [M] 5 6 7 1
+    [W] e f g h
+    """,
+"#;
     let stream = extract_part_stream(source, "W").unwrap();
     assert_eq!(stream.text, "a b c d\ne f g h");
     assert_eq!(stream.measure_starts, vec![0, 7, 8]);
@@ -158,10 +154,10 @@ Words [W] = lyrics[M]
     assert_eq!(result.changed_measure_count, 2);
     let source = applied(result);
     assert!(
-        source.contains("[W] a b c x\n\n[M] 0 0 0 0\n[W] _\n\n"),
+        source.contains("[W] a b c x\n\n    [M] 0 0 0 0\n    [W] _\n\n"),
         "{source}"
     );
-    assert!(source.ends_with("[W] e f g\n"), "{source}");
+    assert!(source.ends_with("[W] e f g\n    \"\"\",\n"), "{source}");
 }
 
 #[test]
@@ -171,44 +167,50 @@ fn each_line_past_the_last_slot_is_appended_as_a_measure() {
     assert_eq!(result.measure_starts, vec![0, 8, 16, 20, 22, 24]);
     assert_eq!(
         applied(result),
-        r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
+        r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
 
-# score
-[M] 1 2 3 4
-[W] a b c d
+score """
+    [M] 1 2 3 4
+    [W] a b c d
 
-[M] 5 6 7 1
-[W] e f g h
+    [M] 5 6 7 1
+    [W] e f g h
 
-[W] i j
+    [W] i j
 
-[W] k
+    [W] k
 
-[W] _
+    [W] _
 
-[W] l m
-"
+    [W] l m
+    """,
+"#
     );
 }
 
 #[test]
 fn placeholders_pushed_past_the_last_slot_are_dropped() {
-    let source = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
+    let source = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
 
-# score
-[M] 1 2 3 4
+score """
+    [M] 1 2 3 4
 
-[M] 5 6 7 1
-";
+    [M] 5 6 7 1
+    """,
+"#;
     let result = apply_part_stream(source, "W", "a b c d _ _");
     assert_eq!(result.diagnostics, vec![]);
     assert_eq!(
         applied(result),
-        "# parts\nMelody [M] = notes\nWords [W] = lyrics[M]\n\n# score\n[M] 1 2 3 4\n[W] a b c d\n\n[M] 5 6 7 1\n"
+        r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M]],
+
+score """
+    [M] 1 2 3 4
+    [W] a b c d
+
+    [M] 5 6 7 1
+    """,
+"#
     );
 }
 
@@ -216,7 +218,7 @@ Words [W] = lyrics[M]
 fn a_placeholder_past_the_last_slot_is_a_whole_measure_when_syllables_follow_it() {
     let source = applied(apply_part_stream(TWO_MEASURES, "W", "a b c d e f g h _ i"));
     assert!(
-        source.ends_with("[W] e f g h\n\n[W] _\n\n[W] i\n"),
+        source.ends_with("[W] e f g h\n\n    [W] _\n\n    [W] i\n    \"\"\",\n"),
         "{source}"
     );
 }
@@ -230,7 +232,7 @@ fn a_short_last_measure_is_only_a_warning() {
     assert!(warnings[0].message.contains("3 of its 4 syllables"));
     let source = applied(result);
     assert!(
-        source.contains("[W] b c d e\n\n[M] 5 6 7 1\n[W] f g h\n"),
+        source.contains("[W] b c d e\n\n    [M] 5 6 7 1\n    [W] f g h\n"),
         "{source}"
     );
 }
@@ -238,24 +240,25 @@ fn a_short_last_measure_is_only_a_warning() {
 #[test]
 fn a_stream_ending_at_a_barline_removes_later_lyric_lines() {
     let source = applied(apply_part_stream(TWO_MEASURES, "W", "a b c d"));
-    assert!(source.ends_with("[W] a b c d\n\n[M] 5 6 7 1\n"), "{source}");
+    assert!(
+        source.ends_with("[W] a b c d\n\n    [M] 5 6 7 1\n    \"\"\",\n"),
+        "{source}"
+    );
 }
 
 #[test]
 fn lyrics_under_a_follow_part_use_its_copied_notes() {
-    let source = r"# parts
-Soprano [S] = notes
-Alto [A] = follow[S]
-Words [W] = lyrics[A]
+    let source = r#"parts ["Soprano" [S]: notes, "Alto" [A]: follow [S], "Words" [W]: lyrics [A]],
 
-# score
-[S] 1 2 3 4
-[W] a b c d
+score """
+    [S] 1 2 3 4
+    [W] a b c d
 
-[S] 1 2 3 4
-[A] 5 - - -
-[W] e
-";
+    [S] 1 2 3 4
+    [A] 5 - - -
+    [W] e
+    """,
+"#;
     assert_eq!(ineligible_reason(source, "W"), None);
     assert_eq!(extract_part_stream(source, "W").unwrap().text, "a b c d\ne");
 }

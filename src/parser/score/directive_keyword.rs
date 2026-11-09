@@ -1,4 +1,4 @@
-//! The `# score` directive-line vocabulary (see `syntax.md`): `key=value`
+//! The `score` directive-line vocabulary (see `syntax.md`): `key=value`
 //! assignments like `bpm=92`, plus the bare `break`.
 
 keyword_enum! {

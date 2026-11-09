@@ -15,20 +15,17 @@ import {
  * describes.
  */
 const twoPartRangeSource = [
-  '# metadata',
-  'title = "Synced Two-Part Range-Select Score"',
-  'max_measures_per_system = 48',
+  'metadata { title "Synced Two-Part Range-Select Score", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Bass [B] = notes',
+  'parts ["Melody" [M]: notes, "Bass" [B]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
+  'score """',
+  '[M] 1 2',
   '[B] 3 4',
   '',
-  '[M] 5 6', // measure 1
+  '[M] 5 6',
   "[B] 7 1'",
+  '""",',
 ].join('\n')
 
 /** Patches `Worker.prototype.postMessage` before the app's worker is

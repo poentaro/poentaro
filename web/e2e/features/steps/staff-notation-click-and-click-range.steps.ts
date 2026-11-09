@@ -21,22 +21,18 @@ function measureLines(index: number): string[] {
 }
 
 const SOURCE = [
-  '# metadata',
-  'title = "Staff Click Range Test"',
+  'metadata { title "Staff Click Range Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Words [W] = lyrics[M]',
-  'Bass [B] = notes',
+  'parts ["Melody" [M]: notes, "Words" [W]: lyrics [M], "Bass" [B]: notes],',
   '',
-  '# preset "Staff"',
-  'notation = violin',
+  'preset "Staff" { notation: violin },',
   '',
-  '# score',
+  'score """',
   'time=4/4 key=C4 bpm=240',
   Array.from({ length: MEASURE_COUNT }, (_, index) =>
     measureLines(index).join('\n'),
   ).join('\n\n'),
+  '""",',
 ].join('\n')
 
 /** Verovio's first render also downloads its ~7 MB module. */

@@ -7,15 +7,14 @@ fn span_text(source: &str, span: Span) -> &str {
 
 #[test]
 fn part_abbreviation_declaration_and_score_reference_are_collected() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Soprano [S] = notes
+parts ["Soprano" [S]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    """,
 "#;
     let doc = parse(source, "test.poentaro", &[]).unwrap();
     let symbols = collect_symbols(&doc);
@@ -37,18 +36,16 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn section_label_declaration_and_sequence_reference_are_collected() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Soprano [S] = notes
+parts ["Soprano" [S]: notes],
 
-# sequence
-Verse, Verse
+sequence [Verse, Verse],
 
-# score
-time=4/4 key=C4 bpm=120 label="Verse"
-1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120 label="Verse"
+    1 2 3 4
+    """,
 "#;
     let doc = parse(source, "test.poentaro", &[]).unwrap();
     let symbols = collect_symbols(&doc);
@@ -77,18 +74,16 @@ time=4/4 key=C4 bpm=120 label="Verse"
 
 #[test]
 fn sequence_omit_parts_reference_is_collected() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Soprano [S] = notes
+parts ["Soprano" [S]: notes],
 
-# sequence
-Verse(-S)
+sequence [Verse WITHOUT [S]],
 
-# score
-time=4/4 key=C4 bpm=120 label="Verse"
-1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120 label="Verse"
+    1 2 3 4
+    """,
 "#;
     let doc = parse(source, "test.poentaro", &[]).unwrap();
     let symbols = collect_symbols(&doc);
@@ -105,18 +100,16 @@ time=4/4 key=C4 bpm=120 label="Verse"
 
 #[test]
 fn sequence_only_parts_reference_is_collected() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Soprano [S] = notes
+parts ["Soprano" [S]: notes],
 
-# sequence
-Verse(S)
+sequence [Verse ONLY [S]],
 
-# score
-time=4/4 key=C4 bpm=120 label="Verse"
-1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120 label="Verse"
+    1 2 3 4
+    """,
 "#;
     let doc = parse(source, "test.poentaro", &[]).unwrap();
     let symbols = collect_symbols(&doc);
@@ -133,15 +126,14 @@ time=4/4 key=C4 bpm=120 label="Verse"
 
 #[test]
 fn rename_edits_produce_replacement_for_every_occurrence() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Soprano [S] = notes
+parts ["Soprano" [S]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    """,
 "#;
     let doc = parse(source, "test.poentaro", &[]).unwrap();
     let edits = rename_edits(&doc, SymbolKind::Abbreviation, "S", "Sop");
@@ -155,15 +147,14 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn rename_edits_returns_empty_for_unknown_symbol() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Soprano [S] = notes
+parts ["Soprano" [S]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    """,
 "#;
     let doc = parse(source, "test.poentaro", &[]).unwrap();
     let edits = rename_edits(&doc, SymbolKind::Abbreviation, "Nope", "X");

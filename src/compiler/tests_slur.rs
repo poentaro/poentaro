@@ -9,13 +9,27 @@ fn score_from(source: &str) -> crate::ast::grouped::Score {
 
 fn notes_doc(score_content: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nS = notes\n\n# score\n{score_content}"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["S": notes],
+
+score """
+    {score_content}
+    """,
+"#
     )
 }
 
 fn chord_doc(score_content: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nC = chords\n\n# score\n{score_content}"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["C": chords],
+
+score """
+    {score_content}
+    """,
+"#
     )
 }
 
@@ -250,14 +264,16 @@ fn three_measure_slur_with_single_note_middle_measure() {
 fn tilde_cross_measure_chord_slur_emits_single_slur_span() {
     // [a] 3~---  => chord 3 tied (via ~) into 3 extensions, filling measure 1
     // [a] 3      => chord 3 closes the tie in measure 2
-    let input = concat!(
-        "# metadata\ntitle=\"\"\nauthor=\"\"\n\n",
-        "# parts\nAccompaniment [a] = chords\n\n",
-        "# score\n\n\n",
-        "[a] 3~---\n",
-        "\n",
-        "[a] 3\n",
-    );
+    let input = r#"metadata { title "", author "" },
+
+parts ["Accompaniment" [a]: chords],
+
+score """
+    [a] 3~---
+
+    [a] 3
+    """,
+"#;
     let doc = parse(input, "test", &[]).unwrap();
     let score = group(doc).unwrap();
     let result = compile(&score);

@@ -35,13 +35,19 @@ fn metadata_reads_like_the_section_syntax() {
         title style : { font size : 32, bold : yes, font family : sans serif },
         directive row offset : (0, -4),
     }, parts [], score """#;
-    let section_syntax = "# metadata\n\
-        title = \"Song\"\n\
-        max_measures_per_system = 4\n\
-        hide_resting_parts = no\n\
-        title = { font_size: 32, bold: yes, font_family: sans_serif }\n\
-        directive_row_offset = 0 -4\n\n\
-        # parts\n\n# score\n";
+    let section_syntax = r#"metadata {
+    title "Song",
+    max measures per system 4,
+    hide resting parts: no,
+    title style { font size 32, bold: yes, font family: sans serif },
+    directive row offset (0, - 4),
+},
+
+parts [],
+
+score """
+    """,
+"#;
     assert_eq!(error_messages(anyfix), [] as [String; 0]);
     assert_eq!(
         metadata_debug(&parse_metadata_fields(anyfix, None)),
@@ -58,13 +64,17 @@ fn parts_read_like_the_section_syntax() {
         "Snare" : percussion { sound : 38 },
         "Alto 1 & Tenor" [A1&T] : notes,
     ], score """#;
-    let section_syntax = "# parts\n\
-        Violin [V] = notes violin 80% -1\n\
-        Echo [E] = follow[V] 50%\n\
-        Words [Vv1] = lyrics[V]\n\
-        Snare = percussion \"38: Acoustic Snare\"\n\
-        Alto 1 & Tenor [A1&T] = notes\n\n\
-        # score\n";
+    let section_syntax = r#"parts [
+    "Violin" [V]: notes { instrument: violin, volume: 80 %, octave: - 1 },
+    "Echo" [E]: follow [V] { volume: 50 % },
+    "Words" [Vv1]: lyrics [V],
+    "Snare": percussion { sound 38 },
+    "Alto 1 & Tenor" [A1 & T]: notes,
+],
+
+score """
+    """,
+"#;
     assert_eq!(error_messages(anyfix), [] as [String; 0]);
     assert_eq!(declarations(anyfix), declarations(section_syntax));
 }

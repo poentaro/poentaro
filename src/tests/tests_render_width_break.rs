@@ -7,7 +7,14 @@ const MEASURE: &str = "[S] 1_ 2_ 3_ 4_ 5_ 6_ 7_ 1'_";
 /// `measure_count` dense measures under `max_measures_per_system=8`.
 fn source(measure_count: usize) -> String {
     format!(
-        "# metadata\nmax_measures_per_system = 8\n\n# parts\nS = notes\n\n# score\n{}\n",
+        r#"metadata {{ max measures per system 8 }},
+
+parts ["S": notes],
+
+score """
+    {}
+    """,
+"#,
         std::iter::repeat_n(MEASURE, measure_count).join("\n\n")
     )
 }

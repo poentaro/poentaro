@@ -23,7 +23,11 @@
     clippy::needless_pass_by_value
 )]
 
+#[path = "support/metadata_field.rs"]
+mod metadata_field;
+
 use cucumber::{given, then, when, World as _};
+use metadata_field::metadata_field;
 use poentaro::compositor::types::{AbsoluteContent, DominantBaseline};
 use poentaro::fonts::SERIF_FONT_BYTES;
 use poentaro::render_config::RenderConfig;
@@ -100,12 +104,26 @@ fn resolve_font_sizes(config: &RenderConfig) -> coordinate_resolver::ResolveFont
 
 #[when(expr = "it is rendered")]
 fn when_rendered(world: &mut LyricHoverBoxWorld) {
-    let mut metadata = String::from("# metadata\ntitle = \"t\"\n");
-    for (key, value) in &world.metadata_overrides {
-        metadata.push_str(&format!("{key} = {value}\n"));
-    }
+    let metadata = std::iter::once(r#"title "t""#.to_string())
+        .chain(
+            world
+                .metadata_overrides
+                .iter()
+                .map(|(key, value)| metadata_field(key, value)),
+        )
+        .collect::<Vec<_>>()
+        .join(", ");
     let source = format!(
-        "{metadata}\n# parts\nMelody [M] = notes\nLyrics [L] = lyrics[M]\n\n# score\ntime=4/4 key=C4 bpm=120\n[M] 1\n[L] {}\n",
+        r#"metadata {{ {metadata} }},
+
+parts ["Melody" [M]: notes, "Lyrics" [L]: lyrics [M]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1
+    [L] {}
+    """,
+"#,
         world.syllable_text
     );
 

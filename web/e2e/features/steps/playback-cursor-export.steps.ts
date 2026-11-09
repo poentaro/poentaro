@@ -15,15 +15,14 @@ import { Given, Then, When } from './fixtures'
  * (or fail to show) a cursor highlight at all.
  */
 const source = [
-  '# metadata',
-  'title = "playback cursor export test"',
+  'metadata { title "playback cursor export test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1',
+  '    """,',
 ].join('\n')
 
 Given('the playback-cursor export test fixture is loaded', async ({ page }) => {

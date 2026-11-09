@@ -14,18 +14,15 @@ Given(
 
 function buildSource(): string {
   return [
-    '# metadata',
-    'title = "chord lyrics test"',
+    'metadata { title "chord lyrics test" },',
     '',
-    '# parts',
-    'c = chords',
-    'l = lyrics[c]',
+    'parts ["c": chords, "l": lyrics [c]],',
     '',
-    '# score',
-    'time=4/4 key=C4 bpm=120',
-    `[c] ${state.chords}`,
-    `[l] ${state.lyrics}`,
-    '',
+    'score """',
+    '    time=4/4 key=C4 bpm=120',
+    `    [c] ${state.chords}`,
+    `    [l] ${state.lyrics}`,
+    '    """,',
   ].join('\n')
 }
 

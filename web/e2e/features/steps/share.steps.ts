@@ -11,15 +11,14 @@ import { Given, Then, When } from './fixtures'
 const FILE_STORE_KEY = 'poentaro:files:v1'
 const SHARED_FILENAME = 'shared-test.poentaro'
 const SHARED_SOURCE = [
-  '# metadata',
-  'title = "Shared Score"',
+  'metadata { title "Shared Score" },',
   '',
-  '# parts',
-  'Melody = notes',
+  'parts ["Melody": notes],',
   '',
-  '# score',
-  '(time=4/4 key=C4 bpm=120)',
-  '1 2 3 4',
+  'score """',
+  '    (time=4/4 key=C4 bpm=120)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 let lastShareUrl: string | undefined
@@ -192,15 +191,14 @@ Then('the pane-divider toggle is visible again', async ({ page }) => {
 // instead of erroring out as a positional-lyrics line with no preceding
 // `[Key]` line.
 const NOTE_TAP_SHARED_SOURCE = [
-  '# metadata',
-  'title = "Shared Score"',
+  'metadata { title "Shared Score" },',
   '',
-  '# parts',
-  'Melody = notes',
+  'parts ["Melody": notes],',
   '',
-  '# score',
-  'time=4/4 key=C4 bpm=120',
-  '[Melody] 1 2 3 4',
+  'score """',
+  '    time=4/4 key=C4 bpm=120',
+  '    [Melody] 1 2 3 4',
+  '    """,',
 ].join('\n')
 
 When(
@@ -277,22 +275,21 @@ Then('no editable element gains focus, as seen in share', async ({ page }) => {
 // section jump has no Monaco selection to echo a highlight back from (see
 // `useSectionNavigation.selectSectionRange`'s doc comment).
 const TWO_SECTION_SHARED_SOURCE = [
-  '# metadata',
-  'title = "Shared Score"',
+  'metadata { title "Shared Score" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  'time=4/4 key=C4 bpm=120 label="A"',
-  '[M] 1 2 3 4',
+  'score """',
+  '    time=4/4 key=C4 bpm=120 label="A"',
+  '    [M] 1 2 3 4',
   '',
-  "[M] 5 6 7 1'",
+  "    [M] 5 6 7 1'",
   '',
-  'label="B"',
-  "[M] 1' 7 6 5",
+  '    label="B"',
+  "    [M] 1' 7 6 5",
   '',
-  '[M] 4 3 2 1',
+  '    [M] 4 3 2 1',
+  '    """,',
 ].join('\n')
 
 When(

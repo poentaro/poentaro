@@ -27,19 +27,15 @@ import { Given, Then, When } from './fixtures'
  * fixture.
  */
 const multiVerseSource = [
-  '# metadata',
-  'title = "lyric independent selection test"',
-  'max_measures_per_system = 48',
+  'metadata { title "lyric independent selection test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody verse 1 [Mv1] = lyrics[M]',
-  'Melody verse 2 [Mv2] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody verse 1" [Mv1]: lyrics [M], "Melody verse 2" [Mv2]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — line 9
-  '[Mv1] do re mi fa', // verse 0 — line 10
-  '[Mv2] uno dos tres cuatro', // verse 1 — line 11
+  'score """',
+  '[M] 1 2 3 4',
+  '[Mv1] do re mi fa',
+  '[Mv2] uno dos tres cuatro',
+  '""",',
 ].join('\n')
 
 function lyricRect(

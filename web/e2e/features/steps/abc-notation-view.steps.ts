@@ -2,20 +2,18 @@ import { expect } from '@playwright/test'
 import { Given, Then } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "ABC View Test"',
+  'metadata { title "ABC View Test" },',
   '',
-  '# parts',
-  'Soprano [S] = notes',
-  'Chords [C] = chords',
+  'parts ["Soprano" [S]: notes, "Chords" [C]: chords],',
   '',
-  '# score',
-  '(bpm=120 key=D4 time=4/4)',
-  '[S] 1 2 3 4',
-  '[C] 1 - 6m/3 -',
+  'score """',
+  '    (bpm=120 key=D4 time=4/4)',
+  '    [S] 1 2 3 4',
+  '    [C] 1 - 6m/3 -',
   '',
-  "[S] 5 6 7 1'",
-  '[C] 4M7 - 5b -',
+  "    [S] 5 6 7 1'",
+  '    [C] 4M7 - 5b -',
+  '    """,',
 ].join('\n')
 
 Given(

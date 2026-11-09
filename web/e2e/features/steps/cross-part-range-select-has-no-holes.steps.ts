@@ -5,7 +5,7 @@ import { Given, Then, When } from './fixtures'
 
 const FILE_NAME = 'cross-part-range-select-has-no-holes.poentaro'
 
-/** The `[X]` abbreviations of the score's `# parts` section, in declaration
+/** The `[X]` abbreviations of the score's `parts [...]` section, in declaration
  * order — a part's position here is its `sourcePartIndex`. */
 let partAbbreviations: string[] = []
 
@@ -52,15 +52,13 @@ async function clickCenterOf(
 }
 
 Given('the score:', async ({ page }, body: string) => {
-  const [partsSection = ''] = body.split('# score')
+  const [partsSection = ''] = body.split('score')
   partAbbreviations = Array.from(
-    partsSection.matchAll(/^[^[]*\[([^\]]+)\]/gm),
-    (match) => match[1] ?? '',
+    partsSection.matchAll(/"([^"]+)"(?:\s*\[([^\]]+)\])?\s*:/g),
+    (match) => match[2] ?? match[1] ?? '',
   )
   const source = [
-    '# metadata',
-    'title = "cross part range test"',
-    'max_measures_per_system = 48',
+    'metadata { title "cross part range test", max measures per system 48 },',
     '',
     body,
   ].join('\n')

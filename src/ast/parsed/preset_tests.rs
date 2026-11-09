@@ -85,7 +85,17 @@ fn document(source: &str) -> ParsedDocument {
     crate::parser::parse(source, "test.poentaro", &[]).expect("parses")
 }
 
-const SONG_WITH_CHOIR_PRESET: &str = "# metadata\ntitle = \"Song\"\nsubtitle = \"Base\"\n\n# parts\nMain [main] = notes\nSoprano [S1] = notes\n\n# score\n[main] 1\n[S1] 2\n\n# preset \"Choir\"\nvisible_parts = S1, main\nsubtitle = \"Choir\"\n";
+const SONG_WITH_CHOIR_PRESET: &str = r#"metadata { title "Song", subtitle "Base" },
+
+parts ["Main" [main]: notes, "Soprano" [S1]: notes],
+
+score """
+    [main] 1
+    [S1] 2
+    """,
+
+preset "Choir" { visible parts [S1, main], subtitle "Choir" },
+"#;
 
 #[test]
 fn with_preset_overlays_the_chosen_preset() {

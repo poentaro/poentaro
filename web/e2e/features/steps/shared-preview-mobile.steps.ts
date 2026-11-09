@@ -3,15 +3,14 @@ import { gotoShareUrl } from '../../shareUrlHelper'
 import { Given, Then, When } from './fixtures'
 
 const SHARED_SOURCE = [
-  '# metadata',
-  'title = "Shared Mobile Test"',
+  'metadata { title "Shared Mobile Test" },',
   '',
-  '# parts',
-  'Melody = notes',
+  'parts ["Melody": notes],',
   '',
-  '# score',
-  '(time=4/4 key=C4 bpm=120)',
-  '1 2 3 4',
+  'score """',
+  '    (time=4/4 key=C4 bpm=120)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 Given('local storage is cleared on a mobile viewport', async ({ page }) => {

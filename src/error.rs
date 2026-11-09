@@ -6,7 +6,7 @@ pub use irrecoverable::{IrrecoverableError, IrrecoverableErrorKind};
 pub use recoverable_error::RecoverableError;
 pub use recoverable_kind::RecoverableErrorKind;
 
-/// One of the document's top-level sections (`# sequence` is optional; the
+/// One of the document's top-level sections (`sequence` is optional; the
 /// others are required).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DocumentSection {
@@ -19,10 +19,10 @@ pub enum DocumentSection {
 impl DocumentSection {
     pub fn header(self) -> &'static str {
         match self {
-            Self::Metadata => "# metadata",
-            Self::Parts => "# parts",
-            Self::Score => "# score",
-            Self::Sequence => "# sequence",
+            Self::Metadata => "metadata { ... }",
+            Self::Parts => "parts [ ... ]",
+            Self::Score => "score \"\"\" ... \"\"\"",
+            Self::Sequence => "sequence [ ... ]",
         }
     }
 }

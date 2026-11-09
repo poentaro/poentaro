@@ -11,7 +11,14 @@ struct Click {
 
 fn score_source(time_and_measures: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\na = notes \"0: Acoustic Grand Piano\"\n\n# score\n{time_and_measures}"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["a": notes {{ sound 0 }}],
+
+score """
+    {time_and_measures}
+    """,
+"#
     )
 }
 
@@ -135,13 +142,15 @@ fn metronome_selects_the_standard_drum_kit_even_without_percussion_parts() {
 
 #[test]
 fn metronome_shares_one_drum_kit_program_change_with_percussion_parts() {
-    let source = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\n",
-        "Snare = percussion \"38: Acoustic Snare\"\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n",
-        "[Snare] x 0 x 0\n",
-    );
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["Snare": percussion { sound 38 }],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Snare] x 0 x 0
+    """,
+"#;
     let score = compile(source);
     let midi_bytes = write_midi_with_metronome(&score, true).unwrap();
     assert_eq!(percussion_program_changes(&midi_bytes), 1);

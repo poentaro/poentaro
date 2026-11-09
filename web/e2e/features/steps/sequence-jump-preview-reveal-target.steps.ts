@@ -11,16 +11,13 @@ const fillerMeasures = Array.from(
 ).join('\n\n')
 
 const SOURCE = [
-  '# metadata',
-  'title = "test"',
+  'metadata { title "test" },',
   '',
-  '# parts',
-  'M = notes',
+  'parts ["M": notes],',
   '',
-  '# sequence',
-  'Intro, C',
+  'sequence [Intro, "C"],',
   '',
-  '# score',
+  'score """',
   'time=4/4 key=C4 bpm=120 label="Intro"',
   '1 2 3 4',
   '',
@@ -28,6 +25,7 @@ const SOURCE = [
   '',
   'label="C"',
   "1' 7 6 5",
+  '""",',
 ].join('\n')
 
 function sequenceToolbarButtons(page: import('@playwright/test').Page) {

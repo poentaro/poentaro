@@ -19,33 +19,33 @@ import { Given, Then, When } from './fixtures'
  * into its own system; measure 2 is a distractor, outside the swept range.
  */
 const source = [
-  '# metadata',
-  'title = "note lyriclabel range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "note lyriclabel range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
-  'Harmony verse 1 [Hv1] = lyrics[H]',
-  'Harmony verse 2 [Hv2] = lyrics[H]',
+  'parts [',
+  '    "Melody" [M]: notes,',
+  '    "Harmony" [H]: notes,',
+  '    "Harmony verse 1" [Hv1]: lyrics [H],',
+  '    "Harmony verse 2" [Hv2]: lyrics [H],',
+  '],',
   '',
-  '# score',
-  '[M] 1', // measure 0 — system 0
+  'score """',
+  '[M] 1',
   '[H] 5',
-  '[Hv1] do', // Harmony verse 0
-  '[Hv2] fa', // Harmony verse 1 — proves the verse restriction, see below
+  '[Hv1] do',
+  '[Hv2] fa',
   '',
   'break',
-  '[M] 2', // measure 1 — system 1
+  '[M] 2',
   '[H] 6',
-  '[Hv1] re', // Harmony verse 0
-  '[Hv2] sol', // Harmony verse 1
+  '[Hv1] re',
+  '[Hv2] sol',
   '',
   'break',
-  '[M] 3', // measure 2 — system 2, distractor
+  '[M] 3',
   '[H] 7',
-  '[Hv1] mi', // Harmony verse 0
-  '[Hv2] la', // Harmony verse 1
+  '[Hv1] mi',
+  '[Hv2] la',
+  '""",',
 ].join('\n')
 
 // A note group carries a sibling `Tag::Note` group for its

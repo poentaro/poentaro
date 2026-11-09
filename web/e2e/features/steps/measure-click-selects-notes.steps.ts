@@ -25,19 +25,17 @@ import { Given, Then, When } from './fixtures'
  * Measure 2 : [M] 7 1'      — 2 notes
  */
 const clickTestSource = [
-  '# metadata',
-  'title = "measure click test"',
-  'max_measures_per_system = 48',
+  'metadata { title "measure click test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — line 9
+  'score """',
+  '[M] 1 2 3 4',
   '',
-  '[M] 5 6', // measure 1 — line 11
+  '[M] 5 6',
   '',
-  "[M] 7 1'", // measure 2 — line 13
+  "[M] 7 1'",
+  '""",',
 ].join('\n')
 
 async function loadClickTestFixture(page: import('@playwright/test').Page) {
@@ -59,7 +57,7 @@ async function loadClickTestFixture(page: import('@playwright/test').Page) {
 async function primeMeasureSpans(page: import('@playwright/test').Page) {
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('9')
+  await page.keyboard.type('6')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,
@@ -248,23 +246,21 @@ Then(
  * select that one cell, whose source span covers all three measures.
  */
 const mergedRestSource = [
-  '# metadata',
-  'title = "merged rest click test"',
-  'max_measures_per_system = 48',
+  'metadata { title "merged rest click test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 1 1 1', // measure 0 — line 9
+  'score """',
+  '[M] 1 1 1 1',
   '',
-  '[M] 0 0 0 0', // measure 1 — line 11
+  '[M] 0 0 0 0',
   '',
-  '[M] 0 0 0 0', // measure 2 — line 13
+  '[M] 0 0 0 0',
   '',
-  '[M] 0 0 0 0', // measure 3 — line 15
+  '[M] 0 0 0 0',
   '',
-  '[M] 2 2 2 2', // measure 4 — line 17
+  '[M] 2 2 2 2',
+  '""",',
 ].join('\n')
 
 Given('the merged-rest test fixture is loaded', async ({ page }) => {

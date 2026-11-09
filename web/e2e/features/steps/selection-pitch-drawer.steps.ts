@@ -17,16 +17,14 @@ let loadedLines: { label: string; tokens: string[] }[] = []
 
 function scoreSource(key: string, partDeclaration: string, body: string) {
   return [
-    '# metadata',
-    'title = "pitch drawer test"',
-    'max_measures_per_system = 48',
+    'metadata { title "pitch drawer test", max measures per system 48 },',
     '',
-    '# parts',
-    partDeclaration,
+    `parts [${partDeclaration}],`,
     '',
-    '# score',
+    'score """',
     `bpm=120 key=${key} time=4/4`,
     body,
+    '""",',
   ].join('\n')
 }
 
@@ -83,7 +81,7 @@ async function loadScore(page: Page, source: string) {
   // editor focused so Escape reaches Monaco.
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('9')
+  await page.keyboard.type('7')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,
@@ -134,7 +132,7 @@ const handle = (page: Page) => page.getByTestId('pitch-drawer-handle')
 Given(
   'a score in key {word} with {string} is loaded',
   async ({ page }, key: string, body: string) => {
-    await loadBody(page, key, 'Melody [M] = notes', body)
+    await loadBody(page, key, '"Melody" [M]: notes', body)
   },
 )
 
@@ -148,7 +146,7 @@ Given(
     await gotoShareUrl(
       page,
       'pitch-drawer-test.poentaro',
-      scoreSource(key, 'Melody [M] = notes', body),
+      scoreSource(key, '"Melody" [M]: notes', body),
     )
     await expect(page.getByText('Import this score')).toBeVisible({
       timeout: 15_000,
@@ -165,7 +163,7 @@ Given(
 Given(
   'a score in key {word} with {string} on a chords part is loaded',
   async ({ page }, key: string, body: string) => {
-    await loadBody(page, key, 'Chords [C] = chords', body)
+    await loadBody(page, key, '"Chords" [C]: chords', body)
   },
 )
 
@@ -173,7 +171,7 @@ Given(
   'a score whose measure 1 is in key C4 and measure 2 is in key G4',
   async ({ page }) => {
     const body = '[M] 1 2 3 4\n\nkey=G4\n[M] 1 2 3 4'
-    await loadBody(page, 'C4', 'Melody [M] = notes', body)
+    await loadBody(page, 'C4', '"Melody" [M]: notes', body)
   },
 )
 

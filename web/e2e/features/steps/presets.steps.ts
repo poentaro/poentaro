@@ -7,25 +7,20 @@ import { Given, Then, When } from './fixtures'
 // `edit-metadata-modal.steps.ts`.
 
 const PRESETS_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Chords [C] = chords',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M], "Chords" [C]: chords],',
   '',
-  '# preset "Melody only"',
-  'visible_parts = M, Mv1',
+  'preset "Melody only" { visible parts [M, Mv1] },',
   '',
-  '# preset "Violin"',
-  'notation = violin',
+  'preset "Violin" { notation: violin },',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 2 3 4',
-  '[Mv1] twin- kle twin- kle',
-  '[C] 1 - - -',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 2 3 4',
+  '    [Mv1] twin- kle twin- kle',
+  '    [C] 1 - - -',
+  '    """,',
 ].join('\n')
 
 type MonacoWindow = Window & {
@@ -74,14 +69,15 @@ async function storedSource(page: Page) {
   })
 }
 
-/** The trimmed lines of the `# preset "name"` section, header excluded. */
-function presetLines(source: string, name: string): string[] {
-  const lines = source.split('\n')
-  const header = lines.indexOf(`# preset "${name}"`)
-  if (header === -1) return []
-  const rest = lines.slice(header + 1)
-  const end = rest.findIndex((line) => line.startsWith('#'))
-  return rest.slice(0, end === -1 ? undefined : end).map((line) => line.trim())
+/** What the `name` preset's braces hold, whitespace collapsed. */
+function presetBody(source: string, name: string): string {
+  const header = `preset "${name}" {`
+  const start = source.indexOf(header)
+  if (start === -1) return ''
+  const bodyStart = start + header.length
+  return source
+    .slice(bodyStart, source.indexOf('}', bodyStart))
+    .replace(/\s+/g, ' ')
 }
 
 function presetMenu(page: Page) {
@@ -263,20 +259,20 @@ Then(
 )
 
 Then(
-  'the {string} preset has the line {string}',
-  async ({ page }, name: string, line: string) => {
+  'the {string} preset has {string}',
+  async ({ page }, name: string, text: string) => {
     await expect
-      .poll(async () => presetLines(await editorSource(page), name))
-      .toContain(line)
+      .poll(async () => presetBody(await editorSource(page), name))
+      .toContain(text)
   },
 )
 
 Then(
-  "the stored file's {string} preset has the line {string}",
-  async ({ page }, name: string, line: string) => {
+  "the stored file's {string} preset has {string}",
+  async ({ page }, name: string, text: string) => {
     await expect
-      .poll(async () => presetLines(await storedSource(page), name))
-      .toContain(line)
+      .poll(async () => presetBody(await storedSource(page), name))
+      .toContain(text)
   },
 )
 
@@ -329,14 +325,10 @@ Then(
 )
 
 Then(
-  'the {string} preset has no {string} line',
-  async ({ page }, name: string, key: string) => {
+  'the {string} preset has no {string}',
+  async ({ page }, name: string, text: string) => {
     await expect
-      .poll(async () =>
-        presetLines(await editorSource(page), name).filter((line) =>
-          line.startsWith(`${key} =`),
-        ),
-      )
-      .toEqual([])
+      .poll(async () => presetBody(await editorSource(page), name))
+      .not.toContain(text)
   },
 )

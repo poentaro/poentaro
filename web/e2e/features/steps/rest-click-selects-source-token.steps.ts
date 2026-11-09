@@ -19,15 +19,13 @@ import { Given, Then, When } from './fixtures'
  * targets render side by side in one row.
  */
 const restClickTestSource = [
-  '# metadata',
-  'title = "rest click test"',
-  'max_measures_per_system = 48',
+  'metadata { title "rest click test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 0 3 4', // measure 0 — line 9
+  'score """',
+  '[M] 1 0 3 4',
+  '""",',
 ].join('\n')
 
 async function getEditorSelectedText(page: import('@playwright/test').Page) {
@@ -75,7 +73,7 @@ Given('the rest-click test fixture is loaded', async ({ page }) => {
   // stale by the time the click-and-click gesture below runs.
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('9')
+  await page.keyboard.type('6')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,

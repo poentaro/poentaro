@@ -25,31 +25,31 @@ import { Given, Then, When } from './fixtures'
  * unioning every measure both parts appear in.
  */
 const source = [
-  '# metadata',
-  'title = "cross part lyric range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "cross part lyric range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Harmony [H] = notes',
-  'Harmony lyrics [Hv1] = lyrics[H]',
+  'parts [',
+  '    "Melody" [M]: notes,',
+  '    "Melody lyrics" [Mv1]: lyrics [M],',
+  '    "Harmony" [H]: notes,',
+  '    "Harmony lyrics" [Hv1]: lyrics [H],',
+  '],',
   '',
-  '# score',
-  '[M] 1', // measure 0
-  '[Mv1] do', // Melody verse 0
+  'score """',
+  '[M] 1',
+  '[Mv1] do',
   '[H] 5',
-  '[Hv1] la', // Harmony verse 0
+  '[Hv1] la',
   '',
-  '[M] 2', // measure 1
+  '[M] 2',
   '[Mv1] re',
   '[H] 6',
   '[Hv1] ti',
   '',
-  '[M] 3', // measure 2 — distractor, outside the swept measure range
+  '[M] 3',
   '[Mv1] mi',
   '[H] 7',
   '[Hv1] sol',
+  '""",',
 ].join('\n')
 
 function lyricInPart(page: import('@playwright/test').Page, partIndex: number) {

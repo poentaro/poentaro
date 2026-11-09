@@ -44,7 +44,7 @@ pub struct Metadata {
     pub subtitle_style: TextStyle,
     /// Author text style. `font_size` default: 60% of `row_height`.
     pub author_style: TextStyle,
-    /// `# sequence` summary line text style. `font_size` default: 12.
+    /// `sequence` summary line text style. `font_size` default: 12.
     pub sequence: TextStyle,
     /// Part-name legend entry text style (e.g. `V — Vocal (S1,S2,A1,A2)`).
     /// `font_size` default: 60% of `row_height`.
@@ -102,7 +102,7 @@ pub struct Metadata {
     pub hide_system_dividers: bool,
     /// Translation in points applied to every rendered directive row (bar number, section
     /// label, key, bpm, time signature, nav markers), after layout (see
-    /// `renderer::new_renderer::render_directive_line`). Not applied to the `# sequence`
+    /// `renderer::new_renderer::render_directive_line`). Not applied to the `sequence`
     /// summary header. Default: `(0, 0)`.
     pub directive_row_offset: Offset,
 }
@@ -142,7 +142,7 @@ pub struct PartSlice {
     pub soundfont: crate::ast::parsed::Soundfont,
     pub volume: u8,
     pub octave_offset: i8,
-    /// The instrument the part's `# parts` line names, if any (see
+    /// The instrument the part's `parts` line names, if any (see
     /// `RangeInstrument`).
     pub range_instrument: Option<crate::ast::parsed::RangeInstrument>,
     pub notes: Notes,
@@ -175,11 +175,11 @@ pub struct MultiPartMeasure {
     pub label: Option<String>,
     /// Resolved value of `merge_duplicate_measures_across_parts=` in effect on this
     /// measure — either an override starting here or carried forward from an earlier
-    /// measure or the `#metadata` default (see `consolidator::consolidate`).
+    /// measure or the `metadata` default (see `consolidator::consolidate`).
     pub merge_duplicate_measures_across_parts: bool,
     /// Resolved value of `hide_resting_parts=` in effect on this measure — either an
     /// override starting here or carried forward from an earlier measure or the
-    /// `#metadata` default (see `compiler::compile_measure`).
+    /// `metadata` default (see `compiler::compile_measure`).
     pub hide_resting_parts: bool,
     /// `break` directive on this measure's directive line: forces a new system
     /// to start at this measure (see `grid_layout::layout_systems::pack_into_systems`).
@@ -253,7 +253,7 @@ pub struct Score {
     pub measures: Vec<MultiPartMeasure>,
     /// Document-level diagnostics (e.g. metadata parse errors), not tied to any measure.
     pub document_diagnostics: Vec<Diagnostic>,
-    /// Resolved playback order from a `# sequence` section, if present and
+    /// Resolved playback order from a `sequence` section, if present and
     /// valid: each span is a labeled section's inclusive measure-index range
     /// in `measures`, in the order they should play.
     pub sequence: Option<Vec<SequenceSpan>>,
@@ -270,8 +270,8 @@ pub struct SequenceSpan {
     /// Inclusive index into `Score.measures`.
     pub end: usize,
     /// Individual part abbreviations to omit from this occurrence's MIDI/WAV
-    /// playback (from a `# sequence` entry's `(-abbrev ...)` omit suffix, or
-    /// the complement of an `(abbrev ...)` only suffix against `# parts`).
+    /// playback (from a `sequence` entry's `(-abbrev ...)` omit suffix, or
+    /// the complement of an `(abbrev ...)` only suffix against `parts`).
     pub omit_parts: Vec<String>,
     /// The entry's `(-abbrev ...)` / `(abbrev ...)` suffix's abbreviations as
     /// written, plus whether it's an omit or only suffix, for display on the
@@ -280,7 +280,7 @@ pub struct SequenceSpan {
     pub part_filter_display: Option<PartFilterDisplay>,
 }
 
-/// A `# sequence` entry's `(...)` suffix, as written, for display purposes.
+/// A `sequence` entry's `(...)` suffix, as written, for display purposes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PartFilterDisplay {
     pub kind: crate::parser::sequence_parser::PartFilterKind,

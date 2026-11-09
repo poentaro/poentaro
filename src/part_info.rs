@@ -1,12 +1,11 @@
 use crate::error::IrrecoverableError;
 use crate::parser::parts_parser::{
-    self, InstrumentInfo, SourcePartMode, SourceRawPartDecl, DEFAULT_PART_OCTAVE_OFFSET,
+    InstrumentInfo, SourcePartMode, SourceRawPartDecl, DEFAULT_PART_OCTAVE_OFFSET,
     DEFAULT_PART_VOLUME,
 };
-use crate::parser::section_splitter::{split_sections, SectionKind};
 use crate::source_edit::{PartMode, PartSettings};
 
-/// A part declared in the `# parts` section.
+/// A part declared in the `parts` section.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PartInfo {
     /// Abbreviation used in score row labels and `--tracks` filtering.
@@ -60,31 +59,15 @@ fn map_raw_to_source_declaration(
 
 /// List source-level part declarations from a `.poentaro` source string.
 ///
-/// Returns what is written on each `# parts` line, without follow inheritance.
+/// Returns what is written on each `parts` line, without follow inheritance.
 pub fn list_part_declarations_from_source(
     source: &str,
     _filename: &str,
     instruments: &[InstrumentInfo],
 ) -> Result<Vec<SourcePartDeclaration>, IrrecoverableError> {
     let mut errors = Vec::new();
-    let raw_declarations = if crate::document::is_anyfix(source) {
-        crate::parser::anyfix::source_part_declarations(source, &mut errors, instruments)
-    } else {
-        let (sections, _) = split_sections(source);
-        let Some(parts_section) = sections
-            .iter()
-            .find(|section| section.kind == SectionKind::Parts)
-        else {
-            return Ok(Vec::new());
-        };
-        parts_parser::collect_source_raw_declarations(
-            &parts_section.content,
-            parts_section.content_offset,
-            source,
-            &mut errors,
-            instruments,
-        )
-    };
+    let raw_declarations =
+        crate::parser::anyfix::source_part_declarations(source, &mut errors, instruments);
 
     // Lyric parts have no sound, volume or octave to edit.
     Ok(raw_declarations

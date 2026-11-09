@@ -2,9 +2,13 @@ import { expect, type Page } from '@playwright/test'
 import { NEW_ORIGIN, OLD_ORIGIN } from '../../originMigrationHelpers'
 import { Given, Then, When } from './fixtures'
 
-const SOURCE = ['# parts', 'Melody [M] = notes', '', '# score', '1 2 3 4'].join(
-  '\n',
-)
+const SOURCE = [
+  'parts ["Melody" [M]: notes],',
+  '',
+  'score """',
+  '1 2 3 4',
+  '""",',
+].join('\n')
 
 /** Saves a local file store holding `name` on `origin`, under the
  * `localStorage` key `key`, before any of that origin's page scripts run. */

@@ -1,6 +1,6 @@
 //! Cucumber harness for [`format_score`]'s part-order sorting (see
 //! `tests/features/format_score_part_order.feature`): a measure group's
-//! surviving `[Key]` lines are reordered to match `# parts` declaration
+//! surviving `[Key]` lines are reordered to match `parts` declaration
 //! order, and a positional (unprefixed) lyrics line must travel with its
 //! nearest preceding `[Key]` line's block rather than being treated as
 //! independent, unattached content.
@@ -20,7 +20,7 @@
 
 use cucumber::gherkin::Step;
 use cucumber::{given, then, when, World as _};
-use poentaro::format_source::format_score;
+use poentaro::format_anyfix::format_anyfix as format_score;
 
 #[derive(Debug, Default, cucumber::World)]
 struct FormatWorld {
@@ -43,7 +43,7 @@ fn then_formatted_source(world: &mut FormatWorld, step: &Step) {
     let expected = step.docstring().cloned().unwrap_or_default();
     assert_eq!(
         world.formatted.trim_end_matches('\n'),
-        expected.trim_end_matches('\n'),
+        expected.trim_matches('\n'),
         "formatted source mismatch"
     );
 }

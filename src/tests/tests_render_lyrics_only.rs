@@ -1,20 +1,16 @@
 use super::*;
 
-const SOURCE: &str = concat!(
-    "# metadata\n",
-    "title = \"t\"\n",
-    "\n",
-    "# parts\n",
-    "Melody [M] = notes\n",
-    "Melody lyrics [Mv1] = lyrics[M]\n",
-    "Chords [C] = chords\n",
-    "\n",
-    "# score\n",
-    "(bpm=120 key=C4 time=4/4)\n",
-    "[M] 1 2 3 4\n",
-    "[Mv1] twin- kle twin- kle\n",
-    "[C] 1 - - -\n",
-);
+const SOURCE: &str = r#"metadata { title "t" },
+
+parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M], "Chords" [C]: chords],
+
+score """
+    (bpm=120 key=C4 time=4/4)
+    [M] 1 2 3 4
+    [Mv1] twin- kle twin- kle
+    [C] 1 - - -
+    """,
+"#;
 
 fn render(visibility: &ResolvedPartVisibility) -> String {
     render_svgs_from_source_with_visibility(
@@ -110,18 +106,16 @@ fn shown_lyric_part_is_listed_in_the_part_list_legend() {
 
 #[test]
 fn lyrics_only_measure_without_lyrics_is_a_blank_lyric_row_not_a_rest() {
-    let source = concat!(
-        "# parts\n",
-        "Melody [M] = notes\n",
-        "Melody lyrics [Mv1] = lyrics[M]\n",
-        "\n",
-        "# score\n",
-        "(bpm=120 key=C4 time=4/4)\n",
-        "[M] 1 2 3 4\n",
-        "\n",
-        "[M] 5 6 7 1\n",
-        "[Mv1] la la la la\n",
-    );
+    let source = r#"parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],
+
+score """
+    (bpm=120 key=C4 time=4/4)
+    [M] 1 2 3 4
+
+    [M] 5 6 7 1
+    [Mv1] la la la la
+    """,
+"#;
 
     let svg = render_svgs_from_source_with_visibility(
         source,

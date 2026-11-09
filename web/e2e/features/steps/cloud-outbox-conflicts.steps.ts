@@ -23,14 +23,15 @@ const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 const EDITOR_LINES = '.monaco-editor .view-lines'
 const displayName = (fileName: string) => fileName.replace(/\.poentaro$/, '')
 
-/** The default seed with its last line (`1 2 3 4`) replaced by `lastLine`. */
+/** The default seed with its notes line (`1 2 3 4`) replaced by `lastLine`. */
 const withLastLine = (lastLine: string) =>
-  DEFAULT_CLOUD_FILE_CONTENT.replace(/1 2 3 4$/, lastLine)
+  DEFAULT_CLOUD_FILE_CONTENT.replace('1 2 3 4', lastLine)
 
 // Two edits far enough apart for a line-based three-way merge to keep both:
 // the first line (a comment heading) and the last line (the notes).
-const TWO_LINE_BASE = `# metadata\n${DEFAULT_CLOUD_FILE_CONTENT.split('\n').slice(1).join('\n')}`
-const FIRST_LINE_EDIT = '# metadata edited here'
+const TWO_LINE_BASE = `# heading
+${DEFAULT_CLOUD_FILE_CONTENT}`
+const FIRST_LINE_EDIT = '# heading edited here'
 const SECOND_LINE_EDIT = '1 2 3 4 7'
 const RESOLVED_TEXT = '1 2 3 9 5'
 
@@ -104,7 +105,7 @@ Given(
   async ({}, fileName: string) => {
     await changeServerCopy(
       fileName,
-      TWO_LINE_BASE.replace(/1 2 3 4$/, SECOND_LINE_EDIT),
+      TWO_LINE_BASE.replace('1 2 3 4', SECOND_LINE_EDIT),
     )
   },
 )

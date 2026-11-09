@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { type MetadataFields, poentaroWasm } from '../poentaroWasm'
 import { ensureWasmInit } from '../wasmInit'
 
-/** The field values of the preset called `presetName`, or of `# metadata`
+/** The field values of the preset called `presetName`, or of `metadata`
  * when `null`, parsed by the Rust metadata parser. `null` while `enabled` is false (so a closed Edit Metadata modal
  * costs nothing per keystroke) or until the main-thread wasm component is
  * ready. */

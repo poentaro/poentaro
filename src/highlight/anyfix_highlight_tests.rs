@@ -1,6 +1,6 @@
 use super::{highlight_tokens, section_headers};
 use crate::highlight::HighlightKind;
-use crate::parser::section_splitter::SectionKind;
+use crate::parser::section::SectionKind;
 
 const DOCUMENT: &str = r#"# The song
 metadata { title : "Hello", title style : { bold : yes } },
@@ -60,4 +60,20 @@ fn part_kinds_are_marked() {
 #[test]
 fn directive_keywords_in_the_score_string_are_marked() {
     assert_eq!(words(HighlightKind::DirectiveKey), ["bpm", "label"]);
+}
+
+#[test]
+fn unknown_fields_stay_uncolored() {
+    let source = r#"metadata { row height 30, colour: red },
+
+preset "Solo" { flavour : sweet, page margin pt 9 },
+
+score "",
+"#;
+    let keys = highlight_tokens(source)
+        .into_iter()
+        .filter(|token| token.kind == HighlightKind::MetadataKey)
+        .map(|token| &source[token.span.start..token.span.end])
+        .collect::<Vec<_>>();
+    assert_eq!(keys, ["row", "height", "page", "margin", "pt"]);
 }

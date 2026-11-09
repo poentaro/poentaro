@@ -1,14 +1,14 @@
 use super::*;
 
-const SOURCE: &str = "# parts
-S = notes
+const SOURCE: &str = r#"parts ["S": notes],
 
-# score
-time=4/4 key=D4 bpm=120
-[S] 1 2 3 4'
+score """
+    time=4/4 key=D4 bpm=120
+    [S] 1 2 3 4'
 
-[S] 5. 6_ 7 1
-";
+    [S] 5. 6_ 7 1
+    """,
+"#;
 
 /// The text of every `note-head` `<text>` element, in document order.
 fn note_head_texts(svg: &str) -> Vec<String> {

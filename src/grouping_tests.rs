@@ -1,31 +1,30 @@
 fn parse_score(notes_line: &str) -> Result<crate::RenderOutput, crate::error::IrrecoverableError> {
     let input = format!(
-        concat!(
-            "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n",
-            "# score\ntime=4/4 key=C4 bpm=120\n",
-            "[Melody] {notes_line}"
-        ),
-        notes_line = notes_line
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] {notes_line}
+    """,
+"#
     );
     crate::render_svgs_from_source(&input, "test.poentaro", &[])
 }
 
 #[test]
 fn chord_half_bar_boundary_validation_matches_notes() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "c = chords\n",
-        "n = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[c] 1. 2. 3_ 4_\n",
-        "[n] 1 2 3 4\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["c": chords, "n": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [c] 1. 2. 3_ 4_
+    [n] 1 2 3 4
+    """,
+"#;
     let output = crate::render_svgs_from_source(input, "t.poentaro", &[]).unwrap();
     assert!(output
         .diagnostics
@@ -110,11 +109,15 @@ fn accepts_extension_notes_that_start_on_beat_three() {
 
 #[test]
 fn skips_validation_for_non_four_four() {
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n",
-        "# score\ntime=3/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=3/4 key=C4 bpm=120
+    [Melody] 1 2 3
+    """,
+"#;
     assert!(crate::render_svgs_from_source(input, "test.poentaro", &[]).is_ok());
 }
 
@@ -137,11 +140,15 @@ fn dotted_extension_fills_compound_meter_measure() {
     // In 9/8 (a compound triple meter), each beat is a dotted quarter (6 quarter-beats).
     // `-.` extends the previous note by one dotted-quarter beat, so a note followed by
     // two `-.` atoms spans the whole 3-beat measure (6 + 6 + 6 = 18 quarter-beats).
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\na = notes\n\n",
-        "# score\ntime=9/8\n",
-        "[a] 1. -. -.\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["a": notes],
+
+score """
+    time=9/8
+    [a] 1. -. -.
+    """,
+"#;
     let output = crate::render_svgs_from_source(input, "test.poentaro", &[]).unwrap();
     assert!(
         output.diagnostics.is_empty(),
@@ -159,11 +166,15 @@ fn double_dotted_extension_fills_measure() {
     // In 7/4, each measure holds 28 quarter-beats. A double-dotted quarter note
     // (4 + 2 + 1 = 7 quarter-beats) followed by three `-..` (double-dotted-beat)
     // extensions spans the whole measure (7 + 7 + 7 + 7 = 28 quarter-beats).
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\na = notes\n\n",
-        "# score\ntime=7/4\n",
-        "[a] 1.. -.. -.. -..\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["a": notes],
+
+score """
+    time=7/4
+    [a] 1.. -.. -.. -..
+    """,
+"#;
     let output = crate::render_svgs_from_source(input, "test.poentaro", &[]).unwrap();
     assert!(
         output.diagnostics.is_empty(),

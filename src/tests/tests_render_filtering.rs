@@ -2,22 +2,21 @@ use super::*;
 
 #[test]
 fn list_parts_from_source_returns_declarations() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "main = chords\n",
-        "Alto 1 & Tenor [A1&T] = notes\n",
-        "Alto 1 & Tenor lyrics [A1&Tv1] = lyrics[A1&T]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[main] 1m\n",
-        "[A1&T] 1 2 3 4\n",
-        "[A1&Tv1] a b c d\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts [
+    "main": chords,
+    "Alto 1 & Tenor" [A1 & T]: notes,
+    "Alto 1 & Tenor lyrics" [A1 & Tv1]: lyrics [A1 & T],
+],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [main] 1m
+    [A1&T] 1 2 3 4
+    [A1&Tv1] a b c d
+    """,
+"#;
     let parts = list_parts_from_source(input, "test.poentaro", &[]).unwrap();
     assert_eq!(parts.len(), 3);
     assert_eq!(parts[0].abbreviation, "main");
@@ -30,24 +29,23 @@ fn list_parts_from_source_returns_declarations() {
 
 #[test]
 fn hidden_lyrics_do_not_reserve_lyric_row_space() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano = notes\n",
-        "Soprano lyrics [Sopranov1] = lyrics[Soprano]\n",
-        "Alto = notes\n",
-        "Alto lyrics [Altov1] = lyrics[Alto]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Soprano] 1 2 3 4\n",
-        "[Sopranov1] sop sop sop sop\n",
-        "[Alto] 5 6 7 1\n",
-        "[Altov1] alt alt alt alt\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts [
+    "Soprano": notes,
+    "Soprano lyrics" [Sopranov1]: lyrics [Soprano],
+    "Alto": notes,
+    "Alto lyrics" [Altov1]: lyrics [Alto],
+],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Sopranov1] sop sop sop sop
+    [Alto] 5 6 7 1
+    [Altov1] alt alt alt alt
+    """,
+"#;
     let all = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()
         .svgs;
@@ -68,24 +66,23 @@ fn hidden_lyrics_do_not_reserve_lyric_row_space() {
 
 #[test]
 fn render_svgs_from_source_filtered_can_hide_lyrics_per_part() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano = notes\n",
-        "Soprano lyrics [Sopranov1] = lyrics[Soprano]\n",
-        "Alto = notes\n",
-        "Alto lyrics [Altov1] = lyrics[Alto]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Soprano] 1 2 3 4\n",
-        "[Sopranov1] sop sop sop sop\n",
-        "[Alto] 5 6 7 1\n",
-        "[Altov1] alt alt alt alt\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts [
+    "Soprano": notes,
+    "Soprano lyrics" [Sopranov1]: lyrics [Soprano],
+    "Alto": notes,
+    "Alto lyrics" [Altov1]: lyrics [Alto],
+],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Sopranov1] sop sop sop sop
+    [Alto] 5 6 7 1
+    [Altov1] alt alt alt alt
+    """,
+"#;
     let all = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()
         .svgs;
@@ -105,20 +102,16 @@ fn render_svgs_from_source_filtered_can_hide_lyrics_per_part() {
 
 #[test]
 fn render_svgs_from_source_filtered_can_hide_parts() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano = notes\n",
-        "Alto = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Soprano] 1 2 3 4\n",
-        "[Alto] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Soprano": notes, "Alto": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Alto] 5 6 7 1
+    """,
+"#;
     let all = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()
         .svgs;
@@ -131,20 +124,16 @@ fn render_svgs_from_source_filtered_can_hide_parts() {
 
 #[test]
 fn render_svgs_from_source_filtered_hides_legend_entry_for_filtered_out_parts() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano [S] = notes\n",
-        "Alto [A] = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S] 1 2 3 4\n",
-        "[A] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Soprano" [S]: notes, "Alto" [A]: notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [A] 5 6 7 1
+    """,
+"#;
     let all = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()
         .svgs;
@@ -161,20 +150,16 @@ fn render_svgs_from_source_filtered_hides_legend_entry_for_filtered_out_parts() 
 
 #[test]
 fn render_documents_from_source_with_visibility_hides_legend_entry_for_filtered_out_parts() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano [S] = notes\n",
-        "Alto [A] = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S] 1 2 3 4\n",
-        "[A] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Soprano" [S]: notes, "Alto" [A]: notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [A] 5 6 7 1
+    """,
+"#;
     let soprano_only = render_documents_from_source_with_visibility(
         input,
         "test.poentaro",
@@ -194,20 +179,16 @@ fn render_documents_from_source_with_visibility_hides_legend_entry_for_filtered_
 
 #[test]
 fn split_track_names_falls_back_to_part_declarations() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b c d\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b c d
+    """,
+"#;
     let score = compile(input, "test.poentaro", &[]).unwrap();
     let names =
         split_track_names(input, "test.poentaro", &score, SplitSelection::default()).unwrap();
@@ -228,24 +209,23 @@ fn split_pdf_filename_sanitizes_track_name() {
 
 #[test]
 fn apply_track_filter_keeps_only_enabled_lyric_parts() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano = notes\n",
-        "Soprano lyrics [Sopranov1] = lyrics[Soprano]\n",
-        "Alto = notes\n",
-        "Alto lyrics [Altov1] = lyrics[Alto]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Soprano] 1 2 3 4\n",
-        "[Sopranov1] do re mi fa\n",
-        "[Alto] 5 6 7 1\n",
-        "[Altov1] alt alt alt alt\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts [
+    "Soprano": notes,
+    "Soprano lyrics" [Sopranov1]: lyrics [Soprano],
+    "Alto": notes,
+    "Alto lyrics" [Altov1]: lyrics [Alto],
+],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Sopranov1] do re mi fa
+    [Alto] 5 6 7 1
+    [Altov1] alt alt alt alt
+    """,
+"#;
     let mut score = compile(input, "test.poentaro", &[]).unwrap();
     apply_track_filter(
         &mut score,
@@ -266,15 +246,13 @@ fn apply_track_filter_keeps_only_enabled_lyric_parts() {
 
 #[test]
 fn apply_track_filter_keeps_a_lyric_part_whose_target_is_hidden() {
-    let input = concat!(
-        "# parts\n",
-        "Melody [M] = notes\n",
-        "Verse 1 [v1] = lyrics[M]\n",
-        "\n",
-        "# score\n",
-        "[M] 1 2 3 4\n",
-        "[v1] do re mi fa\n",
-    );
+    let input = r#"parts ["Melody" [M]: notes, "Verse 1" [v1]: lyrics [M]],
+
+score """
+    [M] 1 2 3 4
+    [v1] do re mi fa
+    """,
+"#;
     let mut score = compile(input, "test.poentaro", &[]).unwrap();
     apply_track_filter(&mut score, Some(&["v1".into()]));
     assert_eq!(score.measures[0].parts.len(), 1);
@@ -290,18 +268,14 @@ fn apply_track_filter_keeps_a_lyric_part_whose_target_is_hidden() {
 
 #[test]
 fn key_prefix_only_b_omits_rest_filled_a() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"Untitled\"\n",
-        "author = \"author\"\n",
-        "\n",
-        "# parts\n",
-        "A = notes\n",
-        "B = notes\n",
-        "\n",
-        "# score\n",
-        "[B] 1 2 3 4\n",
-    );
+    let input = r#"metadata { title "Untitled", author "author" },
+
+parts ["A": notes, "B": notes],
+
+score """
+    [B] 1 2 3 4
+    """,
+"#;
     let svgs = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()
         .svgs;
@@ -321,21 +295,17 @@ fn key_prefix_only_b_omits_rest_filled_a() {
 
 #[test]
 fn rendering_under_a_preset_draws_its_header_text() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"Song\"\n",
-        "subtitle = \"Base subtitle\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano [S] = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S] 1 2 3 4\n",
-        "\n",
-        "# preset \"Choir\"\n",
-        "subtitle = \"Choir subtitle\"\n",
-    );
+    let input = r#"metadata { title "Song", subtitle "Base subtitle" },
+
+parts ["Soprano" [S]: notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    """,
+
+preset "Choir" { subtitle "Choir subtitle" },
+"#;
     let render = |preset_name: Option<&str>| {
         let documents = render_documents_from_source_with_visibility(
             input,
@@ -358,19 +328,15 @@ fn rendering_under_a_preset_draws_its_header_text() {
 
 #[test]
 fn chosen_preset_from_source_reads_the_named_preset() {
-    let input = concat!(
-        "# parts\n",
-        "Soprano [S] = notes\n",
-        "Alto [A] = notes\n",
-        "\n",
-        "# score\n",
-        "[S] 1\n",
-        "[A] 2\n",
-        "\n",
-        "# preset \"Choir\"\n",
-        "visible_parts = A\n",
-        "soloed_parts = S\n",
-    );
+    let input = r#"parts ["Soprano" [S]: notes, "Alto" [A]: notes],
+
+score """
+    [S] 1
+    [A] 2
+    """,
+
+preset "Choir" { visible parts [A], soloed parts [S] },
+"#;
     assert_eq!(
         chosen_preset_from_source(input, "test.poentaro", "Choir").unwrap(),
         Some(ChosenPreset {

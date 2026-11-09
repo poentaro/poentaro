@@ -175,7 +175,7 @@ fn build_directive_line_spans(
     (bar_number_span, spans)
 }
 
-/// Builds the text spans for the `# sequence` header line: a plain
+/// Builds the text spans for the `sequence` header line: a plain
 /// "Sequence: " prefix, each label styled per `Metadata::sequence` (built via
 /// the shared [`section_label_span`] helper) — followed by a plain, non-bold/italic
 /// `(-abbrev -abbrev ...)` (omit) or `(abbrev abbrev ...)` (only) span when
@@ -230,7 +230,7 @@ pub(super) fn sequence_line_content(
 }
 
 /// Builds the `AbsoluteContent::DirectiveLine` variant for an actual
-/// directive line (as opposed to the `# sequence` summary header — see
+/// directive line (as opposed to the `sequence` summary header — see
 /// `grid_text_to_absolute`'s `PostArcGridContent::SequenceLine` arm, which
 /// builds its own directly since it has no label/box to compute). Split out
 /// of `grid_text_to_absolute` to keep that function under the repo's

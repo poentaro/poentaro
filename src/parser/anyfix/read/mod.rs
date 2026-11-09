@@ -11,7 +11,6 @@ use super::tree::{invalid, Sections};
 use crate::ast::parsed::ParsedMetadata;
 use crate::error::{DocumentSection, RecoverableError, Span};
 use crate::parser::parts_parser::{InstrumentInfo, SourceRawPartDecl};
-use crate::parser::section_splitter::strip_comments;
 use crate::parser::{ReadDocument, ScoreText};
 
 pub(crate) use metadata::read_metadata_field;
@@ -125,4 +124,37 @@ fn score_text(body: &Node, source: &str) -> Result<ScoreText, RecoverableError> 
         ),
         offset: literal.content.start,
     })
+}
+
+/// Blanks out `//` line comments with spaces, preserving byte length and line
+/// structure so downstream byte offsets (used in error spans) stay valid.
+/// A `//` inside a double-quoted string (e.g. `title = "http://example.com"`)
+/// does not start a comment.
+fn strip_comments(input: &str) -> String {
+    let mut out = Vec::with_capacity(input.len());
+    let mut in_string = false;
+    let mut in_comment = false;
+    let mut bytes = input.as_bytes().iter().copied().peekable();
+    while let Some(byte) = bytes.next() {
+        match byte {
+            b'\n' => {
+                in_string = false;
+                in_comment = false;
+                out.push(byte);
+            }
+            b'"' if !in_comment => {
+                in_string = !in_string;
+                out.push(byte);
+            }
+            b'/' if !in_string && !in_comment && bytes.peek() == Some(&b'/') => {
+                in_comment = true;
+                out.push(b' ');
+            }
+            _ => out.push(if in_comment { b' ' } else { byte }),
+        }
+    }
+    // Every replaced byte is either an ASCII space or an unmodified original
+    // byte, so `out` stays valid UTF-8 even where a multi-byte character was
+    // blanked out.
+    String::from_utf8(out).unwrap_or_default()
 }

@@ -104,15 +104,14 @@ export function clearSeedTokens(): void {
  * a scenario's own edits in a failing assertion's diff, but never itself
  * asserted on by name. */
 export const DEFAULT_CLOUD_FILE_CONTENT = [
-  '# metadata',
-  'title = "Cloud Backend Test"',
+  'metadata { title "Cloud Backend Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 /** Creates a new active cloud file directly against the real local worker,

@@ -19,7 +19,7 @@ mod types;
 #[cfg(any(feature = "wav", feature = "mp3", feature = "pdf", feature = "midi"))]
 mod types_export;
 
-/// Combines a `# sequence` entry index pair from the wasm boundary (where
+/// Combines a `sequence` entry index pair from the wasm boundary (where
 /// `Option<RangeInclusive<usize>>` can't cross directly) back into the range
 /// [`poentaro::MeasureRangeSelection::sequence_entry_range`] expects.
 /// `None` unless both bounds are present, since a partial pair can't name a range.

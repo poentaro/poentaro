@@ -45,7 +45,7 @@ fn part_index_to_midi_channel(index: usize) -> u8 {
 
 /// A melodic part's MIDI channel and instrument, keyed by the part's own
 /// (stable, unique) name rather than its positional index within any single
-/// measure's `parts` vec — a `# sequence` `(-abbrev ...)` omission removes
+/// measure's `parts` vec — a `sequence` `(-abbrev ...)` omission removes
 /// that part from some measures' `parts` vecs (see `navigation::build_expanded`),
 /// which shifts positional indices of the parts that remain, but never
 /// changes their relative order or a part's own name.

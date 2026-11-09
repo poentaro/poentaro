@@ -42,9 +42,13 @@
     clippy::needless_pass_by_value
 )]
 
-use cucumber::{given, then, when, World as _};
+#[path = "support/metadata_field.rs"]
+mod metadata_field;
 
-/// One kind's minimal fixture: the `# parts`/`# score`/`# sequence` blocks
+use cucumber::{given, then, when, World as _};
+use metadata_field::metadata_field;
+
+/// One kind's minimal fixture: the `parts`/`score`/`sequence` blocks
 /// needed to make that kind's text appear at all, plus the exact text
 /// content to look for and whether it renders as a `<tspan>` (directive-line
 /// content: `measure_number`, `section_label`, `sequence`) or a plain
@@ -63,39 +67,39 @@ struct KindFixture {
 fn kind_fixture_header(kind: &str) -> Option<KindFixture> {
     Some(match kind {
         "title" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "[S] 1\n",
             sequence_block: "",
-            extra_metadata: "title = \"TitleGlyph\"",
+            extra_metadata: "title \"TitleGlyph\"",
             content: "TitleGlyph",
             is_tspan: false,
         },
         "subtitle" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "[S] 1\n",
             sequence_block: "",
-            extra_metadata: "subtitle = \"SubtitleGlyph\"",
+            extra_metadata: "subtitle \"SubtitleGlyph\"",
             content: "SubtitleGlyph",
             is_tspan: false,
         },
         "author" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "[S] 1\n",
             sequence_block: "",
-            extra_metadata: "author = \"AuthorGlyph\"",
+            extra_metadata: "author \"AuthorGlyph\"",
             content: "AuthorGlyph",
             is_tspan: false,
         },
         "sequence" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "time=4/4 key=C4 bpm=120 label=\"SeqLbl\"\n[S] 1 2 3 4\n",
-            sequence_block: "# sequence\nSeqLbl\n\n",
+            sequence_block: "sequence [SeqLbl],\n\n",
             extra_metadata: "",
             content: "SeqLbl",
             is_tspan: true,
         },
         "part_legend" => KindFixture {
-            parts_block: "Violin[V] = notes",
+            parts_block: "\"Violin\" [V] : notes",
             score_block: "[V] 1\n",
             sequence_block: "",
             extra_metadata: "",
@@ -103,7 +107,7 @@ fn kind_fixture_header(kind: &str) -> Option<KindFixture> {
             is_tspan: false,
         },
         "measure_number" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "[S] 1\n",
             sequence_block: "",
             extra_metadata: "",
@@ -111,7 +115,7 @@ fn kind_fixture_header(kind: &str) -> Option<KindFixture> {
             is_tspan: true,
         },
         "section_label" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "time=4/4 key=C4 bpm=120 label=\"SecLbl\"\n[S] 1\n",
             sequence_block: "",
             extra_metadata: "",
@@ -126,7 +130,7 @@ fn kind_fixture_header(kind: &str) -> Option<KindFixture> {
 fn kind_fixture_body(kind: &str) -> KindFixture {
     match kind {
         "page_number" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "[S] 1\n",
             sequence_block: "",
             extra_metadata: "",
@@ -134,7 +138,7 @@ fn kind_fixture_body(kind: &str) -> KindFixture {
             is_tspan: false,
         },
         "part_label" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "[S] 1\n",
             sequence_block: "",
             extra_metadata: "",
@@ -142,7 +146,7 @@ fn kind_fixture_body(kind: &str) -> KindFixture {
             is_tspan: false,
         },
         "lyrics" => KindFixture {
-            parts_block: "S = notes\nL = lyrics[S]",
+            parts_block: "\"S\" : notes, \"L\" : lyrics [S]",
             score_block: "[S] 1\n[L] LyricWord\n",
             sequence_block: "",
             extra_metadata: "",
@@ -150,7 +154,7 @@ fn kind_fixture_body(kind: &str) -> KindFixture {
             is_tspan: false,
         },
         "notes" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "[S] 1\n",
             sequence_block: "",
             extra_metadata: "",
@@ -158,7 +162,7 @@ fn kind_fixture_body(kind: &str) -> KindFixture {
             is_tspan: false,
         },
         "chords" => KindFixture {
-            parts_block: "S = notes\nC = chords",
+            parts_block: "\"S\" : notes, \"C\" : chords",
             score_block: "[S] 5\n[C] 1\n",
             sequence_block: "",
             extra_metadata: "",
@@ -166,7 +170,7 @@ fn kind_fixture_body(kind: &str) -> KindFixture {
             is_tspan: false,
         },
         "note_dash" => KindFixture {
-            parts_block: "S = notes",
+            parts_block: "\"S\" : notes",
             score_block: "[S] 1-\n",
             sequence_block: "",
             extra_metadata: "",
@@ -195,7 +199,7 @@ fn given_metadata_line(
     key: String,
     value: String,
 ) {
-    world.metadata_lines.push(format!("{key} = {value}"));
+    world.metadata_lines.push(metadata_field(&key, &value));
 }
 
 #[given(expr = "a minimal score exercising {word}")]
@@ -210,9 +214,9 @@ fn when_rendered_to_svg(world: &mut BoldItalicUnderlineWorld) {
     if !fixture.extra_metadata.is_empty() {
         metadata_lines.push(fixture.extra_metadata.to_string());
     }
-    let metadata_block = metadata_lines.join("\n");
+    let metadata_block = metadata_lines.join(", ");
     let source = format!(
-        "# metadata\n{metadata_block}\n\n# parts\n{}\n\n{}# score\n{}",
+        "metadata {{ {metadata_block} }},\n\nparts [{}],\n\n{}score \"\"\"\n{}\"\"\",\n",
         fixture.parts_block, fixture.sequence_block, fixture.score_block
     );
     let result = poentaro::render_svgs_from_source(&source, "test.poentaro", &[])

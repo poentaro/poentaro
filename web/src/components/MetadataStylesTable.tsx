@@ -27,7 +27,7 @@ export interface StyleRowSpec {
   value: TextStyleFields
   /** What each component resolves to when unset. */
   placeholder: TextStyleDefaults
-  /** Editing a preset: unset components show the song's `# metadata`
+  /** Editing a preset: unset components show the song's `metadata`
    * values, muted. */
   editingPreset: boolean
   /** Set while the preset overrides any component: clears them all. */

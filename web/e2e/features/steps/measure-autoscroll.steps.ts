@@ -10,23 +10,21 @@ import { Given, Then, When } from './fixtures'
  * observable.
  *
  * Each measure is its own `[M] 1 2 3 4` line (1-based Monaco line number
- * `11 + i * 2`, since measures are separated by a blank line).
+ * `6 + i * 2`, since measures are separated by a blank line).
  */
 function buildLongSource(count: number): string {
   const lines = [
-    '# metadata',
-    'title = "autoscroll test"',
+    'metadata { title "autoscroll test" },',
     '',
-    '# parts',
-    'Melody [M] = notes',
+    'parts ["Melody" [M]: notes],',
     '',
-    '# score',
+    'score """',
   ]
   for (let i = 0; i < count; i++) {
     lines.push('[M] 1 2 3 4')
     lines.push('')
   }
-  return lines.join('\n')
+  return [...lines, '""",'].join('\n')
 }
 
 const measureCount = 60
@@ -66,11 +64,11 @@ Given('a 60-measure autoscroll test fixture is loaded', async ({ page }) => {
 })
 
 When("I jump the caret to the first measure's line", async ({ page }) => {
-  // Place the caret on the first measure (line 8: "[M] 1 2 3 4") and confirm
+  // Place the caret on the first measure (line 6: "[M] 1 2 3 4") and confirm
   // the preview has not scrolled away from the top yet.
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('8')
+  await page.keyboard.type('6')
   await page.keyboard.press('Enter')
   await expect(page.getByTestId('play-measure-button')).toContainText(
     'Measure 1',
@@ -90,7 +88,7 @@ When("I jump the caret to the last measure's line", async ({ page }) => {
   const lastMeasureIndex = measureCount - 1
   // Jump the caret to the last measure's line, which should be scrolled far
   // out of view given 60 measures.
-  const lastMeasureLine = 8 + lastMeasureIndex * 2
+  const lastMeasureLine = 6 + lastMeasureIndex * 2
   await page.keyboard.press('Control+g')
   await page.keyboard.type(String(lastMeasureLine))
   await page.keyboard.press('Enter')

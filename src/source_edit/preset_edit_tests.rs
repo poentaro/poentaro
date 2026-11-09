@@ -1,22 +1,17 @@
 use super::*;
 
-const SOURCE: &str = r#"# metadata
-title = "Song"
+const SOURCE: &str = r#"metadata { title "Song" },
 
-# parts
-Soprano [S] = notes
-Alto [A] = notes
+parts ["Soprano" [S]: notes, "Alto" [A]: notes],
 
-# preset "Choir"
-visible_parts = S, A
-notation = numbered
+preset "Choir" { visible parts [S, A], notation: numbered },
 
-# preset "Alto"
-subtitle = "Alto part"
+preset "Alto" { subtitle "Alto part" },
 
-# score
-[S] 1 2 3 4
-[A] 5 6 7 1
+score """
+    [S] 1 2 3 4
+    [A] 5 6 7 1
+    """,
 "#;
 
 fn parts(abbreviations: &[&str]) -> Vec<String> {
@@ -61,13 +56,13 @@ fn hiding_a_part_drops_it_from_visible_parts() {
     );
     assert_eq!(
         result,
-        SOURCE.replace("visible_parts = S, A", "visible_parts = A")
+        SOURCE.replace("visible parts [S, A]", "visible parts [A]")
     );
 }
 
 #[test]
 fn showing_a_part_adds_it_back_in_declaration_order() {
-    let source = SOURCE.replace("visible_parts = S, A", "visible_parts = A");
+    let source = SOURCE.replace("visible parts [S, A]", "visible parts [A]");
     let result = set_preset_part_shown(
         &source,
         "Choir",
@@ -84,8 +79,8 @@ fn hiding_a_part_in_a_preset_without_visible_parts_lists_the_rest() {
     assert_eq!(
         result,
         SOURCE.replace(
-            "# preset \"Alto\"\n",
-            "# preset \"Alto\"\nvisible_parts = A\n"
+            r#"preset "Alto" { subtitle"#,
+            r#"preset "Alto" { visible parts [A], subtitle"#
         )
     );
 }
@@ -115,18 +110,15 @@ fn soloing_a_part_adds_a_soloed_parts_line_under_the_header() {
     assert_eq!(
         result,
         SOURCE.replace(
-            "# preset \"Choir\"\n",
-            "# preset \"Choir\"\nsoloed_parts = A\n"
+            r#"preset "Choir" { visible"#,
+            r#"preset "Choir" { soloed parts [A], visible"#
         )
     );
 }
 
 #[test]
 fn soloing_another_part_keeps_declaration_order() {
-    let source = SOURCE.replace(
-        "notation = numbered",
-        "notation = numbered\nsoloed_parts = A",
-    );
+    let source = SOURCE.replace("notation: numbered", "notation: numbered, soloed parts [A]");
     let result = set_preset_part_soloed(
         &source,
         "Choir",
@@ -135,16 +127,13 @@ fn soloing_another_part_keeps_declaration_order() {
     );
     assert_eq!(
         result,
-        source.replace("soloed_parts = A", "soloed_parts = S, A")
+        source.replace("soloed parts [A]", "soloed parts [S, A]")
     );
 }
 
 #[test]
 fn unsoloing_the_last_part_removes_the_line() {
-    let source = SOURCE.replace(
-        "notation = numbered",
-        "notation = numbered\nsoloed_parts = A",
-    );
+    let source = SOURCE.replace("notation: numbered", "notation: numbered, soloed parts [A]");
     let result = set_preset_part_soloed(
         &source,
         "Choir",
@@ -157,8 +146,8 @@ fn unsoloing_the_last_part_removes_the_line() {
 #[test]
 fn unsoloing_the_last_part_removes_every_repeated_line() {
     let source = SOURCE.replace(
-        "notation = numbered",
-        "soloed_parts = S\nnotation = numbered\nsoloed_parts = A",
+        "visible parts [S, A], notation: numbered",
+        "soloed parts [S], visible parts [S, A], notation: numbered, soloed parts [A]",
     );
     let result = set_preset_part_soloed(
         &source,
@@ -181,7 +170,7 @@ fn rewrites_an_existing_visible_parts_line_in_place() {
     let result = update_preset_field(SOURCE, "Choir", &PresetEdit::VisibleParts(parts(&["A"])));
     assert_eq!(
         result,
-        SOURCE.replace("visible_parts = S, A", "visible_parts = A")
+        SOURCE.replace("visible parts [S, A]", "visible parts [A]")
     );
 }
 
@@ -191,8 +180,8 @@ fn inserts_a_missing_line_under_the_preset_header() {
     assert_eq!(
         result,
         SOURCE.replace(
-            "# preset \"Alto\"\n",
-            "# preset \"Alto\"\nnotation = violin\n"
+            r#"preset "Alto" { subtitle"#,
+            r#"preset "Alto" { notation: violin, subtitle"#
         )
     );
 }
@@ -200,27 +189,41 @@ fn inserts_a_missing_line_under_the_preset_header() {
 #[test]
 fn rewrites_only_the_named_preset() {
     let result = update_preset_field(SOURCE, "Alto", &PresetEdit::VisibleParts(parts(&["A"])));
-    assert!(result.contains("visible_parts = S, A"));
-    assert!(result.contains("# preset \"Alto\"\nvisible_parts = A\n"));
+    assert!(result.contains("visible parts [S, A]"));
+    assert!(result.contains(r#"preset "Alto" { visible parts [A], subtitle"#));
 }
 
 #[test]
 fn rewrites_the_last_of_repeated_lines() {
-    let source = "# preset \"P\"\nnotation = abc\nnotation = guitar\n";
+    let source = r#"preset "P" { notation: abc, notation: guitar }
+"#;
     let result = update_preset_field(source, "P", &PresetEdit::Notation(Notation::Cello));
-    assert_eq!(result, "# preset \"P\"\nnotation = abc\nnotation = cello\n");
+    assert_eq!(
+        result,
+        r#"preset "P" { notation: abc, notation: cello }
+"#
+    );
 }
 
 #[test]
 fn no_visible_parts_writes_an_empty_value() {
     let result = update_preset_field(SOURCE, "Choir", &PresetEdit::VisibleParts(Vec::new()));
-    assert!(result.contains("visible_parts =\n"));
+    assert!(result.contains(r#"preset "Choir" { visible parts [], notation"#));
 }
 
 #[test]
 fn inserts_under_a_header_on_the_last_line() {
-    let result = update_preset_field("# preset \"P\"", "P", &PresetEdit::Notation(Notation::Abc));
-    assert_eq!(result, "# preset \"P\"\nnotation = abc\n");
+    let result = update_preset_field(
+        r#"preset "P" {}
+"#,
+        "P",
+        &PresetEdit::Notation(Notation::Abc),
+    );
+    assert_eq!(
+        result,
+        r#"preset "P" { notation: abc }
+"#
+    );
 }
 
 #[test]
@@ -244,7 +247,7 @@ fn follows_a_preset_renamed_in_the_editor() {
 
 #[test]
 fn drops_a_preset_that_was_deleted_or_renamed_to_another_preset() {
-    let deleted = SOURCE.replace("# preset \"Alto\"\nsubtitle = \"Alto part\"\n", "");
+    let deleted = SOURCE.replace("preset \"Alto\" { subtitle \"Alto part\" },\n\n", "");
     assert_eq!(follow_preset_rename(SOURCE, &deleted, "Alto"), None);
     let duplicate = SOURCE.replace("\"Alto\"", "\"Choir\"");
     assert_eq!(follow_preset_rename(SOURCE, &duplicate, "Alto"), None);
@@ -266,28 +269,47 @@ fn adds_a_preset_after_the_last_one() {
     assert_eq!(
         result,
         SOURCE.replace(
-            "# score",
-            "# preset \"Soprano\"\nvisible_parts = S\nnotation = violin\n\n# score"
+            "score",
+            "preset \"Soprano\" { visible parts [S], notation: violin },\n\nscore"
         )
     );
 }
 
 #[test]
 fn adds_the_first_preset_before_the_score() {
-    let source = "# metadata\ntitle = \"Song\"\n\n# score\n1 2 3 4\n";
+    let source = r#"metadata { title "Song" },
+
+score """
+    1 2 3 4
+    """,
+"#;
     let result = add_preset_section(source, new_preset("Soprano"));
     assert_eq!(
         result,
-        "# metadata\ntitle = \"Song\"\n\n# preset \"Soprano\"\nvisible_parts = S\nnotation = violin\n\n# score\n1 2 3 4\n"
+        r#"metadata { title "Song" },
+
+preset "Soprano" { visible parts [S], notation: violin },
+
+score """
+    1 2 3 4
+    """,
+"#
     );
 }
 
 #[test]
 fn adds_a_preset_at_the_end_when_there_is_no_music() {
-    let result = add_preset_section("# metadata\ntitle = \"Song\"", new_preset("Soprano"));
+    let result = add_preset_section(
+        r#"metadata { title "Song" }
+"#,
+        new_preset("Soprano"),
+    );
     assert_eq!(
         result,
-        "# metadata\ntitle = \"Song\"\n\n# preset \"Soprano\"\nvisible_parts = S\nnotation = violin\n"
+        r#"metadata { title "Song" },
+
+preset "Soprano" { visible parts [S], notation: violin },
+"#
     );
 }
 
@@ -308,15 +330,14 @@ fn a_new_preset_keeps_the_solos_shown_when_it_was_made() {
     };
     let result = add_preset_section(SOURCE, preset);
     assert!(result.contains(
-        "# preset \"Soprano\"\nvisible_parts = S\nsoloed_parts = A\nnotation = violin\n"
+        r#"preset "Soprano" { visible parts [S], soloed parts [A], notation: violin },"#
     ));
 }
 
 #[test]
 fn lists_presets_in_file_order_with_their_notation() {
-    let source = format!("{SOURCE}\n# preset \"Choir\"\n\n# preset \"Default\"\n");
     assert_eq!(
-        list_presets(&source),
+        list_presets(SOURCE),
         vec![
             PresetSummary {
                 name: "Choir".to_owned(),
@@ -332,7 +353,8 @@ fn lists_presets_in_file_order_with_their_notation() {
 
 #[test]
 fn the_menu_reads_a_legacy_jianpu_preset_as_numbered() {
-    let source = "# preset \"Old\"\nnotation = jianpu\n";
+    let source = r#"preset "Old" { notation: jianpu }
+"#;
     assert_eq!(
         list_presets(source),
         vec![PresetSummary {

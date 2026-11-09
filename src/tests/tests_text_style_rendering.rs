@@ -7,7 +7,7 @@ use compositor::types::AbsoluteContent;
 /// padded score's system height against an unpadded one.
 fn single_note_system_height_pt(notes_metadata_line: &str) -> f32 {
     let source = format!(
-        "# metadata\n{notes_metadata_line}\n\n# parts\nS = notes\n\n# score\ntime=4/4 key=C4 bpm=120\n[S] 1\n",
+        "metadata {{ {notes_metadata_line} }},\n\nparts [\"S\" : notes],\n\nscore \"\"\"\ntime=4/4 key=C4 bpm=120\n[S] 1\n\"\"\",\n",
     );
     let score = compile(&source, "test", &[]).unwrap();
     let config = render_config::RenderConfig::from_metadata(&score.metadata);
@@ -43,7 +43,7 @@ fn section_label_vertical_padding_pt_grows_the_label_box_height() {
     // least `vertical_padding_pt` over the unpadded default.
     fn label_box_height(padding_line: &str) -> f32 {
         let source = format!(
-            "# metadata\n{padding_line}\n\n# parts\nS = notes\n\n# score\ntime=4/4 key=C4 bpm=120 label=\"Verse 1\"\n[S] 1\n",
+            "metadata {{ {padding_line} }},\n\nparts [\"S\" : notes],\n\nscore \"\"\"\ntime=4/4 key=C4 bpm=120 label=\"Verse 1\"\n[S] 1\n\"\"\",\n",
         );
         let score = compile(&source, "test", &[]).unwrap();
         let config = render_config::RenderConfig::from_metadata(&score.metadata);
@@ -101,8 +101,8 @@ fn section_label_vertical_padding_pt_grows_the_label_box_height() {
             .expect("directive line with a section label should be present")
     }
 
-    let unpadded = label_box_height("section_label = { vertical_padding_pt: 0 }");
-    let padded = label_box_height("section_label = { vertical_padding_pt: 8 }");
+    let unpadded = label_box_height("section_label style : { vertical padding pt : 0 }");
+    let padded = label_box_height("section_label style : { vertical padding pt : 8 }");
     assert!(
         padded >= unpadded + 8.0,
         "padded label box height ({padded}) should be at least 8pt taller than unpadded ({unpadded})"
@@ -118,7 +118,7 @@ fn page_number_vertical_padding_pt_pushes_the_footer_text_up() {
     // resolved `y` decreases as padding grows.
     fn footer_text_y(padding_line: &str) -> f32 {
         let source = format!(
-            "# metadata\n{padding_line}\n\n# parts\nS = notes\n\n# score\ntime=4/4 key=C4 bpm=120\n[S] 1\n",
+            "metadata {{ {padding_line} }},\n\nparts [\"S\" : notes],\n\nscore \"\"\"\ntime=4/4 key=C4 bpm=120\n[S] 1\n\"\"\",\n",
         );
         let score = compile(&source, "test", &[]).unwrap();
         let config = render_config::RenderConfig::from_metadata(&score.metadata);
@@ -172,8 +172,8 @@ fn page_number_vertical_padding_pt_pushes_the_footer_text_up() {
             .expect("footer page-number text element should be present")
     }
 
-    let unpadded = footer_text_y("page_number = { vertical_padding_pt: 0 }");
-    let padded = footer_text_y("page_number = { vertical_padding_pt: 4 }");
+    let unpadded = footer_text_y("page_number style : { vertical padding pt : 0 }");
+    let padded = footer_text_y("page_number style : { vertical padding pt : 4 }");
     assert!(
         padded <= unpadded - 4.0,
         "padded footer text y ({padded}) should sit at least 4pt above unpadded ({unpadded})"
@@ -187,8 +187,8 @@ fn notes_vertical_padding_pt_grows_the_note_head_sub_row() {
     // `notes.vertical_padding_pt` must grow the system's total row height by
     // at least that amount — a direct, config-only effect, not something
     // that depends on the particular notes in this minimal fixture.
-    let unpadded = single_note_system_height_pt("notes = { vertical_padding_pt: 0 }");
-    let padded = single_note_system_height_pt("notes = { vertical_padding_pt: 5 }");
+    let unpadded = single_note_system_height_pt("notes style : { vertical padding pt : 0 }");
+    let padded = single_note_system_height_pt("notes style : { vertical padding pt : 5 }");
     assert!(
         padded >= unpadded + 5.0,
         "padded system height ({padded}) should be at least 5pt taller than unpadded ({unpadded})"
@@ -196,11 +196,11 @@ fn notes_vertical_padding_pt_grows_the_note_head_sub_row() {
 }
 
 /// Renders a minimal single-note-part score (with a title, so `title`'s own
-/// text element is present) with `metadata_line` spliced into `# metadata`,
+/// text element is present) with `metadata_line` spliced into `metadata`,
 /// returning the concatenated raw SVG(s).
 fn render_with_metadata_line(metadata_line: &str) -> String {
     let source = format!(
-        "# metadata\ntitle = \"T\"\n{metadata_line}\n\n# parts\nS = notes\n\n# score\ntime=4/4 key=C4 bpm=120\n[S] 1\n",
+        "metadata {{ title \"T\", {metadata_line} }},\n\nparts [\"S\" : notes],\n\nscore \"\"\"\ntime=4/4 key=C4 bpm=120\n[S] 1\n\"\"\",\n",
     );
     render_svgs_from_source(&source, "test", &[])
         .unwrap_or_else(|err| panic!("compile returned an irrecoverable error: {}", err.message()))
@@ -236,7 +236,7 @@ fn title_font_family_override_changes_the_rendered_font_family() {
     // metadata field has a real effect rather than being parsed and
     // ignored.
     let default_svg = render_with_metadata_line("");
-    let overridden_svg = render_with_metadata_line("title = { font_family: sans_serif }");
+    let overridden_svg = render_with_metadata_line("title style : { font family : sans serif }");
     let default_family = font_family_attr(&default_svg, ">T</text>");
     let overridden_family = font_family_attr(&overridden_svg, ">T</text>");
     assert_ne!(
@@ -247,11 +247,11 @@ fn title_font_family_override_changes_the_rendered_font_family() {
 
 /// Renders a note, a chord symbol, and a note dash (with a title, so the
 /// same `font_family_attr` needle-matching approach `render_with_metadata_line`
-/// uses works here too) with `metadata_line` spliced into `# metadata`,
+/// uses works here too) with `metadata_line` spliced into `metadata`,
 /// returning the concatenated raw SVG(s).
 fn render_notes_chords_note_dash_with_metadata_line(metadata_line: &str) -> String {
     let source = format!(
-        "# metadata\ntitle = \"T\"\n{metadata_line}\n\n# parts\nMelody = notes\nHarmony = chords\n\n# score\ntime=4/4 key=C4 bpm=120\n[Harmony] 5m\n[Melody] 1 - - -\n",
+        "metadata {{ title \"T\", {metadata_line} }},\n\nparts [\"Melody\" : notes, \"Harmony\" : chords],\n\nscore \"\"\"\ntime=4/4 key=C4 bpm=120\n[Harmony] 5m\n[Melody] 1 - - -\n\"\"\",\n",
     );
     render_svgs_from_source(&source, "test", &[])
         .unwrap_or_else(|err| panic!("compile returned an irrecoverable error: {}", err.message()))
@@ -271,7 +271,7 @@ fn notes_chords_note_dash_font_family_override_changes_the_rendered_font_family(
     // `font_metrics`'s own family-aware measurement functions instead.
     let default_svg = render_notes_chords_note_dash_with_metadata_line("");
     let overridden_svg = render_notes_chords_note_dash_with_metadata_line(
-        "notes = { font_family: serif }\nchords = { font_family: serif }\nnote_dash = { font_family: serif }\n",
+        "notes style : { font family : serif }, chords style : { font family : serif }, note dash style : { font family : serif }",
     );
     let default_note = font_family_attr(&default_svg, ">1</text>");
     let overridden_note = font_family_attr(&overridden_svg, ">1</text>");

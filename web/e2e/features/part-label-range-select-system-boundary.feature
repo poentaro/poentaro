@@ -15,7 +15,7 @@ Feature: Click-and-click across a part label system boundary stays scoped to tha
   # `part-label-cmd-click-selects-whole-system.feature` — a separate, coarser
   # tool this plain click-and-click does not replace.)
   #
-  # `max_measures_per_system = 1` forces each measure onto its own system, so
+  # `max measures per system 1` forces each measure onto its own system, so
   # Melody's and Harmony's labels repeat twice, stacked vertically:
   #
   #   System 0 (measure 0): Melody "1 2", Harmony "5 6"

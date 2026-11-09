@@ -19,7 +19,7 @@ export interface EditMetadataModalProps {
   /** `null` until the wasm-side parse is available (see
    * `useMetadataFields`); the modal shows no fields until then. */
   metadata: MetadataFields | null
-  /** The preset the form edits, or `null` for the song's `# metadata`. */
+  /** The preset the form edits, or `null` for the song's `metadata`. */
   presetName: string | null
   onFieldChange: (edit: MetadataEdit) => void
   /** Element to confine the modal to (e.g. the editor pane), so it doesn't

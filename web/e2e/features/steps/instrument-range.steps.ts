@@ -3,15 +3,14 @@ import { Given, Then, When } from './fixtures'
 
 function sourceWithParts(partsLine: string) {
   return [
-    '# metadata',
-    'title = "Test"',
+    'metadata { title "Test" },',
     '',
-    '# parts',
-    partsLine,
+    `parts [${partsLine}],`,
     '',
-    '# score',
+    'score """',
     'time=4/4 key=C4 bpm=120',
     '[V] 1 4, 5 5',
+    '""",',
   ].join('\n')
 }
 
@@ -36,14 +35,17 @@ async function loadSource(page: Page, source: string) {
 Given(
   'the instrument-range fixture with a violin part is loaded',
   async ({ page }) => {
-    await loadSource(page, sourceWithParts('Violin [V] = notes violin'))
+    await loadSource(
+      page,
+      sourceWithParts('"Violin" [V]: notes { instrument: violin }'),
+    )
   },
 )
 
 Given(
   'the instrument-range fixture with a part naming no instrument is loaded',
   async ({ page }) => {
-    await loadSource(page, sourceWithParts('Violin [V] = notes'))
+    await loadSource(page, sourceWithParts('"Violin" [V]: notes'))
   },
 )
 

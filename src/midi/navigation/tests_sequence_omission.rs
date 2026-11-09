@@ -141,10 +141,10 @@ fn sequence_omit_parts_drops_named_parts_per_occurrence() {
 #[test]
 fn expand_for_measure_range_respect_sequence_false_ignores_sequence_omission() {
     // A single measure "Chorus" with three parts, played twice via
-    // `# sequence` with the first occurrence omitting S and A2. Selecting
+    // `sequence` with the first occurrence omitting S and A2. Selecting
     // the written measure with `respect_sequence: false` (as "play current
     // measure" does) must play it exactly as written, with all three parts,
-    // regardless of what any `# sequence` occurrence would have omitted.
+    // regardless of what any `sequence` occurrence would have omitted.
     let measures = vec![measure_with_parts(0, &["S", "A2", "T"])];
     let score = score_with_sequence(
         measures,
@@ -169,11 +169,11 @@ fn expand_for_measure_range_respect_sequence_false_ignores_sequence_omission() {
 
 #[test]
 fn expand_for_measure_range_with_sequence_entry_index_selects_exact_occurrence() {
-    // "Chorus" replayed three times via `# sequence`: unmarked, then with S
+    // "Chorus" replayed three times via `sequence`: unmarked, then with S
     // and A2 omitted, then with only A2 omitted. Every occurrence shares the
     // same written measure range (0..=0), so selecting by written index
     // alone (`entry_index: None`) can only ever reach the *first* one.
-    // Passing the entry's own `# sequence` index must reach any of them.
+    // Passing the entry's own `sequence` index must reach any of them.
     let measures = vec![measure_with_parts(0, &["S", "A2", "T"])];
     let score = score_with_sequence(
         measures,
@@ -225,12 +225,12 @@ fn expand_for_measure_range_with_sequence_entry_index_selects_exact_occurrence()
 
 #[test]
 fn expand_for_measure_range_with_sequence_entry_index_handles_reversed_written_order() {
-    // Reproduces a user report: `# sequence` is `X, Y(-b), Y, X` (X is
+    // Reproduces a user report: `sequence` is `X, Y(-b), Y, X` (X is
     // written measure 0, Y is written measure 1). Selecting the third and
     // fourth entries (the unmarked `Y`, then the second `X`) gives a
     // *written* range of `start: 1, end: 0` -- `Y`'s written index is
     // greater than `X`'s, even though `Y` is selected first -- because
-    // `# sequence` order and written order diverge. `expand_for_measure_range`
+    // `sequence` order and written order diverge. `expand_for_measure_range`
     // must still resolve this via `sequence_entry_range` instead of falling
     // into the `start_index > end_index` fallback (which silently swaps the
     // range and replays the literal written score, ignoring both the

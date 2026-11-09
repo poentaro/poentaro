@@ -58,7 +58,7 @@ pub(super) fn write(
             Some(write!(formatter, "{report}"))
         }
         IrrecoverableErrorKind::UnknownPreset { name, .. } => {
-            Some(write!(formatter, "no `# preset \"{name}\"` in this file"))
+            Some(write!(formatter, "no preset \"{name}\" in this file"))
         }
     }
 }

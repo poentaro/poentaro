@@ -5,19 +5,18 @@ import { Given, Then } from './fixtures'
 // The last measure's `5,,` sits below the harmonica's lowest hole (middle
 // C), and its `4#` (F♯) is played with the slide button pressed in.
 const SOURCE = [
-  '# metadata',
-  'title = "Harmonica View Test"',
+  'metadata { title "Harmonica View Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 2 3 4',
   '',
-  "[M] 5 6 7 1'",
+  "    [M] 5 6 7 1'",
   '',
-  "[M] 5,, 4# 3' 1''",
+  "    [M] 5,, 4# 3' 1''",
+  '    """,',
 ].join('\n')
 
 Given(

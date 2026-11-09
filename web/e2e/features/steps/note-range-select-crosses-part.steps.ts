@@ -22,19 +22,17 @@ import { Given, Then } from './fixtures'
  * own measures, not "everything from here on."
  */
 const crossPartSource = [
-  '# metadata',
-  'title = "cross part range test"',
+  'metadata { title "cross part range test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0 — notes 0-1
-  '[H] 5 6', // measure 0 — notes 2-3
+  'score """',
+  '[M] 1 2',
+  '[H] 5 6',
   '',
-  '[M] 3 4', // measure 1 — notes 4-5
-  '[H] 7 1', // measure 1 — notes 6-7
+  '[M] 3 4',
+  '[H] 7 1',
+  '""",',
 ].join('\n')
 
 function noteRects(page: import('@playwright/test').Page) {

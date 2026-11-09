@@ -6,20 +6,16 @@ use poentaro::note_spans::{
     group_selected_notes_into_contiguous_runs, list_note_spans_from_source, NoteCell,
 };
 
-const THREE_PART_SOURCE: &str = r#"# metadata
-title = "t"
+const THREE_PART_SOURCE: &str = r#"metadata { title "t" },
 
-# parts
-Soprano [S] = notes
-Alto [A] = notes
-Bass [B] = notes
-Bass lyrics [Bv1] = lyrics[B]
+parts ["Soprano" [S]: notes, "Alto" [A]: notes, "Bass" [B]: notes, "Bass lyrics" [Bv1]: lyrics [B]],
 
-# score
-[S] 1 2 3 4
-[A] 5 6 7 1'
-[B] 1 1 5 5
-[Bv1] do re mi fa
+score """
+    [S] 1 2 3 4
+    [A] 5 6 7 1'
+    [B] 1 1 5 5
+    [Bv1] do re mi fa
+    """,
 "#;
 
 fn enabled_tracks_without_alto() -> Vec<String> {

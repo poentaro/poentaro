@@ -6,10 +6,10 @@ use anyfix_expr::{Call, NamePart, Node, NodeKind};
 use itertools::Itertools;
 
 use super::{HighlightKind, HighlightToken, SectionHeader};
-use crate::error::Span;
-use crate::parser::read_document;
+use crate::error::{Diagnostic, RecoverableErrorKind, Span};
 use crate::parser::score::interleaved_parser::directive_keyword_spans;
-use crate::parser::section_splitter::SectionKind;
+use crate::parser::section::SectionKind;
+use crate::parser::{read_document, ReadDocument};
 
 const PART_KINDS: [&str; 5] = ["notes", "chords", "percussion", "follow", "lyrics"];
 
@@ -105,9 +105,8 @@ fn part_tokens(node: &Node) -> Vec<HighlightToken> {
     .collect()
 }
 
-fn directive_tokens(source: &str) -> Vec<HighlightToken> {
-    let score = read_document(source, &[]).score;
-    directive_keyword_spans(&score.text, score.offset)
+fn directive_tokens(read: &ReadDocument) -> Vec<HighlightToken> {
+    directive_keyword_spans(&read.score.text, read.score.offset)
         .into_iter()
         .map(|span| HighlightToken {
             kind: HighlightKind::DirectiveKey,
@@ -116,8 +115,33 @@ fn directive_tokens(source: &str) -> Vec<HighlightToken> {
         .collect()
 }
 
+/// The keys the reader doesn't recognize, which stay uncolored.
+fn unknown_field_spans(read: &ReadDocument) -> Vec<Span> {
+    read.metadata_parse_errors
+        .iter()
+        .chain(
+            read.presets
+                .diagnostics
+                .iter()
+                .filter_map(|diagnostic| match diagnostic {
+                    Diagnostic::Error(error) => Some(error),
+                    Diagnostic::Warning(_) => None,
+                }),
+        )
+        .filter(|error| {
+            matches!(
+                error.kind,
+                RecoverableErrorKind::MetadataUnknownField { .. }
+            )
+        })
+        .map(|error| error.span)
+        .collect()
+}
+
 pub(super) fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
     let parsed = anyfix_expr::parse(source);
+    let read = read_document(source, &[]);
+    let unknown_fields = unknown_field_spans(&read);
     parsed
         .syntax
         .nodes()
@@ -146,7 +170,12 @@ pub(super) fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
             };
             std::iter::once(header).chain(body).collect_vec()
         })
-        .chain(directive_tokens(source))
+        .filter(|token| {
+            !unknown_fields
+                .iter()
+                .any(|unknown| unknown.start <= token.span.start && token.span.end <= unknown.end)
+        })
+        .chain(directive_tokens(&read))
         .sorted_by_key(|token| token.span.start)
         .collect()
 }

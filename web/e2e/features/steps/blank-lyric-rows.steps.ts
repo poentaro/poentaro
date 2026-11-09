@@ -89,17 +89,11 @@ Given('measure {int} has no Verse 2 line', async ({}, _index: number) => {
 
 function buildSource(): string {
   const lines: string[] = [
-    '# metadata',
-    'title = "blank lyric rows test"',
-    `hide_resting_parts = ${state.hideRestingParts ? 'yes' : 'no'}`,
+    `metadata { title "blank lyric rows test", hide resting parts: ${state.hideRestingParts ? 'yes' : 'no'} },`,
     '',
-    '# parts',
-    'Melody [M] = notes',
-    'Verse 1 [V1] = lyrics[M]',
-    'Verse 2 [V2] = lyrics[M]',
-    'Chords [C] = chords',
+    'parts ["Melody" [M]: notes, "Verse 1" [V1]: lyrics [M], "Verse 2" [V2]: lyrics [M], "Chords" [C]: chords],',
     '',
-    '# score',
+    'score """',
     `[M] ${state.melodyNotes}`,
   ]
   if (state.verse1Syllables !== null)
@@ -107,7 +101,7 @@ function buildSource(): string {
   if (state.verse2Syllables !== null)
     lines.push(`[V2] ${state.verse2Syllables}`)
   if (state.chords !== null) lines.push(`[C] ${state.chords}`)
-  return lines.join('\n')
+  return [...lines, '""",'].join('\n')
 }
 
 /** Every drawn `lyric` syllable group, keyed by note id -> left x. Only

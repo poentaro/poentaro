@@ -167,7 +167,7 @@ fn resolved_note_cells_in_source(
     current: &ClickableElementId,
 ) -> Vec<NoteCellOut> {
     let source = format!(
-        "# metadata\nhide_resting_parts = no\nmerge_duplicate_measures_across_parts = no\n\n{source}"
+        "metadata {{ hide resting parts : no, merge duplicate measures across parts : no }},\n\n{source}"
     );
     let ListNoteSpansResponse::Ok { spans } = list_note_spans_response(&source, None) else {
         panic!("failed to compile:\n{source}");
@@ -177,8 +177,14 @@ fn resolved_note_cells_in_source(
 
 #[test]
 fn cross_part_note_range_selects_a_held_note_in_a_middle_part() {
-    let source = "# parts\nA = notes\nB = notes\nC = notes\n\n# score\n\
-                  [A] 1 2 3 4\n[B] 5---\n[C] 1 2 3 4\n";
+    let source = r#"parts ["A": notes, "B": notes, "C": notes],
+
+score """
+    [A] 1 2 3 4
+    [B] 5---
+    [C] 1 2 3 4
+    """,
+"#;
 
     assert_eq!(
         resolved_note_cells_in_source(source, &note(0, 2), &note(2, 3)),
@@ -195,8 +201,13 @@ fn cross_part_note_range_selects_a_held_note_in_a_middle_part() {
 #[test]
 fn cross_part_note_range_bounds_a_different_rhythm_by_time() {
     // A's 2nd note spans eighths 3-4 of B; B's 5th note ends at A's 3rd.
-    let source = "# parts\nA = notes\nB = notes\n\n# score\n\
-                  [A] 1 2 3 4\n[B] 5_ 6_ 7_ 1_ 2_ 3_ 4_ 5_\n";
+    let source = r#"parts ["A": notes, "B": notes],
+
+score """
+    [A] 1 2 3 4
+    [B] 5_ 6_ 7_ 1_ 2_ 3_ 4_ 5_
+    """,
+"#;
 
     assert_eq!(
         resolved_note_cells_in_source(source, &note(0, 1), &note(1, 4)),
@@ -214,9 +225,18 @@ fn cross_part_note_range_bounds_a_different_rhythm_by_time() {
 fn cross_part_note_range_covers_every_measure_of_a_tied_endpoint() {
     // The shrunk proptest case: A's `1~` is tied into the next measure, so
     // the range runs through B's last eighth, `6_`.
-    let source = "# parts\nA = notes\nB = notes\nC = notes\n\n# score\n\
-                  [A] 0 0 0 0\n[B] 0---\n[C] 0 3_ 3~- 3_\n\n\
-                  [A] 0- 0_ 1~ 1_\n[B] 1 2_ 4- 6_\n[C] 4-- 1\n";
+    let source = r#"parts ["A": notes, "B": notes, "C": notes],
+
+score """
+    [A] 0 0 0 0
+    [B] 0---
+    [C] 0 3_ 3~- 3_
+
+    [A] 0- 0_ 1~ 1_
+    [B] 1 2_ 4- 6_
+    [C] 4-- 1
+    """,
+"#;
 
     let selected = resolved_note_cells_in_source(source, &note(0, 6), &note(2, 0));
     assert!(selected.contains(&note_cell(1, 4)), "{selected:?}");

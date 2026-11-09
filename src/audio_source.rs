@@ -53,16 +53,16 @@ pub fn write_mp3_from_source_filtered(
 /// after the start — what an exact range selection (e.g. "play current
 /// measure") needs to avoid overrunning into a later repeat/jump pass.
 ///
-/// When `respect_sequence` is `false`, D.C./D.S. markers and `# sequence`
+/// When `respect_sequence` is `false`, D.C./D.S. markers and `sequence`
 /// (and any part omissions it applies) are ignored: the range plays exactly
 /// as written. This is what "play current measure" needs — it always plays
-/// what is written, regardless of how `# sequence` might otherwise reorder
+/// what is written, regardless of how `sequence` might otherwise reorder
 /// or omit parts for that measure's occurrence(s). "Play from current
-/// measure" passes `true` so it follows `# sequence` to the true end.
+/// measure" passes `true` so it follows `sequence` to the true end.
 ///
-/// `sequence_entry_range`, when `Some`, names the exact `# sequence`
+/// `sequence_entry_range`, when `Some`, names the exact `sequence`
 /// entry/entries `range` refers to by their 0-based index into
-/// `score.sequence` (the order entries are written in `# sequence`) rather
+/// `score.sequence` (the order entries are written in `sequence`) rather
 /// than leaving `range`'s written measure indices to be resolved by
 /// earliest/last-occurrence search. This is what the sequence-jump
 /// toolbar's "play selected sequence range" needs: without it, a repeated
@@ -155,7 +155,7 @@ pub fn write_mp3_for_measure_range_from_source(
 /// Parse, group, optionally filter tracks, and compute the elapsed-seconds
 /// offset of each measure boundary in playback order (length = playback
 /// measure count + 1; the last entry is the total duration), following
-/// `# sequence`/D.C.-al-Coda-Fine navigation the same way the actual audio
+/// `sequence`/D.C.-al-Coda-Fine navigation the same way the actual audio
 /// does (see [`crate::midi::expand_navigation`]).
 #[cfg(feature = "midi")]
 pub fn measure_start_times_from_source(
@@ -175,7 +175,7 @@ pub fn measure_start_times_from_source(
 /// note_id)`. Used to drive the SVG preview's per-part, per-note playback
 /// cursor (see [`crate::midi::NoteTiming`]).
 ///
-/// Follows the same `# sequence`/D.C.-al-Coda-Fine playback order as the
+/// Follows the same `sequence`/D.C.-al-Coda-Fine playback order as the
 /// actual audio (see [`crate::midi::note_timings_seconds`]), so a repeated
 /// or reordered written note is highlighted every time it's actually heard,
 /// not just its first pass.

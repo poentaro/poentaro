@@ -183,7 +183,7 @@ export interface PoentaroWorkerState {
     selectedCells: NoteCell[],
   ) => void
   /** Plays the whole score from its first measure through the last written
-   * one, following any D.C./D.S./`# sequence` repeat structure — the "Play
+   * one, following any D.C./D.S./`sequence` repeat structure — the "Play
    * All" button. */
   playAll: () => void
   /** Whether playback mixes a click on every beat into the audio; sent to
@@ -213,7 +213,7 @@ export interface PoentaroWorkerState {
     settings: PartSettings,
   ) => Promise<string>
   /**
-   * Zipped-view "Format" action: drops `# score` `[Key]` data lines that are
+   * Zipped-view "Format" action: drops `score` `[Key]` data lines that are
    * entirely redundant with implicit-fill, and collapses whitespace on
    * every surviving directive/data line (see `format_source::format_score`).
    */

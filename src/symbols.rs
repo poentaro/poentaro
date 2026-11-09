@@ -1,5 +1,5 @@
 //! Symbol collection and rename-edit computation for user-renamable identifiers:
-//! part abbreviations and `# sequence` section labels. Built on top of
+//! part abbreviations and `sequence` section labels. Built on top of
 //! [`crate::ast::parsed::ParsedDocument`]'s already-tracked declaration and
 //! reference spans, for use by editor tooling (e.g. a Monaco rename provider).
 
@@ -11,7 +11,7 @@ use crate::parser::anyfix;
 pub enum SymbolKind {
     /// A part abbreviation.
     Abbreviation,
-    /// A `label="..."` section label, referenced from `# sequence` entries.
+    /// A `label="..."` section label, referenced from `sequence` entries.
     SectionLabel,
 }
 
@@ -199,9 +199,6 @@ pub fn rename_edits_in_text(
     new_name: &str,
 ) -> Vec<TextEdit> {
     let edits = rename_edits(document, kind, old_name, new_name);
-    if !crate::document::is_anyfix(text) {
-        return edits;
-    }
     let score = crate::parser::read_document(text, &[]).score;
     let score_span = score.offset..score.offset + score.text.len();
     edits

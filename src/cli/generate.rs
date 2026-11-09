@@ -21,7 +21,7 @@ pub struct GenerateInput {
     pub output: Option<PathBuf>,
     pub tracks: Vec<String>,
     pub split_tracks: bool,
-    /// The `# preset` whose metadata and visible (or soloed) parts to export.
+    /// The `preset` whose metadata and visible (or soloed) parts to export.
     pub preset: Option<String>,
 }
 

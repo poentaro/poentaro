@@ -6,25 +6,21 @@ use std::collections::HashSet;
 /// so the compiler's `note_id` stamping and `note_timings_seconds`'s walk
 /// both have ties, rests, and chords to agree on.
 pub(crate) fn multi_part_source_with_ties_rests_and_chord() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"note highlight identity\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano [S] = notes\n",
-        "Alto [A] = notes\n",
-        "Chords [C] = chords\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S] 1~ 1 0 2\n",
-        "[A] 3 3 3 3\n",
-        "[C] 1 - - -\n",
-        "\n",
-        "[S] 3 3~ 3 0\n",
-        "[A] 5 5 5 5\n",
-        "[C] 0 0 4 -\n",
-    )
+    r#"metadata { title "note highlight identity" },
+
+parts ["Soprano" [S]: notes, "Alto" [A]: notes, "Chords" [C]: chords],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1~ 1 0 2
+    [A] 3 3 3 3
+    [C] 1 - - -
+
+    [S] 3 3~ 3 0
+    [A] 5 5 5 5
+    [C] 0 0 4 -
+    """,
+"#
 }
 
 /// Extracts every `(source_part_index, note_id)` pair rendered as a
@@ -82,27 +78,24 @@ fn note_ids_match_between_grid_layout_and_midi_timing() {
     );
 }
 
-/// A `# sequence` that replays labeled span `A` twice before playing `B`
+/// A `sequence` that replays labeled span `A` twice before playing `B`
 /// once, so playback order (`A`, `A`, `B`) differs from written order
 /// (`A`, `B`).
 fn sequence_source_repeating_a_span() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"note highlight identity sequence\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano [S] = notes\n",
-        "\n",
-        "# sequence\n",
-        "A, A, B\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120 label=\"A\"\n",
-        "[S] 1 2 3 4\n",
-        "\n",
-        "label=\"B\"\n",
-        "[S] 5 6 7 1\n",
-    )
+    r#"metadata { title "note highlight identity sequence" },
+
+parts ["Soprano" [S]: notes],
+
+sequence ["A", "A", "B"],
+
+score """
+    time=4/4 key=C4 bpm=120 label="A"
+    [S] 1 2 3 4
+
+    label="B"
+    [S] 5 6 7 1
+    """,
+"#
 }
 
 #[test]
@@ -133,7 +126,7 @@ fn note_ids_match_between_grid_layout_and_midi_timing_with_sequence() {
     assert_eq!(
         svg_ids, timing_ids,
         "grid-layout note highlight targets and MIDI note timings must agree on every \
-         (source_part_index, note_id) pair, even when `# sequence` replays a span"
+         (source_part_index, note_id) pair, even when `sequence` replays a span"
     );
 
     // Span `A` (written measure 0, 4 notes) plays twice, `B` (written

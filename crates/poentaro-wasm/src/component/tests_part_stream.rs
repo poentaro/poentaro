@@ -1,21 +1,23 @@
 //! The part stream exports called through the `Guest` impl.
 use super::*;
 
-const SCORE: &str = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
-Harmony [H] = chords
-Chanted [C] = lyrics[H]
+const SCORE: &str = r#"parts [
+    "Melody" [M]: notes,
+    "Words" [W]: lyrics [M],
+    "Harmony" [H]: chords,
+    "Chanted" [C]: lyrics [H],
+],
 
-# score
-[M] 1 2 3 4
-[W] 你 好 世 界
-[H] 1 4 5 1
-[C] (la) (la) (la) (la) (la)
+score """
+    [M] 1 2 3 4
+    [W] 你 好 世 界
+    [H] 1 4 5 1
+    [C] (la) (la) (la) (la) (la)
 
-[M] 5 6 7 1
-[W] 一 二 三 四
-";
+    [M] 5 6 7 1
+    [W] 一 二 三 四
+    """,
+"#;
 
 fn row(part: &StreamablePart) -> String {
     format!(
@@ -105,7 +107,7 @@ fn applying_an_inserted_note_rebars_later_measures() {
     let source = result.source.unwrap();
     assert!(source.contains("[M] 0 1 2 3\n"), "{source}");
     assert!(source.contains("[M] 4 5 6 7\n"), "{source}");
-    assert!(source.ends_with("[M] 1 0 0 0\n"), "{source}");
+    assert!(source.ends_with("[M] 1 0 0 0\n    \"\"\",\n"), "{source}");
 }
 
 #[test]
@@ -123,7 +125,7 @@ fn a_leftover_cjk_syllable_starts_a_measure_at_its_utf8_byte_offset() {
     let result = apply("W", "你 好 世 界 一 二 三 四 五");
     assert!(result.diagnostics.is_empty());
     assert_eq!(result.measure_starts.last(), Some(&32));
-    assert!(result.source.unwrap().ends_with("[W] 五\n"));
+    assert!(result.source.unwrap().ends_with("[W] 五\n    \"\"\",\n"));
 }
 
 #[test]

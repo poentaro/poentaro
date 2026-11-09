@@ -8,33 +8,32 @@ import { Given, Then, When } from './fixtures'
  * Source with two sections (A and B), each containing two measures.
  *
  * Lines (1-based):
- *   8:  time=4/4 key=C4 bpm=120 label="A"       ← view-zone directive
- *   9:  1 2 3 4                                   ← measure 0
+ *   6:  time=4/4 key=C4 bpm=120 label="A"       ← view-zone directive
+ *   7:  1 2 3 4                                   ← measure 0
+ *   8:  (blank)
+ *   9:  5 6 7 1'                                 ← measure 1
  *   10: (blank)
- *   11: 5 6 7 1'                                 ← measure 1
- *   12: (blank)
- *   13: label="B"                                ← view-zone directive
- *   14: 1' 7 6 5                                 ← measure 2
- *   15: (blank)
- *   16: 4 3 2 1                                  ← measure 3
+ *   11: label="B"                                ← view-zone directive
+ *   12: 1' 7 6 5                                 ← measure 2
+ *   13: (blank)
+ *   14: 4 3 2 1                                  ← measure 3
  */
 const source = [
-  '# metadata',
-  'title = "test"',
+  'metadata { title "test" },',
   '',
-  '# parts',
-  'M = notes',
+  'parts ["M": notes],',
   '',
-  '# score',
-  'time=4/4 key=C4 bpm=120 label="A"',
-  '1 2 3 4',
+  'score """',
+  '    time=4/4 key=C4 bpm=120 label="A"',
+  '    1 2 3 4',
   '',
-  "5 6 7 1'",
+  "    5 6 7 1'",
   '',
-  'label="B"',
-  "1' 7 6 5",
+  '    label="B"',
+  "    1' 7 6 5",
   '',
-  '4 3 2 1',
+  '    4 3 2 1',
+  '    """,',
 ].join('\n')
 
 // Read the live Monaco selection off the `monaco` global that

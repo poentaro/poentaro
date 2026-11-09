@@ -4,20 +4,16 @@ use crate::types::{ListMeasureSpansResponse, ListPartsResponse, MeasureAtOffsetR
 
 #[test]
 fn list_parts_response_returns_declarations() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano = notes\n",
-        "Alto = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Soprano] 1 2 3 4\n",
-        "[Alto] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Soprano": notes, "Alto": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Alto] 5 6 7 1
+    """,
+"#;
     let resp = part_declarations::list_parts_response(input, &[]);
     match resp {
         ListPartsResponse::Ok { parts, .. } => {
@@ -33,10 +29,15 @@ fn list_parts_response_returns_declarations() {
 
 #[test]
 fn get_measure_at_offset_ok_for_note_in_measure() {
-    let source = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Melody] 1 2 3 4\n",
-    );
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    """,
+"#;
     let byte_offset = source.find("1 2 3 4").unwrap();
     let resp = get_measure_at_offset_response(source, byte_offset);
     match resp {
@@ -47,10 +48,15 @@ fn get_measure_at_offset_ok_for_note_in_measure() {
 
 #[test]
 fn get_measure_at_offset_not_in_measure_for_header() {
-    let source = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Melody] 1 2 3 4\n",
-    );
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    """,
+"#;
     let resp = get_measure_at_offset_response(source, 0);
     assert!(
         matches!(resp, MeasureAtOffsetResponse::NotInMeasure),
@@ -60,19 +66,16 @@ fn get_measure_at_offset_not_in_measure_for_header() {
 
 #[test]
 fn list_measure_spans_returns_one_span_per_measure() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "[Melody] 1 2 3 4\n",
-        "\n",
-        "[Melody] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    [Melody] 1 2 3 4
+
+    [Melody] 5 6 7 1
+    """,
+"#;
     let resp = list_measure_spans_response(input);
     match resp {
         ListMeasureSpansResponse::Ok { spans, .. } => {
@@ -92,18 +95,15 @@ fn list_measure_spans_returns_one_span_per_measure() {
 
 #[test]
 fn list_measure_spans_view_zone_start_includes_directive_line() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "bpm=60\n",
-        "[Melody] 1 2 3 4\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    bpm=60
+    [Melody] 1 2 3 4
+    """,
+"#;
     let directive_offset = input.find("bpm=60").unwrap();
     let notes_offset = input.find("1 2 3 4").unwrap();
     let resp = list_measure_spans_response(input);
@@ -129,27 +129,23 @@ fn list_measure_spans_returns_empty_for_invalid_source() {
 
 #[test]
 fn list_measure_spans_returns_sequence_entries_in_playback_order_with_repeats() {
-    // `# sequence` replays the "Chorus" span twice, so the resolved entries
+    // `sequence` replays the "Chorus" span twice, so the resolved entries
     // must reflect playback order (Verse, Chorus, Chorus), not written order
     // (Verse, Chorus), and each occurrence must carry its own measure range.
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "\n",
-        "# sequence\n",
-        "Verse, Chorus, Chorus\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120 label=\"Verse\"\n",
-        "[Melody] 1 2 3 4\n",
-        "\n",
-        "label=\"Chorus\"\n",
-        "[Melody] 5 6 7 1\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+sequence [Verse, Chorus, Chorus],
+
+score """
+    time=4/4 key=C4 bpm=120 label="Verse"
+    [Melody] 1 2 3 4
+
+    label="Chorus"
+    [Melody] 5 6 7 1
+    """,
+"#;
     let resp = list_measure_spans_response(input);
     match resp {
         ListMeasureSpansResponse::Ok {
@@ -173,26 +169,21 @@ fn list_measure_spans_sequence_entry_label_includes_part_omission_suffix() {
     // `Y(-b)` omits part "b" from that one occurrence's playback; the entry's
     // label must carry that suffix so the sequence jump toolbar can show
     // "Y(-b)" distinctly from the plain "Y" entries that follow it.
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "a = notes\n",
-        "b = notes\n",
-        "\n",
-        "# sequence\n",
-        "X, Y(-b), Y, X\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120 label=\"X\"\n",
-        "[a] 1\n",
-        "\n",
-        "label=\"Y\"\n",
-        "[a] 2\n",
-        "[b] 5\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["a": notes, "b": notes],
+
+sequence ["X", "Y" WITHOUT [b], "Y", "X"],
+
+score """
+    time=4/4 key=C4 bpm=120 label="X"
+    [a] 1
+
+    label="Y"
+    [a] 2
+    [b] 5
+    """,
+"#;
     let resp = list_measure_spans_response(input);
     match resp {
         ListMeasureSpansResponse::Ok {
@@ -210,26 +201,21 @@ fn list_measure_spans_sequence_entry_label_includes_part_only_suffix() {
     // `Y(a)` plays only part "a" on that one occurrence; the entry's label
     // must carry that suffix, written without a leading dash so it reads
     // distinctly from an omit suffix like `Y(-b)`.
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "a = notes\n",
-        "b = notes\n",
-        "\n",
-        "# sequence\n",
-        "X, Y(a), Y, X\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120 label=\"X\"\n",
-        "[a] 1\n",
-        "\n",
-        "label=\"Y\"\n",
-        "[a] 2\n",
-        "[b] 5\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["a": notes, "b": notes],
+
+sequence ["X", "Y" ONLY [a], "Y", "X"],
+
+score """
+    time=4/4 key=C4 bpm=120 label="X"
+    [a] 1
+
+    label="Y"
+    [a] 2
+    [b] 5
+    """,
+"#;
     let resp = list_measure_spans_response(input);
     match resp {
         ListMeasureSpansResponse::Ok {
@@ -244,17 +230,14 @@ fn list_measure_spans_sequence_entry_label_includes_part_only_suffix() {
 
 #[test]
 fn list_measure_spans_returns_empty_sequence_entries_without_sequence_section() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "[Melody] 1 2 3 4\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    [Melody] 1 2 3 4
+    """,
+"#;
     let resp = list_measure_spans_response(input);
     match resp {
         ListMeasureSpansResponse::Ok {

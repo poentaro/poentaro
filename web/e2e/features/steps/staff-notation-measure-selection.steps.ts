@@ -10,16 +10,13 @@ const SECTION_A_MEASURES = 24
 /** Section A is long enough to push section B ("B", measures 24-25) off the
  * first staff page, so jumping to it has to scroll. */
 const SOURCE = [
-  '# metadata',
-  'title = "Staff Selection Test"',
+  'metadata { title "Staff Selection Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# preset "Violin"',
-  'notation = violin',
+  'preset "Violin" { notation: violin },',
   '',
-  '# score',
+  'score """',
   'time=4/4 key=C4 bpm=240 label="A"',
   Array.from({ length: SECTION_A_MEASURES }, () => '[M] 1 2 3 4').join('\n\n'),
   '',
@@ -27,6 +24,7 @@ const SOURCE = [
   '[M] 5 6 7 1',
   '',
   '[M] 4 3 2 1',
+  '""",',
 ].join('\n')
 
 /** Verovio's first render also downloads its ~7 MB module. */

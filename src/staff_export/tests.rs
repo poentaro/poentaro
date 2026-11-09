@@ -2,7 +2,15 @@ use super::render_split_meis_from_source;
 use crate::mei_export::ClefChoice;
 use crate::split_track::SplitSelection;
 
-const SOURCE: &str = "# parts\nSoprano [S] = notes\nAlto [A] = notes\nWords [w] = lyrics[A]\n\n# score\nkey=C4 time=2/4\n[S] 1 2\n[A] 5 6\n[w] 你好\n";
+const SOURCE: &str = r#"parts ["Soprano" [S]: notes, "Alto" [A]: notes, "Words" [w]: lyrics [A]],
+
+score """
+    key=C4 time=2/4
+    [S] 1 2
+    [A] 5 6
+    [w] 你好
+    """,
+"#;
 
 #[test]
 fn split_meis_give_each_sounding_part_its_own_score_and_lyrics() {

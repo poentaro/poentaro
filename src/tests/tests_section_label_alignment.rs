@@ -28,25 +28,21 @@ fn section_labels_align_when_leading_measures_are_hidden_via_part_filter() {
     // without this cap both blocks would land in one system and XXX/YYY
     // would legitimately sit at different measure-column x-positions rather
     // than both at each system's own start.
-    let input = concat!(
-        "# metadata\n",
-        "max_measures_per_system = 1\n",
-        "\n",
-        "# parts\n",
-        "a = notes\n",
-        "b = notes\n",
-        "c = notes\n",
-        "\n",
-        "# score\n",
-        "label=\"XXX\"\n",
-        "[a] 1\n",
-        "\n",
-        "[a] 1\n",
-        "\n",
-        "label=\"YYY\"\n",
-        "[b] 2\n",
-        "[c] 3\n",
-    );
+    let input = r#"metadata { max measures per system 1 },
+
+parts ["a": notes, "b": notes, "c": notes],
+
+score """
+    label="XXX"
+    [a] 1
+
+    [a] 1
+
+    label="YYY"
+    [b] 2
+    [c] 3
+    """,
+"#;
 
     let svgs = render_svgs_from_source_filtered(
         input,

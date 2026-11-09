@@ -21,18 +21,15 @@ fn range_of_prefix(source: &str, needle: &str, length: u32) -> ByteRange {
     }
 }
 
-const MELODY_BASS: &str = r#"# metadata
-title = "t"
-author = "a"
+const MELODY_BASS: &str = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 1 2 3 4
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 2 3 4
+    [B] 5 6 7 1
+    """,
 "#;
 
 #[test]
@@ -69,7 +66,7 @@ fn slurred_selection_is_remapped_onto_the_new_source() {
 
 #[test]
 fn selection_spanning_two_parts_slurs_each_part_separately() {
-    let range = range_of(MELODY_BASS, "3 4\n[B] 5 6");
+    let range = range_of(MELODY_BASS, "3 4\n    [B] 5 6");
     let result = toggle_range_slur(MELODY_BASS, &[range]);
     assert!(
         result.source.contains("[M] 1 2 (3 4)"),
@@ -85,7 +82,7 @@ fn selection_spanning_two_parts_slurs_each_part_separately() {
 
 #[test]
 fn part_with_a_single_selected_note_is_not_slurred() {
-    let range = range_of(MELODY_BASS, "4\n[B] 5 6");
+    let range = range_of(MELODY_BASS, "4\n    [B] 5 6");
     let result = toggle_range_slur(MELODY_BASS, &[range]);
     assert!(
         result.source.contains("[M] 1 2 3 4\n"),
@@ -113,16 +110,14 @@ fn empty_ranges_list_returns_source_unchanged() {
     assert!(result.ranges.is_empty());
 }
 
-const SLURRED: &str = r#"# metadata
-title = "t"
-author = "a"
+const SLURRED: &str = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
+parts ["Melody" [M]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] (1 2) 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [M] (1 2) 3 4
+    """,
 "#;
 
 #[test]
@@ -155,16 +150,14 @@ fn selection_outside_every_group_slurs() {
     );
 }
 
-const NESTED: &str = r#"# metadata
-title = "t"
-author = "a"
+const NESTED: &str = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
+parts ["Melody" [M]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] (3 (2 1)) 4
+score """
+    time=4/4 key=C4 bpm=120
+    [M] (3 (2 1)) 4
+    """,
 "#;
 
 #[test]
@@ -177,21 +170,18 @@ fn selection_inside_nested_groups_removes_every_enclosing_group() {
     );
 }
 
-const TWO_MEASURES: &str = r#"# metadata
-title = "t"
-author = "a"
+const TWO_MEASURES: &str = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Harmony [H] = notes
+parts ["Melody" [M]: notes, "Harmony" [H]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 1 2 3 4
-[H] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 2 3 4
+    [H] 5 6 7 1
 
-[M] 5 6 7 1
-[H] 1 2 3 4
+    [M] 5 6 7 1
+    [H] 1 2 3 4
+    """,
 "#;
 
 /// A part-label click selects the part's notes in every measure of the
@@ -202,17 +192,17 @@ fn disjoint_ranges_across_measures_become_one_cross_measure_slur() {
     let result = toggle_range_slur(
         TWO_MEASURES,
         &[
-            range_of_prefix(TWO_MEASURES, "1 2 3 4\n[H]", 7),
-            range_of_prefix(TWO_MEASURES, "5 6 7 1\n[H] 1", 7),
+            range_of_prefix(TWO_MEASURES, "1 2 3 4\n    [H]", 7),
+            range_of_prefix(TWO_MEASURES, "5 6 7 1\n    [H] 1", 7),
         ],
     );
     assert!(
-        result.source.contains("[M] (1 2 3 4\n[H] 5 6 7 1\n"),
+        result.source.contains("[M] (1 2 3 4\n    [H] 5 6 7 1\n"),
         "got:\n{}",
         result.source
     );
     assert!(
-        result.source.contains("[M] 5 6 7 1)\n[H] 1 2 3 4\n"),
+        result.source.contains("[M] 5 6 7 1)\n    [H] 1 2 3 4\n"),
         "got:\n{}",
         result.source
     );

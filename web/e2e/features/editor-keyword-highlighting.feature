@@ -9,13 +9,13 @@ Feature: Editor keyword highlighting
     Then the editor text "<text>" is colored as a "<kind>" keyword
 
     Examples:
-      | text       | kind           |
-      | # score    | section-header |
-      | row_height | metadata-key   |
-      | notes      | part-kind      |
-      | follow     | part-kind      |
-      | bpm        | directive-key  |
-      | break      | directive-key  |
+      | text    | kind           |
+      | score   | section-header |
+      | height  | metadata-key   |
+      | notes   | part-kind      |
+      | follow  | part-kind      |
+      | bpm     | directive-key  |
+      | break   | directive-key  |
 
   Scenario: Leaves unrecognized keys uncolored
     Then the editor text "colour" is not colored as a keyword

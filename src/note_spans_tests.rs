@@ -2,16 +2,14 @@ use super::*;
 
 #[test]
 fn multi_part_score_assigns_correct_part_and_measure_indices() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-[M] 1 2 3 4
-[B] 5 6 7 1'
+score """
+    [M] 1 2 3 4
+    [B] 5 6 7 1'
+    """,
 "#;
     let spans = list_note_spans_from_source(source, "test.poentaro", None)
         .unwrap()
@@ -36,14 +34,13 @@ Bass [B] = notes
 
 #[test]
 fn tie_continuation_reuses_one_span_id() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Melody [M] = notes
+parts ["Melody" [M]: notes],
 
-# score
-[M] 4~4 3 2
+score """
+    [M] 4~4 3 2
+    """,
 "#;
     let spans = list_note_spans_from_source(source, "test.poentaro", None)
         .unwrap()
@@ -59,18 +56,15 @@ Melody [M] = notes
 
 #[test]
 fn chord_and_percussion_parts_get_spans() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Melody [M] = notes
-Chords [C] = chords
-Perc [P] = percussion "38: Acoustic Snare"
+parts ["Melody" [M]: notes, "Chords" [C]: chords, "Perc" [P]: percussion { sound 38 }],
 
-# score
-[M] 1 2 3 4
-[C] 1 1m 1 1m
-[P] x x x x
+score """
+    [M] 1 2 3 4
+    [C] 1 1m 1 1m
+    [P] x x x x
+    """,
 "#;
     let spans = list_note_spans_from_source(source, "test.poentaro", None)
         .unwrap()
@@ -91,14 +85,13 @@ Perc [P] = percussion "38: Acoustic Snare"
 
 #[test]
 fn rest_yields_a_span_over_its_own_token() {
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Melody [M] = notes
+parts ["Melody" [M]: notes],
 
-# score
-[M] 1 0 3 4
+score """
+    [M] 1 0 3 4
+    """,
 "#;
     let spans = list_note_spans_from_source(source, "test.poentaro", None)
         .unwrap()
@@ -232,14 +225,13 @@ fn selecting_only_a_rest_selects_its_source_token() {
     // Clicking the "0" rest in the SVG preview should select the "0" in
     // the Monaco editor: a selection containing only a rest cell must
     // still produce a run, not be silently dropped.
-    let source = r#"# metadata
-title = "t"
+    let source = r#"metadata { title "t" },
 
-# parts
-Melody [M] = notes
+parts ["Melody" [M]: notes],
 
-# score
-[M] 1 0 3 4
+score """
+    [M] 1 0 3 4
+    """,
 "#;
     let spans = list_note_spans_from_source(source, "test.poentaro", None)
         .unwrap()

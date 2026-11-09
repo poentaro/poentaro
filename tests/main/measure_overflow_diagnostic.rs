@@ -11,16 +11,14 @@ fn overflowing_fixture() -> String {
         .collect::<Vec<_>>()
         .join(" ");
     format!(
-        r#"# metadata
-title = "t"
-author = "a"
+        r#"metadata {{ title "t", author "a" }},
 
-# parts
-Melody = notes
+parts ["Melody": notes],
 
-# score
-time=32/4 key=C4 bpm=120
-[Melody] {notes}
+score """
+    time=32/4 key=C4 bpm=120
+    [Melody] {notes}
+    """,
 "#
     )
 }
@@ -56,16 +54,14 @@ fn tightly_packed_system_produces_measure_overflow_warning() {
 
 #[test]
 fn ordinary_score_produces_no_measure_overflow_warning() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody = notes
+parts ["Melody": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[Melody] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    """,
 "#;
     let output = render_svgs_from_source(source, "test.poentaro", &[])
         .expect("a normal score must render without error");

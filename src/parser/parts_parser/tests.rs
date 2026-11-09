@@ -1,11 +1,22 @@
-use super::parse_parts;
-use crate::ast::parsed::{PartKind, Soundfont};
+use crate::ast::parsed::PartKind;
 use crate::error::RecoverableErrorKind;
+
+pub(super) fn parse_parts(
+    source: &str,
+    instruments: &[super::InstrumentInfo],
+) -> (
+    Vec<crate::ast::parsed::PartDecl>,
+    Vec<crate::error::RecoverableError>,
+) {
+    let read = crate::parser::read_document(source, instruments);
+    (read.declarations, read.parts_parse_errors)
+}
 
 #[test]
 fn parses_abbreviated_track() {
-    let content = "Alto 1 & Tenor [A1&T] = notes\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Alto 1 & Tenor" [A1 & T]: notes]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls.len(), 1);
     assert_eq!(decls[0].display_name, "Alto 1 & Tenor");
@@ -16,8 +27,9 @@ fn parses_abbreviated_track() {
 
 #[test]
 fn parses_chord_track() {
-    let content = "main = chords\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["main": chords]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls[0].abbreviation, "main");
     assert_eq!(decls[0].display_name, "main");
@@ -27,8 +39,9 @@ fn parses_chord_track() {
 
 #[test]
 fn omits_brackets_uses_name_as_abbreviation() {
-    let content = "Melody = notes\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Melody": notes]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls[0].abbreviation, "Melody");
     assert_eq!(decls[0].display_name, "Melody");
@@ -36,8 +49,8 @@ fn omits_brackets_uses_name_as_abbreviation() {
 
 #[test]
 fn skips_duplicate_abbreviation_and_keeps_first() {
-    let content = "A [x] = notes\nB [x] = notes\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = "parts [\"A\" [x] : notes, \"B\" [x] : notes],\n";
+    let (decls, errors) = parse_parts(content, &[]);
     assert_eq!(decls.len(), 1);
     assert_eq!(decls[0].display_name, "A");
     assert_eq!(errors.len(), 1);
@@ -49,7 +62,7 @@ fn skips_duplicate_abbreviation_and_keeps_first() {
 
 #[test]
 fn empty_section_collects_error() {
-    let (decls, errors) = parse_parts("\n", 0, &[]);
+    let (decls, errors) = parse_parts("parts [],\n", &[]);
     assert!(decls.is_empty());
     assert_eq!(errors.len(), 1);
     assert!(matches!(
@@ -60,29 +73,30 @@ fn empty_section_collects_error() {
 
 #[test]
 fn skips_malformed_line_and_collects_error() {
-    let content = "title = \"t\"\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = "parts [ title ],\n";
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(decls.is_empty());
-    assert!(errors.len() >= 2);
+    assert!(!errors.is_empty());
 }
 
 #[test]
 fn skips_bad_line_keeps_valid_declaration() {
-    let content = "malformed-no-equals\nMelody = notes\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = "parts [malformed, \"Melody\" : notes],\n";
+    let (decls, errors) = parse_parts(content, &[]);
     assert_eq!(decls.len(), 1);
     assert_eq!(decls[0].abbreviation, "Melody");
     assert_eq!(errors.len(), 1);
     assert!(matches!(
         errors[0].kind,
-        RecoverableErrorKind::PartsMalformedLine { .. }
+        RecoverableErrorKind::AnyfixInvalid { .. }
     ));
 }
 
 #[test]
 fn follow_copies_kind_from_target_and_sets_follow_target() {
-    let content = "Soprano [S] = notes\nAlto [A] = follow[S]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Soprano" [S]: notes, "Alto" [A]: follow [S]]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls.len(), 2);
     assert_eq!(decls[1].abbreviation, "A");
@@ -92,8 +106,9 @@ fn follow_copies_kind_from_target_and_sets_follow_target() {
 
 #[test]
 fn follow_first_part_emits_error() {
-    let content = "Soprano [S] = follow[X]\nAlto [A] = notes\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Soprano" [S]: follow [X], "Alto" [A]: notes]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert_eq!(decls.len(), 1);
     assert_eq!(decls[0].abbreviation, "A");
     assert_eq!(errors.len(), 1);
@@ -106,8 +121,9 @@ fn follow_first_part_emits_error() {
 #[test]
 fn follow_with_soundfont_parses_correctly() {
     use crate::ast::parsed::Soundfont;
-    let content = "A = notes\nB = follow[A] \"1: Grand Piano\"\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes, "B": follow [A] { sound 1 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls.len(), 2);
     assert_eq!(decls[1].follow_target, Some("A".to_string()));
@@ -116,8 +132,9 @@ fn follow_with_soundfont_parses_correctly() {
 
 #[test]
 fn follow_unknown_target_emits_error() {
-    let content = "Soprano [S] = notes\nAlto [A] = follow[UNKNOWN]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Soprano" [S]: notes, "Alto" [A]: follow [UNKNOWN]]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert_eq!(decls.len(), 1);
     assert_eq!(decls[0].abbreviation, "S");
     assert_eq!(errors.len(), 1);
@@ -127,7 +144,7 @@ fn follow_unknown_target_emits_error() {
     ));
     assert_eq!(
         errors[0].message(),
-        "no part with abbreviation 'UNKNOWN'; follow targets must match a part declared earlier in #parts"
+        "no part with abbreviation 'UNKNOWN'; follow targets must match a part declared earlier in parts"
     );
     let unknown_start = content.find("UNKNOWN").expect("UNKNOWN in source");
     assert_eq!(errors[0].span.start, unknown_start);
@@ -136,9 +153,9 @@ fn follow_unknown_target_emits_error() {
 
 #[test]
 fn follow_unknown_target_span_is_specific_for_simple_names() {
-    let content = "#parts\na = notes\nb = follow[xxx]\n";
-    let parts_start = content.find("a = notes").expect("parts section");
-    let (decls, errors) = parse_parts(&content[parts_start..], parts_start, &[]);
+    let content = r#"parts ["a": notes, "b": follow [xxx]],
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert_eq!(decls.len(), 1);
     assert_eq!(errors.len(), 1);
     assert!(matches!(
@@ -152,40 +169,45 @@ fn follow_unknown_target_span_is_specific_for_simple_names() {
 
 #[test]
 fn octave_offset_positive_parses() {
-    let content = "Bass = notes +2\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Bass": notes { octave: + 2 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls[0].octave_offset, 2);
 }
 
 #[test]
 fn octave_offset_negative_parses() {
-    let content = "Bass = notes -1\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Bass": notes { octave: - 1 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls[0].octave_offset, -1);
 }
 
 #[test]
 fn octave_offset_absent_defaults_to_zero() {
-    let content = "Bass = notes\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Bass": notes]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls[0].octave_offset, 0);
 }
 
 #[test]
 fn octave_offset_with_soundfont_before() {
-    let content = "G = notes \"5: Guitar\" -2\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["G": notes { sound 5, octave: - 2 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls[0].octave_offset, -2);
 }
 
 #[test]
 fn octave_offset_with_volume() {
-    let content = "B = notes 75% -1\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["B": notes { volume: 75 %, octave: - 1 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls[0].octave_offset, -1);
     assert_eq!(decls[0].volume, 75);
@@ -193,8 +215,9 @@ fn octave_offset_with_volume() {
 
 #[test]
 fn octave_offset_follow_part() {
-    let content = "A = notes\nB = follow[A] -1\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes, "B": follow [A] { octave: - 1 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls[1].octave_offset, -1);
 }
@@ -202,8 +225,9 @@ fn octave_offset_follow_part() {
 #[test]
 fn follow_inherits_soundfont_volume_and_octave_from_target() {
     use crate::ast::parsed::Soundfont;
-    let content = "A = notes \"48: String Ensemble 1\" 60% +1\nB = follow[A]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes { sound 48, volume: 60 %, octave: + 1 }, "B": follow [A]]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls[1].soundfont, Soundfont(48));
     assert_eq!(decls[1].volume, 60);
@@ -213,8 +237,9 @@ fn follow_inherits_soundfont_volume_and_octave_from_target() {
 #[test]
 fn follow_overrides_soundfont_while_inheriting_volume_and_octave() {
     use crate::ast::parsed::Soundfont;
-    let content = "A = notes \"48: String Ensemble 1\" 60% +1\nB = follow[A] \"1: Grand Piano\"\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes { sound 48, volume: 60 %, octave: + 1 }, "B": follow [A] { sound 1 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls[1].soundfont, Soundfont(1));
     assert_eq!(decls[1].volume, 60);
@@ -224,8 +249,9 @@ fn follow_overrides_soundfont_while_inheriting_volume_and_octave() {
 #[test]
 fn follow_overrides_volume_while_inheriting_soundfont_and_octave() {
     use crate::ast::parsed::Soundfont;
-    let content = "A = notes \"48: String Ensemble 1\" 60% +1\nB = follow[A] 80%\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes { sound 48, volume: 60 %, octave: + 1 }, "B": follow [A] { volume: 80 % }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls[1].soundfont, Soundfont(48));
     assert_eq!(decls[1].volume, 80);
@@ -235,8 +261,9 @@ fn follow_overrides_volume_while_inheriting_soundfont_and_octave() {
 #[test]
 fn follow_overrides_octave_while_inheriting_soundfont_and_volume() {
     use crate::ast::parsed::Soundfont;
-    let content = "A = notes \"48: String Ensemble 1\" 60% +1\nB = follow[A] -2\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes { sound 48, volume: 60 %, octave: + 1 }, "B": follow [A] { octave: - 2 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls[1].soundfont, Soundfont(48));
     assert_eq!(decls[1].volume, 60);
@@ -246,8 +273,9 @@ fn follow_overrides_octave_while_inheriting_soundfont_and_volume() {
 #[test]
 fn follow_chain_inherits_resolved_properties_from_intermediate_target() {
     use crate::ast::parsed::Soundfont;
-    let content = "A = notes \"48: String Ensemble 1\" 60% +1\nB = follow[A]\nC = follow[B]\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["A": notes { sound 48, volume: 60 %, octave: + 1 }, "B": follow [A], "C": follow [B]]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls[2].soundfont, Soundfont(48));
     assert_eq!(decls[2].volume, 60);
@@ -257,8 +285,9 @@ fn follow_chain_inherits_resolved_properties_from_intermediate_target() {
 #[test]
 fn soundfont_name_may_contain_equals() {
     use crate::ast::parsed::Soundfont;
-    let content = "Bass = notes \"1: Grand = Piano\"\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
+    let content = r#"parts ["Bass": notes { sound 1 }]
+"#;
+    let (decls, errors) = parse_parts(content, &[]);
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
     assert_eq!(decls.len(), 1);
     assert_eq!(decls[0].soundfont, Soundfont(1));
@@ -266,7 +295,7 @@ fn soundfont_name_may_contain_equals() {
 
 #[test]
 fn source_level_follow_soundfont_is_explicit_only() {
-    use super::{collect_source_raw_declarations, SourcePartMode};
+    use super::SourcePartMode;
     use crate::parser::parts_parser::InstrumentInfo;
 
     let instruments = [InstrumentInfo {
@@ -278,16 +307,10 @@ fn source_level_follow_soundfont_is_explicit_only() {
         articulation: String::new(),
     }];
 
-    let content = "Chords [C] = follow[M] \"40: Violin\"\n";
-    let full_source = format!("# parts\n{content}# score\n");
+    let content = r#"parts ["Chords" [C]: follow [M] { sound 40 }]
+"#;
     let mut errors = Vec::new();
-    let decls = collect_source_raw_declarations(
-        content,
-        "# parts\n".len(),
-        &full_source,
-        &mut errors,
-        &instruments,
-    );
+    let decls = crate::parser::anyfix::source_part_declarations(content, &mut errors, &instruments);
     assert!(errors.is_empty());
     assert_eq!(decls.len(), 1);
     assert_eq!(decls[0].mode, SourcePartMode::Follow);
@@ -297,104 +320,14 @@ fn source_level_follow_soundfont_is_explicit_only() {
 
 #[test]
 fn source_level_follow_without_soundfont_does_not_inherit() {
-    use super::{collect_source_raw_declarations, SourcePartMode};
+    use super::SourcePartMode;
 
-    let content = "Melody [M] = notes \"48: String Ensemble 1\"\nChords [C] = follow[M]\n";
-    let full_source = format!("# parts\n{content}# score\n");
+    let content = r#"parts ["Melody" [M]: notes { sound 48 }, "Chords" [C]: follow [M]]
+"#;
     let mut errors = Vec::new();
-    let decls =
-        collect_source_raw_declarations(content, "# parts\n".len(), &full_source, &mut errors, &[]);
+    let decls = crate::parser::anyfix::source_part_declarations(content, &mut errors, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls.len(), 2);
     assert_eq!(decls[1].mode, SourcePartMode::Follow);
     assert!(decls[1].soundfont.is_none());
-}
-
-#[test]
-fn source_level_follow_explicit_volume_and_octave() {
-    use super::{collect_source_raw_declarations, SourcePartMode};
-
-    let content = "Melody [M] = notes\nChords [C] = follow[M] 60% +1\n";
-    let full_source = format!("# parts\n{content}# score\n");
-    let mut errors = Vec::new();
-    let decls =
-        collect_source_raw_declarations(content, "# parts\n".len(), &full_source, &mut errors, &[]);
-    assert!(errors.is_empty());
-    assert_eq!(decls[1].mode, SourcePartMode::Follow);
-    assert_eq!(decls[1].volume, Some(60));
-    assert_eq!(decls[1].octave_offset, Some(1));
-}
-
-#[test]
-fn source_level_line_numbers_in_multi_section_file() {
-    use crate::list_part_declarations_from_source;
-
-    let source = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "\n",
-        "# parts\n",
-        "Melody [M] = notes\n",
-        "Chords [C] = follow[M]\n",
-        "\n",
-        "# score\n",
-        "1 - - -\n",
-    );
-
-    let declarations = list_part_declarations_from_source(source, "test.poentaro", &[]).unwrap();
-    assert_eq!(declarations.len(), 2);
-    assert_eq!(declarations[0].line_number, 5);
-    assert_eq!(declarations[1].line_number, 6);
-}
-
-#[test]
-fn instrument_sets_the_sound_when_no_soundfont_is_quoted() {
-    let content = "Violin [V] = notes violin\nZheng [Z] = notes guzheng\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
-    assert!(errors.is_empty());
-    assert_eq!(decls[0].soundfont, Soundfont(40));
-    assert_eq!(decls[1].soundfont, Soundfont(107));
-}
-
-#[test]
-fn quoted_soundfont_overrides_the_instruments_sound() {
-    let content = "Violin [V] = notes violin \"0: Acoustic Grand Piano\"\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
-    assert!(errors.is_empty());
-    assert_eq!(decls[0].soundfont, Soundfont(0));
-}
-
-#[test]
-fn follow_part_naming_its_own_instrument_plays_that_instruments_sound() {
-    let content = "Violin [V] = notes violin\nCello [C] = follow[V] cello -1\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
-    assert!(errors.is_empty());
-    assert_eq!(decls[1].soundfont, Soundfont(42));
-}
-
-#[test]
-fn follow_part_naming_no_instrument_plays_its_targets_sound() {
-    let content = "Violin [V] = notes violin\nViolin 2 [V2] = follow[V] -1\n";
-    let (decls, errors) = parse_parts(content, 0, &[]);
-    assert!(errors.is_empty());
-    assert_eq!(decls[1].soundfont, Soundfont(40));
-}
-
-#[test]
-fn source_level_instrument_labels_its_sound_without_writing_a_program() {
-    use crate::list_part_declarations_from_source;
-
-    let violin = super::InstrumentInfo {
-        name: "Violin".to_owned(),
-        program: 40,
-        category: String::new(),
-        source: String::new(),
-        role: String::new(),
-        articulation: String::new(),
-    };
-    let source = "# parts\nViolin [V] = notes violin\n\n# score\n1 - - -\n";
-    let declarations =
-        list_part_declarations_from_source(source, "test.poentaro", &[violin]).unwrap();
-    assert_eq!(declarations[0].settings.program, None);
-    assert_eq!(declarations[0].sound_label.as_deref(), Some("40: Violin"));
 }

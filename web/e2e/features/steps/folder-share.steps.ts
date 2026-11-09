@@ -46,7 +46,7 @@ Given(
       await seedCloudFile(
         DEFAULT_E2E_EMAIL,
         `${folder}/big-${index}.poentaro`,
-        `# score\n// ${incompressibleText(index + 1, 6000)}\n1 2 3 4`,
+        `score """\n    // ${incompressibleText(index + 1, 6000)}\n    1 2 3 4\n    """\n`,
       )
     }
   },

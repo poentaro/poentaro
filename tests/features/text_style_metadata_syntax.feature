@@ -18,7 +18,7 @@ Feature: Text style metadata object syntax
   in metadata_parser_tests.rs, not here).
 
   Scenario Outline: A single component parses into the kind's TextStyle
-    Given "# metadata" sets "<kind>" to "{ <field>: <value> }"
+    Given "metadata" sets "<kind>" to "{ <field>: <value> }"
     When it is compiled
     Then the resolved <kind> TextStyle has <field> equal to <value>
 
@@ -45,30 +45,30 @@ Feature: Text style metadata object syntax
       | note_dash     | horizontal_padding_pt | 2     |
 
   Scenario: Multiple components on one kind combine into a single object
-    Given "# metadata" sets "chords" to "{ font_size: 16, horizontal_padding_pt: 3 }"
+    Given "metadata" sets "chords" to "{ font_size: 16, horizontal_padding_pt: 3 }"
     When it is compiled
     Then the resolved chords TextStyle has font_size equal to 16
     And the resolved chords TextStyle has horizontal_padding_pt equal to 3
 
   Scenario: Field order inside the object does not matter
-    Given "# metadata" sets "lyrics" to "{ vertical_padding_pt: 6, font_size: 18 }"
+    Given "metadata" sets "lyrics" to "{ vertical_padding_pt: 6, font_size: 18 }"
     When it is compiled
     Then the resolved lyrics TextStyle has font_size equal to 18
     And the resolved lyrics TextStyle has vertical_padding_pt equal to 6
 
   Scenario: An unset component falls back to its row-height-derived default
-    Given "# metadata" sets "row_height" to "40"
-    And "# metadata" sets "lyrics" to "{ horizontal_padding_pt: 4 }"
+    Given "metadata" sets "row_height" to "40"
+    And "metadata" sets "lyrics" to "{ horizontal_padding_pt: 4 }"
     When it is compiled
     Then the resolved lyrics TextStyle's font_size equals the default lyrics font size for row_height 40
 
   Scenario: An unknown field inside the object is a recoverable error
-    Given "# metadata" sets "lyrics" to "{ bogus_field: 4 }"
+    Given "metadata" sets "lyrics" to "{ bogus_field: 4 }"
     When it is compiled
-    Then compiling reports an unknown metadata field "lyrics.bogus_field"
+    Then compiling reports an unknown metadata field "lyrics style bogus field"
 
   Scenario Outline: A malformed object literal is a recoverable parse error
-    Given "# metadata" sets "notes" to "<malformed>"
+    Given "metadata" sets "notes" to "<malformed>"
     When it is compiled
     Then compiling reports a metadata parse error on the "notes" line
 
@@ -76,5 +76,4 @@ Feature: Text style metadata object syntax
       | malformed        |
       | { font_size: 16  |
       | font_size: 16 }  |
-      | { font_size 16 } |
       | { font_size: }   |

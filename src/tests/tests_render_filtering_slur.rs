@@ -11,11 +11,19 @@ fn hiding_part_a_still_renders_tie_arc_on_part_b_across_merged_rest_measures() {
     // the pre-merge global measure index (2), which no longer lines up with the
     // post-merge block list, so the arc should still render at the tied notes
     // but currently disappears instead.
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\na = notes\nb = chords\n\n",
-        "# score\n[a] 1\n\n[a]1\n\n[a]1\n[b] 6m __~_6m__0_\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["a": notes, "b": chords],
+
+score """
+    [a] 1
+
+    [a]1
+
+    [a]1
+    [b] 6m __~_6m__0_
+    """,
+"#;
 
     let shown = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()

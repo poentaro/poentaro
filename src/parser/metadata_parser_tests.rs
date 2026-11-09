@@ -1,9 +1,15 @@
 use super::*;
 
+pub(super) fn parse_metadata(source: &str) -> (ParsedMetadata, Vec<RecoverableError>) {
+    let read = crate::parser::read_document(source, &[]);
+    (read.metadata, read.metadata_parse_errors)
+}
+
 #[test]
 fn parses_title_and_author() {
-    let content = "title = \"hello world\"\nauthor = \"foo\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "hello world", author "foo" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.title, Some("hello world".to_string()));
     assert_eq!(meta.author, Some("foo".to_string()));
@@ -13,16 +19,18 @@ fn parses_title_and_author() {
 
 #[test]
 fn parses_optional_row_height() {
-    let content = "title = \"t\"\nauthor = \"a\"\nrow_height = 16\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", row height 16 }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.row_height, Some(16));
 }
 
 #[test]
 fn parses_optional_part_label_width_pt_and_page_margin_pt() {
-    let content = "title = \"t\"\npart_label_width_pt = 60\npage_margin_pt = 40\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", part label width pt 60, page margin pt 40 }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.part_label_width_pt, Some(60));
     assert_eq!(meta.page_margin_pt, Some(40));
@@ -30,48 +38,54 @@ fn parses_optional_part_label_width_pt_and_page_margin_pt() {
 
 #[test]
 fn part_label_width_pt_is_not_a_text_style_object_field() {
-    let content = "title = \"t\"\nauthor = \"a\"\npart_label = { width_pt: 60 }\n";
-    let (_meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", part label style : { width pt : 60 } }
+"#;
+    let (_meta, errors) = parse_metadata(content);
     assert!(errors.iter().any(|e| e
         .message()
-        .contains("unknown metadata field: part_label.width_pt")));
+        .contains("unknown metadata field: part label style width pt")));
 }
 
 #[test]
 fn parses_optional_max_measures_per_system() {
-    let content = "title = \"t\"\nauthor = \"a\"\nmax_measures_per_system = 6\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", max measures per system 6 }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.max_measures_per_system, Some(6));
 }
 
 #[test]
 fn title_is_optional() {
-    let content = "author = \"foo\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { author "foo" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.title, None);
 }
 
 #[test]
 fn author_is_optional() {
-    let content = "title = \"foo\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "foo" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.author, None);
 }
 
 #[test]
 fn collects_error_for_unknown_field() {
-    let content = "title = \"t\"\nauthor = \"a\"\nfoo = \"bar\"\n";
-    let (_meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", foo "bar" }
+"#;
+    let (_meta, errors) = parse_metadata(content);
     assert!(!errors.is_empty());
 }
 
 #[test]
 fn collects_error_for_parts_field_in_metadata() {
-    let content = "title = \"t\"\nauthor = \"a\"\nparts = notes: lyrics:\n";
-    let (_meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", parts "notes: lyrics:" }
+"#;
+    let (_meta, errors) = parse_metadata(content);
     assert!(errors
         .iter()
         .any(|e| e.message().contains("unknown metadata field: parts")));
@@ -79,16 +93,16 @@ fn collects_error_for_parts_field_in_metadata() {
 
 #[test]
 fn collects_error_for_invalid_row_height() {
-    let content = "title = \"t\"\nauthor = \"a\"\nrow_height = abc\n";
-    let (_meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", row height: abc }
+"#;
+    let (_meta, errors) = parse_metadata(content);
     assert!(!errors.is_empty());
 }
 
 #[test]
 fn invalid_value_span_covers_only_the_value() {
-    let prefix = "title = \"t\"\nauthor = \"a\"\n";
-    let content = format!("{prefix}row_height = 20k\n");
-    let (_meta, errors) = parse_metadata(&content, 0);
+    let content = "metadata { title \"t\", row height : 20k },\n";
+    let (_meta, errors) = parse_metadata(content);
     assert_eq!(errors.len(), 1);
     let span = errors[0].span;
     let spanned = &content[span.start..span.end];
@@ -97,299 +111,199 @@ fn invalid_value_span_covers_only_the_value() {
 
 #[test]
 fn collects_error_for_invalid_max_measures_per_system() {
-    let content = "title = \"t\"\nauthor = \"a\"\nmax_measures_per_system = 0\n";
-    let (_meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", max measures per system 0 }
+"#;
+    let (_meta, errors) = parse_metadata(content);
     assert!(!errors.is_empty());
 }
 
 #[test]
 fn parses_optional_subtitle() {
-    let content = "title = \"hello\"\nauthor = \"foo\"\nsubtitle = \"sub\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "hello", author "foo", subtitle "sub" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.subtitle, Some("sub".to_string()));
 }
 
 #[test]
 fn subtitle_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.subtitle, None);
 }
 
 #[test]
 fn parses_lyrics_font_size() {
-    let content = "title = \"t\"\nauthor = \"a\"\nlyrics = { font_size: 14 }\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", lyrics style { font size 14 } }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.lyrics_style.font_size, Some(14));
 }
 
 #[test]
 fn lyrics_font_size_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.lyrics_style.font_size, None);
 }
 
 #[test]
 fn old_flat_lyrics_font_size_key_is_rejected() {
-    let content = "title = \"t\"\nauthor = \"a\"\nlyrics_font_size = 14\n";
-    let (_meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", lyrics font size : 14 }
+"#;
+    let (_meta, errors) = parse_metadata(content);
     assert!(errors.iter().any(|e| e
         .message()
-        .contains("unknown metadata field: lyrics_font_size")));
+        .contains("unknown metadata field: lyrics font size")));
 }
 
 #[test]
 fn parses_measure_number_font_size() {
-    let content = "title = \"t\"\nauthor = \"a\"\nmeasure_number = { font_size: 8 }\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", measure number style { font size 8 } }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.measure_number_style.font_size, Some(8));
 }
 
 #[test]
 fn measure_number_font_size_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.measure_number_style.font_size, None);
 }
 
 #[test]
 fn parses_section_label_font_size() {
-    let content = "title = \"t\"\nauthor = \"a\"\nsection_label = { font_size: 16 }\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", section label style { font size 16 } }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.section_label_style.font_size, Some(16));
 }
 
 #[test]
 fn section_label_font_size_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.section_label_style.font_size, None);
 }
 
 #[test]
 fn parses_part_label_font_size() {
-    let content = "title = \"t\"\nauthor = \"a\"\npart_label = { font_size: 16 }\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", part label style { font size 16 } }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.part_label_style.font_size, Some(16));
 }
 
 #[test]
 fn part_label_font_size_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.part_label_style.font_size, None);
 }
 
 #[test]
 fn parses_page_number_font_size() {
-    let content = "title = \"t\"\nauthor = \"a\"\npage_number = { font_size: 9 }\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", page number style { font size 9 } }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.page_number_style.font_size, Some(9));
 }
 
 #[test]
 fn page_number_font_size_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.page_number_style.font_size, None);
 }
 
 #[test]
 fn parses_lyric_click_target_padding_pt() {
-    let content = "title = \"t\"\nauthor = \"a\"\nlyrics = { vertical_padding_pt: 24 }\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", lyrics style { vertical padding pt 24 } }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.lyrics_style.vertical_padding_pt, Some(24));
 }
 
 #[test]
 fn lyric_click_target_padding_pt_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.lyrics_style.vertical_padding_pt, None);
 }
 
 #[test]
 fn old_flat_lyric_click_target_padding_pt_key_is_rejected() {
-    let content = "title = \"t\"\nauthor = \"a\"\nlyric_click_target_padding_pt = 24\n";
-    let (_meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", lyric click target padding pt : 24 }
+"#;
+    let (_meta, errors) = parse_metadata(content);
     assert!(errors.iter().any(|e| e
         .message()
-        .contains("unknown metadata field: lyric_click_target_padding_pt")));
+        .contains("unknown metadata field: lyric click target padding pt")));
 }
 
 #[test]
 fn old_flat_notes_horizontal_padding_pt_key_is_rejected() {
-    let content = "title = \"t\"\nauthor = \"a\"\nnotes_horizontal_padding_pt = 4\n";
-    let (_meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", notes horizontal padding pt : 4 }
+"#;
+    let (_meta, errors) = parse_metadata(content);
     assert!(errors.iter().any(|e| e
         .message()
-        .contains("unknown metadata field: notes_horizontal_padding_pt")));
+        .contains("unknown metadata field: notes horizontal padding pt")));
 }
 
 #[test]
 fn parses_merge_duplicate_measures_across_parts() {
-    let content = "title = \"t\"\nauthor = \"a\"\nmerge_duplicate_measures_across_parts = no\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", merge duplicate measures across parts: no }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.merge_duplicate_measures_across_parts, Some(false));
 }
 
 #[test]
 fn merge_duplicate_measures_across_parts_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a" }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.merge_duplicate_measures_across_parts, None);
 }
 
 #[test]
 fn collects_error_for_invalid_merge_duplicate_measures_across_parts() {
-    let content = "title = \"t\"\nauthor = \"a\"\nmerge_duplicate_measures_across_parts = maybe\n";
-    let (_meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", merge duplicate measures across parts: maybe }
+"#;
+    let (_meta, errors) = parse_metadata(content);
     assert!(!errors.is_empty());
 }
 
 #[test]
 fn parses_hide_resting_parts() {
-    let content = "title = \"t\"\nauthor = \"a\"\nhide_resting_parts = no\n";
-    let (meta, errors) = parse_metadata(content, 0);
+    let content = r#"metadata { title "t", author "a", hide resting parts: no }
+"#;
+    let (meta, errors) = parse_metadata(content);
     assert!(errors.is_empty());
     assert_eq!(meta.hide_resting_parts, Some(false));
-}
-
-#[test]
-fn hide_resting_parts_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
-    assert!(errors.is_empty());
-    assert_eq!(meta.hide_resting_parts, None);
-}
-
-#[test]
-fn collects_error_for_invalid_hide_resting_parts() {
-    let content = "title = \"t\"\nauthor = \"a\"\nhide_resting_parts = maybe\n";
-    let (_meta, errors) = parse_metadata(content, 0);
-    assert!(!errors.is_empty());
-}
-
-#[test]
-fn parses_hide_system_dividers() {
-    let content = "title = \"t\"\nauthor = \"a\"\nhide_system_dividers = yes\n";
-    let (meta, errors) = parse_metadata(content, 0);
-    assert!(errors.is_empty());
-    assert_eq!(meta.hide_system_dividers, Some(true));
-}
-
-#[test]
-fn hide_system_dividers_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
-    assert!(errors.is_empty());
-    assert_eq!(meta.hide_system_dividers, None);
-}
-
-#[test]
-fn collects_error_for_invalid_hide_system_dividers() {
-    let content = "title = \"t\"\nauthor = \"a\"\nhide_system_dividers = maybe\n";
-    let (_meta, errors) = parse_metadata(content, 0);
-    assert!(!errors.is_empty());
-}
-
-#[test]
-fn parses_directive_row_offset() {
-    let content = "title = \"t\"\nauthor = \"a\"\ndirective_row_offset = 0 12\n";
-    let (meta, errors) = parse_metadata(content, 0);
-    assert!(errors.is_empty());
-    assert_eq!(meta.directive_row_offset, Some(Offset { x: 0, y: 12 }));
-}
-
-#[test]
-fn parses_directive_row_offset_with_negative_values() {
-    let content = "title = \"t\"\nauthor = \"a\"\ndirective_row_offset = -5 -12\n";
-    let (meta, errors) = parse_metadata(content, 0);
-    assert!(errors.is_empty());
-    assert_eq!(meta.directive_row_offset, Some(Offset { x: -5, y: -12 }));
-}
-
-#[test]
-fn directive_row_offset_defaults_to_none() {
-    let content = "title = \"t\"\nauthor = \"a\"\n";
-    let (meta, errors) = parse_metadata(content, 0);
-    assert!(errors.is_empty());
-    assert_eq!(meta.directive_row_offset, None);
-}
-
-#[test]
-fn collects_error_for_invalid_directive_row_offset() {
-    let content = "title = \"t\"\nauthor = \"a\"\ndirective_row_offset = twelve\n";
-    let (_meta, errors) = parse_metadata(content, 0);
-    assert!(!errors.is_empty());
-}
-
-#[test]
-fn collects_error_for_directive_row_offset_with_too_many_values() {
-    let content = "title = \"t\"\nauthor = \"a\"\ndirective_row_offset = 1 2 3\n";
-    let (_meta, errors) = parse_metadata(content, 0);
-    assert!(!errors.is_empty());
-}
-
-#[test]
-fn collects_error_for_old_section_label_offset_key() {
-    let content = "title = \"t\"\nauthor = \"a\"\nsection_label_offset = 0 12\n";
-    let (_meta, errors) = parse_metadata(content, 0);
-    assert!(!errors.is_empty());
-}
-
-#[test]
-fn parses_font_family_on_lyrics() {
-    let content = "title = \"t\"\nauthor = \"a\"\nlyrics = { font_family: sans_serif }\n";
-    let (meta, errors) = parse_metadata(content, 0);
-    assert!(errors.is_empty());
-    assert_eq!(
-        meta.lyrics_style.font_family,
-        Some(FontFamilyChoice::SansSerif)
-    );
-}
-
-#[test]
-fn collects_error_for_invalid_font_family_value() {
-    let content = "title = \"t\"\nauthor = \"a\"\nlyrics = { font_family: comic_sans }\n";
-    let (meta, errors) = parse_metadata(content, 0);
-    assert_eq!(meta.lyrics_style.font_family, None);
-    assert!(errors
-        .iter()
-        .any(|e| e.message().contains("lyrics.font_family")));
-}
-
-#[test]
-fn parses_font_family_on_notes_chords_and_note_dash() {
-    use crate::ast::parsed::FontFamilyChoice;
-
-    let content = "title = \"t\"\nauthor = \"a\"\nnotes = { font_family: serif }\nchords = { font_family: sans_serif }\nnote_dash = { font_family: serif }\n";
-    let (meta, errors) = parse_metadata(content, 0);
-    assert!(errors.is_empty(), "expected no errors, got: {errors:?}");
-    assert_eq!(meta.notes_style.font_family, Some(FontFamilyChoice::Serif));
-    assert_eq!(
-        meta.chords_style.font_family,
-        Some(FontFamilyChoice::SansSerif)
-    );
-    assert_eq!(
-        meta.note_dash_style.font_family,
-        Some(FontFamilyChoice::Serif)
-    );
 }

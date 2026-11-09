@@ -1,15 +1,15 @@
-//! A `# preset "Name"` section: a named set of visible and soloed parts, a notation,
-//! and `# metadata` overrides (see `syntax.md`, "Presets").
+//! A `preset "Name"` section: a named set of visible and soloed parts, a notation,
+//! and `metadata` overrides (see `syntax.md`, "Presets").
 
 use super::{AbbreviationReference, ParsedDocument, ParsedMetadata, TextStyle, TextStyleKind};
 use crate::error::Span;
 
-/// The preset menu's name for "no preset": the song's own `# metadata`, every
-/// part, numbered notation. A `# preset` can't take this name.
+/// The preset menu's name for "no preset": the song's own `metadata`, every
+/// part, numbered notation. A `preset` can't take this name.
 pub const DEFAULT_PRESET_NAME: &str = "Default";
 
 keyword_enum! {
-    /// The keys only a `# preset` section takes, besides every `# metadata` key.
+    /// The keys only a `preset` section takes, besides every `metadata` key.
     pub enum PresetKey {
         VisibleParts => "visible_parts",
         SoloedParts => "soloed_parts",
@@ -42,7 +42,7 @@ impl Notation {
     }
 
     /// Whether this notation is drawn as staff notation by Verovio, which
-    /// ignores the `# metadata` text styles.
+    /// ignores the `metadata` text styles.
     pub fn ignores_text_styles(self) -> bool {
         matches!(self, Self::Violin | Self::Cello)
     }
@@ -53,9 +53,9 @@ pub struct ParsedPreset {
     pub name: String,
     /// The quoted name in the header, quotes included.
     pub name_span: Span,
-    /// The whole `# preset "Name"` header line.
+    /// The whole `preset "Name"` header line.
     pub header_span: Span,
-    /// The `# metadata` keys this preset sets; unset fields keep the song's own value.
+    /// The `metadata` keys this preset sets; unset fields keep the song's own value.
     pub overrides: ParsedMetadata,
     /// The parts shown and heard, in the order written; `None` shows every
     /// part. Unknown abbreviations are already dropped.
@@ -153,7 +153,7 @@ impl ParsedPreset {
 }
 
 impl ParsedDocument {
-    /// The `# preset` named `name`, if the document has one.
+    /// The `preset` named `name`, if the document has one.
     pub fn preset(&self, name: &str) -> Option<&ParsedPreset> {
         self.presets.iter().find(|preset| preset.name == name)
     }

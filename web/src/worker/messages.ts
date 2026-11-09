@@ -139,11 +139,11 @@ export type WorkerRequest =
       extendToLastOccurrence: boolean
       respectSequence: boolean
       /**
-       * 0-based index range into `# sequence` (the order entries are
-       * written in `# sequence`) naming the exact entry/entries selected,
+       * 0-based index range into `sequence` (the order entries are
+       * written in `sequence`) naming the exact entry/entries selected,
        * so a repeated label (e.g. `A, B(-x), B`) resolves to the clicked
        * occurrence instead of always the first one sharing that written
-       * measure range. Omit both when the range isn't a `# sequence`
+       * measure range. Omit both when the range isn't a `sequence`
        * selection (e.g. "play current measure").
        */
       sequenceEntryStartIndex?: number

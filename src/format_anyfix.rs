@@ -1,16 +1,16 @@
-//! [`format_anyfix`]: formats an `.anyfix` document (see `anyfix-syntax.md`).
+//! [`format_anyfix`]: formats a document (see `syntax.md`).
 //!
 //! 1. anyfix-expr's canonical formatter lays out the whole document.
 //! 2. The score's raw string then goes through the same
-//!    cleanups as the current syntax's `# score` ([`format_measures`]):
+//!    cleanups as the current syntax's `score` ([`format_measures`]):
 //!    redundant-line removal, part-order sorting, whitespace normalization.
 //! 3. The canonical formatter runs again, so the rewritten strings are
 //!    indented like everything else.
 //!
-//! Best-effort, like `format_score`: a document anyfix-expr can't parse comes
-//! back unchanged, and one with anyfix errors only gets step 1. A score string
-//! holding a `//` comment is left as it is, since the measure cleanups would
-//! drop the comment.
+//! A document with anyfix errors comes back unchanged: laying out text that
+//! isn't really anyfix, like a file still in an older syntax, scrambles it. A
+//! score string holding a `//` comment is left as it is, since the measure
+//! cleanups would drop the comment.
 
 use anyfix_expr::{Node, NodeKind};
 use itertools::Itertools;
@@ -21,6 +21,9 @@ use crate::parser;
 
 /// Formats an `.anyfix` document; see the module docs.
 pub fn format_anyfix(source: &str) -> String {
+    if !crate::document::anyfix_errors(source, &[]).is_empty() {
+        return source.to_string();
+    }
     let Ok(formatted) = anyfix_expr::format(source) else {
         return source.to_string();
     };
@@ -30,8 +33,8 @@ pub fn format_anyfix(source: &str) -> String {
     anyfix_expr::format(&with_measures).unwrap_or(formatted)
 }
 
-/// `source` with the score string's measures formatted, or `None` when the
-/// document has anyfix errors or nothing changes.
+/// `source` with the score string's measures formatted, or `None` when
+/// nothing changes.
 fn format_score_strings(source: &str) -> Option<String> {
     let declarations = declarations(source)?;
     let nodes = anyfix_expr::parse(source).syntax.nodes();
@@ -62,11 +65,8 @@ fn format_score_strings(source: &str) -> Option<String> {
     )
 }
 
-/// The document's part declarations, when it reads cleanly.
+/// The document's part declarations, when it has any.
 fn declarations(source: &str) -> Option<Vec<PartDecl>> {
-    if !crate::document::anyfix_errors(source, &[]).is_empty() {
-        return None;
-    }
     let declarations = parser::read_document(source, &[]).declarations;
     (!declarations.is_empty()).then_some(declarations)
 }

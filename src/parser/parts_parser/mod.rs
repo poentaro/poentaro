@@ -1,19 +1,16 @@
 mod declaration_parsing;
 mod instrument_matching;
-mod lexer;
 mod lyrics_declaration;
 mod setting_limits;
 
 use crate::ast::parsed::{PartDecl, PartKind, RangeInstrument, Soundfont};
-use crate::error::{RecoverableError, Span, Spanned};
+use crate::error::{RecoverableError, Span};
 
 pub use instrument_matching::InstrumentInfo;
-use lexer::lex_line;
 pub use setting_limits::{
     ClampedSetting, PartSettingLimits, PartSettingRange, PART_SETTING_LIMITS,
 };
 
-use declaration_parsing::parse_declaration_line;
 pub(crate) use declaration_parsing::{
     checked_octave_offset, checked_range_instrument, checked_volume,
 };
@@ -23,30 +20,15 @@ use lyrics_declaration::{resolve_lyrics_declaration, LyricsDeclarationHeader};
 #[cfg(test)]
 mod default_soundfont_tests;
 #[cfg(test)]
-mod lexer_tests;
-#[cfg(test)]
 mod lyrics_part_tests;
 #[cfg(test)]
 mod percussion_tests;
 #[cfg(test)]
 mod setting_limits_tests;
 #[cfg(test)]
+mod source_level_tests;
+#[cfg(test)]
 mod tests;
-
-pub fn parse_parts(
-    content: &str,
-    base_offset: usize,
-    instruments: &[InstrumentInfo],
-) -> (Vec<PartDecl>, Vec<RecoverableError>) {
-    let mut errors = Vec::new();
-    let raw = collect_raw_declarations(content, base_offset, &mut errors, instruments);
-    let declarations = resolve_declarations(raw, &mut errors);
-    if declarations.is_empty() {
-        let section_span = Span::new(base_offset, base_offset + content.len().max(1));
-        errors.push(RecoverableError::parts_empty_section(section_span));
-    }
-    (declarations, errors)
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourcePartMode {
@@ -58,9 +40,9 @@ pub enum SourcePartMode {
 }
 
 /// Source-level part declaration before follow inheritance is applied.
-/// A part's volume when its `# parts` line has no `N%` suffix.
+/// A part's volume when its `parts` line has no `N%` suffix.
 pub const DEFAULT_PART_VOLUME: u8 = 100;
-/// A part's octave offset when its `# parts` line has no `+N`/`-N` suffix.
+/// A part's octave offset when its `parts` line has no `+N`/`-N` suffix.
 pub const DEFAULT_PART_OCTAVE_OFFSET: i8 = 0;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -120,20 +102,6 @@ fn raw_kind_to_source_mode(kind: &RawKind) -> (SourcePartMode, Option<String>) {
     }
 }
 
-/// Collect source-level part declarations from a `# parts` section body.
-pub fn collect_source_raw_declarations(
-    content: &str,
-    base_offset: usize,
-    full_source: &str,
-    errors: &mut Vec<RecoverableError>,
-    instruments: &[InstrumentInfo],
-) -> Vec<SourceRawPartDecl> {
-    source_declarations(
-        collect_raw_declarations(content, base_offset, errors, instruments),
-        full_source,
-    )
-}
-
 /// `raw` as source-level part declarations of `full_source`.
 pub(crate) fn source_declarations(raw: Vec<RawDecl>, full_source: &str) -> Vec<SourceRawPartDecl> {
     raw.into_iter()
@@ -152,100 +120,6 @@ pub(crate) fn source_declarations(raw: Vec<RawDecl>, full_source: &str) -> Vec<S
             }
         })
         .collect()
-}
-
-struct ParsedPartRhs {
-    kind: RawKind,
-    range_instrument: Option<RangeInstrument>,
-    soundfont: Option<Soundfont>,
-    volume: Option<u8>,
-    octave_offset: Option<i8>,
-}
-
-struct LhsParsed {
-    display_name: String,
-    abbreviation: String,
-    abbreviation_span: Span,
-}
-
-struct RhsSuffixes {
-    range_instrument: Option<Spanned<RangeInstrument>>,
-    soundfont: Option<Soundfont>,
-    volume: Option<u8>,
-    octave_offset: Option<i8>,
-}
-
-/// One non-blank line of a `# parts` section.
-struct PartsLine<'a> {
-    trimmed: &'a str,
-    trimmed_start: usize,
-    line_span: Span,
-}
-
-fn parts_lines(content: &str, base_offset: usize) -> impl Iterator<Item = PartsLine<'_>> {
-    content
-        .lines()
-        .scan(base_offset, |next_offset, line| {
-            let line_start = *next_offset;
-            *next_offset += line.len() + 1;
-            Some(PartsLine {
-                trimmed: line.trim(),
-                trimmed_start: line_start + (line.len() - line.trim_start().len()),
-                line_span: Span::new(line_start, line_start + line.len()),
-            })
-        })
-        .filter(|line| !line.trimmed.is_empty())
-}
-
-/// Spans of every part-kind keyword (`notes`, `chords`, `percussion`,
-/// `follow`) in a `# parts` section's `content`, from the parts lexer.
-pub(crate) fn part_kind_spans(content: &str, base_offset: usize) -> Vec<Span> {
-    parts_lines(content, base_offset)
-        .filter_map(|line| lex_line(line.trimmed, line.trimmed_start, line.line_span).ok())
-        .flatten()
-        .filter_map(|token| lexer::kind_keyword_span(&token))
-        .collect()
-}
-
-fn collect_raw_declarations(
-    content: &str,
-    base_offset: usize,
-    errors: &mut Vec<RecoverableError>,
-    instruments: &[InstrumentInfo],
-) -> Vec<RawDecl> {
-    let mut raw_declarations = Vec::new();
-    let mut seen_abbreviations = std::collections::HashSet::new();
-
-    for line in parts_lines(content, base_offset) {
-        let PartsLine {
-            trimmed,
-            trimmed_start,
-            line_span,
-        } = line;
-        let tokens = match lex_line(trimmed, trimmed_start, line_span) {
-            Ok(tokens) => tokens,
-            Err(error) => {
-                errors.push(error);
-                continue;
-            }
-        };
-
-        let Some(raw_decl) = parse_declaration_line(&tokens, line_span, errors, instruments) else {
-            continue;
-        };
-
-        if !seen_abbreviations.insert(raw_decl.abbreviation.clone()) {
-            errors.push(RecoverableError::parts_duplicate_abbreviation(
-                line_span,
-                &raw_decl.abbreviation,
-            ));
-            continue;
-        }
-
-        raw_declarations.push(raw_decl);
-    }
-
-    raw_declarations
 }
 
 pub(crate) fn resolve_declarations(

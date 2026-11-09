@@ -10,17 +10,15 @@ fn tuplet_notes_align_with_plain_beat_notes_in_sibling_part() {
     // The plain "2 3 4" in each part falls on the same beats, so they must
     // land on the same grid columns — regardless of the triplet squeezed
     // into the other part's beat 1.
-    let source = r#"# metadata
-title = "Test"
+    let source = r#"metadata { title "Test" },
 
-# parts
-Melody [M] = notes
-Beat [B] = notes
+parts ["Melody" [M]: notes, "Beat" [B]: notes],
 
-# score
-time=4/4
-[B] 1 2 3 4
-[M] 3:{1_1_1_} 2 3 4
+score """
+    time=4/4
+    [B] 1 2 3 4
+    [M] 3:{1_1_1_} 2 3 4
+    """,
 "#;
     let score = crate::compile(source, "test.poentaro", &[]).expect("should compile");
     let compile_result = crate::compiler::compile(&score);

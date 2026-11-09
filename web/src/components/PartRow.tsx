@@ -15,7 +15,7 @@ import { RadixSelect, RadixSelectItem } from './RadixTableSelect'
 import { SoundfontSearchModal } from './SoundfontSearchModal'
 
 /** Every octave offset in `offsets`, highest first, labelled as the
- * `# parts` line writes it (`+2`, `0`, `-1`). */
+ * `parts` line writes it (`+2`, `0`, `-1`). */
 function octaveOptions(offsets: OctaveOffsetRange) {
   return range(offsets.min, offsets.max + 1)
     .reverse()

@@ -364,7 +364,7 @@ world poentaro-wasm {
         lyrics(string),
     }
 
-    // `poentaro::source_edit::PartSettings`: a `# parts` line's
+    // `poentaro::source_edit::PartSettings`: a `parts` line's
     // settings, with an omitted volume/octave suffix read as its default.
     // `update-part-declaration` takes it back, omitting default suffixes.
     // `program` is the quoted sound's GM program number (a GM percussion key
@@ -597,10 +597,10 @@ world poentaro-wasm {
     // Phase 3, group 7 of PLAN-wit-bindgen-migration.md.
     export list-part-declarations: func(source: string, raw-instruments: list<instrument-info>) -> list-part-declarations-response;
 
-    // Rewrites `abbreviation`'s `# parts` line to `settings`, naming
+    // Rewrites `abbreviation`'s `parts` line to `settings`, naming
     // `settings.program` from `raw-instruments` (or the GM percussion map);
     // returns `source` unchanged when no such part is declared.
-    export update-part-declaration: func(source: string, abbreviation: string, settings: part-settings, raw-instruments: list<instrument-info>) -> string;
+    export update-part-declaration: func(source: string, abbreviation: string, settings: part-settings) -> string;
 
     // `poentaro::sound_label::SoundChoice`: one sound the Edit Parts
     // sound picker offers — its GM program number (or percussion key) and
@@ -646,7 +646,7 @@ world poentaro-wasm {
     }
 
     // `poentaro::parser::parts_parser::PartSettingLimits`: the valid
-    // range of each numeric `part-settings` field. The parser clamps a `# parts`
+    // range of each numeric `part-settings` field. The parser clamps a `parts`
     // line's out-of-range value into it (with a diagnostic), so every
     // `part-declaration` already lies within it.
     record part-setting-limits {
@@ -890,11 +890,11 @@ world poentaro-wasm {
     }
 
     // What each scalar field of the edited section resolves to when left
-    // unset: the song's `# metadata` value when editing a preset, else the
+    // unset: the song's `metadata` value when editing a preset, else the
     // documented default.
     record metadata-defaults {
         // Text fields have no documented default; `none` unless a preset
-        // inherits them from `# metadata`.
+        // inherits them from `metadata`.
         title: option<string>,
         subtitle: option<string>,
         author: option<string>,
@@ -911,7 +911,7 @@ world poentaro-wasm {
         directive-row-offset: string,
     }
 
-    // ==================== `# metadata` fields (source_edit::metadata_edit) ====================
+    // ==================== `metadata` fields (source_edit::metadata_edit) ====================
 
     // Every text kind that takes a `<kind> = { ... }` style object, in
     // canonical order (`poentaro::ast::parsed::TextStyleKind`).
@@ -964,7 +964,7 @@ world poentaro-wasm {
         font-size-default: font-size-default,
     }
 
-    // The `# metadata` section's values as written; unset fields are `none`.
+    // The `metadata` section's values as written; unset fields are `none`.
     record metadata-fields {
         title: option<string>,
         subtitle: option<string>,
@@ -1047,7 +1047,7 @@ world poentaro-wasm {
         reset-style(text-style-kind),
     }
 
-    // The fields of the preset named `preset-name`, or of `# metadata` when
+    // The fields of the preset named `preset-name`, or of `metadata` when
     // `none` (or no preset has that name).
     export parse-metadata-fields: func(source: string, preset-name: option<string>) -> metadata-fields;
 
@@ -1072,11 +1072,11 @@ world poentaro-wasm {
         notation: option<notation>,
     }
 
-    // The file's `# preset` sections in file order, read from the sections
+    // The file's `preset` sections in file order, read from the sections
     // alone so a half-typed score doesn't empty the menu.
     export list-presets: func(source: string) -> list<preset-summary>;
 
-    // One line the preset menu's controls write into a `# preset` section.
+    // One line the preset menu's controls write into a `preset` section.
     // An empty `visible-parts` list hides every part; an empty
     // `soloed-parts` list removes the line.
     variant preset-edit {
@@ -1122,7 +1122,7 @@ world poentaro-wasm {
         notation: notation,
     }
 
-    // Adds a `# preset` section after the last one (else before the music).
+    // Adds a `preset` section after the last one (else before the music).
     export add-preset-section: func(source: string, preset: new-preset) -> string;
 
     // The chosen preset's name after an edit from `previous-source`: the same
@@ -1231,7 +1231,7 @@ world poentaro-wasm {
     export format-score: func(source: string) -> string;
 
     // ==================== part stream editing ====================
-    // `poentaro::part_stream`: edit one part of the `# score` as a
+    // `poentaro::part_stream`: edit one part of the `score` as a
     // single stream (no barlines, no directives), then apply it back.
 
     // `part_stream::StreamablePartKind`.

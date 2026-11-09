@@ -16,7 +16,7 @@ export interface MetadataFieldsTableBodyProps {
   metadata: MetadataFields
   showHelp: (label: string, help: string) => void
   onFieldChange: (edit: MetadataEdit) => void
-  /** Editing a preset: unset fields show the song's `# metadata` values,
+  /** Editing a preset: unset fields show the song's `metadata` values,
    * and set ones can be reset to them. */
   editingPreset: boolean
 }

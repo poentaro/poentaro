@@ -124,12 +124,15 @@ fn chord_major_expands_to_three_notes() {
 
 #[test]
 fn sus4_chord_expands_to_root_fourth_fifth() {
-    let input = concat!(
-        "# metadata\ntitle=\"\"\nauthor=\"\"\n\n",
-        "# parts\nC = chords\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n",
-        "[C] 1sus4\n",
-    );
+    let input = r#"metadata { title "", author "" },
+
+parts ["C": chords],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 1sus4
+    """,
+"#;
     let doc = crate::parser::parse(input, "test", &[]).unwrap();
     let score = crate::grouper::group(doc).unwrap();
     let midi_bytes = write_midi(&score).unwrap();
@@ -142,12 +145,15 @@ fn sus4_chord_expands_to_root_fourth_fifth() {
 
 #[test]
 fn sus2_chord_expands_to_root_second_fifth() {
-    let input = concat!(
-        "# metadata\ntitle=\"\"\nauthor=\"\"\n\n",
-        "# parts\nC = chords\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n",
-        "[C] 1sus2\n",
-    );
+    let input = r#"metadata { title "", author "" },
+
+parts ["C": chords],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 1sus2
+    """,
+"#;
     let doc = crate::parser::parse(input, "test", &[]).unwrap();
     let score = crate::grouper::group(doc).unwrap();
     let midi_bytes = write_midi(&score).unwrap();
@@ -280,14 +286,17 @@ fn cross_measure_chord_slur_does_not_replay_chord() {
     // Because the same chord is tied across the barline, there should be exactly 4 NoteOn
     // events (the bass plus one per note of the C major triad), not 8 (which would mean the
     // chord re-fires).
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nC = chords\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n",
-        "[C] 0 0 0 (1\n",
-        "\n",
-        "[C] 1) 0 0 0\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["C": chords],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 0 0 0 (1
+
+    [C] 1) 0 0 0
+    """,
+"#;
     let doc = crate::parser::parse(input, "test", &[]).unwrap();
     let score = crate::grouper::group(doc).unwrap();
     let midi_bytes = write_midi(&score).unwrap();
@@ -304,14 +313,16 @@ fn cross_measure_chord_slur_does_not_replay_chord() {
 fn tilde_cross_measure_chord_does_not_replay_chord() {
     // [a] 3~---  => chord 3 tied into 3 extensions; [a] 3 => chord 3 in measure 2.
     // The same chord tied across the barline should produce only 4 NoteOn events (bass + one triad).
-    let input = concat!(
-        "# metadata\ntitle=\"\"\nauthor=\"\"\n\n",
-        "# parts\nAccompaniment [a] = chords\n\n",
-        "# score\n\n\n",
-        "[a] 3~---\n",
-        "\n",
-        "[a] 3\n",
-    );
+    let input = r#"metadata { title "", author "" },
+
+parts ["Accompaniment" [a]: chords],
+
+score """
+    [a] 3~---
+
+    [a] 3
+    """,
+"#;
     let doc = crate::parser::parse(input, "test", &[]).unwrap();
     let score = crate::grouper::group(doc).unwrap();
     let midi_bytes = write_midi(&score).unwrap();
@@ -331,16 +342,18 @@ fn tie_across_barline_with_two_chord_parts_does_not_replay_either_chord() {
     // (`1~` into `1`), so this must produce exactly 8 NoteOn events total (4 per
     // part, one attack each) — not 16, which would mean one part's tie got dropped
     // because it shared tie-tracking state with the other chord part.
-    let input = concat!(
-        "# metadata\ntitle=\"\"\nauthor=\"\"\n\n",
-        "# parts\nm = chords\ng = follow[m]\n\n",
-        "# score\n\n\n",
-        "[m] 1~\n",
-        "[g] 1~\n",
-        "\n",
-        "[m] 1\n",
-        "[g] 1\n",
-    );
+    let input = r#"metadata { title "", author "" },
+
+parts ["m": chords, "g": follow [m]],
+
+score """
+    [m] 1~
+    [g] 1~
+
+    [m] 1
+    [g] 1
+    """,
+"#;
     let doc = crate::parser::parse(input, "test", &[]).unwrap();
     let score = crate::grouper::group(doc).unwrap();
     let midi_bytes = write_midi(&score).unwrap();

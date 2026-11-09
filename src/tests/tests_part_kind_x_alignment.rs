@@ -58,15 +58,13 @@ fn first_text_font_size(
 /// center against box center.
 #[test]
 fn wide_chord_symbols_align_their_root_digit_with_the_note() {
-    let input = concat!(
-        "# parts\n",
-        "c = chords\n",
-        "n = notes\n",
-        "\n",
-        "# score\n",
-        "[c] 1 2m 3m 4\n",
-        "[n] 1 2 3 4\n",
-    );
+    let input = r#"parts ["c": chords, "n": notes],
+
+score """
+    [c] 1 2m 3m 4
+    [n] 1 2 3 4
+    """,
+"#;
 
     let output = render_documents_from_source_with_visibility(
         input,
@@ -107,13 +105,12 @@ fn wide_chord_symbols_align_their_root_digit_with_the_note() {
 /// itself — not the accidental — lines up with the note on the same beat.
 #[test]
 fn chord_root_accidentals_lead_the_degree_which_aligns_with_the_note() {
-    let input = r#"# parts
-c = chords
-n = notes
+    let input = r#"parts ["c": chords, "n": notes],
 
-# score
-[c] 1#m 2 3b7 4/5b
-[n] 1 2 3 4
+score """
+    [c] 1#m 2 3b7 4/5b
+    [n] 1 2 3 4
+    """,
 "#;
 
     let output = render_documents_from_source_with_visibility(
@@ -166,15 +163,13 @@ n = notes
 
 #[test]
 fn notes_and_chords_parts_align_on_the_same_beat() {
-    let input = concat!(
-        "# parts\n",
-        "a = notes\n",
-        "b = chords\n",
-        "\n",
-        "# score\n",
-        "[a] 1\n",
-        "[b] 1\n",
-    );
+    let input = r#"parts ["a": notes, "b": chords],
+
+score """
+    [a] 1
+    [b] 1
+    """,
+"#;
 
     let output = render_documents_from_source_with_visibility(
         input,

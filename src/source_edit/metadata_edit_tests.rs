@@ -1,30 +1,18 @@
 use super::*;
 use crate::ast::parsed::{FontFamilyChoice, Offset};
 
-const SOURCE_WITH_METADATA: &str = r#"# metadata
-title = "My Song"
-author = "Alice"
+const SOURCE_WITH_METADATA: &str = r#"metadata { title "My Song", author "Alice" },
 
-# score
-1 2 3 4"#;
+score """
+    1 2 3 4
+    """,
+"#;
 
 fn text_edit(key: MetadataTextKey, value: Option<&str>) -> MetadataEdit {
     MetadataEdit::Text {
         key,
         value: value.map(str::to_owned),
     }
-}
-
-fn metadata_keys(source: &str) -> Vec<String> {
-    let fields_start = source.find("# metadata\n").unwrap_or_default() + "# metadata\n".len();
-    source
-        .get(fields_start..)
-        .unwrap_or_default()
-        .lines()
-        .take_while(|line| !line.starts_with("# "))
-        .filter_map(|line| line.split_once('='))
-        .map(|(key, _)| key.trim().to_owned())
-        .collect()
 }
 
 #[test]
@@ -34,7 +22,7 @@ fn adds_a_field_to_existing_metadata() {
         None,
         text_edit(MetadataTextKey::Subtitle, Some("A Subtitle")),
     );
-    assert!(result.contains(r#"subtitle = "A Subtitle""#));
+    assert!(result.contains(r#"subtitle "A Subtitle""#));
 }
 
 #[test]
@@ -44,7 +32,7 @@ fn replaces_an_existing_field() {
         None,
         text_edit(MetadataTextKey::Title, Some("New Title")),
     );
-    assert!(result.contains(r#"title = "New Title""#));
+    assert!(result.contains(r#"title "New Title""#));
     assert!(!result.contains("My Song"));
 }
 
@@ -62,14 +50,12 @@ fn removes_a_field_set_to_none_or_empty() {
 
 #[test]
 fn rewrites_the_section_canonically_with_one_trailing_blank_line() {
-    let source = r#"# metadata
-author = "Bob"
+    let source = r#"metadata { author "Bob", title "Song", row height 80, subtitle "Sub" },
 
-title = "Song"
-row_height = 80
-subtitle = "Sub"
-# score
-1 2 3"#;
+score """
+    1 2 3
+    """,
+"#;
     let result = update_metadata_field(
         source,
         None,
@@ -80,38 +66,50 @@ subtitle = "Sub"
     );
     assert_eq!(
         result,
-        r#"# metadata
-title = "Song"
-subtitle = "Sub"
-author = "Bob"
-row_height = 80
-max_measures_per_system = 4
+        r#"metadata { title "Song", subtitle "Sub", author "Bob", row height 80, max measures per system 4 },
 
-# score
-1 2 3"#
+score """
+    1 2 3
+    """,
+"#
     );
 }
 
 #[test]
 fn leaves_other_sections_untouched() {
-    let source = r#"# parts
-M = notes
-# metadata
-title = "Song"
-# score
-1 2"#;
+    let source = r#"parts ["M": notes],
+
+metadata { title "Song" },
+
+score """
+    1 2
+    """,
+"#;
     let result = update_metadata_field(
         source,
         None,
         text_edit(MetadataTextKey::Title, Some("Changed")),
     );
-    assert!(result.starts_with("# parts\nM = notes\n# metadata\n"));
-    assert!(result.ends_with("# score\n1 2"));
+    assert!(result.starts_with(
+        r#"parts ["M": notes],
+
+metadata { title "Changed" },
+"#
+    ));
+    assert!(result.ends_with(
+        r#"score """
+    1 2
+    """,
+"#
+    ));
 }
 
 #[test]
 fn returns_the_source_unchanged_without_a_metadata_section() {
-    let source = "# score\n1 2";
+    let source = r#"score """
+    1 2
+    """
+"#;
     let result = update_metadata_field(source, None, text_edit(MetadataTextKey::Title, Some("x")));
     assert_eq!(result, source);
 }
@@ -119,11 +117,16 @@ fn returns_the_source_unchanged_without_a_metadata_section() {
 #[test]
 fn writes_into_a_metadata_header_on_the_last_line() {
     let result = update_metadata_field(
-        "# metadata",
+        r#"metadata {}
+"#,
         None,
         text_edit(MetadataTextKey::Title, Some("x")),
     );
-    assert_eq!(result, "# metadata\ntitle = \"x\"\n\n");
+    assert_eq!(
+        result,
+        r#"metadata { title "x" }
+"#
+    );
 }
 
 #[test]
@@ -136,7 +139,7 @@ fn formats_flags_as_yes_or_no() {
             value: Some(true),
         },
     );
-    assert!(result.contains("hide_system_dividers = yes"));
+    assert!(result.contains("hide system dividers: yes"));
     let result = update_metadata_field(
         &result,
         None,
@@ -145,7 +148,7 @@ fn formats_flags_as_yes_or_no() {
             value: Some(false),
         },
     );
-    assert!(result.contains("merge_duplicate_measures_across_parts = no"));
+    assert!(result.contains("merge duplicate measures across parts: no"));
 }
 
 #[test]
@@ -166,7 +169,7 @@ fn round_trips_style_components_in_component_order() {
             value: TextStyleComponentValue::FontSize(Some(32)),
         },
     );
-    assert!(result.contains("title = { font_size: 32, italic: yes }"));
+    assert!(result.contains("title style { font size 32, italic: yes }"));
 }
 
 #[test]
@@ -179,7 +182,7 @@ fn clears_a_style_component_and_drops_an_empty_style_line() {
             value: TextStyleComponentValue::FontFamily(Some(FontFamilyChoice::SansSerif)),
         },
     );
-    assert!(with_family.contains("part_legend = { font_family: sans_serif }"));
+    assert!(with_family.contains("part legend style { font family: sans serif }"));
     let result = update_metadata_field(
         &with_family,
         None,
@@ -188,56 +191,71 @@ fn clears_a_style_component_and_drops_an_empty_style_line() {
             value: TextStyleComponentValue::FontFamily(None),
         },
     );
-    assert!(!result.contains("part_legend"));
+    assert!(!result.contains("part legend"));
 }
 
 #[test]
 fn emits_every_key_group_in_canonical_order() {
-    let source = r#"# metadata
-directive_row_offset = 0 12
-hide_resting_parts = no
-lyrics = { vertical_padding_pt: 20 }
-part_label_width_pt = 60
-title = { bold: yes }
-title = "Song"
-# score
-1"#;
+    let source = r#"metadata {
+    directive row offset (0, 12),
+    hide resting parts: no,
+    lyrics style { vertical padding pt 20 },
+    part label width pt 60,
+    title style { bold: yes },
+    title "Song",
+},
+
+score """
+    1
+    """,
+"#;
     let result =
         update_metadata_field(source, None, text_edit(MetadataTextKey::Author, Some("Me")));
-    assert_eq!(
-        metadata_keys(&result),
-        [
-            "title",
-            "title",
-            "author",
-            "part_label_width_pt",
-            "lyrics",
-            "hide_resting_parts",
-            "directive_row_offset",
-        ]
+    assert!(
+        result.starts_with(
+            r#"metadata {
+    title "Song",
+    title style { bold: yes },
+    author "Me",
+    part label width pt 60,
+    lyrics style { vertical padding pt 20 },
+    hide resting parts: no,
+    directive row offset (0, 12),
+},"#
+        ),
+        "{result}"
     );
 }
 
 #[test]
 fn keeps_an_unparseable_directive_row_offset_verbatim() {
-    let source = "# metadata\ndirective_row_offset = 0 -\n# score\n1";
+    let source = r#"metadata { directive row offset (0, -) },
+
+score """
+    1
+    """,
+"#;
     let fields = parse_metadata_fields(source, None);
     assert_eq!(fields.directive_row_offset.as_deref(), Some("0 -"));
     assert_eq!(fields.metadata.directive_row_offset, None);
     let result = update_metadata_field(source, None, text_edit(MetadataTextKey::Title, Some("t")));
-    assert!(result.contains("directive_row_offset = 0 -"));
+    assert!(result.contains("directive row offset (0, -)"));
 }
 
 #[test]
 fn parses_every_field_kind() {
-    let source = r#"# metadata
-title = "Song"
-row_height = 30
-hide_system_dividers = yes
-directive_row_offset = -3 12
-notes = { font_family: serif, underline: no }
-# score
-1"#;
+    let source = r#"metadata {
+    title "Song",
+    row height 30,
+    hide system dividers: yes,
+    directive row offset (- 3, 12),
+    notes style { font family: serif, underline: no },
+},
+
+score """
+    1
+    """,
+"#;
     let MetadataFields {
         metadata,
         directive_row_offset,
@@ -255,17 +273,14 @@ notes = { font_family: serif, underline: no }
     assert_eq!(metadata.notes_style.underline, Some(false));
 }
 
-const SOURCE_WITH_PRESET: &str = r#"# metadata
-title = "My Song"
-row_height = 30
+const SOURCE_WITH_PRESET: &str = r#"metadata { title "My Song", row height 30 },
 
-# preset "Choir"
-visible_parts = S, A
-notation = violin
-title = "My Song (Choir)"
+preset "Choir" { visible parts [S, A], notation: violin, title "My Song (Choir)" },
 
-# score
-1 2 3 4"#;
+score """
+    1 2 3 4
+    """,
+"#;
 
 #[test]
 fn reads_a_presets_overrides_with_the_songs_metadata_as_inherited() {
@@ -286,8 +301,8 @@ fn edits_a_preset_keeping_its_parts_and_notation_and_the_songs_metadata() {
     assert_eq!(
         result,
         SOURCE_WITH_PRESET.replace(
-            "title = \"My Song (Choir)\"\n",
-            "title = \"My Song (Choir)\"\nrow_height = 40\n",
+            r#"title "My Song (Choir)" }"#,
+            r#"title "My Song (Choir)", row height 40 }"#,
         )
     );
 }
@@ -301,14 +316,27 @@ fn resetting_a_presets_field_removes_only_its_override() {
     );
     assert_eq!(
         result,
-        SOURCE_WITH_PRESET.replace("title = \"My Song (Choir)\"\n", "")
+        SOURCE_WITH_PRESET.replace(r#", title "My Song (Choir)""#, "")
     );
 }
 
 #[test]
 fn reset_style_removes_every_component_of_that_style() {
-    let source = "# metadata\ntitle = \"t\"\ntitle = { font_size: 9, bold: yes }\n\n# score\n1";
+    let source = r#"metadata { title "t", title style { font size 9, bold: yes } },
+
+score """
+    1
+    """,
+"#;
     let result =
         update_metadata_field(source, None, MetadataEdit::ResetStyle(TextStyleKind::Title));
-    assert_eq!(result, "# metadata\ntitle = \"t\"\n\n# score\n1");
+    assert_eq!(
+        result,
+        r#"metadata { title "t" },
+
+score """
+    1
+    """,
+"#
+    );
 }

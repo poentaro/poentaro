@@ -1,14 +1,13 @@
 use super::*;
 
-const SOURCE: &str = "# parts
-S = notes
-C = chords
+const SOURCE: &str = r#"parts ["S": notes, "C": chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
-[C] 1 6m 4 1sus27
-";
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [C] 1 6m 4 1sus27
+    """,
+"#;
 
 /// The `data-guitar-frets` of every guitar diagram group, in document order.
 fn diagram_frets(svg: &str) -> Vec<String> {

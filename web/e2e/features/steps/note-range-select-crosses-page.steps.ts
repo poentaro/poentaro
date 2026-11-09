@@ -22,15 +22,14 @@ import { Given, Then, When } from './fixtures'
 const measures = Array.from({ length: 60 }, () => '[M] 1 2 3 4').join('\n\n')
 
 const crossPageSource = [
-  '# metadata',
-  'title = "cross page range test"',
+  'metadata { title "cross page range test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
+  'score """',
   '',
   measures,
+  '""",',
 ].join('\n')
 
 function pages(page: import('@playwright/test').Page) {

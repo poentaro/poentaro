@@ -20,11 +20,7 @@ pub use slur_toggle::toggle_range_slur;
 pub use tie_toggle::toggle_range_tie;
 
 use crate::ast::parsed::RangeInstrument;
-use crate::parser::parts_parser::{
-    InstrumentInfo, SourcePartMode, DEFAULT_PART_OCTAVE_OFFSET, DEFAULT_PART_VOLUME,
-    PART_SETTING_LIMITS,
-};
-use crate::parser::section_splitter::section_header_kind;
+use crate::parser::parts_parser::SourcePartMode;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PartMode {
@@ -51,19 +47,9 @@ impl PartMode {
             },
         }
     }
-
-    pub fn to_rhs_str(&self) -> String {
-        match self {
-            Self::Chords => "chords".to_owned(),
-            Self::Notes => "notes".to_owned(),
-            Self::Percussion => "percussion".to_owned(),
-            Self::Follow { target } => format!("follow[{target}]"),
-            Self::Lyrics { target } => format!("lyrics[{target}]"),
-        }
-    }
 }
 
-/// A part's settings as its `# parts` line writes them, with an omitted
+/// A part's settings as its `parts` line writes them, with an omitted
 /// volume/octave suffix read as its default. Round-trips through
 /// [`update_part_declaration`], which omits a default-valued suffix.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,113 +59,22 @@ pub struct PartSettings {
     /// `None` when the line names none (a follow part then inherits its
     /// target's).
     pub range_instrument: Option<RangeInstrument>,
-    /// The quoted sound's GM program number (a GM percussion key on a
-    /// percussion part); `None` when the line quotes no sound.
+    /// The sound's GM program number (a GM percussion key on a percussion
+    /// part); `None` when the line names no sound.
     pub program: Option<u8>,
     pub volume: u8,
     pub octave_offset: i8,
 }
 
-/// Rewrites the `# parts` line declaring `abbreviation` to `settings`,
-/// quoting `settings.program` as its [`crate::sound_label`] label (named from
-/// `instruments`, or the GM percussion map on a percussion part), with the
-/// volume and octave offset clamped into [`PART_SETTING_LIMITS`];
-/// `None` when there's no such line.
+/// Rewrites the part declaring `abbreviation` to `settings`, with the volume and
+/// octave offset clamped into [`crate::parser::parts_parser::PART_SETTING_LIMITS`];
+/// `None` when there's no such part.
 pub fn update_part_declaration(
     source: &str,
     abbreviation: &str,
     settings: &PartSettings,
-    instruments: &[InstrumentInfo],
 ) -> Option<String> {
-    if crate::document::is_anyfix(source) {
-        return anyfix_part_edit::update_part_declaration(source, abbreviation, settings);
-    }
-    let lines: Vec<&str> = source.split('\n').collect();
-
-    let parts_index = lines
-        .iter()
-        .position(|line| section_header_kind(line.trim()) == Some("parts"))?;
-
-    let target_index = lines
-        .iter()
-        .enumerate()
-        .skip(parts_index + 1)
-        .find(|(_, line)| {
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                return false;
-            }
-            if section_header_kind(trimmed).is_some() {
-                return false;
-            }
-            let Some(eq_pos) = line.find('=') else {
-                return false;
-            };
-            let lhs = line[..eq_pos].trim();
-            let line_abbr = if let Some(bracket_start) = lhs.rfind('[') {
-                lhs[bracket_start + 1..].trim_end_matches(']')
-            } else {
-                lhs
-            };
-            line_abbr == abbreviation
-        })
-        .map(|(index, _)| index)?;
-
-    let line = lines.get(target_index)?;
-    let eq_pos = line.find('=')?;
-    let lhs_with_eq = &line[..eq_pos + 1];
-
-    let is_percussion = settings.mode == PartMode::Percussion;
-    let soundfont_suffix = settings
-        .program
-        .map(|program| {
-            let label = crate::sound_label::sound_label(program, is_percussion, instruments);
-            format!(" \"{label}\"")
-        })
-        .unwrap_or_default();
-
-    let volume = PART_SETTING_LIMITS
-        .volume
-        .clamp(i32::from(settings.volume))
-        .value;
-    let volume_suffix = match volume {
-        DEFAULT_PART_VOLUME => String::new(),
-        volume => format!(" {volume}%"),
-    };
-
-    let octave_offset = PART_SETTING_LIMITS
-        .octave_offset
-        .clamp(i32::from(settings.octave_offset))
-        .value;
-    let octave_suffix = match octave_offset {
-        DEFAULT_PART_OCTAVE_OFFSET => String::new(),
-        offset if offset > 0 => format!(" +{offset}"),
-        offset => format!(" {offset}"),
-    };
-
-    let new_rhs = settings.mode.to_rhs_str();
-    let instrument_suffix = settings
-        .range_instrument
-        .map(|instrument| format!(" {}", instrument.keyword()))
-        .unwrap_or_default();
-    let new_line = format!(
-        "{lhs_with_eq} {new_rhs}{instrument_suffix}{soundfont_suffix}{volume_suffix}{octave_suffix}"
-    );
-
-    let result = lines
-        .iter()
-        .enumerate()
-        .map(|(i, line)| {
-            if i == target_index {
-                new_line.as_str()
-            } else {
-                line
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    Some(result)
+    anyfix_part_edit::update_part_declaration(source, abbreviation, settings)
 }
 
 #[cfg(test)]

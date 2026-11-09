@@ -33,7 +33,7 @@ pub struct PartToggleState {
     pub soloed_parts: Vec<String>,
 }
 
-/// The `# preset` chosen in the preset menu, as far as part visibility and
+/// The `preset` chosen in the preset menu, as far as part visibility and
 /// rendering need it (see [`crate::chosen_preset_from_source`]).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ChosenPreset {
@@ -66,8 +66,8 @@ pub struct ResolvedPartVisibility {
     pub sounding_tracks: Option<Vec<String>>,
     /// Display names of `sounding_tracks`, for export filenames.
     pub sounding_display_names: Option<Vec<String>>,
-    /// The chosen preset, whose `# metadata` overrides the render applies.
-    /// `None` renders the song's own `# metadata`.
+    /// The chosen preset, whose `metadata` overrides the render applies.
+    /// `None` renders the song's own `metadata`.
     pub preset_name: Option<String>,
     /// Parts whose pill is off, in `parts` order: hidden ones and those the
     /// preset's `visible_parts` leaves out. Solo doesn't change it.

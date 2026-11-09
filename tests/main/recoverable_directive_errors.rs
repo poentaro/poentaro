@@ -10,15 +10,13 @@ mod sequence_errors;
 
 pub(crate) fn minimal_fixture(score_section: &str) -> String {
     format!(
-        r#"# metadata
-title = "t"
-author = "a"
+        r#"metadata {{ title "t", author "a" }},
 
-# parts
-Melody = notes
+parts ["Melody": notes],
 
-# score
-{score_section}
+score """
+    {score_section}
+    """,
 "#
     )
 }

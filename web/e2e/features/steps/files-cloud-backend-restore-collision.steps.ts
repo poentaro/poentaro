@@ -18,27 +18,25 @@ import { Given, Then, When } from './fixtures'
 // `files-cloud-backend.steps.ts` to stay under this repo's 400-line cap.
 
 const COLLISION_ACTIVE_CONTENT = [
-  '# metadata',
-  'title = "Existing Active File"',
+  'metadata { title "Existing Active File" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '5 6 7 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    5 6 7 1',
+  '    """,',
 ].join('\n')
 
 const COLLISION_RESTORED_CONTENT = [
-  '# metadata',
-  'title = "Restored From Bin"',
+  'metadata { title "Restored From Bin" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 Given(

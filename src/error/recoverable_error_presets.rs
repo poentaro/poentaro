@@ -1,13 +1,6 @@
 use crate::error::{RecoverableError, RecoverableErrorKind, Span};
 
 impl RecoverableError {
-    pub fn preset_missing_name(span: Span) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::PresetMissingName,
-        }
-    }
-
     pub fn preset_duplicate_name(span: Span, name: &str) -> Self {
         Self {
             span,

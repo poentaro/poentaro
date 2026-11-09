@@ -230,7 +230,7 @@ pub enum AbsoluteContent {
         spans: Vec<TextSpan>,
         /// Font family for `spans`. `SansSerif` for an ordinary directive
         /// line's key/bpm/time-signature text (not a configurable text-style
-        /// kind); `Metadata::sequence.font_family` for the `# sequence`
+        /// kind); `Metadata::sequence.font_family` for the `sequence`
         /// summary line's spans (see `PostArcGridContent::SequenceLine`).
         spans_font_family: FontFamily,
         /// X offset (in points, from the line's start) where `spans`
@@ -243,7 +243,7 @@ pub enum AbsoluteContent {
         /// measured width when one is present, zero otherwise.
         label_x_offset: f32,
         /// Whether `directive_row_offset` should be applied to this line.
-        /// `true` for ordinary directive lines; `false` for the `# sequence`
+        /// `true` for ordinary directive lines; `false` for the `sequence`
         /// summary header, which must not move.
         apply_row_offset: bool,
     },

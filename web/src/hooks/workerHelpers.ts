@@ -24,7 +24,7 @@ export function measureRangeInSpan(
  * Like `measureRangeInSpan`, but also resolves `revealLine` to its own
  * measure index and attaches it as `revealMeasureIndex` — the measure the
  * preview should scroll to for this selection, when it differs from
- * `start` (e.g. a `# sequence` chain selection whose envelope start, in
+ * `start` (e.g. a `sequence` chain selection whose envelope start, in
  * document order, isn't the entry the user actually navigated to). Falls
  * back to `start` when `revealLine` doesn't resolve to a measure of its
  * own.

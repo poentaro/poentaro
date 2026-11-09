@@ -27,7 +27,7 @@ export type InstrumentArticulation =
   | 'vocal'
 
 /** One GM instrument catalog entry, passed to every Rust call that reads
- * `# parts` sound labels (as the WIT `instrument-info`). `name` is the bare
+ * `parts` sound labels (as the WIT `instrument-info`). `name` is the bare
  * instrument name; Rust alone builds the quoted `"N: Name"` label from it. */
 export interface InstrumentEntry {
   name: string

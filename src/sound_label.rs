@@ -1,4 +1,4 @@
-//! The `"N: Name"` label a `# parts` line quotes to pick a part's sound
+//! The `"N: Name"` label a `parts` line quotes to pick a part's sound
 //! (e.g. `"40: Violin"`, or `"38: Acoustic Snare"` on a percussion part).
 //! This module is the only place that formats or parses that text: callers
 //! across the wasm boundary exchange the bare program/key number and get

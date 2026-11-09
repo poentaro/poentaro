@@ -6,23 +6,7 @@ use crate::ast::parsed::{
 };
 use crate::error::{RecoverableError, Span};
 
-fn span_of_key_in_line(byte_offset: usize, line: &str, key_raw: &str, key: &str) -> Span {
-    let leading_whitespace = line.len() - line.trim_start().len();
-    let key_start_in_key_raw = key_raw.len() - key_raw.trim_start().len();
-    let key_start = byte_offset + leading_whitespace + key_start_in_key_raw;
-    Span::new(key_start, key_start + key.len())
-}
-
-fn span_of_value_in_line(byte_offset: usize, line: &str, key_raw: &str, value_raw: &str) -> Span {
-    let leading_whitespace_in_line = line.len() - line.trim_start().len();
-    let value_leading_whitespace = value_raw.len() - value_raw.trim_start().len();
-    let value_start =
-        byte_offset + leading_whitespace_in_line + key_raw.len() + 1 + value_leading_whitespace;
-    let value_trimmed = value_raw.trim();
-    Span::new(value_start, value_start + value_trimmed.len())
-}
-
-/// One non-blank `key = value` line of a `# metadata` section. `value` is
+/// One non-blank `key = value` line of a `metadata` section. `value` is
 /// trimmed and has its surrounding `"` quotes stripped.
 pub struct MetadataLine<'a> {
     pub key: &'a str,
@@ -32,39 +16,6 @@ pub struct MetadataLine<'a> {
     pub value: &'a str,
     pub key_span: Span,
     pub value_span: Span,
-}
-
-/// Splits a `# metadata` section's content into its `key = value` lines,
-/// skipping blank lines. A line without `=` becomes a malformed-line error.
-pub fn metadata_lines(
-    content: &str,
-    base_offset: usize,
-) -> impl Iterator<Item = Result<MetadataLine<'_>, RecoverableError>> {
-    content
-        .lines()
-        .scan(base_offset, |next_offset, line| {
-            let byte_offset = *next_offset;
-            *next_offset += line.len() + 1;
-            Some((byte_offset, line))
-        })
-        .filter(|(_, line)| !line.trim().is_empty())
-        .map(|(byte_offset, line)| {
-            let trimmed = line.trim();
-            let Some((key_raw, value_raw)) = trimmed.split_once('=') else {
-                return Err(RecoverableError::metadata_malformed_line(
-                    Span::new(byte_offset, byte_offset + line.len()),
-                    trimmed,
-                ));
-            };
-            let key = key_raw.trim();
-            Ok(MetadataLine {
-                key,
-                written_key: key,
-                value: value_raw.trim().trim_matches('"'),
-                key_span: span_of_key_in_line(byte_offset, line, key_raw, key),
-                value_span: span_of_value_in_line(byte_offset, line, key_raw, value_raw),
-            })
-        })
 }
 
 fn parse_positive_u32(key: &str, value: &str, value_span: Span) -> Result<u32, RecoverableError> {
@@ -136,7 +87,7 @@ use text_style_parser::{parse_component_value, parse_text_style_object};
 #[path = "text_style_parser.rs"]
 mod text_style_parser;
 
-/// A recognized `# metadata` key, classified by the value it takes.
+/// A recognized `metadata` key, classified by the value it takes.
 enum MetadataKey {
     Number(MetadataNumberKey),
     Flag(MetadataFlagKey),
@@ -156,29 +107,7 @@ impl MetadataKey {
     }
 }
 
-/// Spans of every recognized key in a `# metadata` section's `content`.
-pub(crate) fn metadata_key_spans(content: &str, base_offset: usize) -> Vec<Span> {
-    metadata_lines(content, base_offset)
-        .filter_map(Result::ok)
-        .filter(|line| MetadataKey::from_keyword(line.key).is_some())
-        .map(|line| line.key_span)
-        .collect()
-}
-
-/// Spans of every recognized key in a `# preset` section's `content`: the
-/// `# metadata` keys plus the preset-only ones.
-pub(crate) fn preset_key_spans(content: &str, base_offset: usize) -> Vec<Span> {
-    metadata_lines(content, base_offset)
-        .filter_map(Result::ok)
-        .filter(|line| {
-            MetadataKey::from_keyword(line.key).is_some()
-                || PresetKey::from_keyword(line.key).is_some()
-        })
-        .map(|line| line.key_span)
-        .collect()
-}
-
-/// Applies one `# metadata` key to `metadata`, recording a bad value or an
+/// Applies one `metadata` key to `metadata`, recording a bad value or an
 /// unknown key in `errors`.
 pub(crate) fn apply_field(
     metadata: &mut ParsedMetadata,
@@ -252,21 +181,9 @@ pub(crate) fn apply_text_style_field(
     }
 }
 
-pub fn parse_metadata(
-    content: &str,
-    base_offset: usize,
-) -> (ParsedMetadata, Vec<RecoverableError>) {
-    let mut metadata = ParsedMetadata::default();
-    let mut errors: Vec<RecoverableError> = Vec::new();
-    for line in metadata_lines(content, base_offset) {
-        match line {
-            Ok(line) => apply_field(&mut metadata, &line, &mut errors),
-            Err(error) => errors.push(error),
-        }
-    }
-    (metadata, errors)
-}
-
+#[cfg(test)]
+#[path = "metadata_parser_layout_tests.rs"]
+mod metadata_parser_layout_tests;
 #[cfg(test)]
 #[path = "metadata_parser_tests.rs"]
 mod metadata_parser_tests;

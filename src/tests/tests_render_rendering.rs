@@ -3,20 +3,16 @@ use compositor::types::AbsoluteContent;
 
 #[test]
 fn render_svgs_from_source_smoke() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b c d\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b c d
+    """,
+"#;
     let svgs = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()
         .svgs;
@@ -27,17 +23,16 @@ fn render_svgs_from_source_smoke() {
 
 #[test]
 fn bpm_change_mid_score_renders_both_bpm_labels() {
-    let input = concat!(
-        "# parts\n",
-        "b = notes\n",
-        "\n",
-        "# score\n",
-        "bpm=60\n",
-        "[b] 1\n",
-        "\n",
-        "bpm=130\n",
-        "[b] 1\n",
-    );
+    let input = r#"parts ["b": notes],
+
+score """
+    bpm=60
+    [b] 1
+
+    bpm=130
+    [b] 1
+    """,
+"#;
     let svgs = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()
         .svgs;
@@ -55,20 +50,16 @@ fn bpm_change_mid_score_renders_both_bpm_labels() {
 
 #[test]
 fn lyrics_underflow_render_returns_svgs_and_non_empty_errors() {
-    let input = concat!(
-        "# metadata\n",
-        "title=\"t\"\n",
-        "author=\"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b
+    """,
+"#;
     let output = render_svgs_from_source(input, "test.poentaro", &[])
         .expect("underflow must not abort the render");
     assert!(
@@ -93,21 +84,16 @@ fn follow_part_with_tied_note_produces_exactly_one_arc() {
     // After consolidation p1 and p2 merge into one visual row.
     // The tie arc should appear exactly once, not twice (once for p1 and
     // once for p2 displaced above the chord row).
-    let input = concat!(
-        "# metadata\n",
-        "title = \"\"\n",
-        "author = \"\"\n",
-        "\n",
-        "# parts\n",
-        "Pluck [p1] = notes\n",
-        "Pluck 2 [p2] = follow[p1]\n",
-        "Accompaniment [a] = chords\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[p1] 1~1\n",
-        "[a] 3\n",
-    );
+    let input = r#"metadata { title "", author "" },
+
+parts ["Pluck" [p1]: notes, "Pluck 2" [p2]: follow [p1], "Accompaniment" [a]: chords],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [p1] 1~1
+    [a] 3
+    """,
+"#;
     let svgs = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()
         .svgs;
@@ -121,11 +107,15 @@ fn follow_part_with_tied_note_produces_exactly_one_arc() {
 
 #[test]
 fn lex_unexpected_char_renders_error_highlight_and_reports_error() {
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Melody] 1 @ 3 4\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 @ 3 4
+    """,
+"#;
     let output = render_svgs_from_source(input, "test.poentaro", &[])
         .expect("LexUnexpectedChar must not abort the render");
     assert!(
@@ -148,11 +138,15 @@ fn lex_unexpected_char_renders_error_highlight_and_reports_error() {
 fn adjacent_beat_group_underlines_have_gap_between_them() {
     // "2_3=4=" is beat 2 and "6_7_" is beat 3 — both get a level-0 beam underline.
     // The underline for beat 2 must end strictly before the underline for beat 3 starts.
-    let source = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nS = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[S] 0 2_3=4= 6_7_ 0\n",
-    );
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["S": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 0 2_3=4= 6_7_ 0
+    """,
+"#;
     let score = compile(source, "test", &[]).unwrap();
     let config = render_config::RenderConfig::from_metadata(&score.metadata);
     let header = grid_layout::types::Header {
@@ -227,22 +221,19 @@ fn adjacent_beat_group_underlines_have_gap_between_them() {
 /// system and there'd be nothing cross-system to compare. Returns page 0's
 /// resolved absolute elements.
 fn density_fixture_page_elements() -> Vec<compositor::types::AbsoluteElement> {
-    let input = concat!(
-        "# metadata\n",
-        "max_measures_per_system = 2\n",
-        "\n",
-        "# parts\n",
-        "a = notes\n",
-        "b = chords\n",
-        "\n",
-        "# score\n",
-        "[a] 1\n",
-        "\n",
-        "[a]1\n",
-        "\n",
-        "[a]1\n",
-        "[b] 6m __~_6m__0_\n",
-    );
+    let input = r#"metadata { max measures per system 2 },
+
+parts ["a": notes, "b": chords],
+
+score """
+    [a] 1
+
+    [a]1
+
+    [a]1
+    [b] 6m __~_6m__0_
+    """,
+"#;
     let score = compile(input, "test", &[]).unwrap();
     let config = render_config::RenderConfig::from_metadata(&score.metadata);
     let header = grid_layout::types::Header {
@@ -374,11 +365,14 @@ fn leading_and_trailing_bar_lines_align_across_systems_of_differing_density() {
 #[test]
 fn tie_operator_on_notes_renders_exactly_two_arcs() {
     // 7_6=5=~5~5 has two ~ tie operators, so exactly 2 arcs should be rendered.
-    let input = concat!(
-        "# metadata\ntitle = \"Untitled\"\nauthor = \"\"\n\n",
-        "# parts\nMelody[m] = notes\n\n",
-        "# score\n[m]7_6=5=~5~5\n",
-    );
+    let input = r#"metadata { title "Untitled", author "" },
+
+parts ["Melody" [m]: notes],
+
+score """
+    [m]7_6=5=~5~5
+    """,
+"#;
     let svgs = render_svgs_from_source(input, "test.poentaro", &[])
         .unwrap()
         .svgs;

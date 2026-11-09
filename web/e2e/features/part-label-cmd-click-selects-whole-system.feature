@@ -6,7 +6,7 @@ Feature: Cmd/Ctrl-clicking a part label selects the whole system
   # every system the gesture touches" — see `PreviewAnchorState`'s
   # 'part-label-system' doc comment and `resolve_system_selection_range_response`.
   #
-  # `max_measures_per_system = 1` forces each measure onto its own system, so
+  # `max measures per system 1` forces each measure onto its own system, so
   # Melody's and Harmony's labels repeat twice, stacked vertically:
   #
   #   System 0 (measure 0): Melody "1 2", Harmony "5 6"

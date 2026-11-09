@@ -1,5 +1,5 @@
 Feature: Lyrics under a chord part
-  A lyrics part can target a chords part (`l = lyrics[c]`). The lyric line
+  A lyrics part can target a chords part (`"Words" [l]: lyrics [c]`). The lyric line
   carries its own timing: each bracketed item pairs with a chord attack (at most one per attack),
   and unbracketed syllables flow freely between them (see "Lyrics under a
   chord part" in syntax.md).

@@ -12,28 +12,26 @@ declare global {
 // group. `[Bass]   5  6 7 1` carries irregular whitespace to exercise the
 // collapse-to-single-space cleanup at the same time.
 const SOURCE = [
-  '# parts',
-  'Melody = notes',
-  'Bass = notes',
+  'parts ["Melody": notes, "Bass": notes],',
   '',
-  '# score',
-  '[Melody] 1 2 3 4',
-  '[Bass]   5  6 7 1',
+  'score """',
+  '    [Melody] 1 2 3 4',
+  '    [Bass]   5  6 7 1',
   '',
-  '[Melody] 0 0 0 0',
-  '[Bass] 3 3 3 3',
+  '    [Melody] 0 0 0 0',
+  '    [Bass] 3 3 3 3',
+  '    """,',
 ].join('\n')
 
 const FORMATTED = [
-  '# parts',
-  'Melody = notes',
-  'Bass = notes',
+  'parts ["Melody": notes, "Bass": notes],',
   '',
-  '# score',
-  '[Melody] 1 2 3 4',
-  '[Bass] 5 6 7 1',
+  'score """',
+  '    [Melody] 1 2 3 4',
+  '    [Bass] 5 6 7 1',
   '',
-  '[Bass] 3 3 3 3',
+  '    [Bass] 3 3 3 3',
+  '    """,',
   '',
 ].join('\n')
 

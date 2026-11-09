@@ -33,8 +33,8 @@ interface UseMeasureAudioPlaybackParams {
   /** Total measures in the score (`measureSpans.length`), used by `playAll`
    * to span from the first measure through the last written one. */
   totalMeasures: number
-  /** Number of `# sequence` entries (`0` when the score has none), used by
-   * `playAll` to play every entry in `# sequence` order. */
+  /** Number of `sequence` entries (`0` when the score has none), used by
+   * `playAll` to play every entry in `sequence` order. */
   sequenceEntryCount: number
 }
 
@@ -156,8 +156,8 @@ export function useMeasureAudioPlayback({
     // Exact range: stop at the end measure's first occurrence, so a
     // single-measure selection (e.g. "play current measure") doesn't
     // overrun into a later D.C./D.S. al Coda repeat pass. Ignore
-    // # sequence/D.C./D.S. entirely, so "play current measure" always plays
-    // exactly what is written, regardless of any part omission a # sequence
+    // sequence/D.C./D.S. entirely, so "play current measure" always plays
+    // exactly what is written, regardless of any part omission a sequence
     // entry might apply to this measure's occurrence(s).
     //
     // `enabledTracksOverride` mutes every part outside a no-mounted-editor
@@ -183,7 +183,7 @@ export function useMeasureAudioPlayback({
   const playFromCurrentMeasure = useCallback(() => {
     const range = selectedSequenceRangeRef.current
     if (range === null) return
-    // Exact range: play only the selected `# sequence` entries, stopping at
+    // Exact range: play only the selected `sequence` entries, stopping at
     // the end of the last one. No D.C./D.S./sequence continuation past it.
     // `respectSequence: true` so any `(-abbrev ...)` part omission on the
     // selected entry/entries is honored, not just the written score.
@@ -204,7 +204,7 @@ export function useMeasureAudioPlayback({
 
   // Plays the whole score — the same performance `generateFullAudio`
   // (Export WAV) renders, but through this hook's autoplay + cursor-sync
-  // channel instead of a static downloadable player. With a `# sequence`,
+  // channel instead of a static downloadable player. With a `sequence`,
   // every entry is passed as an explicit entry range: resolving the written
   // first/last measures by occurrence instead would clip (or fall back to
   // written order) whenever the sequence doesn't start at the first written

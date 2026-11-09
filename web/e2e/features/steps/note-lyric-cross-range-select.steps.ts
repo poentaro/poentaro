@@ -39,17 +39,14 @@ import { Given, Then, When } from './fixtures'
  * `lyric-range-select-highlight.feature`.
  */
 const rangeTestSource = [
-  '# metadata',
-  'title = "note lyric cross range-select test"',
-  'max_measures_per_system = 48',
+  'metadata { title "note lyric cross range-select test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — line 9
-  '[Mv1] do re mi fa', // verse 0 — line 10
+  'score """',
+  '[M] 1 2 3 4',
+  '[Mv1] do re mi fa',
+  '""",',
 ].join('\n')
 
 function noteRects(page: import('@playwright/test').Page) {

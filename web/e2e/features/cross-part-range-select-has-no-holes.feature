@@ -8,17 +8,15 @@ Feature: Cross-part click-and-click selection is always contiguous
 
   Scenario: A held note in a middle part is selected when the range passes over it
     Given the score:
-      """
-      # parts
-      A [A] = notes
-      B [B] = notes
-      C [C] = notes
+      ```
+      parts ["A": notes, "B": notes, "C": notes],
 
-      # score
-      [A] 1 2 3 4
-      [B] 5---
-      [C] 3 4 5 6
-      """
+      score """
+          [A] 1 2 3 4
+          [B] 5---
+          [C] 3 4 5 6
+          """,
+      ```
     When I click note 3 of part A
     And I click note 4 of part C
     Then notes 3 and 4 of part A are range-selected
@@ -29,15 +27,14 @@ Feature: Cross-part click-and-click selection is always contiguous
 
   Scenario: A part with a different rhythm is selected by time, not by note position
     Given the score:
-      """
-      # parts
-      A [A] = notes
-      B [B] = notes
+      ```
+      parts ["A": notes, "B": notes],
 
-      # score
-      [A] 1 2 3 4
-      [B] 5_ 6_ 7_ 1_ 2_ 3_ 4_ 5_
-      """
+      score """
+          [A] 1 2 3 4
+          [B] 5_ 6_ 7_ 1_ 2_ 3_ 4_ 5_
+          """,
+      ```
     When I click note 2 of part A
     And I click note 5 of part B
     Then notes 2 and 3 of part A are range-selected
@@ -46,19 +43,16 @@ Feature: Cross-part click-and-click selection is always contiguous
 
   Scenario: A lyric-to-note range over a held note leaves no hole
     Given the score:
-      """
-      # parts
-      A [A] = notes
-      Lyrics [L] = lyrics[A]
-      B [B] = notes
-      C [C] = notes
+      ```
+      parts ["A": notes, "Lyrics" [L]: lyrics [A], "B": notes, "C": notes],
 
-      # score
-      [A] 1 2 3 4
-      [L] 一 二 三 四
-      [B] 5---
-      [C] 3 4 5 6
-      """
+      score """
+          [A] 1 2 3 4
+          [L] 一 二 三 四
+          [B] 5---
+          [C] 3 4 5 6
+          """,
+      ```
     When I click syllable 3 of part L
     And I click note 4 of part C
     Then syllables 3 and 4 of part L are range-selected

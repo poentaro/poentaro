@@ -2,13 +2,13 @@ use super::*;
 
 // `1,` is below the harmonica's lowest hole (middle C, hole 1 blow); `4#`
 // (F♯) is hole 2 draw with the slide.
-const SOURCE: &str = "# parts
-S = notes
+const SOURCE: &str = r#"parts ["S": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1, 1 1' 4#
-";
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1, 1 1' 4#
+    """,
+"#;
 
 /// The `<text>` elements whose `data-variant` is `variant`, in document
 /// order.

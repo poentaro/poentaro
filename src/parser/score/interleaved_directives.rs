@@ -206,7 +206,7 @@ pub(crate) fn directive_line_label(line: &str) -> Option<String> {
 }
 
 /// Spans of every directive keyword (`bpm` in `bpm=92`, `break`) on the
-/// directive lines of a `# score` section's `content`.
+/// directive lines of a `score` section's `content`.
 pub(crate) fn directive_keyword_spans(content: &str, base_offset: usize) -> Vec<Span> {
     collect_groups(content)
         .iter()

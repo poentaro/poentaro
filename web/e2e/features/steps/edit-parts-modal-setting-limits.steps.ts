@@ -2,15 +2,14 @@ import { expect } from '@playwright/test'
 import { Given, Then } from './fixtures'
 
 const OUT_OF_RANGE_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes 150% +5',
+  'parts ["Melody" [M]: notes { volume: 150 %, octave: + 5 }],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    """,',
 ].join('\n')
 
 Given(

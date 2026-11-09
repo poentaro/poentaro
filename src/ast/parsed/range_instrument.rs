@@ -1,4 +1,4 @@
-//! The instrument a `notes` part names on its `# parts` line (e.g.
+//! The instrument a `notes` part names on its `parts` line (e.g.
 //! `Violin [V] = notes violin`), which sets the range its notes are checked
 //! against and the sound it plays when the line quotes none (see
 //! `syntax.md`, "Instrument range").

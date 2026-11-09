@@ -23,16 +23,14 @@ import { Given, Then } from './fixtures'
  * 0, 1, 3, 4), leaving each part's third note (indices 2, 5) unselected.
  */
 const crossPartWithinMeasureSource = [
-  '# metadata',
-  'title = "cross part within measure range test"',
+  'metadata { title "cross part within measure range test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 2 3', // measure 0 — notes 0-2
-  '[H] 4 5 6', // measure 0 — notes 3-5
+  'score """',
+  '[M] 1 2 3',
+  '[H] 4 5 6',
+  '""",',
 ].join('\n')
 
 function noteRects(page: import('@playwright/test').Page) {

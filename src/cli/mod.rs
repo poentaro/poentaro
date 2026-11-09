@@ -66,30 +66,18 @@ pub fn read_document_source(input: &Path) -> Result<String, IrrecoverableError> 
     ))
 }
 
-/// Writes `<input stem>.anyfix` next to `input`: the same document in anyfix
-/// expressions. Returns the written path.
-pub fn convert_to_anyfix(input: &Path) -> Result<std::path::PathBuf, IrrecoverableError> {
-    let source = read_source(input)?;
-    let output =
-        input.with_extension(crate::parser::anyfix::ANYFIX_EXTENSION.trim_start_matches('.'));
-    write_file(&output, crate::parser::anyfix::convert(&source).as_bytes())?;
-    Ok(output)
-}
-
-/// Formats a document in place: an `.anyfix` one with
-/// [`crate::format_anyfix::format_anyfix`], any other with
-/// [`crate::format_source::format_score`].
+/// Formats a document in place.
 pub fn format_file(input: &Path) -> Result<(), IrrecoverableError> {
     let source = read_source(input)?;
-    let formatted = crate::document::formatted(&source);
+    let formatted = crate::format_anyfix::format_anyfix(&source);
     if formatted == source {
         return Ok(());
     }
     write_file(input, formatted.as_bytes())
 }
 
-/// Parse and group a `.poentaro` file, with `# metadata` overlaid by the
-/// `# preset` named `preset_name`.
+/// Parse and group a `.poentaro` file, with `metadata` overlaid by the
+/// `preset` named `preset_name`.
 pub(crate) fn parse_and_group(
     input: &Path,
     preset_name: Option<&str>,

@@ -45,21 +45,17 @@ Given(
 
 function buildSource(): string {
   const lines: string[] = [
-    '# metadata',
-    'title = "omitted part rest glyph test"',
-    `hide_resting_parts = ${state.hideRestingParts ? 'yes' : 'no'}`,
+    `metadata { title "omitted part rest glyph test", hide resting parts: ${state.hideRestingParts ? 'yes' : 'no'} },`,
     '',
-    '# parts',
-    'Melody [M] = notes',
-    'Harmony [H] = notes',
+    'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
     '',
-    '# score',
+    'score """',
     `[M] ${state.melodyNotes}`,
   ]
   if (state.harmonyNotes !== null) {
     lines.push(`[H] ${state.harmonyNotes}`)
   }
-  return lines.join('\n')
+  return [...lines, '""",'].join('\n')
 }
 
 When('the omitted-part-rest-glyph score is laid out', async ({ page }) => {

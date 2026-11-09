@@ -304,7 +304,7 @@ fn make_header_gap_row(header: &Header, base: f32) -> Option<GridRow> {
 }
 
 /// The rows above the music: the full header (title, subtitle, author, part
-/// list, `# sequence` line) on the first page, only the running title (and
+/// list, `sequence` line) on the first page, only the running title (and
 /// the gap below it) on every later page.
 pub(crate) fn make_header_rows(header: &Header, base: f32, is_first_page: bool) -> Vec<GridRow> {
     if !is_first_page {

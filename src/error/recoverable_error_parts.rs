@@ -1,15 +1,6 @@
 use crate::error::{DocumentSection, RecoverableError, RecoverableErrorKind, Span};
 
 impl RecoverableError {
-    pub fn parts_malformed_line(span: Span, line: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::PartsMalformedLine {
-                line: line.to_string(),
-            },
-        }
-    }
-
     pub fn parts_duplicate_abbreviation(span: Span, abbrev: &str) -> Self {
         Self {
             span,
@@ -52,15 +43,6 @@ impl RecoverableError {
             span,
             kind: RecoverableErrorKind::PartsInvalidColumns {
                 rhs: rhs.to_string(),
-            },
-        }
-    }
-
-    pub fn section_unknown(span: Span, name: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::SectionUnknown {
-                name: name.to_string(),
             },
         }
     }

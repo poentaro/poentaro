@@ -38,19 +38,15 @@ import { Given, Then, When } from './fixtures'
  * never the stale, nonexistent written index 2.
  */
 const source = [
-  '# metadata',
-  'title = "playback cursor selection hidden part test"',
-  'max_measures_per_system = 1',
+  'metadata { title "playback cursor selection hidden part test", max measures per system 1 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
-  'Bass [B] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes, "Bass" [B]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
-  '[H] 5', // 1 note/measure
-  '[B] 3 4', // 2 notes/measure
+  'score """',
+  '[M] 1 2',
+  '[H] 5',
+  '[B] 3 4',
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {

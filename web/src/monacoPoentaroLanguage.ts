@@ -4,7 +4,7 @@ export const POENTARO_LANGUAGE_ID = 'poentaro'
 
 let registered = false
 
-/** Basic Monarch tokenizer for `.poentaro` files — see anyfix-syntax.md for
+/** Basic Monarch tokenizer for `.poentaro` files — see syntax.md for
  * the document and syntax.md for the score string's grammar. It only colors
  * punctuation-level structure; keywords come from the Rust lexers via
  * `registerPoentaroSemanticTokensProvider`. */

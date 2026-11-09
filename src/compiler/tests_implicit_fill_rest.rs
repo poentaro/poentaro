@@ -10,19 +10,15 @@ fn score_from(source: &str) -> crate::ast::grouped::Score {
 #[test]
 fn not_mentioned_part_s_filled_rest_is_marked_implicit_fill() {
     let score = score_from(
-        "# metadata
-title=\"t\"
-author=\"a\"
-hide_resting_parts = no
+        r#"metadata { title "t", author "a", hide resting parts: no },
 
-# parts
-A = notes
-B = notes
+parts ["A": notes, "B": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[A] 1 2 3 4
-",
+score """
+    time=4/4 key=C4 bpm=120
+    [A] 1 2 3 4
+    """,
+"#,
     );
     let result = compile(&score);
     let blocks = result.blocks;
@@ -46,20 +42,16 @@ time=4/4 key=C4 bpm=120
 #[test]
 fn explicitly_written_rest_is_not_marked_implicit_fill() {
     let score = score_from(
-        "# metadata
-title=\"t\"
-author=\"a\"
-hide_resting_parts = no
+        r#"metadata { title "t", author "a", hide resting parts: no },
 
-# parts
-A = notes
-B = notes
+parts ["A": notes, "B": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[A] 1 2 3 4
-[B] 0 0 0 0
-",
+score """
+    time=4/4 key=C4 bpm=120
+    [A] 1 2 3 4
+    [B] 0 0 0 0
+    """,
+"#,
     );
     let result = compile(&score);
     let blocks = result.blocks;

@@ -3,18 +3,15 @@ import { stableBoundingBox } from '../../rangeSelectHelpers'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Test"',
-  'subtitle = "Sub"',
+  'metadata { title "Test", subtitle "Sub" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
-  '[Mv1] twin- kle twin- kle',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    [Mv1] twin- kle twin- kle',
+  '    """,',
 ].join('\n')
 
 async function loadSource(
@@ -98,16 +95,14 @@ Given(
   async ({ page }) => {
     const manyMeasures = Array.from({ length: 40 }, () => '1 1 5 5').join('\n')
     const source = [
-      '# metadata',
-      'title = "Test"',
-      'row_height = 200',
+      'metadata { title "Test", row height 200 },',
       '',
-      '# parts',
-      'Melody [M] = notes',
+      'parts ["Melody" [M]: notes],',
       '',
-      '# score',
+      'score """',
       '(bpm=120 key=C4 time=4/4)',
       manyMeasures,
+      '""",',
     ].join('\n')
 
     await loadSource(page, source)

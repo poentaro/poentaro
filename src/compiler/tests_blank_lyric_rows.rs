@@ -5,9 +5,9 @@ use crate::parser::parse;
 /// Test helper: parse and compile a score with the given hide_resting_parts setting.
 fn compile_with_hide_resting(source: &str, hide_resting: bool) -> Vec<String> {
     let source = if hide_resting {
-        source.replace("# metadata\n", "# metadata\nhide_resting_parts = yes\n")
+        source.replace("metadata {}", "metadata { hide resting parts: yes }")
     } else {
-        source.replace("# metadata\n", "# metadata\nhide_resting_parts = no\n")
+        source.replace("metadata {}", "metadata { hide resting parts: no }")
     };
     let score = group(parse(&source, "test", &[]).unwrap()).unwrap();
     compile(&score).blocks[0]
@@ -19,19 +19,16 @@ fn compile_with_hide_resting(source: &str, hide_resting: bool) -> Vec<String> {
 
 #[test]
 fn blank_lyric_part_hidden_when_hide_resting_parts_is_yes() {
-    let source = concat!(
-        "# metadata\n",
-        "\n",
-        "# parts\n",
-        "S = notes\n",
-        "V1 = lyrics[S]\n",
-        "V2 = lyrics[S]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S] 1 2 3 4\n",
-        "[V2] la la la la\n",
-    );
+    let source = r#"metadata {},
+
+parts ["S": notes, "V1": lyrics [S], "V2": lyrics [S]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [V2] la la la la
+    """,
+"#;
     let rows = compile_with_hide_resting(source, true);
     // When hide_resting_parts is yes, blank V1 is hidden since V2 has content
     assert_eq!(rows, vec!["S", "V2"]);
@@ -39,39 +36,32 @@ fn blank_lyric_part_hidden_when_hide_resting_parts_is_yes() {
 
 #[test]
 fn blank_lyric_part_drawn_when_hide_resting_parts_is_no() {
-    let source = concat!(
-        "# metadata\n",
-        "\n",
-        "# parts\n",
-        "S = notes\n",
-        "V1 = lyrics[S]\n",
-        "V2 = lyrics[S]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S] 1 2 3 4\n",
-        "[V2] la la la la\n",
-    );
+    let source = r#"metadata {},
+
+parts ["S": notes, "V1": lyrics [S], "V2": lyrics [S]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [V2] la la la la
+    """,
+"#;
     let rows = compile_with_hide_resting(source, false);
     // When hide_resting_parts is no, blank V1 is drawn
     assert_eq!(rows, vec!["S", "V1", "V2"]);
 }
 
-const BASE_SOURCE: &str = concat!(
-    "# metadata\n",
-    "\n",
-    "# parts\n",
-    "S = notes\n",
-    "V1 = lyrics[S]\n",
-    "V2 = lyrics[S]\n",
-    "C = chords\n",
-    "\n",
-    "# score\n",
-    "time=4/4 key=C4 bpm=120\n",
-    "[S] 1 2 3 4\n",
-    "[V2] la la la la\n",
-    "[C] 1 - - -\n",
-);
+const BASE_SOURCE: &str = r#"metadata {},
+
+parts ["S": notes, "V1": lyrics [S], "V2": lyrics [S], "C": chords],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [V2] la la la la
+    [C] 1 - - -
+    """,
+"#;
 
 fn row_ids_with_tracks(source: &str, tracks: &[&str], hide_resting: bool) -> Vec<String> {
     let source = if hide_resting {
@@ -91,7 +81,12 @@ fn row_ids_with_tracks(source: &str, tracks: &[&str], hide_resting: bool) -> Vec
 
 #[test]
 fn blank_lyric_part_hidden_when_other_parts_visible() {
-    let source = BASE_SOURCE.replace("# metadata\n", "# metadata\nhide_resting_parts = yes\n");
+    let source = BASE_SOURCE.replace(
+        r#"metadata {}
+"#,
+        r#"metadata { hide resting parts: yes }
+"#,
+    );
     assert_eq!(
         row_ids_with_tracks(&source, &["V1", "V2", "C"], true),
         vec!["V2", "C"]
@@ -101,7 +96,12 @@ fn blank_lyric_part_hidden_when_other_parts_visible() {
 #[test]
 fn measure_with_only_blank_lyric_parts_keeps_all() {
     let source = BASE_SOURCE
-        .replace("# metadata\n", "# metadata\nhide_resting_parts = yes\n")
+        .replace(
+            r#"metadata {}
+"#,
+            r#"metadata { hide resting parts: yes }
+"#,
+        )
         .replace("[V2] la la la la\n", "");
     // When only blank lyric parts are visible, they are kept (like all-rest notes parts)
     assert_eq!(

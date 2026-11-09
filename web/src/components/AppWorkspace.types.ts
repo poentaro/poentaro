@@ -49,7 +49,7 @@ export interface AppWorkspaceProps {
   fileId: string
   source: string
   handleSourceChange: (value: string) => void
-  /** "Format" toolbar action: drops redundant `# score` lines and
+  /** "Format" toolbar action: drops redundant `score` lines and
    * normalizes whitespace. */
   handleFormatScore: () => void
   /** "Octave up"/"Octave down"/"Slur/Unslur"/"Tie/Untie" toolbar actions:

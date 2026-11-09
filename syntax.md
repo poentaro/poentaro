@@ -1,6 +1,4 @@
-# Poentaro — `.poentaro` Syntax Reference
-
-New documents are written in anyfix expressions, described in `anyfix-syntax.md`. Its `score` string holds the `# score` body described here, unchanged.
+# Poentaro: `.poentaro` Syntax Reference
 
 This document describes the input syntax accepted by **Poentaro** (formerly jianpu-generator) as implemented today. File extension: `.poentaro` (files saved before the rename end in `.jianpu`; they still open and import).
 
@@ -8,51 +6,75 @@ This document describes the input syntax accepted by **Poentaro** (formerly jian
 
 ## File structure
 
-A `.poentaro` file has up to four kinds of section, plus any number of presets, which may appear in any order:
+A document is a list of sections written in [anyfix expressions](https://github.com/wongjiahau/anyfix-expr), each followed by a comma, in any order:
 
+```poentaro
+# A comment runs from `#` to the end of the line.
+
+metadata {
+    title "Part options",
+    title style { font size 32, bold: yes },
+    max measures per system 1,
+},
+
+parts [
+    "Piano" [P]: notes { sound 1, volume: 80 %, octave: + 1 },
+    "Echo" [E]: follow [P] { volume: 50 % },
+    "Violin" [V]: notes { instrument: violin },
+    "Words" [Pv1]: lyrics [P],
+],
+
+sequence [Verse, Chorus WITHOUT [E], "Last chorus" ONLY [P]],
+
+preset "Piano only" { visible parts [P], notation: numbered },
+
+score """
+    bpm=100 key=D4 time=3/4 label="Verse"
+    [P] 1 2 3
+    [Pv1] do re mi
+
+    [P] 4# 5 6,      // the comma and the hash are note syntax here
+
+    key=+2 label="Last chorus" break
+    [P] 1 2 3
+
+    label="Chorus"
+    [P] 3 2 1
+    """,
 ```
-# metadata
-…key = value fields…
 
-# parts
-…track declarations…
+- `metadata`: **optional**
+- `parts`: **required**
+- `sequence`: **optional**
+- `score`: **required**
+- `preset "Name"`: **optional**, any number; see [Presets](#presets)
 
-# sequence
-…comma-separated section labels…
+Text in any other form still opens in the editor, where it shows syntax errors until it's fixed.
 
-# score
-…interleaved score content…
+The score is one multiline string, closed by the same run of quotes that opened it. A score line that starts with `"""` needs the string opened with `""""`. Lines may be indented; the indentation isn't part of the score.
 
-# preset "Choir"
-…key = value fields…
-```
+**Canonical form.** The formatter drops every `:` it doesn't need and spaces out symbols, so `title : "Song"` becomes `title "Song"` and `volume : 80%` becomes `volume: 80 %`. Both spellings read the same.
 
-- `# metadata` — **optional**
-- `# parts` — **required**
-- `# sequence` — **optional**
-- `# score` — **required**
-- `# preset "Name"` — **optional**, any number — see [Presets](#presets)
-- Sections may appear in any order.
-- Any amount of whitespace (including none) may follow the `#` in a section header: `#metadata`, `# metadata` and `#   metadata` are all the same header.
-- Legacy `# score:Name` / `# lyrics:Name` sections are **not** supported.
+**All-caps words are keywords.** `S1`, `M` and `A2` split a run of words, so every part reference is written in brackets: `follow [P]`, `lyrics [M]`, `WITHOUT [A]`. A sequence label that is all caps is written as a string: `"A" WITHOUT [S]`.
 
-Whitespace around `=` in metadata is optional. Metadata values may be quoted with `"`.
+**Part names are quoted.** The name is a string, and an abbreviation needs no quotes unless it holds whitespace, `,`, `#`, `"`, a bracket, `.` or `:`. Its words, numbers and symbols are joined without spaces, so `A1&T` still reads `A1&T` after the formatter spaces it out as `A1 & T`.
 
 ---
 
 ## Comments
 
-`//` starts a comment that runs to the end of the line. It is recognized anywhere in the file — in the metadata, parts, or score sections, on its own line or trailing other content.
+Outside the score string, `#` starts a comment that runs to the end of the line. Inside it, `//` does, on its own line or trailing other content, and `#` is note and key syntax.
 
+```text
+metadata {
+    title "My Song",  # shown in the header
+
+    # this whole line is a comment
+    author "Jane Doe",
+},
 ```
-# metadata
-title = "My Song"  // shown in the header
 
-// this whole line is a comment
-author = "Jane Doe"
-```
-
-A `//` inside a double-quoted string (e.g. `title = "http://example.com"`) is not treated as a comment.
+A `#` inside a string (e.g. `title "Song #1"`) is not a comment. Outside the score string, a sharp key is therefore written as a string: `key: "F#3"`.
 
 ---
 
@@ -63,119 +85,121 @@ A `//` inside a double-quoted string (e.g. `title = "http://example.com"`) is no
 | `title` | no | none | Piece title (rendered in header) |
 | `author` | no | none | Author name (rendered in header) |
 | `subtitle` | no | none | Subtitle line |
-| `max_measures_per_system` | no | `4` | Maximum number of measures per system line before wrapping. A ceiling, not a fixed count: a system also wraps early when the next measure wouldn't fit the page width (e.g. in the guitar view, whose note heads are wider) |
-| `row_height` | no | `24` | Vertical spacing of one part row (pixels) |
-| `note_number_width` | no | `8` | Horizontal space per note column (pixels) |
-| `parts_list_columns` | no | `4` | Number of columns in the parts list header |
-| `part_label_width_pt` | no | `40` | Fixed width (points) of the part-label column at the start of each system, shared by every system in the score regardless of how many measures/columns that system's music needs |
-| `page_margin_pt` | no | `25` | Blank space (points) on every side of the page, between the paper's edge and the header, music and page number. A wider margin also narrows each system, so measures may wrap differently |
-| `merge_duplicate_measures_across_parts` | no | `yes` | Score-wide default for whether identical measures from different parts are merged into a single row (`yes`/`no`); can be overridden from a given measure onward with the `merge_duplicate_measures_across_parts=` directive line — see [Directive lines](#directive-lines) |
-| `hide_resting_parts` | no | `yes` | Score-wide default for whether an all-rest part is omitted from a measure where other parts have content (`yes`/`no`); can be overridden from a given measure onward with the `hide_resting_parts=` directive line — see [Directive lines](#directive-lines) |
-| `hide_system_dividers` | no | `no` | Whether the horizontal divider line between systems is omitted (`yes`/`no`) |
-| `directive_row_offset` | no | `0 0` | Translation `"x y"` (points) applied to every rendered directive row (bar number, section label, key, bpm, time signature), moving that row's text without affecting the layout of anything else. Not applied to the `# sequence` summary header. |
+| `max measures per system` | no | `4` | Maximum number of measures per system line before wrapping. A ceiling, not a fixed count: a system also wraps early when the next measure wouldn't fit the page width (e.g. in the guitar view, whose note heads are wider) |
+| `row height` | no | `24` | Vertical spacing of one part row (pixels) |
+| `note number width` | no | `8` | Horizontal space per note column (pixels) |
+| `parts list columns` | no | `4` | Number of columns in the parts list header |
+| `part label width pt` | no | `40` | Fixed width (points) of the part-label column at the start of each system, shared by every system in the score regardless of how many measures/columns that system's music needs |
+| `page margin pt` | no | `25` | Blank space (points) on every side of the page, between the paper's edge and the header, music and page number. A wider margin also narrows each system, so measures may wrap differently |
+| `merge duplicate measures across parts` | no | `yes` | Score-wide default for whether identical measures from different parts are merged into a single row (`yes`/`no`); can be overridden from a given measure onward with the `merge_duplicate_measures_across_parts=` directive line; see [Directive lines](#directive-lines) |
+| `hide resting parts` | no | `yes` | Score-wide default for whether an all-rest part is omitted from a measure where other parts have content (`yes`/`no`); can be overridden from a given measure onward with the `hide_resting_parts=` directive line; see [Directive lines](#directive-lines) |
+| `hide system dividers` | no | `no` | Whether the horizontal divider line between systems is omitted (`yes`/`no`) |
+| `directive row offset` | no | `(0, 0)` | Translation `(x, y)` (points) applied to every rendered directive row (bar number, section label, key, bpm, time signature), moving that row's text without affecting the layout of anything else. Not applied to the `sequence` summary header. |
 
 ### Text styles
 
-Every rendered text kind — `title`, `subtitle`, `author`, `sequence`, `part_legend`, `measure_number`, `section_label`, `page_number`, `running_title`, `part_label`, `lyrics`, `notes`, `chords`, `note_dash` — is configured with the same object-literal syntax:
+Every rendered text kind (`title`, `subtitle`, `author`, `sequence`, `part legend`, `measure number`, `section label`, `page number`, `running title`, `part label`, `lyrics`, `notes`, `chords`, `note dash`) is configured the same way, as the kind followed by `style`:
 
-```
-<kind> = { font_size: N, horizontal_padding_pt: N, vertical_padding_pt: N, bold: yes/no, italic: yes/no, underline: yes/no, font_family: serif/sans_serif/monospace }
+```text
+<kind> style { font size N, horizontal padding pt N, vertical padding pt N, bold: yes/no, italic: yes/no, underline: yes/no, font family: serif/sans serif/monospace }
 ```
 
-- `{` and `}` delimit the object; fields inside are separated by `,` and each field is `name: value`.
-- Keys are unquoted. Any subset of the seven fields may be given, in any order; omitted fields fall back to their default.
-- `title`, `subtitle`, and `author` are overloaded: a plain quoted string (`title = "My Song"`) sets the text content, while an object value (`title = { font_size: 32 }`) sets the style. Both may be set independently.
+Any subset of the seven fields may be given, in any order; omitted fields fall back to their default.
 
 | Component | Meaning |
 |-----------|---------|
-| `font_size` | Font size in points |
-| `horizontal_padding_pt` | Horizontal padding (points) reserved before the element, widening its column's spacing. `0` is allowed |
-| `vertical_padding_pt` | Extra vertical padding (points) added above/below the element. `0` is allowed and means none |
+| `font size` | Font size in points |
+| `horizontal padding pt` | Horizontal padding (points) reserved before the element, widening its column's spacing. `0` is allowed |
+| `vertical padding pt` | Extra vertical padding (points) added above/below the element. `0` is allowed and means none |
 | `bold` | Whether the element renders bold (`yes`/`no`) |
 | `italic` | Whether the element renders italic (`yes`/`no`) |
 | `underline` | Whether the element renders underlined (`yes`/`no`) |
-| `font_family` | Which of the app's three embedded font roles the element renders in: `serif`, `sans_serif`, or `monospace`. Accepted on every kind, including `notes`/`chords`/`note_dash` — those three kinds' glyph widths are re-measured against whichever font this resolves to, as part of column layout, so an override there can't desync rendered glyph widths from the widths layout computes. |
+| `font family` | Which of the app's three embedded font roles the element renders in: `serif`, `sans serif`, or `monospace`. Accepted on every kind, including `notes`/`chords`/`note dash`. Those three kinds' glyph widths are re-measured against whichever font this resolves to, as part of column layout, so an override there can't desync rendered glyph widths from the widths layout computes. |
 
-`running_title` is the small title shown alone (no subtitle or author) at the top of every page after the first; its text is always `title`. Pages after the first also omit the part list and `# sequence` line, so they have more room for music.
+`running title` is the small title shown alone (no subtitle or author) at the top of every page after the first; its text is always `title`. Pages after the first also omit the part list and `sequence` line, so they have more room for music.
 
 Defaults by kind:
 
-| Kind | `font_size` default | `horizontal_padding_pt` default | `vertical_padding_pt` default | `bold` default | `italic` default | `underline` default | `font_family` default |
+| Kind | `font size` default | `horizontal padding pt` default | `vertical padding pt` default | `bold` default | `italic` default | `underline` default | `font family` default |
 |------|----------------------|----------------------------------|--------------------------------|-----------------|-------------------|----------------------|-------------------------|
-| `title` | `row_height * 1.5` | `0` | `4` | `no` | `no` | `no` | `serif` |
-| `subtitle` | `row_height * 0.8` | `0` | `4` | `no` | `yes` | `no` | `serif` |
-| `author` | `row_height * 0.6` | `0` | `4` | `no` | `no` | `no` | `serif` |
-| `sequence` | `12` | `0` | `0` | `no` | `no` | `no` | `sans_serif` |
-| `part_legend` | `row_height * 0.6` | `0` | `4` | `no` | `no` | `no` | `serif` |
-| `measure_number` | `10` | `0` | `0` | `no` | `no` | `no` | `sans_serif` |
-| `section_label` | `12` | `0` | `0` | `yes` | `yes` | `no` | `sans_serif` |
-| `page_number` | `row_height * 0.6` | `0` | `0` | `no` | `no` | `no` | `sans_serif` |
-| `running_title` | `row_height * 0.6` | `0` | `0` | `no` | `yes` | `no` | `serif` |
-| `part_label` | `12` | `0` | `0` | `no` | `no` | `no` | `sans_serif` |
-| `lyrics` | `row_height * 0.6` | `4` | `12` | `no` | `no` | `no` | `serif` |
-| `notes` | `lyrics.font_size` | `4` | `0` | `no` | `no` | `no` | `monospace` |
-| `chords` | `lyrics.font_size` | `4` | `0` | `no` | `no` | `no` | `monospace` |
-| `note_dash` | `notes.font_size` | `4` | `0` | `no` | `no` | `no` | `monospace` |
+| `title` | `row height * 1.5` | `0` | `4` | `no` | `no` | `no` | `serif` |
+| `subtitle` | `row height * 0.8` | `0` | `4` | `no` | `yes` | `no` | `serif` |
+| `author` | `row height * 0.6` | `0` | `4` | `no` | `no` | `no` | `serif` |
+| `sequence` | `12` | `0` | `0` | `no` | `no` | `no` | `sans serif` |
+| `part legend` | `row height * 0.6` | `0` | `4` | `no` | `no` | `no` | `serif` |
+| `measure number` | `10` | `0` | `0` | `no` | `no` | `no` | `sans serif` |
+| `section label` | `12` | `0` | `0` | `yes` | `yes` | `no` | `sans serif` |
+| `page number` | `row height * 0.6` | `0` | `0` | `no` | `no` | `no` | `sans serif` |
+| `running title` | `row height * 0.6` | `0` | `0` | `no` | `yes` | `no` | `serif` |
+| `part label` | `12` | `0` | `0` | `no` | `no` | `no` | `sans serif` |
+| `lyrics` | `row height * 0.6` | `4` | `12` | `no` | `no` | `no` | `serif` |
+| `notes` | `lyrics font size` | `4` | `0` | `no` | `no` | `no` | `monospace` |
+| `chords` | `lyrics font size` | `4` | `0` | `no` | `no` | `no` | `monospace` |
+| `note dash` | `notes font size` | `4` | `0` | `no` | `no` | `no` | `monospace` |
 
-`notes.horizontal_padding_pt` is also used for the multi-measure-rest bar's end insets and the tie/slur/underline/tuplet-bracket markings. `lyrics.vertical_padding_pt` is extra padding around a lyric syllable's hover/click-target box, added on top of the lyric font's own measured ascender+descender span. `title.vertical_padding_pt` adds space above and below the title row (a header text row is one `font_size` tall plus this padding on each side, so `0` is the tightest; `title`, `subtitle`, `author` and `part_legend` default to `4`), `subtitle.vertical_padding_pt` and `author.vertical_padding_pt` above and below the row they share (the larger of the two wins), `part_legend.vertical_padding_pt` above and below each row of the part legend, and `sequence.vertical_padding_pt` above and below the `# sequence` summary line; the rows below move down to make room. `part_label`'s reserved column width is the separate flat `part_label_width_pt` field (see the main metadata table above), not part of this object — it's a layout constant, not a text style component. `sequence`'s `bold`/`italic`/`underline`/`font_family` style the `# sequence` summary line's per-label spans (independent of `section_label`, even though a directive line's own inline `label="..."` renders with `section_label`'s style — see [Directive lines](#directive-lines)).
+The `notes` horizontal padding is also used for the multi-measure-rest bar's end insets and the tie/slur/underline/tuplet-bracket markings. The `lyrics` vertical padding is extra padding around a lyric syllable's hover/click-target box, added on top of the lyric font's own measured ascender+descender span. The `title` vertical padding adds space above and below the title row (a header text row is one `font size` tall plus this padding on each side, so `0` is the tightest; `title`, `subtitle`, `author` and `part legend` default to `4`), the `subtitle` and `author` vertical padding above and below the row they share (the larger of the two wins), the `part legend` vertical padding above and below each row of the part legend, and the `sequence` vertical padding above and below the `sequence` summary line; the rows below move down to make room. A part label's reserved column width is the separate `part label width pt` field (see the main metadata table above), not part of a style, because it's a layout constant. The `sequence` style's `bold`/`italic`/`underline`/`font family` style the summary line's per-label spans (independent of `section label`, even though a directive line's own inline `label="..."` renders with `section label`'s style; see [Directive lines](#directive-lines)).
 
 Example:
 
+```text
+metadata {
+    title "My Song",
+    title style { font size 32, bold: yes },
+    lyrics style { font size 18, vertical padding pt 6, font family: sans serif },
+    notes style { horizontal padding pt 6, italic: yes },
+    part label width pt 60,
+},
 ```
-# metadata
-title = "My Song"
-title = { font_size: 32, bold: yes }
-lyrics = { font_size: 18, vertical_padding_pt: 6, font_family: sans_serif }
-notes = { horizontal_padding_pt: 6, italic: yes }
-part_label_width_pt = 60
-```
-
-The old flat per-component keys (`lyrics_font_size`, `lyric_click_target_padding_pt`, `notes_horizontal_padding_pt`, etc.) are **not supported** — using one is reported as an unknown metadata field. `title.width_pt`/`part_label.width_pt` (the object-literal form) are also not supported: `title.width_pt` reserved a minimum box width for the rendered title but never actually affected layout, so it was removed outright; `part_label`'s width lives at the flat `part_label_width_pt` key instead, since it's a layout constant rather than a text style component.
 
 ---
 
 ## Parts section
 
-One track per line. Blank lines are ignored.
+A list of parts, each a quoted display name, an optional abbreviation in brackets, and a kind:
 
-```
-<display-name> [[<abbreviation>]] = <column> [<column>…]
-<display-name> [[<abbreviation>]] = follow[<target-abbreviation>]
+```text
+parts [
+    "<display name>" [<abbreviation>]: <kind> { <options> },
+    "<display name>" [<abbreviation>]: follow [<target abbreviation>] { <options> },
+],
 ```
 
-### Left-hand side
+### Name
 
 | Form | Display name | Abbreviation (row label) |
 |------|--------------|----------------------------|
-| `Alto 1 & Tenor [A1&T]` | `Alto 1 & Tenor` | `A1&T` |
-| `Melody` | `Melody` | `Melody` |
-| `main` | `main` | `main` |
+| `"Alto 1 & Tenor" [A1&T]` | `Alto 1 & Tenor` | `A1&T` |
+| `"Melody"` | `Melody` | `Melody` |
 
-- Square brackets `[Abbr]` denote the **abbreviation** used as the row label and for `[Key]` prefix lines in the score.
-- When brackets are omitted, the abbreviation equals the full display name.
+- The abbreviation is used as the row label and for `[Key]` prefix lines in the score.
+- When it is omitted, the abbreviation equals the full display name.
 - The display name is stored for future legend rendering; row labels use the abbreviation only.
 
-### Right-hand side
+### Kind
 
 | Pattern | Meaning | Score lines per measure |
 |---------|---------|-------------------------|
 | `chords` | Chord-symbol row | 1 |
 | `notes` | Notes | 1 |
 | `percussion` | Unpitched GM drum hits | 1 |
-| `follow[X]` | Inherit column layout from the part with abbreviation `X` | same as target |
-| `lyrics[X]` | A lyric part: one verse of lyrics for the `notes`/`chords`/`follow` part with abbreviation `X` (see [Lyric parts](#lyric-parts)) | 1 per measure that writes it |
+| `follow [X]` | Inherit column layout from the part with abbreviation `X` | same as target |
+| `lyrics [X]` | A lyric part: one verse of lyrics for the `notes`/`chords`/`follow` part with abbreviation `X` (see [Lyric parts](#lyric-parts)) | 1 per measure that writes it |
 
-An optional soundfont string `"<number>: <name>"` may follow the kind token (or `follow[X]` bracket) to select the MIDI timbre for that part. The number is the General MIDI program number (0–127). The `<name>` portion is a quoted string and may contain `=` and other characters (for example `"1: Grand = Piano"`). For example: `notes "52: Choir Aahs"` or `follow[A] "1: Grand Piano"`. If omitted on a `chords` or `notes` part, the default is the sound of the part's [instrument](#instrument-range), or program 0 (Acoustic Grand Piano) when it names none. On a `follow[X]` part, the soundfont is inherited from the target when omitted, unless the follow part names its own instrument.
+### Options
 
-For `percussion` parts, the soundfont number is instead a **GM percussion key** (e.g. `38` = Acoustic Snare, `36` = Bass Drum 1), not a GM program number — all percussion parts share MIDI channel 9 (the GM drum channel) and a single fixed GM Standard Kit program change; the number selects which drum sample within that kit each hit plays. If omitted, the default is key 38 (Acoustic Snare). The number is not checked against the melodic instrument catalog.
+Every kind but `lyrics` takes options in braces: `notes { instrument: violin, sound 41, volume: 80 %, octave: - 1 }`.
 
-An optional volume suffix `XX%` (1–3 ASCII digits followed by `%`; the valid range is `0%`–`100%`, where `0%` silences the part — a value above `100%` emits a recoverable error and is clamped to `100%`) may appear after the soundfont string (or after the kind token if there is no soundfont) to set the MIDI volume for that part. For example: `notes "52: Choir Aahs" 47%` or `notes 80%`. If omitted on a concrete part, the default is 100%. On a `follow[X]` part, volume is inherited from the target when omitted and may be overridden with an explicit `XX%` suffix.
+`sound` selects the MIDI timbre, as a General MIDI program number (0–127). For example: `notes { sound 52 }` for Choir Aahs, or `follow [A] { sound 1 }`. If omitted on a `chords` or `notes` part, the default is the sound of the part's [instrument](#instrument-range), or program 0 (Acoustic Grand Piano) when it names none. On a `follow [X]` part, the sound is inherited from the target when omitted, unless the follow part names its own instrument.
 
-An optional octave offset `+N` or `-N` (1–4 ASCII digits; the valid range is `-4`–`+4`) may appear anywhere on the right-hand side to shift every note in that part up or down by N octaves in MIDI output only. For example: `notes -1`, `notes +1`, `notes "5: Electric Guitar" -2`, or `follow[A] -1`. The offset does not change octave dots in the rendered SVG. If omitted on a concrete part, the default is 0. On a `follow[X]` part, the octave offset is inherited from the target when omitted and may be overridden with an explicit `+N` or `-N` suffix. Values outside `-4`–`+4` emit a recoverable error and are clamped to the nearest bound.
+For `percussion` parts, the number is instead a **GM percussion key** (e.g. `38` = Acoustic Snare, `36` = Bass Drum 1), not a GM program number: all percussion parts share MIDI channel 9 (the GM drum channel) and a single fixed GM Standard Kit program change; the number selects which drum sample within that kit each hit plays. If omitted, the default is key 38 (Acoustic Snare). The number is not checked against the melodic instrument catalog.
+
+`volume` sets the MIDI volume for that part, as a percentage. The valid range is `0 %` to `100 %`, where `0 %` silences the part; a value above `100 %` emits a recoverable error and is clamped to `100 %`. If omitted on a concrete part, the default is 100%. On a `follow [X]` part, volume is inherited from the target when omitted and may be overridden.
+
+`octave` shifts every note in that part up or down by N octaves in MIDI output only, written with its sign: `octave: - 1`, `octave: + 1`. The valid range is `-4` to `+4`. The offset does not change octave dots in the rendered SVG. If omitted on a concrete part, the default is 0. On a `follow [X]` part, the octave offset is inherited from the target when omitted and may be overridden. Values outside the range emit a recoverable error and are clamped to the nearest bound.
 
 #### Instrument range
 
-An optional instrument name may follow the kind token (or `follow[X]` bracket), before the soundfont, on a `notes` or `follow[X]` part. It sets the part's playable range (a range is never written by hand) and, when the line quotes no soundfont, the sound the part plays. For example: `Violin [V] = notes violin "41: Violin" 80%`, `Soprano [S] = notes soprano`.
+`instrument` names the instrument of a `notes` or `follow [X]` part. It sets the part's playable range (a range is never written by hand) and, when the part sets no `sound`, the sound it plays. For example: `"Violin" [V]: notes { instrument: violin, sound 41, volume: 80 % }`, `"Soprano" [S]: notes { instrument: soprano }`.
 
 | Name | Instrument | Range | Default sound |
 |------|------------|-------|---------------|
@@ -191,9 +215,9 @@ An optional instrument name may follow the kind token (or `follow[X]` bracket), 
 | `alto` | Alto voice | G3–D5 | `52: Choir Aahs` |
 | `soprano` | Soprano voice | C4–G5 | `52: Choir Aahs` |
 
-General MIDI has no liuqin or guzheng, so they default to the closest plucked lute and zither. A quoted soundfont always wins over the default sound.
+General MIDI has no liuqin or guzheng, so they default to the closest plucked lute and zither. A set `sound` always wins over the default sound.
 
-Each note whose sounding pitch (the key plus the part's `+N`/`-N` octave offset) falls outside the range gets its own warning, pointing at the note, e.g. `V: note sounds as F3, below the violin's lowest note G3`. The warning doesn't stop rendering or playback. A part with no instrument is not checked. A `follow[X]` part inherits its target's instrument and sound, and may name its own instrument to override both (`Violin 2 [V2] = follow[V] -1`, `Cello [C] = follow[V] cello -1`).
+Each note whose sounding pitch (the key plus the part's `octave`) falls outside the range gets its own warning, pointing at the note, e.g. `V: note sounds as F3, below the violin's lowest note G3`. The warning doesn't stop rendering or playback. A part with no instrument is not checked. A `follow [X]` part inherits its target's instrument and sound, and may name its own instrument to override both (`"Violin 2" [V2]: follow [V] { octave: - 1 }`, `"Cello" [C]: follow [V] { instrument: cello, octave: - 1 }`).
 
 An unknown name emits a recoverable error listing the valid names and is ignored. A name on a `chords` or `percussion` part emits a recoverable error and is ignored.
 
@@ -201,34 +225,83 @@ Rules:
 
 - Duplicate abbreviations across tracks are an error.
 - At least one track must be declared.
-- `follow[X]` cannot be used for the first declared part.
-- The target abbreviation `X` in `follow[X]` must refer to an already-declared part (declared before the follower).
-- A `follow[X]` part that is not explicitly mentioned in a measure copies `X`'s content and is visually suppressed (row not rendered). This copies notes only — lyrics are never auto-copied to a follow part; a follow part gets a lyrics row only when it has its own `lyrics[...]` part (see [Lyric parts](#lyric-parts)).
-- A `follow[X]` part can be partially or fully overridden using `[Key]` prefix lines in the score.
+- `follow [X]` cannot be used for the first declared part.
+- The target abbreviation `X` in `follow [X]` must refer to an already-declared part (declared before the follower).
+- A `follow [X]` part that is not explicitly mentioned in a measure copies `X`'s content and is visually suppressed (row not rendered). This copies notes only: lyrics are never auto-copied to a follow part; a follow part gets a lyrics row only when it has its own `lyrics [...]` part (see [Lyric parts](#lyric-parts)).
+- A `follow [X]` part can be partially or fully overridden using `[Key]` prefix lines in the score.
 
 Example (multi-part vocal score with chords):
 
-```
-# parts
-main = chords
-Alto 1 & Tenor [A1&T] = notes
-Alto 2 [A2] = notes
-Soprano 1 [S1] = notes
-Soprano 2 [S2] = notes
+```text
+parts [
+    "main": chords,
+    "Alto 1 & Tenor" [A1&T]: notes,
+    "Alto 2" [A2]: notes,
+    "Soprano 1" [S1]: notes,
+    "Soprano 2" [S2]: notes,
+],
 ```
 
 Minimal single-part example:
 
+```text
+parts ["Melody": notes],
 ```
-# parts
-Melody = notes
+
+---
+
+## Grammar
+
+Read the way [anyfix-expr's README](https://github.com/wongjiahau/anyfix-expr) reads its own grammar: `name : …` is a rule, `|` is alternation, `[ ]` is optional, `{ }` is repetition and `"…"` is literal text. A rule names the tree anyfix-expr produces, not raw characters, so `key : value` means the call `key _` of `value`.
+
+```text
+document   : { section "," },
+section    : metadata | parts | sequence | preset | score,
+
+# ── metadata ────────────────────────────────────────────────────────────
+metadata   : "metadata" "{" { field "," } "}",
+field      : key ":" value,
+key        : word { word },                 # `max measures per system`
+value      : string | number | word { word } | sign number
+           | "(" value "," value ")"        # directive row offset : (0, -4)
+           | "{" { field "," } "}",         # a text style
+
+# ── parts ───────────────────────────────────────────────────────────────
+parts      : "parts" "[" { part "," } "]",
+part       : display [ "[" abbreviation "]" ] ":" kind,
+display    : string,                        # the abbreviation, too, when no [ ] follows
+kind       : ( "notes" | "chords" | "percussion" ) [ options ]
+           | "follow" "[" abbreviation "]" [ options ]
+           | "lyrics" "[" abbreviation "]",
+options    : "{" { option "," } "}",
+option     : "instrument" ":" word          # violin, soprano, …
+           | "sound" ":" number             # GM program, or GM drum key on percussion
+           | "volume" ":" number "%"
+           | "octave" ":" sign number,
+abbreviation : string | ? words, numbers and symbols, joined without spaces ?,
+
+# ── sequence ────────────────────────────────────────────────────────────
+sequence   : "sequence" "[" { entry "," } "]",
+entry      : label [ ( "WITHOUT" | "ONLY" ) "[" { abbreviation "," } "]" ],
+label      : string | word,                 # a word that is not all caps
+
+# ── presets ─────────────────────────────────────────────────────────────
+preset     : "preset" string "{" { preset_field "," } "}",
+preset_field : ( "visible" "parts" | "soloed" "parts" ) ":" "[" { abbreviation "," } "]"
+             | "notation" ":" word
+             | field,                       # any metadata field
+
+# ── score ───────────────────────────────────────────────────────────────
+score      : "score" string,                 # see the sections below
+
+sign       : "+" | "-",
 ```
 
 ---
 
 ## Score section — measure groups
 
-The `[score]` body is split into **measure groups** by **blank lines**. Each group is exactly one bar (measure).
+The `score` string is split into **measure groups** by **blank lines**. Each group is exactly one bar (measure).
 
 ```
 bpm=92 key=C4 time=4/4 label="Verse 1"
@@ -256,7 +329,7 @@ Every data line must begin with `[Abbrev]` to route it to a specific part by abb
 
 - Exactly one `[Key]` line may appear for a given part in a measure group (its single notes/chords slot); a second `[Key]` line for the same part is a `part [Key] has N lines but only 1 slot(s)` error. Lyrics go on their own lyric part's `[Key]` line (see [Lyric parts](#lyric-parts)).
 - An unrecognised abbreviation is an error; the line is dropped.
-- Parts not covered by any `[Key]` line use their `follow[X]` target's content when declared as such, or are filled with implicit rests/no-lyrics otherwise.
+- Parts not covered by any `[Key]` line use their `follow [X]` target's content when declared as such, or are filled with implicit rests/no-lyrics otherwise.
 - A data line with no `[Abbrev]` prefix is a `score_line_missing_key_prefix` error; the line is dropped. Lyrics are no longer attached positionally — write them on a lyric part's `[Key]` line.
 - A measure group with zero valid keyed lines is an error (`measure_no_data_lines`).
 
@@ -267,16 +340,14 @@ Every data line must begin with `[Abbrev]` to route it to a specific part by abb
 **Example — only part C plays, A and B are not-mentioned:**
 
 ```poentaro
-# parts
-A = notes
-B = notes
-C = notes
+parts ["A": notes, "B": notes, "C": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[A] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [A] 1 2 3 4
 
-[C] 5 6 7 0
+    [C] 5 6 7 0
+    """,
 ```
 
 Measure 2: C plays `5 6 7 0`. A and B have no explicit lines → filled with `0` (rest) and marked not-mentioned (rows suppressed).
@@ -284,14 +355,12 @@ Measure 2: C plays `5 6 7 0`. A and B have no explicit lines → filled with `0`
 **Example — key-based lines in one measure with a follow part:**
 
 ```poentaro
-# parts
-A = notes
-B = follow[A]
-C = notes
+parts ["A": notes, "C": notes, "B": follow [A]],
 
-# score
-[A] 1 2 3 4
-[C] 5 6 7 0
+score """
+    [A] 1 2 3 4
+    [C] 5 6 7 0
+    """,
 ```
 
 A: `1 2 3 4`. B: not mentioned → copies A's content via `follow`. C: `5 6 7 0`.
@@ -299,19 +368,21 @@ A: `1 2 3 4`. B: not mentioned → copies A's content via `follow`. C: `5 6 7 0`
 **Example — follow part with partial key override:**
 
 ```poentaro
-# parts
-Soprano [S] = notes
-Soprano lyrics [Sv1] = lyrics[S]
-Alto [A] = follow[S]
+parts [
+    "Soprano" [S]: notes,
+    "Soprano lyrics" [Sv1]: lyrics [S],
+    "Alto" [A]: follow [S],
+],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
-[Sv1] do re mi fa
-[A] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [Sv1] do re mi fa
+    [A] 5 6 7 1
+    """,
 ```
 
-Soprano: notes=`1 2 3 4`, lyrics=`do re mi fa`. Alto: notes=`5 6 7 1` (key override), no lyrics — a follow part's notes-only override does not copy the target's lyrics; declare Alto its own `lyrics[A]` part if it needs lyrics.
+Soprano: notes=`1 2 3 4`, lyrics=`do re mi fa`. Alto: notes=`5 6 7 1` (key override), no lyrics — a follow part's notes-only override does not copy the target's lyrics; declare Alto its own `lyrics [A]` part if it needs lyrics.
 
 ---
 
@@ -329,8 +400,8 @@ bpm=92 key=C4 time=4/4 label="Verse 1"
 | `key=` | `key=C4`, `key=F#3`, `key=Bb4`, `key=+2`, `key=-1` | Key signature (`1` = this note), or a shift of the current key by `N` semitones |
 | `time=` | `time=4/4`, `time=3/4` | Time signature |
 | `label=` | `label="Verse 1"` | Section label rendered above the row group |
-| `merge_duplicate_measures_across_parts=` | `merge_duplicate_measures_across_parts=no` | Overrides the `#metadata` default from this measure onward (`yes`/`no`) |
-| `hide_resting_parts=` | `hide_resting_parts=no` | Overrides the `#metadata` default from this measure onward (`yes`/`no`) |
+| `merge_duplicate_measures_across_parts=` | `merge_duplicate_measures_across_parts=no` | Overrides the `metadata` default from this measure onward (`yes`/`no`) |
+| `hide_resting_parts=` | `hide_resting_parts=no` | Overrides the `metadata` default from this measure onward (`yes`/`no`) |
 | `break` | `break` | Forces a new system (line) to start at this measure |
 
 Rules:
@@ -338,7 +409,7 @@ Rules:
 - Multiple directives may appear on one line, separated by whitespace.
 - `label=` value must be a quoted string; empty labels are rejected.
 - Directives apply to **all** parts. They are stored on the first notes part and propagate through grouping.
-- `label` applies only to the measure where it is declared (does not persist to the next bar) — this is true for rendering purposes and whenever no `# sequence` section is present. When a `# sequence` section **is** present, each label additionally denotes a *span* of measures for playback-order purposes: see [`# sequence` — explicit playback order](#sequence--explicit-playback-order) below.
+- `label` applies only to the measure where it is declared (does not persist to the next bar) — this is true for rendering purposes and whenever no `sequence` section is present. When a `sequence` section **is** present, each label additionally denotes a *span* of measures for playback-order purposes: see [`sequence` — explicit playback order](#sequence--explicit-playback-order) below.
 - `bpm`, `key`, and `time` persist until the next directive line overrides them.
 - `key=+N` / `key=-N` changes key **relative to the key in effect**, by `N` semitones, and then persists like an absolute `key=`:
   - It resolves to the conventional spelling of the new tonic, i.e. the one with the fewest accidentals: `C`, `Db`, `D`, `Eb`, `E`, `F`, `F#`, `G`, `Ab`, `A`, `Bb`, `B`. So `key=C4` then `key=+1` is `Db4`, never `C#4`.
@@ -358,7 +429,7 @@ Rules:
   ```
 
   Here the last chorus is in D4 (`1` = D4).
-- `merge_duplicate_measures_across_parts` and `hide_resting_parts` also persist until the next directive line overrides them; unset, they start from the `#metadata` value (or its default of `yes`) for the first measure.
+- `merge_duplicate_measures_across_parts` and `hide_resting_parts` also persist until the next directive line overrides them; unset, they start from the `metadata` value (or its default of `yes`) for the first measure.
 - `break` is a bare keyword (no `=value`). It applies only to the measure it's written on — it does not persist — and forces that measure to start a new system, even if `max_measures_per_system` hasn't been reached yet. It's a no-op if the measure would already be first in its system (e.g. it's the very first measure of the score, or the previous measure already filled its system). Since it changes where a system boundary falls, a `break` measure is never absorbed into a collapsed multi-measure rest run that would otherwise start before it — see [Multi-measure rests](#multi-measure-rests).
 
 ### Rendering
@@ -367,76 +438,75 @@ When `time=` or `bpm=` changes on a measure, the generator may add a **directive
 
 Note names: `A` `B` `C` `D` `E` `F` `G`, with optional `#` or `b` accidental, followed by octave digit (e.g. `4`). A relative `key=` value is instead a sign and a number of semitones (`+2`, `-1`).
 
-### `# sequence` — explicit playback order
+### `sequence`: explicit playback order
 
-A score may include an optional `# sequence` section — placed after `# parts` and before `# score` — that states the playback order directly, as a comma-separated list of section labels (the same labels set via `label="..."` on a measure's directive line):
+A document may include an optional `sequence` section that states the playback order directly, as a list of section labels (the same labels set via `label="..."` on a measure's directive line):
 
+```poentaro
+parts ["Melody" [M]: notes],
+
+sequence ["A", "B", "A"],
+
+score """
+    time=4/4 key=C4 bpm=120 label="A"
+    [M] 1 2 3 4
+
+    label="B"
+    [M] 5 6 7 1
+    """,
 ```
-# sequence
-A, B, A
 
-# score
-time=4/4 key=C4 bpm=120 label="A"
-1 2 3 4
-label="B"
-5 6 7 1
-```
-
-- Each entry in `# sequence` is a label declared with `label="..."` in `# score`; entries are separated by commas, and surrounding whitespace is trimmed.
+- Each entry is a label declared with `label="..."` in the score. Write it as a string, or as a bare word when it isn't all caps: `Verse`, `"A"`, `"Last chorus"`.
 - A label's **span** covers its measure and every following measure up to (but not including) the next `label="..."` measure, or through the end of the score if there is no following label. Above, `A` spans just its own measure, and `B` spans from its measure to the end of the score.
-- Labels may be repeated in `# sequence` (e.g. `A, B, A`) to replay a span more than once.
-- Each label must be declared **exactly once** in `# score`; declaring the same label on more than one measure is an error.
-- Referencing a label in `# sequence` that was never declared in `# score` is an error; that entry is skipped and the rest of the sequence still resolves.
-- `# sequence` only affects **MIDI/WAV playback order** — measures always render once, in written order, with normal bar numbers. However, SVG/PDF output does show the resolved order as a left-aligned line ("Sequence: A › B › A") on the first page, with a blank line of space above it, below the title/subtitle/author/part list. Each label is styled the same as an inline `label="..."` directive (bold, italic).
+- Labels may be repeated (e.g. `"A", "B", "A"`) to replay a span more than once.
+- Each label must be declared **exactly once** in the score; declaring the same label on more than one measure is an error.
+- Referencing a label that was never declared in the score is an error; that entry is skipped and the rest of the sequence still resolves.
+- `sequence` only affects **MIDI/WAV playback order**: measures always render once, in written order, with normal bar numbers. However, SVG/PDF output does show the resolved order as a left-aligned line ("Sequence: A › B › A") on the first page, with a blank line of space above it, below the title/subtitle/author/part list. Each label is styled the same as an inline `label="..."` directive (bold, italic).
 
-An entry may carry a `(-abbrev -abbrev ...)` suffix naming part abbreviations (as declared in `# parts`) to omit from that specific occurrence's playback — e.g. a chorus written once but replayed several times with a voice dropping out on later repeats:
+An entry may carry `WITHOUT [...]`, naming part abbreviations (as declared in `parts`) to omit from that specific occurrence's playback, e.g. a chorus written once but replayed several times with a voice dropping out on later repeats:
 
+```text
+sequence [Verse, Chorus WITHOUT [S, A2], Verse, Chorus WITHOUT [A2], Chorus],
 ```
-# sequence
-Verse, Chorus(-S -A2), Verse, Chorus(-A2), Chorus
-```
 
-- The suffix affects **only that occurrence**: here, the first `Chorus` omits Soprano and Alto 2, the second omits only Alto 2, and the third (unmarked) plays every part.
+- It affects **only that occurrence**: here, the first `Chorus` omits Soprano and Alto 2, the second omits only Alto 2, and the third (unmarked) plays every part.
 - An abbreviation that matches no declared part is an error; that abbreviation is dropped and the rest of the entry (and sequence) still resolves.
-- The written-order rendering itself is unaffected — the score's written-out `Chorus` section always renders with every part, once, per the written-order rule above. However, the omissions **are** shown on the "Sequence: ..." summary line (SVG/PDF, first page), right after the label in plain (non-bold/non-italic) text: `Sequence: Verse › Chorus (-S -A2) › Verse › Chorus (-A2) › Chorus`. This is a reader-facing note only, telling a performer which voices tacet on which repeat — the underlying `Chorus` measures are not duplicated or altered.
+- The score's written-out `Chorus` section always renders with every part, once. However, the omissions **are** shown on the "Sequence: ..." summary line (SVG/PDF, first page), right after the label in plain (non-bold/non-italic) text: `Sequence: Verse › Chorus (-S -A2) › Verse › Chorus (-A2) › Chorus`. This is a reader-facing note only, telling a performer which voices tacet on which repeat. The underlying `Chorus` measures are not duplicated or altered.
 
-An entry may instead carry an `(abbrev abbrev ...)` suffix — the same abbreviations, but with no leading `-` — naming the **only** parts to keep for that occurrence (every other declared part is omitted), for the opposite case: a chorus written once but soloed down to a subset of voices on a later repeat:
+An entry may instead carry `ONLY [...]`, naming the **only** parts to keep for that occurrence (every other declared part is omitted), for the opposite case: a chorus written once but soloed down to a subset of voices on a later repeat:
 
+```text
+sequence [Chorus, Verse, Chorus ONLY [S]],
 ```
-# sequence
-Chorus, Verse, Chorus(S)
-```
 
-- Here the third `Chorus` plays only Soprano; every other declared part is silent for that occurrence. Naming every declared part (e.g. `Chorus(S A2 T)` when only those three parts exist) is equivalent to no suffix at all.
-- A suffix cannot mix `-abbrev` and `abbrev` tokens (e.g. `Chorus(S -A2)`) — that's an error, and the entry falls back to no suffix (plays every part).
-- Otherwise this suffix follows the same rules as the omit suffix above: an unknown abbreviation is an error and is dropped; the written-out section always renders every part; the summary line shows the suffix as written but without the dash, e.g. `Sequence: Chorus › Verse › Chorus (S)`.
+- Here the third `Chorus` plays only Soprano; every other declared part is silent for that occurrence. Naming every declared part is equivalent to no filter at all.
+- Otherwise `ONLY` follows the same rules as `WITHOUT`: an unknown abbreviation is an error and is dropped; the written-out section always renders every part; the summary line shows the parts in brackets, e.g. `Sequence: Chorus › Verse › Chorus (S)`.
 
 ---
 
 ## Presets
 
-A `# preset "Name"` section saves a way of viewing and exporting the song: which parts are shown or soloed, the notation, and any `# metadata` field to change. The preview's preset menu lists every preset; **Default** means no preset — the song's own `# metadata`, every part, numbered notation.
+A `preset "Name" { ... }` section saves a way of viewing and exporting the song: which parts are shown or soloed, the notation, and any `metadata` field to change. The preview's preset menu lists every preset; **Default** means no preset: the song's own `metadata`, every part, numbered notation.
 
-```
-# metadata
-title = "Amazing Grace"
-subtitle = "SATB"
+```text
+metadata { title "Amazing Grace", subtitle "SATB" },
 
-# preset "Soprano 1"
-visible_parts = main, S1
-soloed_parts = S1
-notation = violin
-subtitle = "Soprano 1"
-max_measures_per_system = 3
+preset "Soprano 1" {
+    visible parts [main, S1],
+    soloed parts [S1],
+    notation: violin,
+    subtitle "Soprano 1",
+    max measures per system 3,
+},
 ```
 
 - The name is quoted and required. Names must be unique, and `Default` (in any case) is reserved.
-- `visible_parts` — a comma-separated list of part abbreviations (as declared in `# parts`) to show. Parts not listed are hidden and silent, the same as hiding them in the preview. Unset, every part is shown; empty (`visible_parts =`), none is. An abbreviation that matches no declared part is an error and is dropped; a part whose abbreviation contains a comma can't be listed.
-- `soloed_parts` — the same kind of list, naming the parts to solo, the same as soloing them in the preview: once any part is soloed, only soloed parts are shown and heard, whatever `visible_parts` says. Unset or empty, nothing is soloed.
-- `notation` — `numbered`, `violin`, `cello`, `abc`, `guitar` or `harmonica`. Unset means numbered. The harmonica view tabs each part for a 12-hole chromatic harmonica in C, or a 16-hole one (hole 1 blow is C3, so middle C is hole 5) when the part names `harmonica16`. Files written before this was renamed say `jianpu`, which still reads as `numbered`. Violin and cello are drawn as a staff, which ignores text styles, so setting a text style in such a preset is a warning.
-- Every `# metadata` field may also appear. The preset changes only the fields it sets; the rest come from `# metadata`. Header text (`title`, `subtitle`, `author`) can be changed but not removed.
-- `visible_parts`, `soloed_parts` and `notation` belong only in a preset; in `# metadata` they're an error.
-- From the CLI, `--preset "Name"` exports under a preset (the file is named after it); it exports the preset's `soloed_parts` when it has any, else its `visible_parts`, and `--tracks` replaces both. The CLI draws numbered notation only, so `notation` doesn't apply there.
+- `visible parts`: a list of part abbreviations (as declared in `parts`) to show. Parts not listed are hidden and silent, the same as hiding them in the preview. Unset, every part is shown; empty (`visible parts []`), none is. An abbreviation that matches no declared part is an error and is dropped.
+- `soloed parts`: the same kind of list, naming the parts to solo, the same as soloing them in the preview: once any part is soloed, only soloed parts are shown and heard, whatever `visible parts` says. Unset or empty, nothing is soloed.
+- `notation`: `numbered`, `violin`, `cello`, `abc`, `guitar` or `harmonica`. Unset means numbered. The harmonica view tabs each part for a 12-hole chromatic harmonica in C, or a 16-hole one (hole 1 blow is C3, so middle C is hole 5) when the part names `harmonica16`. Files written before this was renamed say `jianpu`, which still reads as `numbered`. Violin and cello are drawn as a staff, which ignores text styles, so setting a text style in such a preset is a warning.
+- Every `metadata` field may also appear. The preset changes only the fields it sets; the rest come from `metadata`. Header text (`title`, `subtitle`, `author`) can be changed but not removed.
+- `visible parts`, `soloed parts` and `notation` belong only in a preset; in `metadata` they're an error.
+- From the CLI, `--preset "Name"` exports under a preset (the file is named after it); it exports the preset's `soloed parts` when it has any, else its `visible parts`, and `--tracks` replaces both. The CLI draws numbered notation only, so `notation` doesn't apply there.
 
 ---
 
@@ -722,21 +792,23 @@ Mismatch is a non-fatal **warning** (rendering continues, with empty-string syll
 
 ### Lyric parts
 
-Lyrics are declared as their own parts in `# parts`, with `lyrics[X]` naming the `notes`, `chords` or `follow` part (declared earlier) whose notes they sing along to:
+Lyrics are declared as their own parts in `parts`, with `lyrics [X]` naming the `notes`, `chords` or `follow` part (declared earlier) whose notes they sing along to:
 
 ```poentaro
-# parts
-bass [b] = notes
-Verse 1 [v1] = lyrics[b]
-Verse 2 [v2] = lyrics[b]
-Lyrics [l] = lyrics[b]
+parts [
+    "bass" [b]: notes,
+    "Verse 1" [v1]: lyrics [b],
+    "Verse 2" [v2]: lyrics [b],
+    "Lyrics" [l]: lyrics [b],
+],
 
-# score
-time=4/4 key=C4 bpm=120
-[b] 1 2 3 4
-[v1] la la la la
-[v2] na na na na
-[l] da da da da
+score """
+    time=4/4 key=C4 bpm=120
+    [b] 1 2 3 4
+    [v1] la la la la
+    [v2] na na na na
+    [l] da da da da
+    """,
 ```
 
 - A lyric part's line is written with its own `[Abbrev]` key, anywhere in the measure group; it is not tied to the line above it. A lyric part takes no sound, volume or octave settings.
@@ -746,21 +818,20 @@ time=4/4 key=C4 bpm=120
 - A lyric part not written in a measure group gets no row for that measure. If a later lyric part is written but an earlier one isn't, the earlier one is filled with `_` for that measure (a blank row). A measure with no lyric line at all has zero lyric rows for that part, not blank placeholders.
 - A lyric line written without its target's notes line in that measure group still works: the target part is filled with rests (or follows its target).
 - A second line for the same lyric part in one measure group is a `part [Key] has N lines but only 1 slot(s)` error.
-- `lyrics[X]` where `X` is unknown, declared later, a `percussion` part or another lyric part is a `parts_lyrics_invalid_target` error; the lyric part is dropped.
-- A `follow[X]` part never copies lyrics from `X`; give it its own `lyrics[...]` part.
+- `lyrics [X]` where `X` is unknown, declared later, a `percussion` part or another lyric part is a `parts_lyrics_invalid_target` error; the lyric part is dropped.
+- A `follow [X]` part never copies lyrics from `X`; give it its own `lyrics [...]` part.
 
-#### Lyrics under a chord part (`lyrics[X]` where `X` is a `chords` part)
+#### Lyrics under a chord part (`lyrics [X]` where `X` is a `chords` part)
 
 Chords are sparse (one attack per chord, `-` only extends), so a chord part's lyrics are **not** paired one-syllable-per-note. Instead the lyric line carries its own timing: each chord attack is paired with one **bracketed item**, and any syllables written outside brackets flow freely between them.
 
 ```poentaro
-# parts
-c = chords
-l = lyrics[c]
+parts ["c": chords, "l": lyrics [c]],
 
-# score
-[c] 1 -- 7
-[l] (~) 只剩下鋼琴 （陪）我
+score """
+    [c] 1 -- 7
+    [l] (~) 只剩下鋼琴 （陪）我
+    """,
 ```
 
 - A **bracketed item** is `( … )` or the full-width `（ … ）`; both are accepted on input, and both always render as ASCII `( … )`. It holds exactly one syllable. Several syllables in one bracket (`（陪我）`) is an error.
@@ -770,21 +841,16 @@ l = lyrics[c]
 - **Unbracketed first syllable**: when the first chord attack is on beat 1, an unbracketed first syllable takes that attack as if it were bracketed (it is drawn without brackets), and the following unbracketed syllables spread after it. When the first chord attack is **not** on beat 1 (the chord line starts with a rest), the unbracketed syllables before the first bracketed item are a pickup instead, spread evenly from the bar start. Here `天` sits under the `6` chord and `(好)` under the `5`:
 
 ```poentaro
-# parts
-c = chords
-l = lyrics[c]
+parts ["c": chords, "l": lyrics [c]],
 
-# score
-[c] 6 - 5 -
-[l] 天 空 (好) 藍
+score """
+    [c] 6 - 5 -
+    [l] 天 空 (好) 藍
+    """,
 ```
 
 - **Layout**: the lyric row decides the measure's width (there are normally more syllables than chord attacks); the chord row adapts to it.
 - The `_` no-lyrics marker still means zero syllables for the measure, and skips the tally.
-
-#### Migrating from positional lyric lines
-
-Earlier versions attached a bare line to the `[Key]` line above it. That form is no longer supported (a bare line is a `score_line_missing_key_prefix` error). Run `poentaro migrate-lyrics <file>...` (or pipe a source through it on stdin) to rewrite a file: it adds one `lyrics[...]` part per verse position a part used (`Melody lyrics [Mv1]` for one verse, `Melody verse 1 [Mv1]`, `Melody verse 2 [Mv2]`, … for several) and prefixes each bare line with its key. `scripts/migrate-lyrics-d1.py` does the same for the `docs` and `files` tables of the production D1 database.
 
 ---
 
@@ -864,30 +930,29 @@ Duration suffixes (`_`, `=`, `.`), tie/slur groups (`(...)`), and the repeat-las
 Example — snare and bass drum hitting simultaneously:
 
 ```
-# parts
-Snare = percussion "38: Acoustic Snare"
-Kick = percussion "36: Bass Drum 1"
+parts ["Snare": percussion { sound 38 }, "Kick": percussion { sound 36 }],
 
-# score
-[Snare] 0 x 0 x
-[Kick] x 0 x 0
+score """
+    [Snare] 0 x 0 x
+    [Kick] x 0 x 0
+    """,
 ```
 
 ---
 
 ## Not-mentioned parts
 
-When a part is **not mentioned** in a measure (no `[Key]` line covers it), it is filled with rests (`0`) or no-lyrics (`_`). If, after filling, that part's row is all rests for the measure **and at least one other part in the same measure has real content**, the row is **not rendered** for that measure — the vertical space is reclaimed and rows below move up. This suppression is controlled by the `hide_resting_parts` metadata field (default `yes`); set it to `no` to always render every part's row, even when it's all rests. A lyric part with no syllables in a measure (not written, or `_`) counts as resting in the same way: it is hidden under `hide_resting_parts=yes` when another part has content, drawn as a blank row under `no`, and kept whenever every part in the measure is resting.
+When a part is **not mentioned** in a measure (no `[Key]` line covers it), it is filled with rests (`0`) or no-lyrics (`_`). If, after filling, that part's row is all rests for the measure **and at least one other part in the same measure has real content**, the row is **not rendered** for that measure — the vertical space is reclaimed and rows below move up. This suppression is controlled by the `hide resting parts` metadata field (default `yes`); set it to `no` to always render every part's row, even when it's all rests. A lyric part with no syllables in a measure (not written, or `_`) counts as resting in the same way: it is hidden under `hide resting parts: yes` when another part has content, drawn as a blank row under `no`, and kept whenever every part in the measure is resting.
 
-- A `follow[X]` part that is not mentioned copies `X`'s content (audio plays the same as X).
+- A `follow [X]` part that is not mentioned copies `X`'s content (audio plays the same as X).
 - A non-follow part that is not mentioned is filled with rests (`0`) or no-lyrics (`_`).
-- Measures sharing a system line no longer need to render identical rows. A system's rows are the union of every part (and, per part, every verse) across all of its measures, in `[parts]` declaration order then verse order. A measure missing a row its system has (a part it doesn't mention, a resting part hidden via `hide_resting_parts`, or a verse it lacks) gets that row padded in as a full-measure rest or blank verse — it isn't clickable or selectable there, since no note/syllable actually sounds. Systems are otherwise packed greedily, up to `max_measures_per_system` measures, ending a system early when the next measure wouldn't fit the page width; a single measure too wide for the page on its own still gets a system to itself, with a `measure_overflow` warning. Two things still start a new system line early: a `merge_duplicate_measures_across_parts=` change between measures — since that setting controls whether identical parts merge into one shared row, a change partway through would make the union ambiguous — and a `break` directive, which forces the boundary explicitly (see [Directive lines](#directive-lines)).
+- Measures sharing a system line no longer need to render identical rows. A system's rows are the union of every part (and, per part, every verse) across all of its measures, in `parts` declaration order then verse order. A measure missing a row its system has (a part it doesn't mention, a resting part hidden via `hide resting parts`, or a verse it lacks) gets that row padded in as a full-measure rest or blank verse — it isn't clickable or selectable there, since no note/syllable actually sounds. Systems are otherwise packed greedily, up to `max measures per system` measures, ending a system early when the next measure wouldn't fit the page width; a single measure too wide for the page on its own still gets a system to itself, with a `measure_overflow` warning. Two things still start a new system line early: a `merge_duplicate_measures_across_parts=` change between measures — since that setting controls whether identical parts merge into one shared row, a change partway through would make the union ambiguous — and a `break` directive, which forces the boundary explicitly (see [Directive lines](#directive-lines)).
 
 ### Omitted lines — fill table
 
 | Situation | Result |
 |-----------|--------|
-| Part not mentioned; declared as `follow[X]` | Copies X's content; row suppressed |
+| Part not mentioned; declared as `follow [X]` | Copies X's content; row suppressed |
 | Part not mentioned; no follow target; notes/chord slot | Silently filled with rests (`0`) |
 | Part not mentioned; no follow target; lyrics slot | Silently filled with no-lyrics (`_`) |
 | Data line missing `[Abbrev]` prefix | Error; line dropped (`score_line_missing_key_prefix`) |
@@ -897,15 +962,14 @@ When a part is **not mentioned** in a measure (no `[Key]` line covers it), it is
 **Example — part B not mentioned:**
 
 ```poentaro
-# parts
-A = chords
-B = notes
+parts ["A": chords, "B": notes],
 
-# score
-[A] 1 2m 3 4
+score """
+    [A] 1 2m 3 4
 
-[A] 1 - - -
-[B] 1 2 3 4
+    [A] 1 - - -
+    [B] 1 2 3 4
+    """,
 ```
 
 Measure 1: A plays `1 2m 3 4`, B is not mentioned → filled with rests, row suppressed.
@@ -915,21 +979,20 @@ Measure 2: A plays `1 - - -`, B plays `1 2 3 4`.
 
 ## Part stream editor
 
-The web editor's **Edit part as stream** menu picks **one part** of the `# score` and edits it as a single continuous stream: no measure groups, no barlines, no directives. The stream replaces the source in the editor pane, one measure per line, each line prefixed by a read-only `[Abbrev]`. Around each measure, the other parts' lines show as dimmed, read-only **ghost lines**, exactly as the source writes them (a measure that doesn't write a part has no line for it), and the part toggles (hide/solo) choose which parts appear. Section labels and bar numbers show as read-only header rows above each measure. Parts that can't be streamed are listed but disabled, with the reason.
+The web editor's **Edit part as stream** menu picks **one part** of the `score` and edits it as a single continuous stream: no measure groups, no barlines, no directives. The stream replaces the source in the editor pane, one measure per line, each line prefixed by a read-only `[Abbrev]`. Around each measure, the other parts' lines show as dimmed, read-only **ghost lines**, exactly as the source writes them (a measure that doesn't write a part has no line for it), and the part toggles (hide/solo) choose which parts appear. Section labels and bar numbers show as read-only header rows above each measure. Parts that can't be streamed are listed but disabled, with the reason.
 
 Inserting or deleting a note shifts every later note across the following barlines. The stream is written back into the measure-grouped source only on **Apply** (Cancel or Escape discards it), and only the measures whose content changed are rewritten — every other line (other parts, directives, comments) stays byte-for-byte.
 
 ```poentaro
-# parts
-Melody [M] = notes
-Harmony [H] = follow[M]
+parts ["Melody" [M]: notes, "Harmony" [H]: follow [M]],
 
-# score
-time=4/4
-[M] 1 2
-[H] 3 4 5 6
+score """
+    time=4/4
+    [M] 1 2
+    [H] 3 4 5 6
 
-[M] 5 6 7 1'
+    [M] 5 6 7 1'
+    """,
 ```
 
 Streams of this score, one measure per line:
@@ -965,7 +1028,7 @@ The editor re-bars the stream on every keystroke, so each line always holds exac
 - An opening `(` or `N:{` right before a measure's first note belongs to that measure; `)`, `}` and `~` stay with the measure before.
 - Bare `_` / `=` keep their usual meaning (repeat the last note/chord) in notes, chords and percussion streams.
 
-**`@` — follow placeholder (`follow[X]` parts only).** One `@` stands for one whole measure the part doesn't write, so it copies `X` there. `@` must start a measure and nothing else may share its measure; `@` in a non-follow part, or past the end of the score, is an error.
+**`@` — follow placeholder (`follow [X]` parts only).** One `@` stands for one whole measure the part doesn't write, so it copies `X` there. `@` must start a measure and nothing else may share its measure; `@` in a non-follow part, or past the end of the score, is an error.
 
 **`_` — no-lyrics measure (lyric parts only).** As on a lyric line, `_` is one whole measure with no lyrics.
 
@@ -975,19 +1038,18 @@ A lyric stream is cut into measures by its target's **lyric slots**: each measur
 
 ### Lyric streams under a chords part
 
-A lyric part bound to a `chords` part (or a `follow` of one) has no lyric slots to cut by — its unbracketed syllables flow freely (see [Lyrics under a chord part](#lyrics-under-a-chord-part-lyricsx-where-x-is-a-chords-part)) — so its stream marks every measure boundary with `|`. The editor shows one measure per line, each ended by `|`:
+A lyric part bound to a `chords` part (or a `follow` of one) has no lyric slots to cut by — its unbracketed syllables flow freely (see [Lyrics under a chord part](#lyrics-under-a-chord-part-lyrics-x-where-x-is-a-chords-part)) — so its stream marks every measure boundary with `|`. The editor shows one measure per line, each ended by `|`:
 
 ```poentaro
-# parts
-c = chords
-l = lyrics[c]
+parts ["c": chords, "l": lyrics [c]],
 
-# score
-[c] 1 - 4 -
-[l] (天) 空 好 (藍)
+score """
+    [c] 1 - 4 -
+    [l] (天) 空 好 (藍)
 
-[c] 0 5 - -
-[l] 我 （在）想 你
+    [c] 0 5 - -
+    [l] 我 （在）想 你
+    """,
 ```
 
 ```
@@ -1003,13 +1065,13 @@ l = lyrics[c]
 ### Applying a longer or shorter stream
 
 - **Shorter** (e.g. after deleting a note): the rest of the last measure is filled with rests, and later measures drop this part's line. A follow part writes explicit rests there instead (dropping the line would make it copy its target); a lyric part just drops its lines. A group whose only data line is this part keeps that line as a rest fill (`_` for lyrics) rather than becoming empty.
-- **Longer**: each extra measure is appended to the end of the `# score` as a new group holding only this part's line. A lyric stream marks each extra measure with a new line (under a notes part) or `|` (under a chords part).
+- **Longer**: each extra measure is appended to the end of the `score` as a new group holding only this part's line. A lyric stream marks each extra measure with a new line (under a notes part) or `|` (under a chords part).
 
 Apply is refused while the stream has any error; warnings don't block it.
 
 ### Which parts can be edited
 
-`notes`, `chords`, `percussion` and `follow[X]` parts, and lyric parts whose target is a `notes` or `chords` part (or a `follow` of one). A part is listed but disabled, with the reason, when:
+`notes`, `chords`, `percussion` and `follow [X]` parts, and lyric parts whose target is a `notes` or `chords` part (or a `follow` of one). A part is listed but disabled, with the reason, when:
 - any of its measures has too many beats, too few beats that can't be implicitly padded, an inline directive, or a tuplet together with `-` (explicit, or implicit padding in a tuplet measure);
 - it is a lyric part under a notes part with a syllable/note count mismatch in any measure other than a `_` one, or a lyric part under a chords part with a bracket error in any measure;
 - its own stream wouldn't split back into exactly the same measures (so applying an untouched stream never changes the source);
@@ -1023,7 +1085,6 @@ Apply is refused while the stream has any error; warnings don't block it.
 |------------|--------|---------|
 | `_` | lyrics only | No lyrics this bar |
 | *(omitted)* | any | Rest fill or follow-target copy; row suppressed |
-| `(...)` | directive | Global bpm/key/time/label for this bar |
 | `[Abbrev] <content>` | notes, lyrics, chord | Key-based line targeting the named part (or lyric part) by abbreviation |
 
 ---
@@ -1031,27 +1092,26 @@ Apply is refused while the stream has any error; warnings don't block it.
 ## Complete minimal example
 
 ```poentaro
-# metadata
-title = "Demo"
-author = "Author"
+metadata { title "Demo", author "Author" },
 
-# parts
-Melody [M] = notes
-Melody lyrics [Mv1] = lyrics[M]
-Harmony [H] = follow[M]
-Harmony lyrics [Hv1] = lyrics[H]
+parts [
+    "Melody" [M]: notes,
+    "Melody lyrics" [Mv1]: lyrics [M],
+    "Harmony" [H]: follow [M],
+    "Harmony lyrics" [Hv1]: lyrics [H],
+],
 
-# score
+score """
+    bpm=120 key=C4 time=4/4 label="Verse"
+    [M] 1 2 4 5
+    [Mv1] do re mi fa
 
-bpm=120 key=C4 time=4/4 label="Verse"
-[M] 1 2 4 5
-[Mv1] do re mi fa
-
-[M] 1 2 4 5
-[Mv1] _
-[H] 3 5 6 7
-[Hv1] do re mi fa
+    [M] 1 2 4 5
+    [Mv1] _
+    [H] 3 5 6 7
+    [Hv1] do re mi fa
+    """,
 ```
 
 Bar 1: Melody plays `1 2 4 5` / `do re mi fa`. Harmony is not mentioned → copies Melody, row suppressed.  
-Bar 2: Melody plays `1 2 4 5` / `_` (no lyrics). Harmony uses a `[H]` key line to override its notes, and its own `[Hv]` line for lyrics.
+Bar 2: Melody plays `1 2 4 5` / `_` (no lyrics). Harmony uses a `[H]` key line to override its notes, and its own `[Hv1]` line for lyrics.

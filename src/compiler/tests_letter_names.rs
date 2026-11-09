@@ -40,15 +40,15 @@ fn names(names: &[&str]) -> Vec<Option<String>> {
 #[test]
 fn letter_names_spell_degrees_against_the_key_including_implied_accidentals() {
     let result = compile_with(
-        "# parts
-S = notes
+        r#"parts ["S": notes],
 
-# score
-time=4/4 key=D4 bpm=120
-[S] 1 2 3 4
+score """
+    time=4/4 key=D4 bpm=120
+    [S] 1 2 3 4
 
-[S] 5 6 7 1'
-",
+    [S] 5 6 7 1'
+    """,
+"#,
         NoteLabels::LetterNames,
     );
     assert_eq!(
@@ -63,13 +63,13 @@ time=4/4 key=D4 bpm=120
 #[test]
 fn letter_names_carry_written_accidentals() {
     let result = compile_with(
-        "# parts
-S = notes
+        r#"parts ["S": notes],
 
-# score
-time=4/4 key=F4 bpm=120
-[S] 4# 7b 7 1#
-",
+score """
+    time=4/4 key=F4 bpm=120
+    [S] 4# 7b 7 1#
+    """,
+"#,
         NoteLabels::LetterNames,
     );
     assert_eq!(
@@ -81,18 +81,18 @@ time=4/4 key=F4 bpm=120
 #[test]
 fn letter_names_follow_a_mid_score_key_change_and_keep_it_for_later_measures() {
     let result = compile_with(
-        "# parts
-S = notes
+        r#"parts ["S": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
 
-key=G4
-[S] 1 2 3 7
+    key=G4
+    [S] 1 2 3 7
 
-[S] 7 - - -
-",
+    [S] 7 - - -
+    """,
+"#,
         NoteLabels::LetterNames,
     );
     assert_eq!(
@@ -108,19 +108,19 @@ key=G4
 #[test]
 fn letter_names_track_the_key_across_a_merged_rest_run() {
     let result = compile_with(
-        "# parts
-S = notes
+        r#"parts ["S": notes],
 
-# score
-time=4/4 key=E4 bpm=120
-[S] 1 2 3 4
+score """
+    time=4/4 key=E4 bpm=120
+    [S] 1 2 3 4
 
-[S] 0 0 0 0
+    [S] 0 0 0 0
 
-[S] 0 0 0 0
+    [S] 0 0 0 0
 
-[S] 3 - - -
-",
+    [S] 3 - - -
+    """,
+"#,
         NoteLabels::LetterNames,
     );
     assert_eq!(
@@ -136,13 +136,13 @@ time=4/4 key=E4 bpm=120
 #[test]
 fn degrees_leave_note_heads_unlabelled() {
     let result = compile_with(
-        "# parts
-S = notes
+        r#"parts ["S": notes],
 
-# score
-time=4/4 key=D4 bpm=120
-[S] 1 2 3 4
-",
+score """
+    time=4/4 key=D4 bpm=120
+    [S] 1 2 3 4
+    """,
+"#,
         NoteLabels::Degrees,
     );
     assert_eq!(letter_names(&result), vec![vec![None, None, None, None]]);
@@ -151,13 +151,13 @@ time=4/4 key=D4 bpm=120
 #[test]
 fn letter_names_leave_percussion_hits_alone() {
     let result = compile_with(
-        "# parts
-Snare = percussion \"38: Acoustic Snare\"
+        r#"parts ["Snare": percussion { sound 38 }],
 
-# score
-time=4/4 key=D4 bpm=120
-[Snare] x 0 x 0
-",
+score """
+    time=4/4 key=D4 bpm=120
+    [Snare] x 0 x 0
+    """,
+"#,
         NoteLabels::LetterNames,
     );
     let hits = result.blocks[0]
@@ -189,16 +189,16 @@ fn chord_texts(result: &CompileResult) -> Vec<Vec<String>> {
         .collect()
 }
 
-const CHORDS_IN_D: &str = "# parts
-C = chords
+const CHORDS_IN_D: &str = r#"parts ["C": chords],
 
-# score
-time=4/4 key=D4 bpm=120
-[C] 1 6m/3 4M7 5b7
+score """
+    time=4/4 key=D4 bpm=120
+    [C] 1 6m/3 4M7 5b7
 
-key=F4
-[C] 1 7bsus4 3#o 2m7/5
-";
+    key=F4
+    [C] 1 7bsus4 3#o 2m7/5
+    """,
+"#;
 
 #[test]
 fn letter_names_spell_chord_roots_and_slash_basses_against_the_key() {
@@ -225,13 +225,13 @@ fn degrees_keep_chord_symbols_in_numbered() {
 #[test]
 fn guitar_chords_follow_each_degree_with_its_letter_name() {
     let result = compile_with(
-        "# parts
-S = notes
+        r#"parts ["S": notes],
 
-# score
-time=4/4 key=D4 bpm=120
-[S] 1 3 4# 7b
-",
+score """
+    time=4/4 key=D4 bpm=120
+    [S] 1 3 4# 7b
+    """,
+"#,
         NoteLabels::GuitarChords,
     );
     assert_eq!(

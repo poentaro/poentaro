@@ -15,18 +15,15 @@ import { Given, Then, When } from './fixtures'
  *   System 1 (measure 1): Harmony "5 6" (Melody omitted, suppressed)
  */
 const source = [
-  '# metadata',
-  'title = "part label copy-paste across systems test"',
-  'max_measures_per_system = 1',
+  'metadata { title "part label copy-paste across systems test", max measures per system 1 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
+  'score """',
+  '[M] 1 2',
   '',
-  '[H] 5 6', // measure 1
+  '[H] 5 6',
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
@@ -51,7 +48,7 @@ async function loadFixture(page: import('@playwright/test').Page) {
 async function primeMeasureSpans(page: import('@playwright/test').Page) {
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('10')
+  await page.keyboard.type('6')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,
@@ -141,9 +138,9 @@ When('I press the paste keyboard shortcut', async ({ page }) => {
 Then(
   "system 1's Harmony part now contains just the notes {string}",
   async ({ page }, notes: string) => {
-    // Line 11 (0-indexed) is measure 1's Harmony line in the fixture above.
+    // Line 7 (0-indexed) is measure 1's Harmony line in the fixture above.
     await expect
-      .poll(async () => (await getModelLines(page))[11], { timeout: 3_000 })
+      .poll(async () => (await getModelLines(page))[7], { timeout: 3_000 })
       .toBe(`[H] ${notes}`)
   },
 )
@@ -151,8 +148,8 @@ Then(
 Then(
   "system 0's Melody part still contains just the notes {string}",
   async ({ page }, notes: string) => {
-    // Line 9 (0-indexed) is measure 0's Melody line in the fixture above.
+    // Line 5 (0-indexed) is measure 0's Melody line in the fixture above.
     const lines = await getModelLines(page)
-    expect(lines[9]).toBe(`[M] ${notes}`)
+    expect(lines[5]).toBe(`[M] ${notes}`)
   },
 )

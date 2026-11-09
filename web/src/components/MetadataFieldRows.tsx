@@ -130,7 +130,7 @@ export interface FieldRowProps {
   help: string
   onShowHelp: (label: string, help: string) => void
   /** Set while a preset overrides this field: clears the override, so the
-   * field falls back to the song's `# metadata`. */
+   * field falls back to the song's `metadata`. */
   onReset?: () => void
 }
 
@@ -154,7 +154,7 @@ const resetButtonStyle: React.CSSProperties = {
   justifyContent: 'center',
 }
 
-/** Inherited from `# metadata` rather than set by the preset. */
+/** Inherited from `metadata` rather than set by the preset. */
 export const inheritedStyle: React.CSSProperties = { opacity: 0.45 }
 
 export function ResetOverrideButton({

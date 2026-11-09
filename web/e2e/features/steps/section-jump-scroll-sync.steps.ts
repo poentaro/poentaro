@@ -17,13 +17,11 @@ import { Given, Then, When } from './fixtures'
  */
 function buildLongSectionedSource(totalMeasures: number): string {
   const lines = [
-    '# metadata',
-    'title = "section scroll sync test"',
+    'metadata { title "section scroll sync test" },',
     '',
-    '# parts',
-    'Melody [M] = notes',
+    'parts ["Melody" [M]: notes],',
     '',
-    '# score',
+    'score """',
     'label="A"',
     '[M] 1 2 3 4',
     '',
@@ -34,7 +32,7 @@ function buildLongSectionedSource(totalMeasures: number): string {
   }
   lines.push('label="B"')
   lines.push('[M] 1 2 3 4')
-  return lines.join('\n')
+  return [...lines, '""",'].join('\n')
 }
 
 const TOTAL_MEASURES = 60

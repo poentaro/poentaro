@@ -128,7 +128,6 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       msg.source,
       msg.abbreviation,
       msg.settings,
-      GM_INSTRUMENTS,
     )
     postMessage({
       type: 'partDeclarationUpdated',

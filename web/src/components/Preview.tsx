@@ -114,7 +114,7 @@ interface PreviewProps {
     end: number
     revealMeasureIndex: number
     /** The exact disjoint measure ranges highlighted in the SVG preview for
-     * this selection (a `# sequence` chain), when it differs from the
+     * this selection (a `sequence` chain), when it differs from the
      * single `[start, end]` span above. `Preview` only checks whether it's
      * set (see `findRevealTarget`); the highlight rects it drives come back
      * through `highlightedDocuments`, already rendered. */

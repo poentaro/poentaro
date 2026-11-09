@@ -19,15 +19,13 @@ fn no_orphan_lyric_row_when_notes_part_and_follower_never_write_lyric_text() {
     // unwritten lyric slots got padded with an empty placeholder syllable per
     // note, producing an identical empty lyrics row for each part that then
     // merged into a single leftover blank row.
-    let source = concat!(
-        "# parts\n",
-        "A = notes\n",
-        "B = follow[A]\n",
-        "\n",
-        "# score\n",
-        "[A] 1 2 3 4\n",
-        "[B] 5 6 7 1\n",
-    );
+    let source = r#"parts ["A": notes, "B": follow [A]],
+
+score """
+    [A] 1 2 3 4
+    [B] 5 6 7 1
+    """,
+"#;
     let blocks = consolidated_blocks(source);
 
     assert_eq!(
@@ -44,14 +42,12 @@ fn no_orphan_lyric_row_when_notes_part_and_follower_never_write_lyric_text() {
 
 #[test]
 fn identical_rows_from_different_parts_merge_by_default() {
-    let source = r#"
-# parts
-A = notes
-B = notes
+    let source = r#"parts ["A": notes, "B": notes],
 
-# score
-[A] 1 2 3 4
-[B] 1 2 3 4
+score """
+    [A] 1 2 3 4
+    [B] 1 2 3 4
+    """,
 "#;
     let blocks = consolidated_blocks(source);
     assert_eq!(blocks[0].rows.len(), 1);
@@ -64,17 +60,14 @@ B = notes
 
 #[test]
 fn identical_rows_from_different_parts_stay_separate_when_disabled() {
-    let source = r#"
-# metadata
-merge_duplicate_measures_across_parts = no
+    let source = r#"metadata { merge duplicate measures across parts: no },
 
-# parts
-A = notes
-B = notes
+parts ["A": notes, "B": notes],
 
-# score
-[A] 1 2 3 4
-[B] 1 2 3 4
+score """
+    [A] 1 2 3 4
+    [B] 1 2 3 4
+    """,
 "#;
     let blocks = consolidated_blocks(source);
     assert_eq!(blocks[0].rows.len(), 2);
@@ -84,19 +77,17 @@ B = notes
 
 #[test]
 fn merge_duplicate_measures_across_parts_directive_toggles_mid_score() {
-    let source = concat!(
-        "# parts\n",
-        "A = notes\n",
-        "B = notes\n",
-        "\n",
-        "# score\n",
-        "[A] 1 2 3 4\n",
-        "[B] 1 2 3 4\n",
-        "\n",
-        "merge_duplicate_measures_across_parts=no\n",
-        "[A] 5 6 7 1\n",
-        "[B] 5 6 7 1\n",
-    );
+    let source = r#"parts ["A": notes, "B": notes],
+
+score """
+    [A] 1 2 3 4
+    [B] 1 2 3 4
+
+    merge_duplicate_measures_across_parts=no
+    [A] 5 6 7 1
+    [B] 5 6 7 1
+    """,
+"#;
     let blocks = consolidated_blocks(source);
     assert_eq!(
         blocks[0].rows.len(),
@@ -121,19 +112,17 @@ fn identical_measure_merges_across_parts_even_after_note_id_drift() {
     // merge into a single row — but `note_id` is part of `ColumnElement` and
     // is compared by `content_equal`, so the drift from measure 1 keeps the
     // otherwise-identical rows apart.
-    let source = concat!(
-        "# parts\n",
-        "A2 = notes\n",
-        "S = notes\n",
-        "\n",
-        "# score\n",
-        "label=\"CE3\"\n",
-        "[A2]0000_.(7=~\n",
-        "[S]0 - 7~ -\n",
-        "\n",
-        "[A2]7_) 1'_~1' --\n",
-        "[S]7_ 1'_~1' --\n",
-    );
+    let source = r#"parts ["A2": notes, "S": notes],
+
+score """
+    label="CE3"
+    [A2]0000_.(7=~
+    [S]0 - 7~ -
+
+    [A2]7_) 1'_~1' --
+    [S]7_ 1'_~1' --
+    """,
+"#;
     let blocks = consolidated_blocks(source);
 
     assert_eq!(

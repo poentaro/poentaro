@@ -13,18 +13,15 @@ use poentaro::render_svgs_from_source;
 
 fn source(chords: &str, lyrics: &str) -> String {
     format!(
-        r#"# metadata
-title = "t"
-author = "a"
+        r#"metadata {{ title "t", author "a" }},
 
-# parts
-c = chords
-l = lyrics[c]
+parts ["c": chords, "l": lyrics [c]],
 
-# score
-time=4/4 key=C4 bpm=120
-[c] {chords}
-[l] {lyrics}
+score """
+    time=4/4 key=C4 bpm=120
+    [c] {chords}
+    [l] {lyrics}
+    """,
 "#
     )
 }

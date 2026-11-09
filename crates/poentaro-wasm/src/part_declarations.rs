@@ -52,8 +52,7 @@ pub(crate) fn update_part_declaration_source(
     source: &str,
     abbreviation: &str,
     settings: &source_edit::PartSettings,
-    instruments: &[InstrumentInfo],
 ) -> String {
-    source_edit::update_part_declaration(source, abbreviation, settings, instruments)
+    source_edit::update_part_declaration(source, abbreviation, settings)
         .unwrap_or_else(|| source.to_owned())
 }

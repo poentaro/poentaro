@@ -28,13 +28,13 @@ fn tabs(result: &CompileResult) -> Vec<String> {
 
 fn melody(key: &str, notes: &str) -> String {
     format!(
-        "# parts
-S = notes
+        r#"parts ["S": notes],
 
-# score
-time=4/4 key={key} bpm=120
-{notes}
-"
+score """
+    time=4/4 key={key} bpm=120
+    {notes}
+    """,
+"#
     )
 }
 
@@ -162,15 +162,15 @@ fn a_harmonica16_part_reaches_down_to_c3_on_hole_1() {
     // is hole 16 blow with the slide (C♯7), the same as the 12-hole's.
     assert_eq!(
         tabs(&compile_tabs(
-            "# parts
-H = notes harmonica16
+            r#"parts ["H": notes { instrument: harmonica16 }],
 
-# score
-time=4/4 key=C4 bpm=120
-[H] 1, 7, 1 1#'''
+score """
+    time=4/4 key=C4 bpm=120
+    [H] 1, 7, 1 1#'''
 
-[H] 2''' 0 0 0
-"
+    [H] 2''' 0 0 0
+    """,
+"#
         )),
         ["1", "(4)", "4", "16←", "!?"]
     );
@@ -181,15 +181,14 @@ fn each_part_plays_its_own_harmonica() {
     // B3 has a hole on the 16-hole only.
     assert_eq!(
         tabs(&compile_tabs(
-            "# parts
-H1 = notes harmonica
-H2 = notes harmonica16
+            r#"parts ["H1": notes { instrument: harmonica }, "H2": notes { instrument: harmonica16 }],
 
-# score
-time=4/4 key=C4 bpm=120
-[H1] 7, 1 0 0
-[H2] 7, 1 0 0
-"
+score """
+    time=4/4 key=C4 bpm=120
+    [H1] 7, 1 0 0
+    [H2] 7, 1 0 0
+    """,
+"#
         )),
         ["!?", "1", "(4)", "4"]
     );
