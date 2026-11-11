@@ -40,6 +40,7 @@ pub(super) fn resolve_lyrics_declaration(
         kind: PartKind::Lyrics { target_part_index },
         follow_target: None,
         range_instrument: None,
+        written_range: None,
         soundfont: PartKind::Lyrics { target_part_index }.default_soundfont(),
         volume: DEFAULT_PART_VOLUME,
         octave_offset: DEFAULT_PART_OCTAVE_OFFSET,

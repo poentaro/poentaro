@@ -1,3 +1,4 @@
+use crate::ast::parsed::midi_note_name;
 use crate::error::IrrecoverableError;
 use crate::parser::parts_parser::{
     InstrumentInfo, SourcePartMode, SourceRawPartDecl, DEFAULT_PART_OCTAVE_OFFSET,
@@ -27,6 +28,38 @@ pub struct SourcePartDeclaration {
     /// Display label for the sound the part plays (see [`crate::sound_label`]):
     /// `settings.program`, or else the range instrument's default sound.
     pub sound_label: Option<String>,
+    /// What the range pickers show when the part writes no range.
+    pub default_range_labels: RangeBoundLabels,
+}
+
+/// The range pickers' labels for a part that writes no range: its
+/// instrument's bounds (`C3 (tenor)`), `as target` on a follow part naming
+/// no instrument, or `none`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RangeBoundLabels {
+    pub lowest: String,
+    pub highest: String,
+}
+
+fn default_range_labels(raw: &SourceRawPartDecl) -> RangeBoundLabels {
+    match (raw.range_instrument, &raw.mode) {
+        (Some(instrument), _) => {
+            let range = instrument.range();
+            let label = |midi| format!("{} ({})", midi_note_name(midi), instrument.keyword());
+            RangeBoundLabels {
+                lowest: label(range.lowest),
+                highest: label(range.highest),
+            }
+        }
+        (None, SourcePartMode::Follow) => RangeBoundLabels {
+            lowest: "as target".to_string(),
+            highest: "as target".to_string(),
+        },
+        (None, _) => RangeBoundLabels {
+            lowest: "none".to_string(),
+            highest: "none".to_string(),
+        },
+    }
 }
 
 fn map_raw_to_source_declaration(
@@ -42,6 +75,7 @@ fn map_raw_to_source_declaration(
         .map(|instrument| instrument.default_soundfont().0));
     let sound_label = sounding_program
         .map(|program| crate::sound_label::sound_label(program, is_percussion, instruments));
+    let default_range_labels = default_range_labels(&raw);
     SourcePartDeclaration {
         abbreviation: raw.abbreviation,
         display_name: raw.display_name,
@@ -49,11 +83,14 @@ fn map_raw_to_source_declaration(
         settings: PartSettings {
             mode: PartMode::from_source_mode(raw.mode, raw.follow_target),
             range_instrument: raw.range_instrument,
+            range_lowest: raw.written_range.map(|range| range.lowest),
+            range_highest: raw.written_range.map(|range| range.highest),
             program,
             volume: raw.volume.unwrap_or(DEFAULT_PART_VOLUME),
             octave_offset: raw.octave_offset.unwrap_or(DEFAULT_PART_OCTAVE_OFFSET),
         },
         sound_label,
+        default_range_labels,
     }
 }
 

@@ -239,6 +239,8 @@ fn a_part_edit_rewrites_its_kind_and_keeps_the_score() {
     let settings = PartSettings {
         mode: PartMode::Notes,
         range_instrument: None,
+        range_lowest: None,
+        range_highest: None,
         program: None,
         volume: 80,
         octave_offset: -1,
@@ -262,6 +264,8 @@ fn editing_a_part_that_does_not_exist_changes_nothing() {
     let settings = PartSettings {
         mode: PartMode::Notes,
         range_instrument: None,
+        range_lowest: None,
+        range_highest: None,
         program: None,
         volume: 100,
         octave_offset: 0,

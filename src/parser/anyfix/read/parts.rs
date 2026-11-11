@@ -4,17 +4,19 @@ use std::collections::HashSet;
 
 use anyfix_expr::{Node, NodeKind};
 
-use crate::ast::parsed::{PartDecl, PartKind, RangeInstrument, Soundfont};
+use crate::ast::parsed::{PartDecl, PartKind, PitchRange, RangeInstrument, Soundfont};
 use crate::error::{RecoverableError, Span, Spanned};
 use crate::parser::anyfix::tree::{
     abbreviation_text, as_field, as_part, invalid, list_of, name_span, percentage, record_of,
     signed_number, span_of, unconverted_error, value_text, whole_number, PartNode,
 };
 use crate::parser::parts_parser::{
-    checked_octave_offset, checked_range_instrument, checked_volume, resolve_declarations,
-    validate_soundfont, InstrumentInfo, RawDecl, RawKind,
+    checked_octave_offset, checked_range_instrument, checked_volume, checked_written_range,
+    resolve_declarations, validate_soundfont, InstrumentInfo, RawDecl, RawKind,
 };
 use crate::sound_label::sound_label;
+
+use super::written_range::written_range;
 
 pub(super) fn read_parts(
     body: Option<&Node>,
@@ -110,6 +112,7 @@ fn part(
         abbreviation_span,
         span,
         range_instrument: checked_range_instrument(options.range_instrument, &kind, errors),
+        written_range: checked_written_range(options.written_range, &kind, errors),
         kind,
         soundfont: options.soundfont,
         volume: options.volume,
@@ -145,6 +148,7 @@ fn bracketed_abbreviation(node: &Node) -> Result<Abbreviation, RecoverableError>
 #[derive(Default)]
 struct PartOptions {
     range_instrument: Option<Spanned<RangeInstrument>>,
+    written_range: Option<Spanned<PitchRange>>,
     soundfont: Option<Soundfont>,
     volume: Option<u8>,
     octave_offset: Option<i8>,
@@ -207,7 +211,7 @@ fn follow_kind(target: &Node) -> Result<RawKind, RecoverableError> {
     })
 }
 
-/// `{ instrument : violin, sound : 41, volume : 80%, octave : +1 }`.
+/// `{ instrument : violin, range : G3 to E6, sound : 41, volume : 80%, octave : +1 }`.
 fn part_options(
     node: &Node,
     is_percussion: bool,
@@ -232,6 +236,10 @@ fn part_options(
                 },
                 Err(error) => errors.push(error),
             },
+            ["range"] => {
+                options.written_range =
+                    written_range(value, errors).map(|range| Spanned::new(range, span));
+            }
             ["sound"] => match whole_number(value) {
                 Some(program) => {
                     options.soundfont = validate_soundfont(
@@ -266,7 +274,7 @@ fn part_options(
             words => errors.push(invalid(
                 element,
                 format!(
-                    "unknown part option `{}`; expected instrument, sound, volume or octave",
+                    "unknown part option `{}`; expected instrument, range, sound, volume or octave",
                     words.join(" ")
                 ),
             )),

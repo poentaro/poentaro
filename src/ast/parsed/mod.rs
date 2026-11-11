@@ -4,11 +4,13 @@ mod events;
 mod metadata_access;
 mod metadata_keys;
 mod pitch;
+mod pitch_range;
 mod preset;
 mod range_instrument;
 pub use events::*;
 pub use metadata_keys::*;
 pub use pitch::*;
+pub use pitch_range::*;
 pub use preset::*;
 pub use range_instrument::*;
 
@@ -56,6 +58,36 @@ pub struct PartDecl {
     /// The instrument whose range this part's notes are checked against;
     /// `None` checks nothing. A follow part inherits its target's.
     pub range_instrument: Option<RangeInstrument>,
+    /// The range a `range` option writes, which this part's notes are
+    /// checked against in place of its instrument's. A follow part inherits
+    /// its target's unless it writes its own or names its own instrument.
+    pub written_range: Option<PitchRange>,
+}
+
+/// What a part's notes are checked against: its written range, or else its
+/// instrument's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckedRange {
+    Written(PitchRange),
+    Instrument(RangeInstrument),
+}
+
+impl CheckedRange {
+    pub fn pitches(self) -> PitchRange {
+        match self {
+            Self::Written(range) => range,
+            Self::Instrument(instrument) => instrument.range(),
+        }
+    }
+
+    /// Whose range it is, as the out-of-range warning says it: `the part's`,
+    /// `the violin's`.
+    pub fn owner(self) -> String {
+        match self {
+            Self::Written(_) => "the part's".to_string(),
+            Self::Instrument(instrument) => format!("the {}'s", instrument.keyword()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -103,6 +135,13 @@ pub struct ScoreLineSlot {
 }
 
 impl PartDecl {
+    /// The range this part's notes are checked against, if any.
+    pub fn checked_range(&self) -> Option<CheckedRange> {
+        self.written_range
+            .map(CheckedRange::Written)
+            .or(self.range_instrument.map(CheckedRange::Instrument))
+    }
+
     /// The one score line a part owns in each measure group.
     pub fn score_line_role(&self) -> ScoreLineRole {
         match self.kind {

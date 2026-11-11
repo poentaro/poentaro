@@ -74,3 +74,27 @@ When(
     await page.getByRole('option', { name: label, exact: true }).click()
   },
 )
+
+Given(
+  'the instrument-range fixture with a part writing the range {string} is loaded',
+  async ({ page }, range: string) => {
+    await loadSource(page, sourceWithParts(`"Violin" [V]: notes { ${range} }`))
+  },
+)
+
+When(
+  'I change the range {word} select for part {string} to {string}',
+  async ({ page }, bound: string, abbreviation: string, label: string) => {
+    await page.getByTestId(`range-${bound}-select-${abbreviation}`).click()
+    await page.getByRole('option', { name: label, exact: true }).click()
+  },
+)
+
+Then(
+  'the range {word} select for part {string} shows {string}',
+  async ({ page }, bound: string, abbreviation: string, label: string) => {
+    await expect(
+      page.getByTestId(`range-${bound}-select-${abbreviation}`),
+    ).toContainText(label)
+  },
+)

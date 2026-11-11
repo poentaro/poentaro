@@ -197,3 +197,114 @@ fn a_harmonica16_reaches_an_octave_below_the_12_hole() {
         ]
     );
 }
+
+fn parse_errors(parts: &str) -> Vec<String> {
+    let input = format!("parts [{parts}],\n\nscore \"\"\"\n[T] 1 2 3 4\n\"\"\",\n");
+    parser::parse(&input, "test.poentaro", &[])
+        .unwrap()
+        .parts_parse_errors
+        .iter()
+        .map(crate::error::RecoverableError::message)
+        .collect()
+}
+
+#[test]
+fn a_written_range_checks_a_part_without_an_instrument() {
+    let score = parse_and_group(
+        "\"Tenor\" [T] : notes { range : C3 to G4 }",
+        "[T] 1, 5 6 7,,",
+    );
+    assert_eq!(
+        range_messages(&score),
+        vec![
+            "T: note sounds as A4, above the part's highest note G4",
+            "T: note sounds as B2, below the part's lowest note C3",
+        ]
+    );
+}
+
+#[test]
+fn a_written_range_overrides_the_instruments() {
+    let score = parse_and_group(
+        "\"Tenor\" [T] : notes { instrument : tenor, range : C3 to F4 }",
+        "[T] 1 4 5 1",
+    );
+    assert_eq!(
+        range_messages(&score),
+        vec!["T: note sounds as G4, above the part's highest note F4"]
+    );
+}
+
+#[test]
+fn a_written_range_keeps_the_instruments_sound() {
+    let input = "parts [\"Tenor\" [T] : notes { instrument : tenor, range : C3 to F4 }],\n\nscore \"\"\"\n[T] 1\n\"\"\",\n";
+    let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
+    assert_eq!(
+        doc.declarations[0].soundfont,
+        crate::ast::parsed::RangeInstrument::Tenor.default_soundfont()
+    );
+}
+
+#[test]
+fn flats_and_quoted_sharps_are_pitches() {
+    let score = parse_and_group(
+        "\"Erhu\" [E] : notes { range : Bb3 to \"F#4\" }",
+        "[E] 7, #4 5 1",
+    );
+    assert_eq!(
+        range_messages(&score),
+        vec!["E: note sounds as G4, above the part's highest note F#4"]
+    );
+}
+
+#[test]
+fn follow_part_inherits_its_targets_written_range() {
+    let score = parse_and_group(
+        "\"Tenor\" [T] : notes { range : C3 to G4 }, \"Tenor 2\" [T2] : follow [T] { octave : +1 }",
+        "[T] 1 2 3 4",
+    );
+    assert_eq!(range_messages(&score).len(), 4);
+    assert!(range_messages(&score)
+        .iter()
+        .all(|message| message.starts_with("T2: ") && message.contains("the part's")));
+}
+
+#[test]
+fn follow_part_with_its_own_instrument_drops_its_targets_written_range() {
+    let score = parse_and_group(
+        "\"Tenor\" [T] : notes { range : C4 to D4 }, \"Violin\" [V] : follow [T] { instrument : violin }",
+        "[T] 1 2 3 4",
+    );
+    assert!(range_messages(&score)
+        .iter()
+        .all(|message| message.starts_with("T: ")));
+}
+
+#[test]
+fn a_malformed_range_is_reported_and_ignored() {
+    assert_eq!(
+        parse_errors("\"Tenor\" [T] : notes { range : C3 G4 }"),
+        ["a range is two pitches joined by `to`, like `range : C3 to G4`; ignored"]
+    );
+    assert_eq!(
+        parse_errors("\"Tenor\" [T] : notes { range : C3 to H4 }"),
+        ["`H4` is not a pitch; write a letter, an optional `b` for flat and an octave, like `C3` or `Bb4`, or quote a sharp, like `\"F#3\"`; range ignored"]
+    );
+    assert_eq!(
+        parse_errors("\"Tenor\" [T] : notes { range : G4 to C3 }"),
+        ["the range's low note G4 is above its high note C3; range ignored"]
+    );
+    let score = parse_and_group(
+        "\"Tenor\" [T] : notes { range : G4 to C3 }",
+        "[T] 1,, 1 1 1",
+    );
+    assert!(range_warnings(&score).is_empty());
+}
+
+#[test]
+fn chords_part_cannot_write_a_range() {
+    assert_eq!(
+        parse_errors("\"Chords\" [T] : chords { range : C3 to G4 }"),
+        ["only notes parts can have a range; ignored"]
+    );
+}

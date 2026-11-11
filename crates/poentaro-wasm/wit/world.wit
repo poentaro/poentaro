@@ -375,6 +375,11 @@ world poentaro-wasm {
         // `poentaro::ast::parsed::RangeInstrument::keyword`, e.g.
         // `"violin"`; `none` when the line names no instrument.
         range-instrument: option<string>,
+        // The written `range`'s lowest and highest MIDI notes; both `none`
+        // when the line writes none. `update-part-declaration` fills a
+        // missing bound and orders them.
+        range-lowest: option<u8>,
+        range-highest: option<u8>,
         program: option<u8>,
         volume: u8,
         octave-offset: s8,
@@ -388,6 +393,14 @@ world poentaro-wasm {
         // Display-only label for the sound the part plays, e.g. `"40: Violin"`:
         // `settings.program`, or else the range instrument's default sound.
         sound-label: option<string>,
+        // `poentaro::RangeBoundLabels`: what the range pickers show when the
+        // part writes no range, e.g. `"C3 (tenor)"`, `"as target"`, `"none"`.
+        default-range-labels: range-bound-labels,
+    }
+
+    record range-bound-labels {
+        lowest: string,
+        highest: string,
     }
 
     record diagnostic-message {
@@ -630,6 +643,16 @@ world poentaro-wasm {
     // Every instrument a notes part can name, whose range its notes are
     // checked against.
     export list-range-instruments: func() -> list<range-instrument-choice>;
+
+    // `poentaro::ast::parsed::RangePitchChoice`: one pitch the Edit Parts
+    // range pickers offer, as a MIDI note and its name (`"F#3"`).
+    record range-pitch-choice {
+        midi: u8,
+        name: string,
+    }
+
+    // Every pitch the range pickers offer, lowest first.
+    export list-range-pitches: func() -> list<range-pitch-choice>;
 
     // `poentaro::parser::parts_parser::PartSettingRange<u8>` for
     // `PART_SETTING_LIMITS.volume` — inclusive, in percent.

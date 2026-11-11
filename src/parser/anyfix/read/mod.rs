@@ -4,6 +4,7 @@ mod metadata;
 mod parts;
 mod preset;
 mod sequence;
+mod written_range;
 
 use anyfix_expr::{Node, NodeKind};
 

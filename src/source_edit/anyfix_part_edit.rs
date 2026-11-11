@@ -1,6 +1,7 @@
 //! The part edit of a document written in anyfix expressions: rewrites the kind
 //! of one part in the tree and formats only the `parts` section.
 
+use crate::ast::parsed::{PitchRange, RangeInstrument};
 use crate::error::Span;
 use crate::parser::anyfix::tree::{as_part, list_of, span_of};
 use crate::parser::anyfix::{abbreviation, part_kind_text, PartKindText};
@@ -59,6 +60,15 @@ fn kind_text(settings: &PartSettings) -> String {
             }
         },
         range_instrument: settings.range_instrument,
+        written_range: matches!(settings.mode, PartMode::Notes | PartMode::Follow { .. })
+            .then(|| {
+                PitchRange::from_bounds(
+                    settings.range_lowest,
+                    settings.range_highest,
+                    settings.range_instrument.map(RangeInstrument::range),
+                )
+            })
+            .flatten(),
         sound: settings.program,
         volume: (volume != DEFAULT_PART_VOLUME).then_some(volume),
         octave_offset: (octave_offset != DEFAULT_PART_OCTAVE_OFFSET).then_some(octave_offset),

@@ -59,6 +59,11 @@ pub struct PartSettings {
     /// `None` when the line names none (a follow part then inherits its
     /// target's).
     pub range_instrument: Option<RangeInstrument>,
+    /// The lowest and highest MIDI notes of the part's written `range`;
+    /// both `None` when it writes none. A rewrite fills a missing bound
+    /// from the instrument's range (or the other bound) and orders them.
+    pub range_lowest: Option<u8>,
+    pub range_highest: Option<u8>,
     /// The sound's GM program number (a GM percussion key on a percussion
     /// part); `None` when the line names no sound.
     pub program: Option<u8>,

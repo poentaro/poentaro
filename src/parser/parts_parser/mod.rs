@@ -3,7 +3,7 @@ mod instrument_matching;
 mod lyrics_declaration;
 mod setting_limits;
 
-use crate::ast::parsed::{PartDecl, PartKind, RangeInstrument, Soundfont};
+use crate::ast::parsed::{PartDecl, PartKind, PitchRange, RangeInstrument, Soundfont};
 use crate::error::{RecoverableError, Span};
 
 pub use instrument_matching::InstrumentInfo;
@@ -12,7 +12,7 @@ pub use setting_limits::{
 };
 
 pub(crate) use declaration_parsing::{
-    checked_octave_offset, checked_range_instrument, checked_volume,
+    checked_octave_offset, checked_range_instrument, checked_volume, checked_written_range,
 };
 pub(crate) use instrument_matching::validate_soundfont;
 use lyrics_declaration::{resolve_lyrics_declaration, LyricsDeclarationHeader};
@@ -53,6 +53,7 @@ pub struct SourceRawPartDecl {
     pub mode: SourcePartMode,
     pub follow_target: Option<String>,
     pub range_instrument: Option<RangeInstrument>,
+    pub written_range: Option<PitchRange>,
     pub soundfont: Option<Soundfont>,
     pub volume: Option<u8>,
     pub octave_offset: Option<i8>,
@@ -66,6 +67,9 @@ pub(crate) struct RawDecl {
     pub(crate) kind: RawKind,
     /// `None` when omitted on the declaration line (follow parts inherit from target).
     pub(crate) range_instrument: Option<RangeInstrument>,
+    /// `None` when omitted on the declaration line (follow parts inherit from
+    /// target, unless they name their own instrument).
+    pub(crate) written_range: Option<PitchRange>,
     /// `None` when omitted on the declaration line (follow parts inherit from target).
     pub(crate) soundfont: Option<Soundfont>,
     /// `None` when omitted on the declaration line (follow parts inherit from target).
@@ -114,12 +118,26 @@ pub(crate) fn source_declarations(raw: Vec<RawDecl>, full_source: &str) -> Vec<S
                 mode,
                 follow_target,
                 range_instrument: raw_decl.range_instrument,
+                written_range: raw_decl.written_range,
                 soundfont: raw_decl.soundfont,
                 volume: raw_decl.volume,
                 octave_offset: raw_decl.octave_offset,
             }
         })
         .collect()
+}
+
+/// A follow part's written range: its own, else its target's, unless it
+/// names its own instrument, which brings that instrument's range.
+fn follow_range(
+    written_range: Option<PitchRange>,
+    range_instrument: Option<RangeInstrument>,
+    target: &PartDecl,
+) -> Option<PitchRange> {
+    match range_instrument {
+        Some(_) => written_range,
+        None => written_range.or(target.written_range),
+    }
 }
 
 pub(crate) fn resolve_declarations(
@@ -135,6 +153,7 @@ pub(crate) fn resolve_declarations(
             span,
             kind,
             range_instrument,
+            written_range,
             soundfont,
             volume,
             octave_offset,
@@ -149,29 +168,28 @@ pub(crate) fn resolve_declarations(
                     errors.push(RecoverableError::parts_first_part_cannot_follow(span));
                     continue;
                 }
-                let found = declarations
+                let Some(target_decl) = declarations
                     .iter()
-                    .find(|declaration: &&PartDecl| declaration.abbreviation == target);
-                match found {
-                    None => {
-                        errors.push(RecoverableError::parts_follow_unknown_target(
-                            target_span,
-                            &target,
-                        ));
-                        continue;
-                    }
-                    Some(target_decl) => declarations.push(PartDecl {
-                        abbreviation,
-                        abbreviation_span,
-                        display_name,
-                        kind: target_decl.kind,
-                        follow_target: Some(target),
-                        range_instrument: range_instrument.or(target_decl.range_instrument),
-                        soundfont: soundfont.unwrap_or(target_decl.soundfont),
-                        volume: volume.unwrap_or(target_decl.volume),
-                        octave_offset: octave_offset.unwrap_or(target_decl.octave_offset),
-                    }),
-                }
+                    .find(|declaration: &&PartDecl| declaration.abbreviation == target)
+                else {
+                    errors.push(RecoverableError::parts_follow_unknown_target(
+                        target_span,
+                        &target,
+                    ));
+                    continue;
+                };
+                declarations.push(PartDecl {
+                    abbreviation,
+                    abbreviation_span,
+                    display_name,
+                    kind: target_decl.kind,
+                    follow_target: Some(target),
+                    range_instrument: range_instrument.or(target_decl.range_instrument),
+                    written_range: follow_range(written_range, range_instrument, target_decl),
+                    soundfont: soundfont.unwrap_or(target_decl.soundfont),
+                    volume: volume.unwrap_or(target_decl.volume),
+                    octave_offset: octave_offset.unwrap_or(target_decl.octave_offset),
+                });
             }
             RawKind::Concrete(kind) => declarations.push(PartDecl {
                 abbreviation,
@@ -180,6 +198,7 @@ pub(crate) fn resolve_declarations(
                 kind,
                 follow_target: None,
                 range_instrument,
+                written_range,
                 soundfont: soundfont.unwrap_or(kind.default_soundfont()),
                 volume: volume.unwrap_or(DEFAULT_PART_VOLUME),
                 octave_offset: octave_offset.unwrap_or(DEFAULT_PART_OCTAVE_OFFSET),

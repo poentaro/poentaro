@@ -1,25 +1,49 @@
-use crate::ast::parsed::{PartKind, RangeInstrument};
+use crate::ast::parsed::{PartKind, PitchRange, RangeInstrument};
 use crate::error::{RecoverableError, Span, Spanned};
 
 use super::{RawKind, PART_SETTING_LIMITS};
 
+/// Whether a part of `kind` can name an instrument or write a range: only
+/// `notes` and `follow[X]` parts can.
+fn has_range(kind: &RawKind) -> bool {
+    matches!(
+        kind,
+        RawKind::Concrete(PartKind::Notes) | RawKind::Follow { .. }
+    )
+}
+
 /// `range_instrument`, or `None` with a diagnostic when `kind` is a part
-/// that can't name one (only `notes` and `follow[X]` parts can).
+/// that can't name one.
 pub(crate) fn checked_range_instrument(
     range_instrument: Option<Spanned<RangeInstrument>>,
     kind: &RawKind,
     errors: &mut Vec<RecoverableError>,
 ) -> Option<RangeInstrument> {
     let range_instrument = range_instrument?;
-    match kind {
-        RawKind::Concrete(PartKind::Notes) | RawKind::Follow { .. } => Some(range_instrument.value),
-        _ => {
-            errors.push(RecoverableError::parts_instrument_on_non_notes_part(
-                range_instrument.span,
-            ));
-            None
-        }
+    if has_range(kind) {
+        return Some(range_instrument.value);
     }
+    errors.push(RecoverableError::parts_instrument_on_non_notes_part(
+        range_instrument.span,
+    ));
+    None
+}
+
+/// `written_range`, or `None` with a diagnostic when `kind` is a part that
+/// can't write one.
+pub(crate) fn checked_written_range(
+    written_range: Option<Spanned<PitchRange>>,
+    kind: &RawKind,
+    errors: &mut Vec<RecoverableError>,
+) -> Option<PitchRange> {
+    let written_range = written_range?;
+    if has_range(kind) {
+        return Some(written_range.value);
+    }
+    errors.push(RecoverableError::parts_range_on_non_notes_part(
+        written_range.span,
+    ));
+    None
 }
 
 /// `written` clamped into [`PART_SETTING_LIMITS`]`.volume`, reporting a

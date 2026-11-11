@@ -3,10 +3,12 @@ metadata { title "Part options", max measures per system 1 },
 parts [
     "Piano" [P]: notes { sound 1, volume: 80 %, octave: + 1 },
     "Echo" [E]: follow [P] { volume: 50 % },
+    "Erhu" [Er]: notes { range: D4 to A6, sound 110 },
 ],
 
 score """
-    label="Soundfont, volume %, octave offset"
+    label="Soundfont, volume %, octave offset, range"
     [P] 1 2 3 4
     [E] 5 6 7 1
+    [Er] 5 6 7 1'
     """,

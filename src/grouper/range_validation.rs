@@ -3,14 +3,10 @@ use std::collections::HashMap;
 use itertools::Itertools;
 
 use crate::ast::grouped::{GroupedNote, NoteEvent, Score};
-use crate::ast::parsed::{KeyChange, PartDecl, PitchRange, RangeInstrument};
+use crate::ast::parsed::{midi_note_name, CheckedRange, KeyChange, PartDecl, PitchRange};
 use crate::error::{Diagnostic, Span, Warning};
 use crate::pitch_description::spelling::SpelledPitch;
 use crate::sounding_pitch::resolve_midi_note_with_accidental;
-
-const SHARP_NOTE_NAMES: [&str; 12] = [
-    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
-];
 
 struct OutOfRangeNote {
     measure_index: usize,
@@ -20,19 +16,19 @@ struct OutOfRangeNote {
 }
 
 /// Warns on each note whose sounding pitch (key plus the part's octave
-/// offset) falls outside its part's [`RangeInstrument`], attaching the
+/// offset) falls outside its part's [`CheckedRange`], attaching the
 /// warning to the note's measure. A note shared by several measures or parts
 /// (ditto, follow) is warned on once per part.
 pub(super) fn validate_ranges(score: &mut Score, declarations: &[PartDecl]) {
-    let instruments: HashMap<&str, RangeInstrument> = declarations
+    let ranges: HashMap<&str, CheckedRange> = declarations
         .iter()
         .filter_map(|declaration| {
             declaration
-                .range_instrument
-                .map(|instrument| (declaration.abbreviation.as_str(), instrument))
+                .checked_range()
+                .map(|range| (declaration.abbreviation.as_str(), range))
         })
         .collect();
-    if instruments.is_empty() {
+    if ranges.is_empty() {
         return;
     }
 
@@ -53,17 +49,16 @@ pub(super) fn validate_ranges(score: &mut Score, declarations: &[PartDecl]) {
         .zip(&keys)
         .enumerate()
         .flat_map(|(measure_index, (measure, key))| {
-            let instruments = &instruments;
+            let ranges = &ranges;
             measure.parts.iter().flat_map(move |part_row| {
                 let slice = part_row.slice();
                 let abbreviation = slice.name.as_deref().unwrap_or_default();
-                let instrument = instruments.get(abbreviation).copied();
+                let range = ranges.get(abbreviation).copied();
                 slice.notes.events.iter().filter_map(move |event| {
                     let NoteEvent::Note(note) = event else {
                         return None;
                     };
-                    let problem =
-                        out_of_range_problem(note, slice.octave_offset, instrument?, key)?;
+                    let problem = out_of_range_problem(note, slice.octave_offset, range?, key)?;
                     Some(OutOfRangeNote {
                         measure_index,
                         span: note.event_span,
@@ -86,28 +81,28 @@ pub(super) fn validate_ranges(score: &mut Score, declarations: &[PartDecl]) {
     }
 }
 
-/// Why `note` (shifted by `octave_offset` octaves, in `key`) can't be played
-/// on `instrument`, or `None` when it is in range.
+/// Why `note` (shifted by `octave_offset` octaves, in `key`) falls outside
+/// `range`, or `None` when it is in range.
 fn out_of_range_problem(
     note: &GroupedNote,
     octave_offset: i8,
-    instrument: RangeInstrument,
+    range: CheckedRange,
     key: &KeyChange,
 ) -> Option<String> {
     let octave = note.octave.saturating_add(octave_offset);
     let midi = resolve_midi_note_with_accidental(&note.pitch, &note.accidental, octave, key);
-    let PitchRange { lowest, highest } = instrument.range();
+    let PitchRange { lowest, highest } = range.pitches();
     let side = if midi < lowest {
         format!(
-            "below the {}'s lowest note {}",
-            instrument.keyword(),
-            natural_note_name(lowest)
+            "below {} lowest note {}",
+            range.owner(),
+            midi_note_name(lowest)
         )
     } else if midi > highest {
         format!(
-            "above the {}'s highest note {}",
-            instrument.keyword(),
-            natural_note_name(highest)
+            "above {} highest note {}",
+            range.owner(),
+            midi_note_name(highest)
         )
     } else {
         return None;
@@ -116,16 +111,6 @@ fn out_of_range_problem(
         .scale_degree(&note.pitch, &note.accidental)
         .name_with_octave(midi);
     Some(format!("note sounds as {sounding}, {side}"))
-}
-
-/// `midi`'s name with its octave (C4 = 60), spelling black keys as sharps.
-fn natural_note_name(midi: u8) -> String {
-    let name = SHARP_NOTE_NAMES
-        .get(usize::from(midi % 12))
-        .copied()
-        .unwrap_or_default();
-    let octave = i32::from(midi / 12) - 1;
-    format!("{name}{octave}")
 }
 
 #[cfg(test)]

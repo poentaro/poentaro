@@ -81,7 +81,8 @@ pub use lyric_spans::*;
 pub use measure_spans::*;
 pub use note_spans::*;
 pub use part_info::{
-    list_part_declarations_from_source, list_parts_from_source, PartInfo, SourcePartDeclaration,
+    list_part_declarations_from_source, list_parts_from_source, PartInfo, RangeBoundLabels,
+    SourcePartDeclaration,
 };
 pub use span_selection::*;
 pub use split_track::*;

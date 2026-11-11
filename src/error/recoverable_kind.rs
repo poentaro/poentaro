@@ -142,6 +142,14 @@ pub enum RecoverableErrorKind {
     PartsUnknownInstrument { name: String },
     /// An instrument on a part that isn't `notes` or `follow[X]` — ignored.
     PartsInstrumentOnNonNotesPart,
+    /// A `range` option that isn't two pitches joined by `to` — ignored.
+    PartsMalformedRange,
+    /// A `range` bound that isn't a pitch like `C3` — the range is ignored.
+    PartsMalformedRangePitch { pitch: String },
+    /// A `range` whose low bound is above its high bound — ignored.
+    PartsRangeLowAboveHigh { lowest: String, highest: String },
+    /// A `range` on a part that isn't `notes` or `follow[X]` — ignored.
+    PartsRangeOnNonNotesPart,
     /// `r`/bare `_`/`=` used with no prior pitched note/chord to repeat — token ignored.
     RepeatNoPriorNote,
     /// A `{N:...}` tuplet has no standard implied ratio and no explicit `{N:M:...}` override.
@@ -221,6 +229,10 @@ impl RecoverableErrorKind {
                 crate::ast::parsed::RangeInstrument::ALL.iter().map(|instrument| instrument.keyword()).join(", ")
             ),
             Self::PartsInstrumentOnNonNotesPart => "only notes parts can name an instrument; ignored".to_string(),
+            Self::PartsMalformedRange => "a range is two pitches joined by `to`, like `range : C3 to G4`; ignored".to_string(),
+            Self::PartsMalformedRangePitch { pitch } => format!("`{pitch}` is not a pitch; write a letter, an optional `b` for flat and an octave, like `C3` or `Bb4`, or quote a sharp, like `\"F#3\"`; range ignored"),
+            Self::PartsRangeLowAboveHigh { lowest, highest } => format!("the range's low note {lowest} is above its high note {highest}; range ignored"),
+            Self::PartsRangeOnNonNotesPart => "only notes parts can have a range; ignored".to_string(),
             Self::RepeatNoPriorNote => "no prior note/chord to repeat; token ignored".to_string(),
             Self::TupletAmbiguousRatio { num } => format!("tuplet ratio for {num} is ambiguous; use {{{num}:M:...}} to specify explicitly"),
             Self::TupletNoteCountMismatch { expected, got } => format!("tuplet declared {expected} notes but got {got}; note count must match"),

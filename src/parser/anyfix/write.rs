@@ -3,7 +3,7 @@
 use itertools::Itertools;
 
 use super::words::{abbreviation, is_name_word, quoted, snake_case_as_words};
-use crate::ast::parsed::{RangeInstrument, DIRECTIVE_ROW_OFFSET_KEY};
+use crate::ast::parsed::{PitchRange, RangeInstrument, DIRECTIVE_ROW_OFFSET_KEY};
 
 /// The preset fields that hold a list of part abbreviations.
 const PART_LIST_KEYS: [&str; 2] = ["visible_parts", "soloed_parts"];
@@ -77,6 +77,7 @@ fn scalar(value: &str) -> String {
 pub(crate) struct PartKindText {
     pub head: String,
     pub range_instrument: Option<RangeInstrument>,
+    pub written_range: Option<PitchRange>,
     pub sound: Option<u8>,
     pub volume: Option<u8>,
     pub octave_offset: Option<i8>,
@@ -86,6 +87,8 @@ pub(crate) fn part_kind_text(kind: &PartKindText) -> String {
     let options = [
         kind.range_instrument
             .map(|instrument| format!("instrument : {}", instrument.keyword())),
+        kind.written_range
+            .map(|range| format!("range : {}", range.source_text())),
         kind.sound.map(|sound| format!("sound : {sound}")),
         kind.volume.map(|volume| format!("volume : {volume}%")),
         kind.octave_offset

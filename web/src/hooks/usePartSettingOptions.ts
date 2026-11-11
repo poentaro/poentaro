@@ -3,6 +3,7 @@ import {
   type PartSettingLimits,
   poentaroWasm,
   type RangeInstrumentChoice,
+  type RangePitchChoice,
 } from '../poentaroWasm'
 import { ensureWasmInit } from '../wasmInit'
 
@@ -10,6 +11,7 @@ import { ensureWasmInit } from '../wasmInit'
 export interface PartSettingOptions {
   limits: PartSettingLimits
   rangeInstruments: RangeInstrumentChoice[]
+  rangePitches: RangePitchChoice[]
 }
 
 let cachedPartSettingOptions: PartSettingOptions | null = null
@@ -18,12 +20,13 @@ function partSettingOptions(): PartSettingOptions {
   cachedPartSettingOptions ??= {
     limits: poentaroWasm().getPartSettingLimits(),
     rangeInstruments: poentaroWasm().listRangeInstruments(),
+    rangePitches: poentaroWasm().listRangePitches(),
   }
   return cachedPartSettingOptions
 }
 
-/** The valid volume and octave-offset ranges of a part, and the instruments
- * it can name. `null` while `enabled` is false (so a closed modal costs
+/** The valid volume and octave-offset ranges of a part, the instruments
+ * it can name, and the pitches its range can span. `null` while `enabled` is false (so a closed modal costs
  * nothing) or until the main-thread wasm component is ready. */
 export function usePartSettingOptions(
   enabled: boolean,
