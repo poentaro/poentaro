@@ -161,7 +161,7 @@ export type WorkerRequest =
        * `NoteTiming`'s `source_part_index` already agrees with the SVG's
        * `data-part-index` — including block/note-id structure such as a
        * `MultiMeasureRest` run only created once a hidden sibling part's
-       * notes are removed (see **Note identity** in `ARCHITECTURE.md`).
+       * notes are removed (see the `midi::timing_note_timings` docs).
        * `undefined` means no part is hidden.
        */
       visibleTracks?: string[]

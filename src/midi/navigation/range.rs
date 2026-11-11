@@ -1,3 +1,9 @@
+//! Translates written measure requests into playback positions. The range end uses
+//! the last occurrence only for the score's literal last measure ("play to the end"),
+//! so playing an exact range doesn't overrun into a later repeat. `sequence_entry_range`
+//! is the only way to reach a specific occurrence of a repeated label, because every
+//! occurrence shares one written range and the search only finds the first.
+
 use crate::ast::grouped::Score;
 use crate::error::IrrecoverableError;
 

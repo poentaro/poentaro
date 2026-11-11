@@ -105,8 +105,8 @@ fn advance_timed_cluster(
 /// The only call site (`interleaved_beat_padding::validate_and_pad_beats`) now passes
 /// the measure's real tuplet-rescale multiplier — computed at parse time via
 /// `crate::tuplet::resolution_multiplier_of`, the same math the grouper-stage rescale
-/// pass uses — instead of always `1`; see the **Tuplet** glossary entry in
-/// `ARCHITECTURE.md`. Every threshold below is expressed as `BASE_CONST * multiplier` so
+/// pass uses — instead of always `1`; see the `crate::tuplet`
+/// docs. Every threshold below is expressed as `BASE_CONST * multiplier` so
 /// this function is tuplet-rescale-correct; it is also exercised directly with a non-1
 /// multiplier, as the unit tests in `grouping_tuplet_tests.rs` do.
 pub fn validate_measure_grouping(

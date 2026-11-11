@@ -94,8 +94,8 @@ fn system_total_height(
 }
 
 /// One system's summed column rods against the page's usable music width —
-/// the overflow check for the spring-and-rod spacing model (see **Rod and
-/// spring** in `ARCHITECTURE.md`). `None` when the system fits; `Some` with
+/// the overflow check for the spring-and-rod spacing model (see the
+/// `column_geometry` docs). `None` when the system fits; `Some` with
 /// a `Diagnostic::Warning(WarningKind::MeasureOverflow)` spanning the union
 /// of `system`'s measures' source spans otherwise, so the editor can point
 /// at the real source text behind an overflowing system.

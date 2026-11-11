@@ -8,6 +8,19 @@
 //! Used both at parse time (`parser::score::interleaved_beat_padding::validate_and_pad_beats`,
 //! to make its capacity check tuplet-aware) and at grouper time (`grouper::part_grouper_group::group_timed_track`,
 //! before events reach `PartGrouper`), so it lives here rather than under either module.
+//!
+//! What depends on this:
+//!
+//! - Tuplets never cross a line, so a tuplet span never crosses a measure or system.
+//! - The parser's capacity check compares rescaled totals. Written totals overcount:
+//!   `3:{1_1_1_} 2 3 4` in 4/4 is 18 written against a capacity of 16, yet fills the bar.
+//! - The grouper closes a measure once per `ParsedMeasureSlot::Real`. Waiting for an
+//!   exact capacity match let a mismatched ratio such as `2:{1 1} 2 3` absorb the next
+//!   measures, which tripped a `debug_assert!` or silently merged them in release.
+//! - MIDI divides the multiplier back out. `TPQ = 480` has no factor of 7, so a
+//!   septuplet rounds to the nearest tick below, which is accepted rather than raising `TPQ`.
+//! - Spacing weights count written notes, so they ignore the multiplier: the extra
+//!   grid columns carry no elements and so no weight.
 
 use crate::ast::parsed::{ScoreEvent, TupletInfo};
 use crate::error::Spanned;

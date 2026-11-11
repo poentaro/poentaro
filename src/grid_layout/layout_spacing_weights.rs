@@ -1,7 +1,7 @@
 //! The "spring" half of `layout_spacing`'s spring-and-rod model: each
 //! column/measure's proportional width weight, split out of
 //! `layout_spacing.rs` to keep that file under the max line-count lint. See
-//! **Rod and spring** in `ARCHITECTURE.md`.
+//! the `column_geometry` docs.
 
 use crate::ast::parsed::{Accidental, NumberedPitch};
 use crate::compiler::types::{
@@ -259,7 +259,7 @@ pub(super) fn column_weight(content: &ElementContent, config: &RenderConfig) -> 
 /// contributes here).
 ///
 /// Deliberately **not** divided by the measure's tuplet `resolution_multiplier` (see
-/// **Tuplet** in `ARCHITECTURE.md`): this counts *written note occurrences*, not raw grid
+/// the `crate::tuplet` docs): this counts *written note occurrences*, not raw grid
 /// columns, and a tuplet's rescaled duration never changes how many `NoteHead`/`Rest`/
 /// `PercussionHit` elements a measure has — 3 triplet-eighth notes still count as 3, the
 /// same as 3 plain notes elsewhere, matching this function's existing note-count (not

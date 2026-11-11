@@ -68,7 +68,7 @@ pub enum WarningKind {
     GroupTooFewNotes,
     /// A system's measures' combined rod (hard minimum) width exceeds the
     /// page's usable music width — the layout overflows rather than
-    /// over-compressing glyphs (see **Rod and spring** in `ARCHITECTURE.md`).
+    /// over-compressing glyphs (see the `column_geometry` docs).
     MeasureOverflow,
     /// A preset draws staff notation (violin/cello), which ignores its text styles.
     PresetTextStylesIgnored,

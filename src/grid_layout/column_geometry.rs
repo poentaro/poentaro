@@ -1,3 +1,23 @@
+//! The rod-and-spring spacing model, named after the idea behind LilyPond's
+//! spacing engine (Gourlay's algorithm, Ross's *The Art of Music Engraving*).
+//!
+//! - **Rods** are hard minimums from real content width. A column's width is
+//!   always `rod + slack_share`, never less than its rod.
+//! - **Springs** share out only the slack left once every rod is satisfied. If
+//!   rods alone exceed the page, slack is zero and the system overflows with a
+//!   `MeasureOverflow` warning, deliberately, rather than squeezing glyphs together.
+//! - **Directive lines floor a measure's rod** so wide directive text doesn't run
+//!   into the next measure's. The next directive line starts at this measure's
+//!   trailing bar line, and rescaling inflates that bar line's rod too, so the
+//!   floor is solved in closed form rather than being the text's own width:
+//!   `rod_pt >= directive_width_pt * content_rod / (content_rod - BARLINE_MIN_WIDTH_PT)`.
+//! - **Weight spreads across a span; rod does not.** An element's weight splits
+//!   over the columns any row actually uses within its span, so an eighth note
+//!   under a wide chord symbol gets a share, while its rod stays on its first
+//!   column because a wide glyph needs that much contiguous space. The columns
+//!   come from an empirical scan: a uniform divisor would give a coarse region
+//!   phantom columns next to a finer one.
+
 use super::GridRow;
 use crate::grid_layout::layout::LABEL_COLS;
 
@@ -7,8 +27,8 @@ impl GridRow {
     /// (system rows) get a label column width independent of the row's own
     /// musical density; the music region is split across `measure_layout`'s
     /// measures, and each measure's own width in turn across its columns,
-    /// by the spring-and-rod model (see **Rod and spring** in
-    /// `ARCHITECTURE.md`): every measure/column first gets its own hard-
+    /// by the spring-and-rod model (see the `column_geometry`
+    /// docs): every measure/column first gets its own hard-
     /// minimum rod (`rod_pt`/`column_rods`, derived from real content
     /// width), and only the slack left over after every rod in the row is
     /// satisfied is distributed proportionally by spacing weight (denser

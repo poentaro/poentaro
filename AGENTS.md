@@ -29,11 +29,14 @@ The `.poentaro` input syntax is documented in `syntax.md`.
 
 ## Architecture documentation
 
-The rendering pipeline layers, entry points, key types, and domain glossary are documented in `ARCHITECTURE.md`.
+`ARCHITECTURE.md` explains how the system fits together and defines its domain terms. It isn't a code reference: `trail skeleton` and `trail callers` answer those questions.
 
-- When a layer's entry function signature or module path changes, **MUST update `ARCHITECTURE.md`** in the same commit.
-- When a key type is added, removed, or renamed in any layer, **MUST update `ARCHITECTURE.md`** in the same commit.
-- When a new domain term is introduced or an existing term is redefined, **MUST update the glossary in `ARCHITECTURE.md`** in the same commit.
+Update it in the same commit only when:
+
+- a layer is added, removed or reordered, or the data flow between layers changes
+- a domain term is introduced or redefined (glossary entries are at most two sentences)
+
+Implementation detail, and the reasoning behind it, goes in doc comments next to the code. Don't add signatures, field lists or call chains.
 
 ## Coding style
 

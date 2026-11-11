@@ -2,8 +2,8 @@
 //
 // `column_geometry` gives every measure/column a hard-minimum rod derived
 // from its own content, and only distributes whatever page width remains
-// ("slack") proportionally by spacing weight (see **Rod and spring** in
-// `ARCHITECTURE.md`). These tests exercise that floor directly, distinct
+// ("slack") proportionally by spacing weight (see the `column_geometry`
+// docs). These tests exercise that floor directly, distinct
 // from `tests_measure_spacing.rs`'s proportional (spring-only) invariants.
 
 use crate::ast::parsed::{NumberedPitch, Offset};

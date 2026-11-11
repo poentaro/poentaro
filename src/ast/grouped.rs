@@ -156,8 +156,8 @@ pub struct PartSlice {
     /// every duration in `notes` was multiplied by during tuplet rescaling. `1`
     /// when the measure has no tuplets (the common case, a no-op). The compiler
     /// (`compiler::part_slice`) scales its column/underline arithmetic by this
-    /// value so a rescaled measure still lays out correctly — see **Tuplet** in
-    /// `ARCHITECTURE.md`.
+    /// value so a rescaled measure still lays out correctly — see the `crate::tuplet`
+    /// docs.
     pub resolution_multiplier: u32,
     /// Copied from the source `GroupedMeasure::beat_group_size`: the quarter-beat
     /// width of one beam group under this measure's time signature (`4` for simple

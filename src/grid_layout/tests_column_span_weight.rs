@@ -3,7 +3,7 @@
 // `measure_column_sizes` now splits an element's *weight* (spring) across
 // every raw grid column any row actually anchors content to within that
 // element's own span, while its *rod* stays concentrated entirely on its own
-// start column (see **Rod and spring** in `ARCHITECTURE.md`). These tests
+// start column (see the `column_geometry` docs). These tests
 // exercise that split directly, distinct from `tests_column_rod_spring.rs`'s
 // rod-floor invariants and `tests_measure_spacing.rs`'s span-1 proportional
 // invariants (both of which stay numerically unaffected by this change).
