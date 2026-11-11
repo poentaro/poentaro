@@ -7,7 +7,7 @@ use crate::ast::parsed::{
     AbbreviationReference, Notation, ParsedMetadata, ParsedPreset, PartDecl, DEFAULT_PRESET_NAME,
 };
 use crate::error::{Diagnostic, RecoverableError, Span, Spanned, Warning};
-use crate::parser::metadata_parser::MetadataLine;
+use crate::parser::anyfix::tree::{span_of, value_text, Field};
 use crate::parser::section::PresetName;
 
 pub struct ParsedPresets {
@@ -63,19 +63,23 @@ pub(crate) struct PresetFields {
 
 /// A `notation` field's value, reporting one that isn't a notation.
 pub(crate) fn parse_notation(
-    line: &MetadataLine,
+    field: &Field,
     errors: &mut Vec<RecoverableError>,
 ) -> Option<Spanned<Notation>> {
-    let notation = Notation::from_source_value(line.value);
+    let span = span_of(field.value);
+    let text = value_text(field.value)
+        .map_err(|error| errors.push(error))
+        .ok()?;
+    let notation = Notation::from_source_value(&text);
     if notation.is_none() {
         errors.push(RecoverableError::metadata_invalid_enum(
-            line.value_span,
-            line.written_key,
-            line.value,
+            span,
+            &field.written_key(),
+            &text,
             &Notation::ALL.iter().map(|value| value.keyword()).join(", "),
         ));
     }
-    notation.map(|value| Spanned::new(value, line.value_span))
+    notation.map(|value| Spanned::new(value, span))
 }
 
 /// The preset `fields` describe, with `errors` and a warning when its notation

@@ -1,4 +1,4 @@
-use super::metadata_parser_tests::parse_metadata;
+use super::metadata_tests::parse_metadata;
 use super::*;
 
 #[test]

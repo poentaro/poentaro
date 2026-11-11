@@ -1,13 +1,38 @@
 //! Reads `metadata { … }` and the metadata fields of a preset.
 
 use anyfix_expr::{Node, NodeKind};
+use itertools::Itertools;
 
-use crate::ast::parsed::{MetadataTextKey, ParsedMetadata, TextStyleKind};
+use crate::ast::parsed::{
+    FontFamilyChoice, MetadataFlagKey, MetadataNumberKey, MetadataTextKey, Offset, ParsedMetadata,
+    PresetKey, TextStyle, TextStyleComponent, TextStyleComponentValue, TextStyleKind, YesNo,
+    DIRECTIVE_ROW_OFFSET_KEY,
+};
 use crate::error::RecoverableError;
 use crate::parser::anyfix::tree::{
-    as_field, invalid, record_of, span_of, unconverted_error, value_text, Field,
+    as_field, invalid, record_of, signed_number, span_of, unconverted_error, value_text,
+    whole_number, Field,
 };
-use crate::parser::metadata_parser::{apply_field, apply_text_style_field, MetadataLine};
+
+/// A recognized `metadata` key, classified by the value it takes.
+enum MetadataKey {
+    Number(MetadataNumberKey),
+    Flag(MetadataFlagKey),
+    DirectiveRowOffset,
+    /// A text-style kind, which for `title`/`subtitle`/`author` may also take
+    /// the text itself.
+    Style(TextStyleKind),
+}
+
+impl MetadataKey {
+    fn from_keyword(key: &str) -> Option<Self> {
+        MetadataNumberKey::from_keyword(key)
+            .map(Self::Number)
+            .or_else(|| MetadataFlagKey::from_keyword(key).map(Self::Flag))
+            .or_else(|| (key == DIRECTIVE_ROW_OFFSET_KEY).then_some(Self::DirectiveRowOffset))
+            .or_else(|| TextStyleKind::from_keyword(key).map(Self::Style))
+    }
+}
 
 pub(super) fn read_metadata(body: &Node) -> (ParsedMetadata, Vec<RecoverableError>) {
     let mut metadata = ParsedMetadata::default();
@@ -35,47 +60,140 @@ pub(crate) fn read_metadata_field(
         errors.push(invalid(node, "expected a `name : value` field"));
         return;
     };
-    match &field.value.kind {
-        NodeKind::Braces(style_fields) => read_style(metadata, &field, style_fields, errors),
-        NodeKind::String(literal) => {
-            let text_key = TextStyleKind::from_keyword(&field.key())
-                .and_then(MetadataTextKey::from_style_kind);
-            match text_key {
-                Some(text_key) => *metadata.text_mut(text_key) = Some(literal.value.clone()),
-                None => apply(metadata, &field, &literal.value, errors),
-            }
-        }
-        NodeKind::Parens(pair) => match pair.as_slice() {
-            [x, y] => match (value_text(x), value_text(y)) {
-                (Ok(x), Ok(y)) => apply(metadata, &field, &format!("{x} {y}"), errors),
-                (x, y) => errors.extend(x.err().into_iter().chain(y.err())),
-            },
-            _ => errors.push(invalid(field.value, "expected a pair, like `(0, -4)`")),
-        },
-        _ => match value_text(field.value) {
-            Ok(value) => apply(metadata, &field, &value, errors),
-            Err(error) => errors.push(error),
-        },
+    if let NodeKind::Braces(style_fields) = &field.value.kind {
+        read_style(metadata, &field, style_fields, errors);
+    } else if let Err(error) = read_plain_field(metadata, &field) {
+        errors.push(error);
     }
 }
 
-fn apply(
-    metadata: &mut ParsedMetadata,
-    field: &Field,
-    value: &str,
-    errors: &mut Vec<RecoverableError>,
-) {
-    apply_field(
-        metadata,
-        &MetadataLine {
-            key: &field.key(),
-            written_key: &field.written_key(),
-            value,
-            key_span: field.key_span,
-            value_span: span_of(field.value),
+fn read_plain_field(metadata: &mut ParsedMetadata, field: &Field) -> Result<(), RecoverableError> {
+    let name = field.written_key();
+    let value = field.value;
+    match MetadataKey::from_keyword(&field.key()) {
+        Some(MetadataKey::Number(key)) => {
+            *metadata.number_mut(key) = Some(read_positive(&name, value)?);
+        }
+        Some(MetadataKey::Flag(key)) => {
+            *metadata.flag_mut(key) = Some(read_flag(&name, value)?);
+        }
+        Some(MetadataKey::DirectiveRowOffset) => {
+            metadata.directive_row_offset = Some(read_offset(&name, value)?);
+        }
+        Some(MetadataKey::Style(kind)) => match MetadataTextKey::from_style_kind(kind) {
+            Some(key) => *metadata.text_mut(key) = Some(written(value)?),
+            None => {
+                return Err(RecoverableError::metadata_malformed_line(
+                    span_of(value),
+                    &written(value)?,
+                ))
+            }
         },
-        errors,
-    );
+        None if PresetKey::from_keyword(&field.key()).is_some() => {
+            return Err(RecoverableError::preset_only_field(field.key_span, &name));
+        }
+        None => {
+            return Err(RecoverableError::metadata_unknown_field(
+                field.key_span,
+                &name,
+            ))
+        }
+    }
+    Ok(())
+}
+
+/// `value` as a message quotes it, or why it can't be a value at all.
+fn written(value: &Node) -> Result<String, RecoverableError> {
+    match &value.kind {
+        NodeKind::Parens(pair) => match pair.as_slice() {
+            [x, y] => Ok(format!("{} {}", value_text(x)?, value_text(y)?)),
+            _ => Err(invalid(value, "expected a pair, like `(0, -4)`")),
+        },
+        _ => value_text(value),
+    }
+}
+
+fn read_non_negative(name: &str, value: &Node) -> Result<u32, RecoverableError> {
+    whole_number(value).ok_or_else(|| {
+        written(value).map_or_else(
+            |error| error,
+            |text| RecoverableError::metadata_invalid_integer(span_of(value), name, &text),
+        )
+    })
+}
+
+fn read_positive(name: &str, value: &Node) -> Result<u32, RecoverableError> {
+    match read_non_negative(name, value)? {
+        0 => Err(RecoverableError::metadata_must_be_positive(
+            span_of(value),
+            name,
+        )),
+        number => Ok(number),
+    }
+}
+
+fn read_offset(name: &str, value: &Node) -> Result<Offset, RecoverableError> {
+    let offset = match &value.kind {
+        NodeKind::Parens(pair) => match pair.as_slice() {
+            [x, y] => signed_number(x).zip(signed_number(y)),
+            _ => None,
+        },
+        _ => None,
+    };
+    let Some((x, y)) = offset else {
+        return Err(RecoverableError::metadata_invalid_integer_pair(
+            span_of(value),
+            name,
+            &written(value)?,
+        ));
+    };
+    Ok(Offset { x, y })
+}
+
+fn read_flag(name: &str, value: &Node) -> Result<bool, RecoverableError> {
+    let text = written(value)?;
+    YesNo::from_keyword(&text)
+        .map(YesNo::to_bool)
+        .ok_or_else(|| RecoverableError::metadata_invalid_boolean(span_of(value), name, &text))
+}
+
+fn read_font_family(name: &str, value: &Node) -> Result<FontFamilyChoice, RecoverableError> {
+    let text = written(value)?;
+    FontFamilyChoice::from_keyword(&text).ok_or_else(|| {
+        let allowed = FontFamilyChoice::ALL
+            .iter()
+            .map(|family| family.keyword())
+            .join(", ");
+        RecoverableError::metadata_invalid_enum(span_of(value), name, &text, &allowed)
+    })
+}
+
+fn read_style_component(
+    component: TextStyleComponent,
+    name: &str,
+    value: &Node,
+) -> Result<TextStyleComponentValue, RecoverableError> {
+    Ok(match component {
+        TextStyleComponent::FontSize => {
+            TextStyleComponentValue::FontSize(Some(read_positive(name, value)?))
+        }
+        TextStyleComponent::HorizontalPaddingPt => {
+            TextStyleComponentValue::HorizontalPaddingPt(Some(read_non_negative(name, value)?))
+        }
+        TextStyleComponent::VerticalPaddingPt => {
+            TextStyleComponentValue::VerticalPaddingPt(Some(read_non_negative(name, value)?))
+        }
+        TextStyleComponent::Bold => TextStyleComponentValue::Bold(Some(read_flag(name, value)?)),
+        TextStyleComponent::Italic => {
+            TextStyleComponentValue::Italic(Some(read_flag(name, value)?))
+        }
+        TextStyleComponent::Underline => {
+            TextStyleComponentValue::Underline(Some(read_flag(name, value)?))
+        }
+        TextStyleComponent::FontFamily => {
+            TextStyleComponentValue::FontFamily(Some(read_font_family(name, value)?))
+        }
+    })
 }
 
 /// `lyrics style : { font size : 14, … }`.
@@ -103,28 +221,33 @@ fn read_style(
         ));
         return;
     };
+    let style = metadata.style_mut(kind);
     for node in style_fields {
         let Some(style_field) = as_field(node) else {
             errors.push(invalid(node, "expected a `name : value` field"));
             continue;
         };
-        let value = match value_text(style_field.value) {
-            Ok(value) => value,
-            Err(error) => {
-                errors.push(error);
-                continue;
-            }
-        };
-        apply_text_style_field(
-            metadata.style_mut(kind),
-            &MetadataLine {
-                key: &style_field.key(),
-                written_key: &format!("{} {}", field.written_key(), style_field.written_key()),
-                value: &value,
-                key_span: style_field.key_span,
-                value_span: span_of(style_field.value),
-            },
-            errors,
-        );
+        if let Err(error) = read_style_field(style, field, &style_field) {
+            errors.push(error);
+        }
     }
 }
+
+fn read_style_field(
+    style: &mut TextStyle,
+    field: &Field,
+    style_field: &Field,
+) -> Result<(), RecoverableError> {
+    let name = format!("{} {}", field.written_key(), style_field.written_key());
+    let component = TextStyleComponent::from_keyword(&style_field.key())
+        .ok_or_else(|| RecoverableError::metadata_unknown_field(style_field.key_span, &name))?;
+    style.set_component(read_style_component(component, &name, style_field.value)?);
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "metadata_layout_tests.rs"]
+mod metadata_layout_tests;
+#[cfg(test)]
+#[path = "metadata_tests.rs"]
+mod metadata_tests;
