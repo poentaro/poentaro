@@ -152,6 +152,39 @@ impl RecoverableError {
         }
     }
 
+    pub fn parts_malformed_range(span: Span) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsMalformedRange,
+        }
+    }
+
+    pub fn parts_malformed_range_pitch(span: Span, pitch: &str) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsMalformedRangePitch {
+                pitch: pitch.to_string(),
+            },
+        }
+    }
+
+    pub fn parts_range_low_above_high(span: Span, lowest: &str, highest: &str) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsRangeLowAboveHigh {
+                lowest: lowest.to_string(),
+                highest: highest.to_string(),
+            },
+        }
+    }
+
+    pub fn parts_range_on_non_notes_part(span: Span) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsRangeOnNonNotesPart,
+        }
+    }
+
     pub fn parts_follow_unknown_target(span: Span, target: &str) -> Self {
         Self {
             span,

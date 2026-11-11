@@ -187,7 +187,7 @@ parts [
 
 ### Options
 
-Every kind but `lyrics` takes options in braces: `notes { instrument: violin, sound 41, volume: 80 %, octave: - 1 }`.
+Every kind but `lyrics` takes options in braces: `notes { instrument: violin, range: G3 to E6, sound 41, volume: 80 %, octave: - 1 }`.
 
 `sound` selects the MIDI timbre, as a General MIDI program number (0–127). For example: `notes { sound 52 }` for Choir Aahs, or `follow [A] { sound 1 }`. If omitted on a `chords` or `notes` part, the default is the sound of the part's [instrument](#instrument-range), or program 0 (Acoustic Grand Piano) when it names none. On a `follow [X]` part, the sound is inherited from the target when omitted, unless the follow part names its own instrument.
 
@@ -199,7 +199,7 @@ For `percussion` parts, the number is instead a **GM percussion key** (e.g. `38`
 
 #### Instrument range
 
-`instrument` names the instrument of a `notes` or `follow [X]` part. It sets the part's playable range (a range is never written by hand) and, when the part sets no `sound`, the sound it plays. For example: `"Violin" [V]: notes { instrument: violin, sound 41, volume: 80 % }`, `"Soprano" [S]: notes { instrument: soprano }`.
+`instrument` names the instrument of a `notes` or `follow [X]` part. It sets the part's playable range (unless the part writes its own [`range`](#written-range)) and, when the part sets no `sound`, the sound it plays. For example: `"Violin" [V]: notes { instrument: violin, sound 41, volume: 80 % }`, `"Soprano" [S]: notes { instrument: soprano }`.
 
 | Name | Instrument | Range | Default sound |
 |------|------------|-------|---------------|
@@ -220,6 +220,16 @@ General MIDI has no liuqin or guzheng, so they default to the closest plucked lu
 Each note whose sounding pitch (the key plus the part's `octave`) falls outside the range gets its own warning, pointing at the note, e.g. `V: note sounds as F3, below the violin's lowest note G3`. The warning doesn't stop rendering or playback. A part with no instrument is not checked. A `follow [X]` part inherits its target's instrument and sound, and may name its own instrument to override both (`"Violin 2" [V2]: follow [V] { octave: - 1 }`, `"Cello" [C]: follow [V] { instrument: cello, octave: - 1 }`).
 
 An unknown name emits a recoverable error listing the valid names and is ignored. A name on a `chords` or `percussion` part emits a recoverable error and is ignored.
+
+#### Written range
+
+`range` writes a `notes` or `follow [X]` part's playable range by hand, as two pitches joined by `to`, for an instrument not in the list or a part narrower than its instrument: `"Tenor" [T]: notes { range: C3 to G4 }`, `"Erhu" [E]: notes { range: D4 to A6, sound 110 }`.
+
+A pitch is a letter, an optional `b` for flat, and an octave (C4 is middle C): `C3`, `Bb4`. `#` starts a comment, so a sharp is quoted: `range: "F#3" to G4`.
+
+The notes are checked like an instrument's, but the warning names the part: `T: note sounds as A4, above the part's highest note G4`. Written with an `instrument`, the range replaces the instrument's while the instrument still sets the default sound: `notes { instrument: tenor, range: C3 to F4 }`. A `follow [X]` part inherits its target's range unless it writes its own or names its own instrument.
+
+A malformed range or pitch, a low pitch above the high one, or a range on a `chords` or `percussion` part emits a recoverable error and is ignored.
 
 Rules:
 

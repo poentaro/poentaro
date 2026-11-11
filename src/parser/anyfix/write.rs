@@ -77,6 +77,8 @@ fn scalar(value: &str) -> String {
 pub(crate) struct PartKindText {
     pub head: String,
     pub range_instrument: Option<RangeInstrument>,
+    /// A `range` option's value as written (`C3 to G4`).
+    pub written_range: Option<String>,
     pub sound: Option<u8>,
     pub volume: Option<u8>,
     pub octave_offset: Option<i8>,
@@ -86,6 +88,9 @@ pub(crate) fn part_kind_text(kind: &PartKindText) -> String {
     let options = [
         kind.range_instrument
             .map(|instrument| format!("instrument : {}", instrument.keyword())),
+        kind.written_range
+            .as_ref()
+            .map(|range| format!("range : {range}")),
         kind.sound.map(|sound| format!("sound : {sound}")),
         kind.volume.map(|volume| format!("volume : {volume}%")),
         kind.octave_offset

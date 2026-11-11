@@ -188,3 +188,23 @@ fn clearing_the_instrument_drops_it_from_the_part() {
         update_part_declaration(&source, "S", &settings(PartMode::Notes, None, 100, 0)).unwrap();
     assert_contains(&result, r#""Soprano" [S]: notes]"#);
 }
+
+#[test]
+fn an_edit_keeps_the_written_range() {
+    let source = source_with_parts(r#""Tenor" [T] : notes { range : C3 to "F#4" }"#);
+    let result =
+        update_part_declaration(&source, "T", &settings(PartMode::Notes, Some(52), 100, 0))
+            .unwrap();
+    assert_contains(
+        &result,
+        r#""Tenor" [T]: notes { range: C3 to "F#4", sound 52 }"#,
+    );
+}
+
+#[test]
+fn switching_to_chords_drops_the_written_range() {
+    let source = source_with_parts(r#""Tenor" [T] : notes { range : C3 to G4 }"#);
+    let result =
+        update_part_declaration(&source, "T", &settings(PartMode::Chords, None, 100, 0)).unwrap();
+    assert_contains(&result, r#""Tenor" [T]: chords]"#);
+}

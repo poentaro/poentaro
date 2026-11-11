@@ -3,7 +3,7 @@
 //! against and the sound it plays when the line quotes none (see
 //! `syntax.md`, "Instrument range").
 
-use super::Soundfont;
+use super::{PitchRange, Soundfont};
 
 keyword_enum! {
     /// An instrument or voice whose playable range a part's notes are checked
@@ -22,13 +22,6 @@ keyword_enum! {
         Alto => "alto",
         Soprano => "soprano",
     }
-}
-
-/// An inclusive range of sounding pitches, as MIDI note numbers (C4 = 60).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PitchRange {
-    pub lowest: u8,
-    pub highest: u8,
 }
 
 impl RangeInstrument {
