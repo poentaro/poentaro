@@ -5,6 +5,8 @@ fn settings(mode: PartMode, program: Option<u8>, volume: u8, octave_offset: i8) 
     PartSettings {
         mode,
         range_instrument: None,
+        range_lowest: None,
+        range_highest: None,
         program,
         volume,
         octave_offset,
@@ -189,22 +191,78 @@ fn clearing_the_instrument_drops_it_from_the_part() {
     assert_contains(&result, r#""Soprano" [S]: notes]"#);
 }
 
+fn with_range(settings: PartSettings, lowest: Option<u8>, highest: Option<u8>) -> PartSettings {
+    PartSettings {
+        range_lowest: lowest,
+        range_highest: highest,
+        ..settings
+    }
+}
+
 #[test]
-fn an_edit_keeps_the_written_range() {
-    let source = source_with_parts(r#""Tenor" [T] : notes { range : C3 to "F#4" }"#);
+fn writes_the_range_after_the_instrument_quoting_sharps() {
+    let source = source_with_parts(r#""Tenor" [T] : notes"#);
+    let settings = PartSettings {
+        range_instrument: Some(RangeInstrument::Tenor),
+        ..settings(PartMode::Notes, Some(52), 100, 0)
+    };
     let result =
-        update_part_declaration(&source, "T", &settings(PartMode::Notes, Some(52), 100, 0))
-            .unwrap();
+        update_part_declaration(&source, "T", &with_range(settings, Some(48), Some(66))).unwrap();
     assert_contains(
         &result,
-        r#""Tenor" [T]: notes { range: C3 to "F#4", sound 52 }"#,
+        r#""Tenor" [T]: notes { instrument: tenor, range: C3 to "F#4", sound 52 }"#,
     );
+}
+
+#[test]
+fn a_picked_bound_takes_the_other_from_the_instrument() {
+    let source = source_with_parts(r#""Tenor" [T] : notes { instrument : tenor }"#);
+    let settings = PartSettings {
+        range_instrument: Some(RangeInstrument::Tenor),
+        ..settings(PartMode::Notes, None, 100, 0)
+    };
+    let result =
+        update_part_declaration(&source, "T", &with_range(settings, None, Some(65))).unwrap();
+    assert_contains(
+        &result,
+        r#""Tenor" [T]: notes { instrument: tenor, range: C3 to F4 }"#,
+    );
+}
+
+#[test]
+fn a_range_read_back_is_written_unchanged() {
+    let source = source_with_parts(r#""Erhu" [E] : notes { range : D4 to A6 }"#);
+    let declaration = crate::list_part_declarations_from_source(&source, "test.poentaro", &[])
+        .unwrap()
+        .remove(0);
+    assert_eq!(
+        (
+            declaration.settings.range_lowest,
+            declaration.settings.range_highest
+        ),
+        (Some(62), Some(93))
+    );
+    let result = update_part_declaration(&source, "E", &declaration.settings).unwrap();
+    assert_contains(&result, r#""Erhu" [E]: notes { range: D4 to A6 }"#);
 }
 
 #[test]
 fn switching_to_chords_drops_the_written_range() {
     let source = source_with_parts(r#""Tenor" [T] : notes { range : C3 to G4 }"#);
-    let result =
-        update_part_declaration(&source, "T", &settings(PartMode::Chords, None, 100, 0)).unwrap();
+    let settings = with_range(settings(PartMode::Chords, None, 100, 0), Some(48), Some(67));
+    let result = update_part_declaration(&source, "T", &settings).unwrap();
     assert_contains(&result, r#""Tenor" [T]: chords]"#);
+}
+
+#[test]
+fn default_range_labels_name_the_instruments_bounds() {
+    let source = source_with_parts(
+        r#""Tenor" [T] : notes { instrument : tenor }, "Copy" [C] : follow [T], "Free" [F] : notes"#,
+    );
+    let labels = crate::list_part_declarations_from_source(&source, "test.poentaro", &[])
+        .unwrap()
+        .into_iter()
+        .map(|declaration| declaration.default_range_labels.lowest)
+        .collect::<Vec<_>>();
+    assert_eq!(labels, ["C3 (tenor)", "as target", "none"]);
 }

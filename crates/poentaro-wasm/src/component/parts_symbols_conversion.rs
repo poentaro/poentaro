@@ -49,6 +49,8 @@ fn part_settings_to_wit(settings: source_edit::PartSettings) -> PartSettings {
         range_instrument: settings
             .range_instrument
             .map(|instrument| instrument.keyword().to_string()),
+        range_lowest: settings.range_lowest,
+        range_highest: settings.range_highest,
         program: settings.program,
         volume: settings.volume,
         octave_offset: settings.octave_offset,
@@ -62,6 +64,8 @@ pub(super) fn part_settings_from_wit(settings: PartSettings) -> source_edit::Par
             .range_instrument
             .as_deref()
             .and_then(RangeInstrument::from_keyword),
+        range_lowest: settings.range_lowest,
+        range_highest: settings.range_highest,
         program: settings.program,
         volume: settings.volume,
         octave_offset: settings.octave_offset,
@@ -75,6 +79,10 @@ fn part_declaration_to_wit(declaration: poentaro::SourcePartDeclaration) -> Part
         line_number: declaration.line_number,
         settings: part_settings_to_wit(declaration.settings),
         sound_label: declaration.sound_label,
+        default_range_labels: RangeBoundLabels {
+            lowest: declaration.default_range_labels.lowest,
+            highest: declaration.default_range_labels.highest,
+        },
     }
 }
 

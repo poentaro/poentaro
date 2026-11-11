@@ -51,7 +51,7 @@ export function PartRow({
   previewAudioPlaying: boolean
 }) {
   const [searchOpen, setSearchOpen] = useState(false)
-  const { limits, rangeInstruments } = options
+  const { limits, rangeInstruments, rangePitches } = options
   const partInfo = allParts.find(
     (p) => p.abbreviation === declaration.abbreviation,
   )
@@ -152,6 +152,36 @@ export function PartRow({
               </RadixSelectItem>
             ))}
           </RadixSelect>
+        )}
+      </td>
+      <td style={tdStyle}>
+        {takesRangeInstrument && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {RANGE_BOUNDS.map((bound) => (
+              <RadixSelect
+                key={bound.key}
+                value={String(settings[bound.key] ?? NO_WRITTEN_RANGE)}
+                onValueChange={(value) =>
+                  change(
+                    value === NO_WRITTEN_RANGE
+                      ? { rangeLowest: undefined, rangeHighest: undefined }
+                      : { [bound.key]: Number.parseInt(value, 10) },
+                  )
+                }
+                placeholder={bound.label}
+                testId={`range-${bound.label}-select-${declaration.abbreviation}`}
+              >
+                <RadixSelectItem value={NO_WRITTEN_RANGE}>
+                  {declaration.defaultRangeLabels[bound.label]}
+                </RadixSelectItem>
+                {rangePitches.map((pitch) => (
+                  <RadixSelectItem key={pitch.midi} value={String(pitch.midi)}>
+                    {pitch.name}
+                  </RadixSelectItem>
+                ))}
+              </RadixSelect>
+            ))}
+          </div>
         )}
       </td>
       <td style={tdStyle}>
@@ -308,6 +338,16 @@ export function PartRow({
 /** The instrument picker's value for a line that names no instrument (Radix
  * Select can't hold an empty value). */
 const NO_RANGE_INSTRUMENT = 'none'
+
+/** The range pickers' value for a line that writes no range. */
+const NO_WRITTEN_RANGE = 'default'
+
+/** The range's two pickers: the settings field each sets, and the key of
+ * its label in `defaultRangeLabels` (also its test id). */
+const RANGE_BOUNDS = [
+  { key: 'rangeLowest', label: 'lowest' },
+  { key: 'rangeHighest', label: 'highest' },
+] as const
 
 const octaveShiftButtonStyle: React.CSSProperties = {
   display: 'inline-flex',

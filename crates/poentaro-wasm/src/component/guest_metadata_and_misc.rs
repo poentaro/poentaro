@@ -264,6 +264,16 @@ pub(super) fn list_range_instruments() -> Vec<RangeInstrumentChoice> {
         .collect()
 }
 
+pub(super) fn list_range_pitches() -> Vec<RangePitchChoice> {
+    poentaro::ast::parsed::range_pitch_choices()
+        .into_iter()
+        .map(|choice| RangePitchChoice {
+            midi: choice.midi,
+            name: choice.name,
+        })
+        .collect()
+}
+
 pub(super) fn get_part_setting_limits() -> PartSettingLimits {
     part_setting_limits_to_wit(poentaro::parser::parts_parser::PART_SETTING_LIMITS)
 }

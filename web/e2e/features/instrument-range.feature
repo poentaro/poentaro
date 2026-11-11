@@ -21,3 +21,21 @@ Feature: Instrument range
     And I change the instrument select for part "V" to "guzheng 古箏"
     Then the soundfont select for part "V" shows "107: Koto"
     And the editor source and stored source both contain "\"Violin\" [V]: notes { instrument: guzheng }", as seen in edit parts modal
+
+  Scenario: The Edit Parts modal shows a part's written range
+    Given the instrument-range fixture with a part writing the range "range: D4 to A6" is loaded
+    When I open the Edit Parts modal, as seen in edit parts modal
+    Then the range lowest select for part "V" shows "D4"
+    And the range highest select for part "V" shows "A6"
+
+  Scenario: Picking a lowest pitch writes a range that keeps the instrument's top
+    Given the instrument-range fixture with a violin part is loaded
+    When I open the Edit Parts modal, as seen in edit parts modal
+    And I change the range lowest select for part "V" to "A3"
+    Then the editor source and stored source both contain "\"Violin\" [V]: notes { instrument: violin, range: A3 to A7 }", as seen in edit parts modal
+
+  Scenario: Picking the default bound removes the written range
+    Given the instrument-range fixture with a part writing the range "range: D4 to A6" is loaded
+    When I open the Edit Parts modal, as seen in edit parts modal
+    And I change the range highest select for part "V" to "none"
+    Then the editor source and stored source both contain "\"Violin\" [V]: notes]", as seen in edit parts modal

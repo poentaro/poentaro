@@ -293,6 +293,10 @@ impl Guest for Component {
         list_range_instruments()
     }
 
+    fn list_range_pitches() -> Vec<RangePitchChoice> {
+        list_range_pitches()
+    }
+
     fn get_part_setting_limits() -> PartSettingLimits {
         get_part_setting_limits()
     }
