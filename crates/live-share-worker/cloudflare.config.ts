@@ -69,6 +69,14 @@ export default defineConfig({
         namespace: '1003',
         simple: { limit: rateLimitOverride ?? 5, period: 60 },
       }),
+      // Per-API-key limit on `POST /agent` (an AI agent editing its owner's
+      // scores, see `src/handlers/agent.rs`), keyed by the key's id, not the
+      // IP. Each request can hold many calls, so this bounds requests, not
+      // edits. The name must match `AGENT_RATE_LIMITER` there.
+      AGENT_RATE_LIMITER: bindings.rateLimit({
+        namespace: '1004',
+        simple: { limit: rateLimitOverride ?? 60, period: 60 },
+      }),
       // The worker never reads it; it is declared so this crate is the
       // single source of deployment config -- `tests/export_openapi.rs`
       // publishes `deploy.json` to

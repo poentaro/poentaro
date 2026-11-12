@@ -9,7 +9,7 @@
 //! (`auth`, routes in `handlers::auth`); every write resolves its caller
 //! through `identity::resolve_verified_user_id`, a session lookup.
 //!
-//! `api_error`, `app_log`, `auth`, `e2e_reset`, `e2e_worker_config`,
+//! `agent`, `api_error`, `api_keys`, `app_log`, `auth`, `e2e_reset`, `e2e_worker_config`,
 //! `file_history`, `files`, `folder_share`, `protocol`, `share` and `share_id` are `pub`
 //! (and D1/JsValue-free) so `tests/*.rs` can unit-test them directly, per
 //! this repo's convention of keeping tests in separate files rather than inline
@@ -23,7 +23,9 @@ mod db;
 mod handlers;
 mod identity;
 
+pub mod agent;
 pub mod api_error;
+pub mod api_keys;
 pub mod app_log;
 pub mod auth;
 pub mod e2e_reset;
@@ -54,7 +56,7 @@ fn cors_config() -> Cors {
     Cors::new()
         .with_origins(["*"])
         .with_methods([Method::Get, Method::Post, Method::Options])
-        .with_allowed_headers(["Content-Type"])
+        .with_allowed_headers(["Content-Type", "Authorization"])
         .with_exposed_headers([handlers::TRACE_ID_HEADER])
 }
 
@@ -64,6 +66,10 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 
     if req.method() == Method::Options {
         return Response::empty()?.with_status(204).with_cors(&cors);
+    }
+
+    if handlers::serves_agent(&req.path()) {
+        return handlers::serve_agent(req, &env).await?.with_cors(&cors);
     }
 
     let e2e_reset_enabled = env.var(e2e_reset::EMAILS_VAR).is_ok();

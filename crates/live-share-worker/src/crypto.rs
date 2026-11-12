@@ -30,6 +30,20 @@ pub(crate) fn new_session_token() -> Result<String> {
     Ok(URL_SAFE_NO_PAD.encode(random_bytes(SESSION_TOKEN_BYTES)?))
 }
 
+/// A new API key: `poe_` and `KEY_BYTES` random bytes, base64url.
+pub(crate) fn new_api_key() -> Result<String> {
+    Ok(format!(
+        "{}{}",
+        crate::api_keys::KEY_PREFIX,
+        URL_SAFE_NO_PAD.encode(random_bytes(crate::api_keys::KEY_BYTES)?)
+    ))
+}
+
+/// A new `api_keys.id`: 16 random bytes, base64url.
+pub(crate) fn new_api_key_id() -> Result<String> {
+    Ok(URL_SAFE_NO_PAD.encode(random_bytes(16)?))
+}
+
 /// A new `users.id`: 16 random bytes, base64url -- unguessable, like a
 /// share id, never sequential.
 pub(crate) fn new_user_id() -> Result<String> {

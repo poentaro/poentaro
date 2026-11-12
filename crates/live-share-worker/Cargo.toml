@@ -50,6 +50,9 @@ poentaro = { path = "../..", default-features = false }
 # stores (`src/file_history.rs`). Bumping it must keep
 # `tests/fixtures/file_history/` passing: stored patches outlive a release.
 diffy = "0.4"
+# The methods an AI agent calls at `POST /agent`: the server trait and codec
+# generated from `poentaro.protocol.anyx` (see `src/handlers/agent.rs`).
+poentaro-protocol = { path = "../poentaro-protocol" }
 
 # `sqlx` is deliberately NOT a normal `[dependencies]` entry here, even
 # though task breakdown item 2 calls for "worker + sqlx deps". Reasoning:

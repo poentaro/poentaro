@@ -1,0 +1,92 @@
+//! `/api-keys` routes: the account menu creates, lists and revokes the keys
+//! an AI agent sends to `POST /agent` (see `crate::api_keys`). Each needs a
+//! signed-in session, like `/files`.
+
+use worker::{D1Database, RouteContext};
+
+use super::routes::{HandlerResult, Json, NoContent, NoPathParams};
+use super::{now_millis, resolve_files_caller, D1_BINDING};
+use crate::api_error::ApiError;
+use crate::api_keys::{
+    agent_prompt, shown_prefix, ApiKeyIdPath, ApiKeySummary, ApiKeysRequest, CreatedApiKey,
+    ListApiKeysResponse, StoredApiKey,
+};
+use crate::app_log::{AgentEvent, KeyEvent, LogEvent, RequestMeta};
+use crate::auth::session::hash_token;
+use crate::{crypto, db};
+
+async fn log(db: &D1Database, event: AgentEvent, user_id: &str, request_meta: &RequestMeta) {
+    db::record_app_log(db, &LogEvent::Agent(event), Some(user_id), request_meta).await;
+}
+
+/// `POST /api-keys/list`.
+pub(super) async fn list_api_keys(
+    ctx: RouteContext<()>,
+    _path: NoPathParams,
+    body: ApiKeysRequest,
+    request_meta: RequestMeta,
+) -> HandlerResult<Json<ListApiKeysResponse>> {
+    let d1 = ctx.d1(D1_BINDING)?;
+    let user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
+    let keys = db::list_api_keys(&d1, &user_id).await?;
+    Ok(Json(ListApiKeysResponse {
+        keys: keys.into_iter().map(ApiKeySummary::from).collect(),
+    }))
+}
+
+/// `POST /api-keys`: a new key, and the prompt that carries it, which this
+/// response is the only place to see.
+pub(super) async fn create_api_key(
+    ctx: RouteContext<()>,
+    _path: NoPathParams,
+    body: ApiKeysRequest,
+    request_meta: RequestMeta,
+) -> HandlerResult<Json<CreatedApiKey>> {
+    let d1 = ctx.d1(D1_BINDING)?;
+    let user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
+    let secret = crypto::new_api_key()?;
+    let key = StoredApiKey {
+        id: crypto::new_api_key_id()?,
+        prefix: shown_prefix(&secret),
+        created_at: now_millis(),
+        last_used_at: None,
+    };
+    db::insert_api_key(&d1, &key, &user_id, &hash_token(&secret)).await?;
+    let event = AgentEvent::KeyCreated(KeyEvent {
+        prefix: key.prefix.clone(),
+    });
+    log(&d1, event, &user_id, &request_meta).await;
+    let origin = request_meta.worker_origin.as_deref().unwrap_or_default();
+    Ok(Json(CreatedApiKey {
+        key: key.into(),
+        prompt: agent_prompt(origin, &secret),
+    }))
+}
+
+/// `POST /api-keys/{id}/revoke`: the key stops working at once.
+pub(super) async fn revoke_api_key(
+    ctx: RouteContext<()>,
+    path: ApiKeyIdPath,
+    body: ApiKeysRequest,
+    request_meta: RequestMeta,
+) -> HandlerResult<NoContent> {
+    let d1 = ctx.d1(D1_BINDING)?;
+    let user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
+    let prefix = db::list_api_keys(&d1, &user_id)
+        .await?
+        .into_iter()
+        .find(|key| key.id == path.id)
+        .map(|key| key.prefix)
+        .ok_or(ApiError::NotFound)?;
+    if !db::delete_api_key(&d1, &path.id, &user_id).await? {
+        return Err(ApiError::NotFound);
+    }
+    log(
+        &d1,
+        AgentEvent::KeyRevoked(KeyEvent { prefix }),
+        &user_id,
+        &request_meta,
+    )
+    .await;
+    Ok(NoContent)
+}
