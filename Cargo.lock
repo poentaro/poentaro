@@ -91,12 +91,12 @@ dependencies = [
 [[package]]
 name = "anyfix-expr"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyfix-expr?rev=6ee981e0f245afd0c86d8e08b058925688f152e7#6ee981e0f245afd0c86d8e08b058925688f152e7"
+source = "git+https://github.com/wongjiahau/anyfix-expr?rev=e6450be4732ab4c24eb2b14c07767241b5d371de#e6450be4732ab4c24eb2b14c07767241b5d371de"
 
 [[package]]
 name = "anyfix-generator"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyfix-expr?rev=6ee981e0f245afd0c86d8e08b058925688f152e7#6ee981e0f245afd0c86d8e08b058925688f152e7"
+source = "git+https://github.com/wongjiahau/anyfix-expr?rev=e6450be4732ab4c24eb2b14c07767241b5d371de#e6450be4732ab4c24eb2b14c07767241b5d371de"
 dependencies = [
  "anyfix-expr",
  "regex",
