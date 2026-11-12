@@ -50,6 +50,10 @@ export const E2E_EMAILS = [
   'e2e-trace-id@poentaro.test',
   // `session-ended.feature`, whose scenarios end their page's session.
   'e2e-session-ended@poentaro.test',
+  // `agent-protocol.feature`: the key's owner, and an account whose files
+  // the key must never reach.
+  'e2e-agent@poentaro.test',
+  'e2e-agent-other@poentaro.test',
 ] as const
 
 /** The password every seeded e2e account is created with. */

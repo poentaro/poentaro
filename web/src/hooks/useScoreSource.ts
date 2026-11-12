@@ -141,6 +141,7 @@ export function useScoreSource(
       onStopSync: syncedShareOwner.stopSync,
       onSignIn: syncedShareOwner.openSignIn,
       onChangePassword: syncedShareOwner.openChangePassword,
+      onOpenApiKeys: syncedShareOwner.openApiKeys,
       onSignOut: syncedShareOwner.signOut,
       syncFailure: syncedShareOwner.syncFailure,
       onDismissSyncFailure: syncedShareOwner.dismissSyncFailure,
