@@ -6,7 +6,7 @@ mod preset;
 mod sequence;
 mod written_range;
 
-use anyfix_expr::StringLiteral;
+use anyx::StringLiteral;
 
 use super::decoded::{content_span, decode, invalid};
 use crate::ast::parsed::ParsedMetadata;

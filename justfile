@@ -138,7 +138,7 @@ mutants-lyrics:
     cargo mutants --file src/lyric_slots.rs --file src/compiler/mod.rs --file src/lyric_spans.rs --re "LyricCursor|lyric_target_visible|advance_lyric_cursors|measure_lyric_slots|list_lyric_spans_from_source" -- --lib
 
 # Writes crates/poentaro-grammar/src/generated.rs again from the grammar,
-# crates/poentaro-grammar/poentaro.anyfix, with the anyfix-generator its
+# crates/poentaro-grammar/poentaro.anyx, with the anyx-generator its
 # Cargo.toml pins.
 generate-parser:
     UPDATE_GENERATED=1 cargo test -p poentaro-grammar --test generated

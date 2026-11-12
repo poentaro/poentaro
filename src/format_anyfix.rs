@@ -1,6 +1,6 @@
 //! [`format_anyfix`]: formats a document (see `syntax.md`).
 //!
-//! 1. anyfix-expr's canonical formatter lays out the whole document.
+//! 1. anyx's canonical formatter lays out the whole document.
 //! 2. The score's raw string then goes through the same
 //!    cleanups as the current syntax's `score` ([`format_measures`]):
 //!    redundant-line removal, part-order sorting, whitespace normalization.
@@ -21,13 +21,13 @@ pub fn format_anyfix(source: &str) -> String {
     if !crate::document::anyfix_errors(source, &[]).is_empty() {
         return source.to_string();
     }
-    let Ok(formatted) = anyfix_expr::format(source) else {
+    let Ok(formatted) = anyx::format(source) else {
         return source.to_string();
     };
     let Some(with_measures) = format_score_string(&formatted) else {
         return formatted;
     };
-    anyfix_expr::format(&with_measures).unwrap_or(formatted)
+    anyx::format(&with_measures).unwrap_or(formatted)
 }
 
 /// `source` with the score string's measures formatted, or `None` when

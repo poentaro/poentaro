@@ -6,7 +6,7 @@ This document describes the input syntax accepted by **Poentaro** (formerly jian
 
 ## File structure
 
-A document is a list of sections written in [anyfix expressions](https://github.com/wongjiahau/anyfix-expr), each followed by a comma, in any order:
+A document is a list of sections written in [anyfix expressions](https://github.com/wongjiahau/anyx), each followed by a comma, in any order:
 
 ```poentaro
 # A comment runs from `#` to the end of the line.
@@ -262,7 +262,7 @@ parts ["Melody": notes],
 
 ## Grammar
 
-Read the way [anyfix-expr's README](https://github.com/wongjiahau/anyfix-expr) reads its own grammar: `name : …` is a rule, `|` is alternation, `[ ]` is optional, `{ }` is repetition and `"…"` is literal text. A rule names the tree anyfix-expr produces, not raw characters, so `key : value` means the call `key _` of `value`.
+Read the way [anyx's README](https://github.com/wongjiahau/anyx) reads its own grammar: `name : …` is a rule, `|` is alternation, `[ ]` is optional, `{ }` is repetition and `"…"` is literal text. A rule names the tree anyx produces, not raw characters, so `key : value` means the call `key _` of `value`.
 
 ```text
 document   : { section "," },

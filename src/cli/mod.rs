@@ -47,7 +47,7 @@ pub fn read_document_source(input: &Path) -> Result<String, IrrecoverableError> 
     let report = errors
         .iter()
         .map(|error| {
-            let position = anyfix_expr::line_column(&source, error.span.start);
+            let position = anyx::line_column(&source, error.span.start);
             format!(
                 "{}:{}:{}: {}",
                 input.display(),

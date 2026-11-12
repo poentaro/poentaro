@@ -32,7 +32,7 @@ pub(super) fn replace_span(source: &str, span: Span, replacement: &str) -> Strin
 
 /// A top-level expression in canonical layout, without a separator after it.
 pub(super) fn formatted_section(text: &str) -> String {
-    anyfix_expr::format(text).map_or_else(
+    anyx::format(text).map_or_else(
         |_| text.to_owned(),
         |formatted| {
             formatted
@@ -67,7 +67,7 @@ fn last_field<'r>(record: &'r Record, key: &str) -> Option<&'r Field> {
 
 /// The section Edit Metadata edits, and its record.
 struct EditedSection<'d> {
-    whole: anyfix_expr::Span,
+    whole: anyx::Span,
     body: &'d Record,
     is_preset: bool,
 }

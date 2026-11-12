@@ -1,5 +1,5 @@
-# A `.poentaro` document, as an anyfix grammar (see anyfix-expr's
-# crates/anyfix-generator/README.md). `just generate-parser` writes
+# A `.poentaro` document, as an anyfix grammar (see anyx's
+# crates/anyx-generator/README.md). `just generate-parser` writes
 # `generated.rs` from it.
 #
 # The grammar says which shapes are allowed. What the shapes mean, such as

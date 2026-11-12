@@ -1,6 +1,6 @@
 //! Reads a part's `range : C3 to G4` option.
 
-use anyfix_expr::{FlatWord, Node};
+use anyx::{FlatWord, Node};
 
 use crate::ast::parsed::{midi_note_name, parse_midi_note_name, PitchRange};
 use crate::error::RecoverableError;

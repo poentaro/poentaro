@@ -1,4 +1,4 @@
-//! How anyfix-expr splits text into words, as far as the converter and the
+//! How anyx splits text into words, as far as the converter and the
 //! reader need to know, so a value written one way reads back the same.
 
 /// Whether `text` is one anyfix name word: a letter or `_`, then letters,

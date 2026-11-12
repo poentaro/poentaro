@@ -10,10 +10,10 @@ use crate::parser::anyfix::decoded::{decode, span};
 use crate::parser::score::interleaved_parser::directive_keyword_spans;
 use crate::parser::section::SectionKind;
 use crate::parser::{read_document, ReadDocument};
-use anyfix_expr::NamePart;
+use anyx::NamePart;
 use poentaro_grammar::{Document, Part, PartKind, PartOption, Record, Value};
 
-fn token(kind: HighlightKind, at: anyfix_expr::Span) -> HighlightToken {
+fn token(kind: HighlightKind, at: anyx::Span) -> HighlightToken {
     HighlightToken {
         kind,
         span: span(at),

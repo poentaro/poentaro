@@ -1,7 +1,7 @@
 //! What a decoded `.poentaro` document means beyond its shape: the text a value
 //! or abbreviation stands for. The shapes come from the `poentaro_grammar` crate.
 
-use anyfix_expr::{Node, StringLiteral};
+use anyx::{Node, StringLiteral};
 use itertools::Itertools;
 
 use crate::error::{RecoverableError, Span};
@@ -10,11 +10,11 @@ use poentaro_grammar::{
     Value, Words,
 };
 
-pub(crate) fn span(span: anyfix_expr::Span) -> Span {
+pub(crate) fn span(span: anyx::Span) -> Span {
     Span::new(span.start, span.end)
 }
 
-pub(crate) fn invalid(at: anyfix_expr::Span, message: impl Into<String>) -> RecoverableError {
+pub(crate) fn invalid(at: anyx::Span, message: impl Into<String>) -> RecoverableError {
     RecoverableError::anyfix_invalid(span(at), message)
 }
 
@@ -49,7 +49,7 @@ pub(crate) fn decode(source: &str) -> Decoded {
             preset: Vec::new(),
             score: None,
             errors: Vec::new(),
-            span: anyfix_expr::Span::empty(0),
+            span: anyx::Span::empty(0),
         }
     });
     errors.extend(document.errors.iter().map(decode_error));
@@ -103,7 +103,7 @@ pub(crate) fn unconverted_error(unconverted: &Unconverted) -> RecoverableError {
     unconverted_error_at(unconverted.span, &unconverted.text.value.value)
 }
 
-fn unconverted_error_at(at: anyfix_expr::Span, text: &str) -> RecoverableError {
+fn unconverted_error_at(at: anyx::Span, text: &str) -> RecoverableError {
     invalid(
         at,
         format!(
@@ -206,6 +206,6 @@ fn joined(
         .collect())
 }
 
-fn not_flat(at: anyfix_expr::Span) -> RecoverableError {
+fn not_flat(at: anyx::Span) -> RecoverableError {
     invalid(at, "expected a word, number or string here")
 }
