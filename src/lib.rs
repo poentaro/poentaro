@@ -37,6 +37,7 @@ pub mod grouper;
 pub mod grouping;
 pub mod highlight;
 pub mod layout;
+mod lyric_paired_target;
 mod lyric_slots;
 pub mod lyric_spans;
 mod lyric_targets_rhythm;

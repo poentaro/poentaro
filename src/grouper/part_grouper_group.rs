@@ -2,7 +2,10 @@ use super::{
     align_empty_note_measures, pair_lyrics_measures, GroupedPart, IrrecoverableError,
     ParsedMeasureSlot, ParsedTimedTrack, PartGrouper, PerMeasureErrors,
 };
+use crate::ast::grouped::GroupedTrack;
 use crate::ast::parsed::PartKind;
+use crate::grouper::lyrics_pairing::PairedMeasure;
+use crate::lyric_paired_target::{enters_tied, paired_target_index, target_part};
 use crate::tuplet::apply_resolution_multiplier;
 
 /// `global_resolution_multipliers[i]` is the tuplet-rescale multiplier every part must
@@ -72,24 +75,47 @@ pub(in crate::grouper) fn group_timed_track(
     })
 }
 
-/// Groups a lyric part: it has no notes of its own, so its measures are the
-/// target's measures with the lyric line's syllables paired to the target's
-/// notes (see `pair_lyrics_measures`). `target` must already be grouped.
+/// Groups a lyric part: it has no notes of its own, so each of its measures
+/// is the lyric line's syllables paired to the notes of the target it pairs
+/// with there (see `pair_lyrics_measures`, `lyric_paired_target`). Its
+/// targets are declared before it, so `grouped_tracks` holds them already.
+/// `None` when the bottommost target is missing.
 pub(in crate::grouper) fn group_lyrics_track(
     part: ParsedTimedTrack,
-    target: &GroupedPart,
-) -> GroupedPart {
+    grouped_tracks: &[GroupedTrack],
+    target_part_index: usize,
+) -> Option<GroupedPart> {
+    let measure_count = target_part(grouped_tracks, target_part_index)?
+        .measures
+        .len();
+    let paired_measures = (0..measure_count)
+        .filter_map(|measure_index| {
+            let paired = target_part(
+                grouped_tracks,
+                paired_target_index(
+                    grouped_tracks,
+                    &part.lyric_targets,
+                    target_part_index,
+                    measure_index,
+                ),
+            )?;
+            Some(PairedMeasure {
+                measure: paired.measures.get(measure_index)?,
+                entering_tied: enters_tied(paired, measure_index),
+                chords: paired.kind == PartKind::Chords,
+            })
+        })
+        .collect::<Vec<_>>();
     let measures = match part.lyrics {
         Some(lyrics) => pair_lyrics_measures(
-            &target.measures,
+            &paired_measures,
             lyrics,
             &part.per_measure_lyrics_errors,
             &part.abbreviation,
-            target.kind == PartKind::Chords,
         ),
         None => Vec::new(),
     };
-    GroupedPart {
+    Some(GroupedPart {
         name: Some(part.abbreviation),
         kind: part.kind,
         soundfont: part.soundfont,
@@ -99,5 +125,5 @@ pub(in crate::grouper) fn group_lyrics_track(
         singing_voice: None,
         lyric_targets: part.lyric_targets,
         measures,
-    }
+    })
 }

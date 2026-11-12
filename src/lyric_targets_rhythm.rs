@@ -1,6 +1,6 @@
 //! A lyric part sung on several parts (`lyrics [S, A, T, B]`) puts each
 //! syllable at the same time in every one of them. The syllables are paired
-//! with the bottommost part's notes, so every other part must start a note
+//! with one part's notes (see `lyric_paired_target`), so every other part must start a note
 //! at each word's time, and may start no note at a time no syllable is sung.
 //! A held `-` carries the word before on, so a part may hold its note through
 //! it; likewise a note slurred into needs no syllable of its own. A part
@@ -9,6 +9,7 @@
 use crate::ast::grouped::{GroupedPart, GroupedTrack, NoteEvent};
 use crate::ast::parsed::PartKind;
 use crate::error::RecoverableError;
+use crate::lyric_paired_target::{enters_tied, paired_target_index, target_part};
 use crate::lyric_slots::{measure_lyric_slots, MeasureTime};
 
 struct TargetTimes {
@@ -35,11 +36,13 @@ pub(crate) fn lyric_targets_rhythm_error(
     if lyric_part.lyric_targets.len() < 2 || measure.paired_lyrics.is_empty() {
         return None;
     }
-    let times_of = |index: usize| match grouped_tracks.get(index) {
-        Some(GroupedTrack::Timed(target)) => target_times(target, measure_index),
-        None => None,
-    };
-    let paired = times_of(target_part_index)?;
+    let times_of = |index: usize| target_times(target_part(grouped_tracks, index)?, measure_index);
+    let paired = times_of(paired_target_index(
+        grouped_tracks,
+        &lyric_part.lyric_targets,
+        target_part_index,
+        measure_index,
+    ))?;
     let syllable_times = &paired.may_take;
     let word_times = syllable_times
         .iter()
@@ -73,17 +76,13 @@ fn contains(times: &[MeasureTime], time: MeasureTime) -> bool {
 }
 
 fn target_times(target: &GroupedPart, measure_index: usize) -> Option<TargetTimes> {
-    let previous = measure_index
+    let entering_slurred = measure_index
         .checked_sub(1)
         .and_then(|previous| target.measures.get(previous))
-        .map(|previous| previous.notes.events.as_slice());
-    let entering_tied =
-        previous.is_some_and(|events| measure_lyric_slots(events, false).exits_tied);
-    let entering_slurred = previous
-        .and_then(|events| events.last())
+        .and_then(|previous| previous.notes.events.last())
         .is_some_and(slurs_into_next);
     let events = &target.measures.get(measure_index)?.notes.events;
-    let lyric_slots = measure_lyric_slots(events, entering_tied);
+    let lyric_slots = measure_lyric_slots(events, enters_tied(target, measure_index));
     let slurred_into = slurred_into(events, entering_slurred);
     let time = |column| MeasureTime {
         column,

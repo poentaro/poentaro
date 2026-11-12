@@ -52,14 +52,9 @@ pub fn group(doc: ParsedDocument) -> Result<Score, IrrecoverableError> {
     for track in doc.tracks {
         let ParsedTrack::Timed(part) = track;
         let grouped = match part.kind {
-            // A lyric part's target is declared (and so already grouped) before it.
+            // A lyric part's targets are declared (and so already grouped) before it.
             PartKind::Lyrics { target_part_index } => {
-                let target = grouped_tracks
-                    .get(target_part_index)
-                    .map(|track| match track {
-                        GroupedTrack::Timed(target) => target,
-                    });
-                target.map(|target| group_lyrics_track(part, target))
+                group_lyrics_track(part, &grouped_tracks, target_part_index)
             }
             _ => Some(group_timed_track(part, &global_resolution_multipliers)?),
         };

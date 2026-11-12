@@ -49,7 +49,7 @@ struct LyricPlacement {
 fn measure_placements(lyrics: &LyricsSlice, cursor: LyricCursor) -> Vec<LyricPlacement> {
     let events = &lyrics.target_events;
     if !lyrics.targets_chords {
-        return measure_lyric_slots(events, cursor.entering_tied)
+        return measure_lyric_slots(events, lyrics.entering_tied)
             .slots
             .iter()
             .enumerate()

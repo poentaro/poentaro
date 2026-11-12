@@ -80,3 +80,15 @@ fn a_choir_with_one_part_slurring_two_notes_on_a_syllable_is_fine() {
         .count();
     assert_eq!(errors, 0);
 }
+
+#[test]
+fn the_words_pair_with_the_part_singing_while_the_bottommost_rests() {
+    let source = "parts [\"S\" [S]: notes, \"A\" [A]: notes, \"w\" [w]: lyrics [S, A]],\nscore \"\"\"\ntime=2/4 key=C4 bpm=60\n[S] 1_2_ 3\n[A] 0 0\n[w] 我 们 有\n\"\"\",\n";
+    let score = crate::compile(source, "test.poentaro", &[]).expect("compiles");
+    let diagnostics = score
+        .measures
+        .iter()
+        .flat_map(|measure| measure.diagnostics.iter())
+        .collect::<Vec<_>>();
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+}

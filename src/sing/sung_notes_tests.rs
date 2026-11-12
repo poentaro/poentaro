@@ -144,3 +144,23 @@ fn a_slur_into_a_measure_without_words_holds_the_syllable_to_its_end() {
         ]
     );
 }
+
+#[test]
+fn a_singer_takes_the_words_on_its_own_rhythm_while_the_bottommost_part_rests() {
+    let source = "parts [\"S\" [S]: notes { sound: chimera soprano }, \"A\" [A]: notes, \"Words\" [i]: lyrics [S, A]],\nscore \"\"\"\ntime=2/4 key=C4 bpm=60\n[S] 1 2\n[A] 5, 7,\n[i] 我 們\n\n[S] 1_2_ 3\n[A] 0 0\n[i] 有 約 了\n\"\"\",\n";
+    let score = crate::compile(source, "test.poentaro", &[]).expect("compiles");
+    let notes = sung_notes(&score, "S").expect("sung notes");
+    assert_eq!(
+        notes
+            .iter()
+            .map(|note| (note.start_seconds, note.syllable.clone()))
+            .collect::<Vec<_>>(),
+        vec![
+            (0.0, word("我")),
+            (1.0, word("們")),
+            (2.0, word("有")),
+            (2.5, word("約")),
+            (3.0, word("了")),
+        ]
+    );
+}

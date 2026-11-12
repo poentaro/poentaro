@@ -1,7 +1,7 @@
 //! Lyric parts as MEI verses on their target part's notes.
 
 use super::escape;
-use crate::ast::grouped::Score;
+use crate::ast::grouped::{LyricsSlice, Score};
 use crate::ast::parsed::{PartKind, Syllable};
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -34,7 +34,7 @@ pub(super) fn collect_verses(score: &Score) -> HashMap<String, Vec<Verse>> {
         .unwrap_or_default();
     lyric_part_names
         .iter()
-        .filter_map(|lyric_name| verse_of(score, lyric_name))
+        .flat_map(|lyric_name| verses_of(score, lyric_name))
         .into_group_map_by(|targeted| targeted.target.clone())
         .into_iter()
         .map(|(target, verses)| {
@@ -49,7 +49,9 @@ struct TargetedVerse {
     verse: Verse,
 }
 
-fn verse_of(score: &Score, lyric_name: &str) -> Option<TargetedVerse> {
+/// A lyric part's verse on each part it pairs with (see
+/// `lyric_paired_target`): each holds the measures paired with that part.
+fn verses_of(score: &Score, lyric_name: &str) -> Vec<TargetedVerse> {
     let slices = score
         .measures
         .iter()
@@ -62,30 +64,37 @@ fn verse_of(score: &Score, lyric_name: &str) -> Option<TargetedVerse> {
                 .and_then(|slice| slice.lyrics.as_ref())
         })
         .collect_vec();
-    let target = slices.iter().flatten().next()?.target_name.clone();
-    let measures = slices
+    slices
         .iter()
-        .scan(false, |entering_tied, lyrics| {
-            let Some(lyrics) = lyrics else {
-                *entering_tied = false;
-                return Some(MeasureSyllables::default());
-            };
-            let slots =
-                crate::lyric_slots::measure_lyric_slots(&lyrics.target_events, *entering_tied);
-            *entering_tied = slots.exits_tied;
-            let by_event_index = slots
-                .slots
+        .flatten()
+        .map(|lyrics| lyrics.target_name.clone())
+        .unique()
+        .map(|target| {
+            let measures = slices
                 .iter()
-                .zip(lyrics.syllables.iter())
-                .map(|(slot, syllable)| (slot.event_index, syllable.clone()))
+                .map(|lyrics| match lyrics {
+                    Some(lyrics) if lyrics.target_name == target => measure_syllables_of(lyrics),
+                    _ => MeasureSyllables::default(),
+                })
                 .collect();
-            Some(MeasureSyllables { by_event_index })
+            TargetedVerse {
+                target,
+                verse: Verse { measures },
+            }
         })
+        .collect()
+}
+
+fn measure_syllables_of(lyrics: &LyricsSlice) -> MeasureSyllables {
+    let slots =
+        crate::lyric_slots::measure_lyric_slots(&lyrics.target_events, lyrics.entering_tied);
+    let by_event_index = slots
+        .slots
+        .iter()
+        .zip(lyrics.syllables.iter())
+        .map(|(slot, syllable)| (slot.event_index, syllable.clone()))
         .collect();
-    Some(TargetedVerse {
-        target,
-        verse: Verse { measures },
-    })
+    MeasureSyllables { by_event_index }
 }
 
 /// Each verse's syllables for one measure.

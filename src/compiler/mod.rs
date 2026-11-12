@@ -101,8 +101,8 @@ pub fn compile(score: &Score) -> CompileResult {
     }
 }
 
-/// Every lyric part's link to its target part, read from the part level
-/// (`LyricsSlice::target_name`) and named by the same `RowId`s the rows get.
+/// Every lyric part's link to the part it is drawn under, read from the part
+/// level (`LyricsSlice::drawn_under`) and named by the same `RowId`s the rows get.
 fn lyric_links(score: &Score) -> Vec<LyricLink> {
     score
         .measures
@@ -111,7 +111,7 @@ fn lyric_links(score: &Score) -> Vec<LyricLink> {
         .filter_map(|(part_idx, part_row)| {
             part_row.slice().lyrics.as_ref().map(|lyrics| LyricLink {
                 lyric_row_id: part_row_id(part_row, part_idx),
-                target_row_id: RowId(lyrics.target_name.clone()),
+                target_row_id: RowId(lyrics.drawn_under.clone()),
             })
         })
         .unique()
@@ -200,14 +200,12 @@ fn advance_lyric_cursors(
         };
         let cursor = LyricCursor {
             next_note_id: cs.next_note_id,
-            entering_tied: cs.prev_tie,
         }
         .advance(
             &lyrics.target_events,
             lyric_target_visible(measure, visible, &lyrics.target_name),
         );
         cs.next_note_id = cursor.next_note_id;
-        cs.prev_tie = cursor.entering_tied;
     }
 }
 

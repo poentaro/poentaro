@@ -81,20 +81,18 @@ pub(crate) fn measure_lyric_slots(events: &[NoteEvent], entering_tied: bool) -> 
 /// Where a lyric part stands along its target's notes as a measure starts.
 ///
 /// A lyric part has to walk its target's notes through *every* measure, even
-/// one where its own row is hidden for having no syllables; otherwise a tie
-/// from before such a measure leaks past it, and the note ids drift from the
-/// ones its target gives the same notes.
+/// one where its own row is hidden for having no syllables; otherwise the note
+/// ids drift from the ones its target gives the same notes. A lyric part sung
+/// on several parts walks whichever it pairs with each measure, so its ids
+/// match the part it is drawn under only while it pairs with that one.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct LyricCursor {
     /// The note id of the measure's first target event.
     pub(crate) next_note_id: usize,
-    /// The previous measure's last target note is tied into this one.
-    pub(crate) entering_tied: bool,
 }
 
 impl LyricCursor {
-    /// The cursor at the start of the next measure. Ties follow the target's
-    /// notes in every measure, as the grouper pairs them. Note ids advance only
+    /// The cursor at the start of the next measure. Note ids advance only
     /// when `target_visible`, since a hidden target allocates none.
     pub(crate) fn advance(self, target_events: &[NoteEvent], target_visible: bool) -> Self {
         LyricCursor {
@@ -103,7 +101,6 @@ impl LyricCursor {
             } else {
                 self.next_note_id
             },
-            entering_tied: measure_lyric_slots(target_events, self.entering_tied).exits_tied,
         }
     }
 }

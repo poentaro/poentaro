@@ -4,7 +4,7 @@
 
 use itertools::Itertools;
 
-use crate::ast::parsed::Syllable;
+use crate::ast::parsed::{ScoreEvent, Syllable};
 use crate::error::Span;
 use crate::parser::score::interleaved_parser::padded_measure_events;
 use crate::parser::score::timed_parser::GroupStack;
@@ -17,12 +17,57 @@ use super::split::SplitStream;
 use super::timing::normalize_whitespace;
 use super::NO_LYRICS_MEASURE;
 
-/// How many syllables each measure of the notes part at `target_index`
-/// takes, with ties carried across barlines the way the parser carries them.
+/// How many syllables each measure of a lyric part sung on the notes parts
+/// at `target_indices` takes: the lyric slots of the part it pairs with
+/// there, the bottommost with a note, else `bottommost` (see
+/// `lyric_paired_target`).
 pub(super) fn lyric_slot_counts(
     document: &ScoreDocument,
-    target_index: usize,
+    target_indices: &[usize],
+    bottommost: usize,
 ) -> Result<Vec<usize>, String> {
+    let targets = target_indices
+        .iter()
+        .chain(std::iter::once(&bottommost))
+        .unique()
+        .map(|&index| {
+            Ok(TargetSlots {
+                index,
+                measures: measure_slots(document, index)?,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok((0..document.measures.len())
+        .map(|measure_index| {
+            let slots_of = |target: &TargetSlots| target.measures.get(measure_index).copied();
+            targets
+                .iter()
+                .filter(|target| slots_of(target).is_some_and(|slots| slots.has_note))
+                .max_by_key(|target| target.index)
+                .or_else(|| targets.iter().find(|target| target.index == bottommost))
+                .and_then(slots_of)
+                .map_or(0, |slots| slots.count)
+        })
+        .collect())
+}
+
+struct TargetSlots {
+    index: usize,
+    measures: Vec<MeasureSlots>,
+}
+
+#[derive(Clone, Copy)]
+struct MeasureSlots {
+    count: usize,
+    has_note: bool,
+}
+
+/// Each measure's lyric slots of the notes part at `target_index`, with ties
+/// carried across barlines the way the parser carries them.
+fn measure_slots(
+    document: &ScoreDocument,
+    target_index: usize,
+) -> Result<Vec<MeasureSlots>, String> {
     let mut stack = GroupStack::default();
     let mut tie_state = LyricTieState::default();
     document
@@ -35,7 +80,10 @@ pub(super) fn lyric_slot_counts(
                 .get(target_index)
                 .map_or("", String::as_str);
             if content == NO_LYRICS_MEASURE {
-                return Ok(0);
+                return Ok(MeasureSlots {
+                    count: 0,
+                    has_note: false,
+                });
             }
             let parsed = parse_notes_line(content, 0, &mut stack).map_err(|error| {
                 format!(
@@ -45,7 +93,12 @@ pub(super) fn lyric_slot_counts(
                 )
             })?;
             let events = padded_measure_events(parsed.events, measure.capacity);
-            Ok(count_lyric_slots_in_events(&events, &mut tie_state) as usize)
+            Ok(MeasureSlots {
+                count: count_lyric_slots_in_events(&events, &mut tie_state) as usize,
+                has_note: events
+                    .iter()
+                    .any(|event| matches!(event.value, ScoreEvent::Note(_))),
+            })
         })
         .collect()
 }

@@ -120,10 +120,15 @@ pub struct Notes {
 /// columns even when the target itself is filtered out.
 #[derive(Clone)]
 pub struct LyricsSlice {
-    /// Abbreviation of the part whose notes these lyrics sing along to.
+    /// Abbreviation of the part whose notes these lyrics sing along to this
+    /// measure: of the parts they are sung on, the bottommost with a note
+    /// here (see `lyric_paired_target`).
     pub target_name: String,
     /// The target's events this measure, which fix where syllables sit.
     pub target_events: Vec<NoteEvent>,
+    /// The target's last note before this measure is tied into it, so its
+    /// first note takes no syllable.
+    pub entering_tied: bool,
     /// The target is a `chords` part: syllables are then placed by
     /// `chord_lyric_placement` instead of one per note slot.
     pub targets_chords: bool,
@@ -136,6 +141,9 @@ pub struct LyricsSlice {
     /// Abbreviations of every part these syllables are sung on
     /// (`lyrics [S, A, T, B]`), in written order; `target_name` is one of them.
     pub sung_on: Vec<String>,
+    /// Abbreviation of the bottommost of `sung_on`, whose row the lyric row
+    /// is drawn under.
+    pub drawn_under: String,
 }
 
 #[derive(Clone)]

@@ -98,7 +98,7 @@ pub(super) fn compile_part_slice(
 /// same way the target's own compile does, so `(part, note_id)` of a syllable
 /// names the note it is sung on.
 fn compile_lyrics_slice(lyrics: &LyricsSlice, input: &PartSliceInput) -> PartSliceResult {
-    let measure_slots = measure_lyric_slots(&lyrics.target_events, input.prev_tie);
+    let measure_slots = measure_lyric_slots(&lyrics.target_events, lyrics.entering_tied);
     let syllable_elements: Vec<ColumnElement> = if lyrics.targets_chords {
         // Under a chord part the line places itself: brackets at the chord
         // attacks, other syllables spread between (see `chord_lyric_placement`).

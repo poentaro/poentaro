@@ -30,8 +30,6 @@ pub fn sung_notes(score: &Score, singer: &str) -> Result<Vec<SungNote>, Irrecove
     let mut bpm = DEFAULT_BPM;
     let mut tied = false;
     let mut slurred = false;
-    // The paired part's last note was tied into the next measure.
-    let mut paired_tied = false;
     let mut notes: Vec<SungNote> = Vec::new();
 
     let mut next_measure_start = 0.0;
@@ -57,7 +55,7 @@ pub fn sung_notes(score: &Score, singer: &str) -> Result<Vec<SungNote>, Irrecove
             slurred = false;
             continue;
         };
-        let lyrics = MeasureLyrics::sung_on(&slices, singer_slice, &mut paired_tied);
+        let lyrics = MeasureLyrics::sung_on(&slices, singer_slice);
         let seconds_per_unit =
             60.0 / bpm as f64 / 4.0 / singer_slice.resolution_multiplier.max(1) as f64;
         let mut offset_units = 0u32;
@@ -115,9 +113,8 @@ struct MeasureLyrics<'a> {
 }
 
 impl<'a> MeasureLyrics<'a> {
-    /// The lyrics among `slices` sung on `singer`. `paired_tied` carries the
-    /// paired part's tie into the next measure.
-    fn sung_on(slices: &[&'a PartSlice], singer: &PartSlice, paired_tied: &mut bool) -> Self {
+    /// The lyrics among `slices` sung on `singer`.
+    fn sung_on(slices: &[&'a PartSlice], singer: &PartSlice) -> Self {
         let singer_length = singer.notes.events.iter().map(NoteEvent::duration).sum();
         let Some(lyrics) = slices
             .iter()
@@ -135,8 +132,7 @@ impl<'a> MeasureLyrics<'a> {
                 singer_length,
             };
         };
-        let slots = measure_lyric_slots(&lyrics.target_events, *paired_tied);
-        *paired_tied = slots.exits_tied;
+        let slots = measure_lyric_slots(&lyrics.target_events, lyrics.entering_tied);
         MeasureLyrics {
             syllables: &lyrics.syllables,
             times: slots

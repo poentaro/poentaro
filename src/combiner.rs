@@ -1,10 +1,11 @@
 use crate::ast::grouped::{
-    GroupedMeasure, GroupedScore, GroupedTrack, LyricsSlice, MeasureDirectives, MultiPartMeasure,
-    Notes, PartRow, PartSlice, DEFAULT_HIDE_RESTING_PARTS,
+    GroupedMeasure, GroupedPart, GroupedScore, GroupedTrack, LyricsSlice, MeasureDirectives,
+    MultiPartMeasure, Notes, PartRow, PartSlice, DEFAULT_HIDE_RESTING_PARTS,
     DEFAULT_MERGE_DUPLICATE_MEASURES_ACROSS_PARTS,
 };
 use crate::ast::parsed::PartKind;
 use crate::error::{Diagnostic, RecoverableError, Span};
+use crate::lyric_paired_target::{enters_tied, paired_target_index, target_part};
 
 fn collect_part_measure_diagnostics(m: Option<&GroupedMeasure>) -> Vec<Diagnostic> {
     [
@@ -197,28 +198,13 @@ fn build_part_rows(
                     .map(Diagnostic::Error),
                 );
                 let lyrics = match part.kind {
-                    PartKind::Lyrics { target_part_index } => {
-                        grouped_tracks.get(target_part_index).map(|target| {
-                            let GroupedTrack::Timed(target) = target;
-                            LyricsSlice {
-                                target_name: target.name.clone().unwrap_or_default(),
-                                target_events: target
-                                    .measures
-                                    .get(measure_idx)
-                                    .map_or_else(Vec::new, |measure| measure.notes.events.clone()),
-                                targets_chords: target.kind == PartKind::Chords,
-                                syllables: measure.paired_lyrics.clone(),
-                                sung_on: part
-                                    .lyric_targets
-                                    .iter()
-                                    .filter_map(|&index| match grouped_tracks.get(index) {
-                                        Some(GroupedTrack::Timed(target)) => target.name.clone(),
-                                        None => None,
-                                    })
-                                    .collect(),
-                            }
-                        })
-                    }
+                    PartKind::Lyrics { target_part_index } => lyrics_slice(
+                        grouped_tracks,
+                        part,
+                        measure,
+                        target_part_index,
+                        measure_idx,
+                    ),
                     _ => None,
                 };
                 let slice = PartSlice {
@@ -243,6 +229,41 @@ fn build_part_rows(
     }
 
     (part_rows, diagnostics)
+}
+
+/// A lyric part's measure, sung along to the target it pairs with there
+/// (see `lyric_paired_target`).
+fn lyrics_slice(
+    grouped_tracks: &[GroupedTrack],
+    part: &GroupedPart,
+    measure: &GroupedMeasure,
+    target_part_index: usize,
+    measure_index: usize,
+) -> Option<LyricsSlice> {
+    let paired_index = paired_target_index(
+        grouped_tracks,
+        &part.lyric_targets,
+        target_part_index,
+        measure_index,
+    );
+    let target = target_part(grouped_tracks, paired_index)?;
+    let name_of = |index: usize| target_part(grouped_tracks, index)?.name.clone();
+    Some(LyricsSlice {
+        target_name: target.name.clone().unwrap_or_default(),
+        target_events: target
+            .measures
+            .get(measure_index)
+            .map_or_else(Vec::new, |measure| measure.notes.events.clone()),
+        entering_tied: enters_tied(target, measure_index),
+        targets_chords: target.kind == PartKind::Chords,
+        syllables: measure.paired_lyrics.clone(),
+        sung_on: part
+            .lyric_targets
+            .iter()
+            .filter_map(|&index| name_of(index))
+            .collect(),
+        drawn_under: name_of(target_part_index).unwrap_or_default(),
+    })
 }
 
 #[cfg(test)]
