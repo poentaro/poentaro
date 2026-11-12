@@ -4,10 +4,10 @@ import { stableBoundingBox } from '../../rangeSelectHelpers'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# the song',
+  '## the song',
   'metadata { title "Song" },',
   '',
-  '# who sings',
+  '## who sings',
   'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
   'score """',

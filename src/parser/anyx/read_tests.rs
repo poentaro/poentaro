@@ -197,3 +197,30 @@ fn what_could_not_be_converted_is_reported() {
     );
     assert_eq!(messages.len(), 2, "{messages:?}");
 }
+
+#[test]
+fn a_comment_with_one_hash_is_reported_and_the_rest_still_reads() {
+    let source = "# My song\nparts [ \"S\" [S] : notes ],  # trailing\nscore \"\"\"\n  [S] 1 2 3 4 # 5\n  \"\"\",\n";
+    assert_eq!(
+        error_messages(source),
+        [
+            "found a `#` line; a comment starts with `##`",
+            "found a `#` line; a comment starts with `##`"
+        ]
+    );
+    let errors = anyx_errors(source, &[]);
+    assert_eq!(
+        errors
+            .iter()
+            .map(|error| &source[error.span.start..error.span.end])
+            .collect::<Vec<_>>(),
+        ["# My song", "# trailing"]
+    );
+    assert_eq!(declarations(source).len(), 1);
+}
+
+#[test]
+fn a_comment_with_two_hashes_reads() {
+    let source = "## My song\nparts [ \"S\" [S] : notes ],  ## trailing\nscore \"\"\"\n  [S] 1 2 3 4\n  \"\"\",\n";
+    assert_eq!(error_messages(source), Vec::<String>::new());
+}

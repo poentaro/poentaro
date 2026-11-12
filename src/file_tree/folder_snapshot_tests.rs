@@ -64,7 +64,7 @@ fn a_missing_folder_has_no_snapshot() {
 
 #[test]
 fn json_round_trips_including_unicode() {
-    let state = store(&[("詩歌/一.poentaro", "# 你好\n\"q\"")], &["詩歌/空"]);
+    let state = store(&[("詩歌/一.poentaro", "## 你好\n\"q\"")], &["詩歌/空"]);
     let snapshot = folder_snapshot(&state, &path("詩歌")).unwrap();
     assert_eq!(FolderSnapshot::from_json(&snapshot.to_json()), Ok(snapshot));
 }

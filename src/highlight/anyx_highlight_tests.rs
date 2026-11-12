@@ -2,7 +2,7 @@ use super::{highlight_tokens, section_headers};
 use crate::highlight::HighlightKind;
 use crate::parser::section::SectionKind;
 
-const DOCUMENT: &str = r#"# The song
+const DOCUMENT: &str = r#"## The song
 metadata { title : "Hello", title style : { bold : yes } },
 
 parts [

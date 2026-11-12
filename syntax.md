@@ -9,7 +9,7 @@ This document describes the input syntax accepted by **Poentaro** (formerly jian
 A document is a list of sections written in [anyx expressions](https://github.com/wongjiahau/anyx), each followed by a comma, in any order:
 
 ```poentaro
-# A comment runs from `#` to the end of the line.
+## A comment runs from `##` to the end of the line.
 
 metadata {
     title "Part options",
@@ -63,18 +63,18 @@ The score is one multiline string, closed by the same run of quotes that opened 
 
 ## Comments
 
-Outside the score string, `#` starts a comment that runs to the end of the line. Inside it, `//` does, on its own line or trailing other content, and `#` is note and key syntax.
+Outside the score string, `##` starts a comment that runs to the end of the line. Inside it, `//` does, on its own line or trailing other content, and `#` is note and key syntax.
 
 ```text
 metadata {
-    title "My Song",  # shown in the header
+    title "My Song",  ## shown in the header
 
-    # this whole line is a comment
+    ## this whole line is a comment
     author "Jane Doe",
 },
 ```
 
-A `#` inside a string (e.g. `title "Song #1"`) is not a comment. Outside the score string, a sharp key is therefore written as a string: `key: "F#3"`.
+A single `#` outside a string starts a line string, which a document doesn't accept, so a comment always has two. A `#` inside a string (e.g. `title "Song #1"`) is not a comment. Outside the score string, a sharp key is therefore written as a string: `key: "F#3"`.
 
 ---
 

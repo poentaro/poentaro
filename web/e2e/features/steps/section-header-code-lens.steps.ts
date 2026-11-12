@@ -2,10 +2,10 @@ import { expect, type Page } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const COMMENTED_SOURCE = [
-  '# about the song',
+  '## about the song',
   'metadata { title "Test" },',
   '',
-  '# about the parts',
+  '## about the parts',
   'parts ["Melody" [M]: notes],',
   '',
   'score """',

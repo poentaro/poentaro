@@ -29,9 +29,9 @@ const withLastLine = (lastLine: string) =>
 
 // Two edits far enough apart for a line-based three-way merge to keep both:
 // the first line (a comment heading) and the last line (the notes).
-const TWO_LINE_BASE = `# heading
+const TWO_LINE_BASE = `## heading
 ${DEFAULT_CLOUD_FILE_CONTENT}`
-const FIRST_LINE_EDIT = '# heading edited here'
+const FIRST_LINE_EDIT = '## heading edited here'
 const SECOND_LINE_EDIT = '1 2 3 4 7'
 const RESOLVED_TEXT = '1 2 3 9 5'
 
