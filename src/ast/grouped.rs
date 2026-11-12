@@ -133,6 +133,9 @@ pub struct LyricsSlice {
     /// whole, in order, bracketed ones (`Syllable::bracketed`) tallied 1:1 with
     /// the target's `lyric_slots::chord_attacks` by the grouper.
     pub syllables: Vec<Syllable>,
+    /// The voice these lyrics are sung in, in exported audio; `None` when
+    /// the lyric part names none.
+    pub singing_voice: Option<crate::ast::parsed::SingingVoice>,
 }
 
 #[derive(Clone)]
@@ -344,6 +347,7 @@ pub(crate) struct GroupedPart {
     pub(crate) volume: u8,
     pub(crate) octave_offset: i8,
     pub(crate) range_instrument: Option<crate::ast::parsed::RangeInstrument>,
+    pub(crate) singing_voice: Option<crate::ast::parsed::SingingVoice>,
     pub(crate) measures: Vec<GroupedMeasure>,
 }
 

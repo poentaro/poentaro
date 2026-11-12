@@ -4,6 +4,7 @@ import {
   singleErrorDiagnostic,
 } from './exportMessageHandlers'
 import type { WorkerRequest, WorkerResponse } from './poentaro.worker'
+import { vocalsFor } from './singer'
 
 function noteTimingsFromSource(
   source: string,
@@ -184,10 +185,10 @@ export function handleGenerateMeasureRangeAudio(
  * source alone (see `noteTimingsFromSource`), independent of the audio
  * codec, so this reuses it exactly as the WAV path does.
  */
-export function handleGenerateMp3(
+export async function handleGenerateMp3(
   msg: Extract<WorkerRequest, { type: 'generateMp3' }>,
   loadedSoundfont: Uint8Array | null,
-): void {
+): Promise<void> {
   if (!loadedSoundfont) {
     postMessage({
       type: 'mp3Err',
@@ -196,10 +197,22 @@ export function handleGenerateMp3(
     } satisfies WorkerResponse)
     return
   }
+  let vocals: Float32Array
+  try {
+    vocals = await vocalsFor(msg.source, msg.enabledTracks)
+  } catch (error) {
+    postMessage({
+      type: 'mp3Err',
+      id: msg.id,
+      diagnostics: singleErrorDiagnostic(`Could not sing the lyrics: ${error}`),
+    } satisfies WorkerResponse)
+    return
+  }
   const result = poentaroWasm().generateMp3(
     msg.source,
     msg.enabledTracks,
     loadedSoundfont,
+    vocals,
   )
   if (result.tag === 'ok') {
     const mp3Buffer = binaryBufferFromResult(result.val.mp3)

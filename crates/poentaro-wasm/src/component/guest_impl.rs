@@ -101,12 +101,9 @@ impl Guest for Component {
         render_mei(source, visibility, raw_instruments, clef)
     }
 
-    fn generate_mp3(
-        source: String,
-        enabled_tracks: Option<Vec<String>>,
-        soundfont: Vec<u8>,
-    ) -> GenerateMp3Response {
-        generate_mp3(source, enabled_tracks, soundfont)
+    forward_to_free_functions! {
+        generate_mp3(source: String, enabled_tracks: Option<Vec<String>>, soundfont: Vec<u8>, vocals: Vec<f32>) -> GenerateMp3Response;
+        singing_plan(source: String, enabled_tracks: Option<Vec<String>>) -> Option<Vec<u8>>;
     }
 
     fn generate_pdf(

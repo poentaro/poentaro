@@ -142,6 +142,9 @@ pub enum RecoverableErrorKind {
     PartsUnknownInstrument { name: String },
     /// An instrument on a part that isn't `notes` or `follow[X]` — ignored.
     PartsInstrumentOnNonNotesPart,
+    /// A voice on a lyric part under a `chords` part, whose syllables have no
+    /// pitch to sing — ignored.
+    PartsVoiceOnChordLyrics,
     /// A `range` option that isn't two pitches joined by `to` — ignored.
     PartsMalformedRange,
     /// A `range` bound that isn't a pitch like `C3` — the range is ignored.
@@ -229,6 +232,7 @@ impl RecoverableErrorKind {
                 crate::ast::parsed::RangeInstrument::ALL.iter().map(|instrument| instrument.keyword()).join(", ")
             ),
             Self::PartsInstrumentOnNonNotesPart => "only notes parts can name an instrument; ignored".to_string(),
+            Self::PartsVoiceOnChordLyrics => "lyrics under a chords part have no notes to sing; voice ignored".to_string(),
             Self::PartsMalformedRange => "a range is two pitches joined by `to`, like `range : C3 to G4`; ignored".to_string(),
             Self::PartsMalformedRangePitch { pitch } => format!("`{pitch}` is not a pitch; write a letter, an optional `b` for flat and an octave, like `C3` or `Bb4`, or quote a sharp, like `\"F#3\"`; range ignored"),
             Self::PartsRangeLowAboveHigh { lowest, highest } => format!("the range's low note {lowest} is above its high note {highest}; range ignored"),

@@ -22,6 +22,7 @@ use event_processing::{
     flush_pending_ties, flush_pending_ties_at_tick, process_chord_events, process_measure_notes,
     process_percussion_events,
 };
+pub(crate) use midi_notes::resolve_midi_note_with_accidental;
 pub use navigation::{
     earliest_playback_position, expand_for_measure_range, expand_navigation,
     expand_navigation_with_note_positions, expand_navigation_with_origins, ExpandedMeasureOrigin,

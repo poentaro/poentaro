@@ -3,8 +3,11 @@
 use std::collections::HashSet;
 
 use anyfix_expr::{Node, NodeKind};
+use itertools::Itertools;
 
-use crate::ast::parsed::{PartDecl, PartKind, PitchRange, RangeInstrument, Soundfont};
+use crate::ast::parsed::{
+    PartDecl, PartKind, PitchRange, RangeInstrument, SingingVoice, Soundfont,
+};
 use crate::error::{RecoverableError, Span, Spanned};
 use crate::parser::anyfix::tree::{
     abbreviation_text, as_field, as_part, invalid, list_of, name_span, percentage, record_of,
@@ -117,6 +120,7 @@ fn part(
         soundfont: options.soundfont,
         volume: options.volume,
         octave_offset: options.octave_offset,
+        singing_voice: options.singing_voice,
     })
 }
 
@@ -152,6 +156,15 @@ struct PartOptions {
     soundfont: Option<Soundfont>,
     volume: Option<u8>,
     octave_offset: Option<i8>,
+    singing_voice: Option<Spanned<SingingVoice>>,
+}
+
+/// Which options a part kind takes.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum OptionsOwner {
+    Percussion,
+    Lyrics,
+    Other,
 }
 
 fn part_kind(
@@ -175,16 +188,8 @@ fn part_kind(
         ("percussion _", [options]) => (RawKind::Concrete(PartKind::Percussion), Some(options)),
         ("follow _", [target]) => (follow_kind(target)?, None),
         ("follow _ _", [target, options]) => (follow_kind(target)?, Some(options)),
-        ("lyrics _", [target]) => {
-            let target = bracketed_abbreviation(target)?;
-            (
-                RawKind::Lyrics {
-                    target: target.text,
-                    target_span: target.span,
-                },
-                None,
-            )
-        }
+        ("lyrics _", [target]) => (lyrics_kind(target)?, None),
+        ("lyrics _ _", [target, options]) => (lyrics_kind(target)?, Some(options)),
         _ => {
             return Err(invalid(
                 node,
@@ -195,12 +200,24 @@ fn part_kind(
             ))
         }
     };
-    let is_percussion = matches!(kind, RawKind::Concrete(PartKind::Percussion));
+    let owner = match kind {
+        RawKind::Concrete(PartKind::Percussion) => OptionsOwner::Percussion,
+        RawKind::Lyrics { .. } => OptionsOwner::Lyrics,
+        _ => OptionsOwner::Other,
+    };
     let options = match options {
-        Some(options) => part_options(options, is_percussion, instruments, errors)?,
+        Some(options) => part_options(options, owner, instruments, errors)?,
         None => PartOptions::default(),
     };
     Ok((kind, options))
+}
+
+fn lyrics_kind(target: &Node) -> Result<RawKind, RecoverableError> {
+    let target = bracketed_abbreviation(target)?;
+    Ok(RawKind::Lyrics {
+        target: target.text,
+        target_span: target.span,
+    })
 }
 
 fn follow_kind(target: &Node) -> Result<RawKind, RecoverableError> {
@@ -211,13 +228,36 @@ fn follow_kind(target: &Node) -> Result<RawKind, RecoverableError> {
     })
 }
 
+/// `voice : female`; `None` (with an error) for anything but a known voice.
+fn singing_voice(
+    value: &Node,
+    errors: &mut Vec<RecoverableError>,
+) -> Option<Spanned<SingingVoice>> {
+    let name = value_text(value).map_err(|error| errors.push(error)).ok()?;
+    let voice = SingingVoice::from_keyword(&name);
+    if voice.is_none() {
+        errors.push(invalid(
+            value,
+            format!(
+                "unknown voice `{name}`; expected {}",
+                SingingVoice::ALL
+                    .iter()
+                    .map(|voice| voice.keyword())
+                    .join(", ")
+            ),
+        ));
+    }
+    voice.map(|voice| Spanned::new(voice, span_of(value)))
+}
+
 /// `{ instrument : violin, range : G3 to E6, sound : 41, volume : 80%, octave : +1 }`.
 fn part_options(
     node: &Node,
-    is_percussion: bool,
+    owner: OptionsOwner,
     instruments: &[InstrumentInfo],
     errors: &mut Vec<RecoverableError>,
 ) -> Result<PartOptions, RecoverableError> {
+    let is_percussion = owner == OptionsOwner::Percussion;
     let mut options = PartOptions::default();
     for element in record_of(node)? {
         let Some(field) = as_field(element) else {
@@ -226,6 +266,10 @@ fn part_options(
         };
         let value = field.value;
         let span = span_of(value);
+        if let Some(message) = misplaced_option(&field.words, owner) {
+            errors.push(invalid(element, message));
+            continue;
+        }
         match field.words.as_slice() {
             ["instrument"] => match value_text(value) {
                 Ok(name) => match RangeInstrument::from_keyword(&name) {
@@ -255,6 +299,7 @@ fn part_options(
                     "a sound is a General MIDI number, like `sound : 41`",
                 )),
             },
+            ["voice"] => options.singing_voice = singing_voice(value, errors),
             ["volume"] => match percentage(value) {
                 Some(written) => options.volume = Some(checked_volume(written, span, errors)),
                 None => errors.push(invalid(
@@ -274,11 +319,24 @@ fn part_options(
             words => errors.push(invalid(
                 element,
                 format!(
-                    "unknown part option `{}`; expected instrument, range, sound, volume or octave",
+                    "unknown part option `{}`; expected instrument, range, sound, volume, octave or voice",
                     words.join(" ")
                 ),
             )),
         }
     }
     Ok(options)
+}
+
+/// Why `words` can't be an option of a part `owner`, if it can't: a lyric
+/// part takes only a voice and a volume, and only a lyric part takes a voice.
+fn misplaced_option(words: &[&str], owner: OptionsOwner) -> Option<&'static str> {
+    match (owner, words) {
+        (OptionsOwner::Lyrics, ["voice"] | ["volume"]) => None,
+        (OptionsOwner::Lyrics, _) => Some(
+            "a lyric part takes only a voice and a volume, like `{ voice : female, volume : 80% }`",
+        ),
+        (_, ["voice"]) => Some("only a lyric part sings, like `lyrics [S] { voice : female }`"),
+        _ => None,
+    }
 }

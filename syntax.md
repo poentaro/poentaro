@@ -187,7 +187,7 @@ parts [
 
 ### Options
 
-Every kind but `lyrics` takes options in braces: `notes { instrument: violin, range: G3 to E6, sound 41, volume: 80 %, octave: - 1 }`.
+Options go in braces: `notes { instrument: violin, range: G3 to E6, sound 41, volume: 80 %, octave: - 1 }`. A `lyrics` part takes only `voice` and `volume` (see [Singing](#singing)).
 
 `sound` selects the MIDI timbre, as a General MIDI program number (0–127). For example: `notes { sound 52 }` for Choir Aahs, or `follow [A] { sound 1 }`. If omitted on a `chords` or `notes` part, the default is the sound of the part's [instrument](#instrument-range), or program 0 (Acoustic Grand Piano) when it names none. On a `follow [X]` part, the sound is inherited from the target when omitted, unless the follow part names its own instrument.
 
@@ -282,12 +282,13 @@ part       : display [ "[" abbreviation "]" ] ":" kind,
 display    : string,                        # the abbreviation, too, when no [ ] follows
 kind       : ( "notes" | "chords" | "percussion" ) [ options ]
            | "follow" "[" abbreviation "]" [ options ]
-           | "lyrics" "[" abbreviation "]",
+           | "lyrics" "[" abbreviation "]" [ options ],
 options    : "{" { option "," } "}",
 option     : "instrument" ":" word          # violin, soprano, …
            | "sound" ":" number             # GM program, or GM drum key on percussion
            | "volume" ":" number "%"
-           | "octave" ":" sign number,
+           | "octave" ":" sign number
+           | "voice" ":" word,              # male, female, child (lyric parts only)
 abbreviation : string | ? words, numbers and symbols, joined without spaces ?,
 
 # ── sequence ────────────────────────────────────────────────────────────
@@ -821,7 +822,7 @@ score """
     """,
 ```
 
-- A lyric part's line is written with its own `[Abbrev]` key, anywhere in the measure group; it is not tied to the line above it. A lyric part takes no sound, volume or octave settings.
+- A lyric part's line is written with its own `[Abbrev]` key, anywhere in the measure group; it is not tied to the line above it. A lyric part takes only `voice` and `volume` (see [Singing](#singing)).
 - Lyric parts have their own abbreviation and display name, and share the abbreviation namespace with every other part (a duplicate abbreviation is an error).
 - Each lyric part renders as its own row directly under its target's notes row, in declaration order, and is tallied and tie-paired against the notes row independently — a lyric part can have its own `-` held syllables and `_` no-lyrics marker.
 - Each verse row's left-margin label shows that lyric part's own abbreviation (e.g. `v1`, `v2`); clicking it, or including it in a click-and-click range selection, selects every syllable that verse sings across the system.
@@ -830,6 +831,31 @@ score """
 - A second line for the same lyric part in one measure group is a `part [Key] has N lines but only 1 slot(s)` error.
 - `lyrics [X]` where `X` is unknown, declared later, a `percussion` part or another lyric part is a `parts_lyrics_invalid_target` error; the lyric part is dropped.
 - A `follow [X]` part never copies lyrics from `X`; give it its own `lyrics [...]` part.
+
+#### Singing
+
+A lyric part with a `voice` sings its lyrics, on its target's notes, in an exported MP3 and in the command line's `generate mp3` and `generate wav`. Playback in the app stays instrumental.
+
+```poentaro
+parts [
+    "Melody" [M]: notes,
+    "Verse 1" [v1]: lyrics [M] { voice: female, volume: 80 % },
+],
+
+score """
+    time=4/4 key=C4 bpm=90
+    [M] 1 2 3 4
+    [v1] 记 得 我 们
+    """,
+```
+
+- `voice` is `male`, `female` or `child`. A lyric part without one is silent. An unknown voice is an error naming the voices.
+- `volume` sets the voice's peak relative to the instruments' peak (default `100 %`).
+- Each syllable is sung on its note's pitch and for its note's length; a tie onto the same pitch lengthens the note, and a held `-` or a slur onto a new pitch carries the vowel on. A `_` measure sings nothing.
+- Chinese, English and Korean lyrics are read for pronunciation; Chinese is sung on the melody, not on each character's spoken tone.
+- A voice on lyrics under a `chords` part is an error, since chords have no notes to sing; the voice is ignored and the lyrics still render.
+- `voice` on any other kind of part is an error.
+- Hidden lyric parts don't sing; a split (per-part) export never sings.
 
 #### Lyrics under a chord part (`lyrics [X]` where `X` is a `chords` part)
 

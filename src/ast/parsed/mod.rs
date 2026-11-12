@@ -7,12 +7,14 @@ mod pitch;
 mod pitch_range;
 mod preset;
 mod range_instrument;
+mod singing_voice;
 pub use events::*;
 pub use metadata_keys::*;
 pub use pitch::*;
 pub use pitch_range::*;
 pub use preset::*;
 pub use range_instrument::*;
+pub use singing_voice::*;
 
 #[derive(Debug)]
 pub enum ParsedMeasureSlot {
@@ -62,6 +64,9 @@ pub struct PartDecl {
     /// checked against in place of its instrument's. A follow part inherits
     /// its target's unless it writes its own or names its own instrument.
     pub written_range: Option<PitchRange>,
+    /// The voice a lyric part sings in, in exported audio; `None` keeps it
+    /// silent. Always `None` on other parts.
+    pub singing_voice: Option<SingingVoice>,
 }
 
 /// What a part's notes are checked against: its written range, or else its
@@ -166,6 +171,7 @@ pub struct ParsedTimedTrack {
     pub volume: u8,
     pub octave_offset: i8,
     pub range_instrument: Option<RangeInstrument>,
+    pub singing_voice: Option<SingingVoice>,
     pub measure_slots: Vec<ParsedMeasureSlot>,
     pub lyrics: Option<ParsedLyrics>,
     /// Per-measure beat-overflow error (None = no overflow for that measure).

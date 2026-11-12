@@ -65,6 +65,7 @@ pub(in crate::grouper) fn group_timed_track(
         volume: part_volume,
         octave_offset: part_octave_offset,
         range_instrument: part_range_instrument,
+        singing_voice: None,
         measures,
     })
 }
@@ -93,6 +94,7 @@ pub(in crate::grouper) fn group_lyrics_track(
         volume: part.volume,
         octave_offset: part.octave_offset,
         range_instrument: part.range_instrument,
+        singing_voice: part.singing_voice,
         measures,
     }
 }

@@ -356,6 +356,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "chimera"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/chimera-vocal-synth?rev=955665cf59e0f66c428f363c603e2c3bb901948e#955665cf59e0f66c428f363c603e2c3bb901948e"
+dependencies = [
+ "libm",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1924,6 +1934,7 @@ dependencies = [
  "nonempty",
  "oxisynth",
  "pdf-writer",
+ "poentaro-singer",
  "quickcheck",
  "rusty_mp3",
  "serde",
@@ -1932,6 +1943,24 @@ dependencies = [
  "tokio",
  "ttf-parser 0.25.1",
  "zip",
+]
+
+[[package]]
+name = "poentaro-singer"
+version = "0.1.0"
+dependencies = [
+ "chimera",
+ "flate2",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "poentaro-singer-wasm"
+version = "0.1.0"
+dependencies = [
+ "poentaro-singer",
+ "wit-bindgen",
 ]
 
 [[package]]

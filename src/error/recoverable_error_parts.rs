@@ -194,6 +194,13 @@ impl RecoverableError {
         }
     }
 
+    pub fn parts_voice_on_chord_lyrics(span: Span) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsVoiceOnChordLyrics,
+        }
+    }
+
     pub fn parts_lyrics_invalid_target(span: Span, target: &str) -> Self {
         Self {
             span,

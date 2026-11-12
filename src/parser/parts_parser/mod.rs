@@ -3,8 +3,10 @@ mod instrument_matching;
 mod lyrics_declaration;
 mod setting_limits;
 
-use crate::ast::parsed::{PartDecl, PartKind, PitchRange, RangeInstrument, Soundfont};
-use crate::error::{RecoverableError, Span};
+use crate::ast::parsed::{
+    PartDecl, PartKind, PitchRange, RangeInstrument, SingingVoice, Soundfont,
+};
+use crate::error::{RecoverableError, Span, Spanned};
 
 pub use instrument_matching::InstrumentInfo;
 pub use setting_limits::{
@@ -21,6 +23,8 @@ use lyrics_declaration::{resolve_lyrics_declaration, LyricsDeclarationHeader};
 mod default_soundfont_tests;
 #[cfg(test)]
 mod lyrics_part_tests;
+#[cfg(test)]
+mod lyrics_part_voice_tests;
 #[cfg(test)]
 mod percussion_tests;
 #[cfg(test)]
@@ -76,6 +80,8 @@ pub(crate) struct RawDecl {
     pub(crate) volume: Option<u8>,
     /// `None` when omitted on the declaration line (follow parts inherit from target).
     pub(crate) octave_offset: Option<i8>,
+    /// Only ever set on a lyric part.
+    pub(crate) singing_voice: Option<Spanned<SingingVoice>>,
 }
 
 pub(crate) enum RawKind {
@@ -146,83 +152,97 @@ pub(crate) fn resolve_declarations(
 ) -> Vec<PartDecl> {
     let mut declarations = Vec::new();
     for (index, raw_decl) in raw.into_iter().enumerate() {
-        let RawDecl {
-            display_name,
-            abbreviation,
-            abbreviation_span,
-            span,
-            kind,
-            range_instrument,
-            written_range,
-            soundfont,
-            volume,
-            octave_offset,
-        } = raw_decl;
-        let soundfont = soundfont.or(range_instrument.map(RangeInstrument::default_soundfont));
-        match kind {
-            RawKind::Follow {
-                target,
-                target_span,
-            } => {
-                if index == 0 {
-                    errors.push(RecoverableError::parts_first_part_cannot_follow(span));
-                    continue;
-                }
-                let Some(target_decl) = declarations
-                    .iter()
-                    .find(|declaration: &&PartDecl| declaration.abbreviation == target)
-                else {
-                    errors.push(RecoverableError::parts_follow_unknown_target(
-                        target_span,
-                        &target,
-                    ));
-                    continue;
-                };
-                declarations.push(PartDecl {
-                    abbreviation,
-                    abbreviation_span,
-                    display_name,
-                    kind: target_decl.kind,
-                    follow_target: Some(target),
-                    range_instrument: range_instrument.or(target_decl.range_instrument),
-                    written_range: follow_range(written_range, range_instrument, target_decl),
-                    soundfont: soundfont.unwrap_or(target_decl.soundfont),
-                    volume: volume.unwrap_or(target_decl.volume),
-                    octave_offset: octave_offset.unwrap_or(target_decl.octave_offset),
-                });
+        let declaration = resolve_declaration(&declarations, index, raw_decl, errors);
+        declarations.extend(declaration);
+    }
+    lyric_parts_after_their_targets(declarations)
+}
+
+/// One declaration resolved against the ones before it; `None` when it is
+/// dropped for an error.
+fn resolve_declaration(
+    declarations: &[PartDecl],
+    index: usize,
+    raw_decl: RawDecl,
+    errors: &mut Vec<RecoverableError>,
+) -> Option<PartDecl> {
+    let RawDecl {
+        display_name,
+        abbreviation,
+        abbreviation_span,
+        span,
+        kind,
+        range_instrument,
+        written_range,
+        soundfont,
+        volume,
+        octave_offset,
+        singing_voice,
+    } = raw_decl;
+    let soundfont = soundfont.or(range_instrument.map(RangeInstrument::default_soundfont));
+    match kind {
+        RawKind::Follow {
+            target,
+            target_span,
+        } => {
+            if index == 0 {
+                errors.push(RecoverableError::parts_first_part_cannot_follow(span));
+                return None;
             }
-            RawKind::Concrete(kind) => declarations.push(PartDecl {
+            let Some(target_decl) = declarations
+                .iter()
+                .find(|declaration: &&PartDecl| declaration.abbreviation == target)
+            else {
+                errors.push(RecoverableError::parts_follow_unknown_target(
+                    target_span,
+                    &target,
+                ));
+                return None;
+            };
+            Some(PartDecl {
                 abbreviation,
                 abbreviation_span,
                 display_name,
-                kind,
-                follow_target: None,
-                range_instrument,
-                written_range,
-                soundfont: soundfont.unwrap_or(kind.default_soundfont()),
-                volume: volume.unwrap_or(DEFAULT_PART_VOLUME),
-                octave_offset: octave_offset.unwrap_or(DEFAULT_PART_OCTAVE_OFFSET),
-            }),
-            RawKind::Lyrics {
-                target,
-                target_span,
-            } => {
-                let declaration = resolve_lyrics_declaration(
-                    &declarations,
-                    LyricsDeclarationHeader {
-                        abbreviation,
-                        abbreviation_span,
-                        display_name,
-                    },
-                    &target,
-                    target_span,
-                    errors,
-                );
-                declarations.extend(declaration);
-            }
+                kind: target_decl.kind,
+                follow_target: Some(target),
+                range_instrument: range_instrument.or(target_decl.range_instrument),
+                written_range: follow_range(written_range, range_instrument, target_decl),
+                soundfont: soundfont.unwrap_or(target_decl.soundfont),
+                volume: volume.unwrap_or(target_decl.volume),
+                octave_offset: octave_offset.unwrap_or(target_decl.octave_offset),
+                singing_voice: None,
+            })
         }
+        RawKind::Concrete(kind) => Some(PartDecl {
+            abbreviation,
+            abbreviation_span,
+            display_name,
+            kind,
+            follow_target: None,
+            range_instrument,
+            written_range,
+            soundfont: soundfont.unwrap_or(kind.default_soundfont()),
+            volume: volume.unwrap_or(DEFAULT_PART_VOLUME),
+            octave_offset: octave_offset.unwrap_or(DEFAULT_PART_OCTAVE_OFFSET),
+            singing_voice: None,
+        }),
+        RawKind::Lyrics {
+            target,
+            target_span,
+        } => resolve_lyrics_declaration(
+            declarations,
+            LyricsDeclarationHeader {
+                abbreviation,
+                abbreviation_span,
+                display_name,
+                singing_voice,
+                volume,
+            },
+            &target,
+            target_span,
+            errors,
+        ),
     }
-    lyric_parts_after_their_targets(declarations)
 }
 
 /// Reorders `declarations` so each lyric part sits directly after its target

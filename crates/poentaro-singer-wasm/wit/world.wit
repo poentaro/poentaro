@@ -1,0 +1,8 @@
+package poentaro:singer;
+
+world poentaro-singer {
+    // The vocals for a singing plan (the bytes `poentaro-wasm`'s
+    // `singing-plan` returns): mono samples at the plan's sample rate, to mix
+    // into the instruments with `generate-mp3`.
+    export sing: func(plan: list<u8>) -> result<list<f32>, string>;
+}

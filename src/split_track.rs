@@ -308,7 +308,7 @@ pub fn write_split_wavs_from_source(
         let mut score_clone = score.clone();
         filter_tracks(&mut score_clone, std::slice::from_ref(&track));
         let midi_bytes = crate::midi::write_midi(&score_clone)?;
-        let wav = crate::wav::write_wav(&midi_bytes, sf2_bytes, None)?;
+        let wav = crate::wav::write_wav(&midi_bytes, sf2_bytes, None, &[])?;
         let label = split_track_label(&display_names, &track);
         entries.push(SplitFileEntry {
             track_name: track.clone(),
@@ -337,7 +337,7 @@ pub fn write_split_mp3s_from_source(
         let mut score_clone = score.clone();
         filter_tracks(&mut score_clone, std::slice::from_ref(&track));
         let midi_bytes = crate::midi::write_midi(&score_clone)?;
-        let mp3 = crate::wav::write_mp3(&midi_bytes, sf2_bytes, None)?;
+        let mp3 = crate::wav::write_mp3(&midi_bytes, sf2_bytes, None, &[])?;
         let label = split_track_label(&display_names, &track);
         entries.push(SplitFileEntry {
             track_name: track.clone(),

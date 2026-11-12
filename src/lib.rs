@@ -65,6 +65,8 @@ mod visibility_render;
 pub mod midi;
 #[cfg(feature = "pdf")]
 pub mod pdf;
+#[cfg(feature = "midi")]
+pub mod sing;
 #[cfg(feature = "wav")]
 pub mod wav;
 

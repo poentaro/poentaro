@@ -2,6 +2,7 @@ use crate::error::{Diagnostic, IrrecoverableError, IrrecoverableErrorKind, Span}
 use std::path::Path;
 
 pub mod generate;
+mod sung_vocals;
 
 pub use generate::GenerateInput;
 

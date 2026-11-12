@@ -167,7 +167,7 @@ fn an_unknown_section_is_reported() {
 fn an_unknown_part_option_is_reported() {
     assert_eq!(
         error_messages(r#"parts [ "Piano" [P] : notes { loudness : 3 } ], score """#),
-        ["unknown part option `loudness`; expected instrument, range, sound, volume or octave"]
+        ["unknown part option `loudness`; expected instrument, range, sound, volume, octave or voice"]
     );
 }
 

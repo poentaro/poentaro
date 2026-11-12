@@ -315,7 +315,7 @@ pub fn generate_wav(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
             &display_names,
             |score_clone, _, label, base, base_name| {
                 let midi_bytes = jg::midi::write_midi(score_clone)?;
-                let wav_bytes = jg::wav::write_wav(&midi_bytes, super::SF2_BYTES, None)?;
+                let wav_bytes = jg::wav::write_wav(&midi_bytes, super::SF2_BYTES, None, &[])?;
                 let track_path = track_output_path(base, base_name, label, "wav");
                 super::write_file(&track_path, &wav_bytes)?;
                 println!("written to {track_path:?}");
@@ -330,7 +330,8 @@ pub fn generate_wav(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
     let mut score = score;
     jg::filter_tracks(&mut score, &tracks);
     let midi_bytes = jg::midi::write_midi(&score)?;
-    let wav_bytes = jg::wav::write_wav(&midi_bytes, super::SF2_BYTES, None)?;
+    let vocals = super::sung_vocals::sung_vocals(&score)?;
+    let wav_bytes = jg::wav::write_wav(&midi_bytes, super::SF2_BYTES, None, &vocals)?;
     let output_path =
         output_stem(&opts.input, &output_label(opts), opts.output.as_deref()).with_extension("wav");
     super::write_file(&output_path, &wav_bytes)?;
@@ -352,7 +353,7 @@ pub fn generate_mp3(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
             &display_names,
             |score_clone, _, label, base, base_name| {
                 let midi_bytes = jg::midi::write_midi(score_clone)?;
-                let mp3_bytes = jg::wav::write_mp3(&midi_bytes, super::SF2_BYTES, None)?;
+                let mp3_bytes = jg::wav::write_mp3(&midi_bytes, super::SF2_BYTES, None, &[])?;
                 let track_path = track_output_path(base, base_name, label, "mp3");
                 super::write_file(&track_path, &mp3_bytes)?;
                 println!("written to {track_path:?}");
@@ -367,7 +368,8 @@ pub fn generate_mp3(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
     let mut score = score;
     jg::filter_tracks(&mut score, &tracks);
     let midi_bytes = jg::midi::write_midi(&score)?;
-    let mp3_bytes = jg::wav::write_mp3(&midi_bytes, super::SF2_BYTES, None)?;
+    let vocals = super::sung_vocals::sung_vocals(&score)?;
+    let mp3_bytes = jg::wav::write_mp3(&midi_bytes, super::SF2_BYTES, None, &vocals)?;
     let output_path =
         output_stem(&opts.input, &output_label(opts), opts.output.as_deref()).with_extension("mp3");
     super::write_file(&output_path, &mp3_bytes)?;

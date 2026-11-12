@@ -70,12 +70,18 @@ pub(super) fn generate_mp3(
     source: String,
     enabled_tracks: Option<Vec<String>>,
     soundfont: Vec<u8>,
+    vocals: Vec<f32>,
 ) -> GenerateMp3Response {
     generate_mp3_response_to_wit(crate::responses::generate_mp3_response(
         &source,
         enabled_tracks.as_deref(),
         soundfont,
+        vocals,
     ))
+}
+
+pub(super) fn singing_plan(source: String, enabled_tracks: Option<Vec<String>>) -> Option<Vec<u8>> {
+    crate::responses::singing_plan_response(&source, enabled_tracks.as_deref())
 }
 
 pub(super) fn generate_split_mp3s(

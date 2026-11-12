@@ -200,6 +200,7 @@ fn build_part_rows(
                                     .map_or_else(Vec::new, |measure| measure.notes.events.clone()),
                                 targets_chords: target.kind == PartKind::Chords,
                                 syllables: measure.paired_lyrics.clone(),
+                                singing_voice: part.singing_voice,
                             }
                         })
                     }
