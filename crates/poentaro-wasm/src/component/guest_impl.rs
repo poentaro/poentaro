@@ -104,6 +104,8 @@ impl Guest for Component {
     forward_to_free_functions! {
         generate_mp3(source: String, enabled_tracks: Option<Vec<String>>, soundfont: Vec<u8>, vocals: Vec<f32>) -> GenerateMp3Response;
         singing_plan(source: String, enabled_tracks: Option<Vec<String>>) -> Option<Vec<u8>>;
+        singing_plan_for_measure_range(source: String, start_index: u32, end_index: u32, extend_to_last_occurrence: bool, respect_sequence: bool, sequence_entry_start_index: Option<u32>, sequence_entry_end_index: Option<u32>, enabled_tracks: Option<Vec<String>>) -> Option<Vec<u8>>;
+        split_singing_plans(source: String, preset_name: Option<String>) -> Vec<TrackSingingPlan>;
     }
 
     fn generate_pdf(
@@ -132,6 +134,7 @@ impl Guest for Component {
         trim_end_s: Option<f64>,
         trim_next_note_start_s: Option<f64>,
         soundfont: Vec<u8>,
+        vocals: Vec<f32>,
     ) -> GenerateMp3Response {
         generate_mp3_for_measure_range(
             source,
@@ -146,6 +149,7 @@ impl Guest for Component {
             trim_end_s,
             trim_next_note_start_s,
             soundfont,
+            vocals,
         )
     }
 
@@ -335,10 +339,10 @@ impl Guest for Component {
         generate_split_staff_pdfs(parts: Vec<StaffPdfPart>, fonts: FontBytesByFamily) -> GenerateSplitPdfsResponse;
         generate_split_pdfs(source: String, base_name: String, preset_name: Option<String>, fonts: FontBytesByFamily, note_labels: NoteLabels) -> GenerateSplitPdfsResponse;
         generate_split_midis(source: String, base_name: String, preset_name: Option<String>) -> GenerateSplitMidisResponse;
-        generate_split_wavs(source: String, base_name: String, preset_name: Option<String>, soundfont: Vec<u8>) -> GenerateSplitWavsResponse;
-        generate_split_mp3s(source: String, base_name: String, preset_name: Option<String>, soundfont: Vec<u8>) -> GenerateSplitMp3sResponse;
-        generate_wav(source: String, enabled_tracks: Option<Vec<String>>, metronome: bool, soundfont: Vec<u8>) -> GenerateWavResponse;
-        generate_wav_for_measure_range(source: String, start_index: u32, end_index: u32, extend_to_last_occurrence: bool, respect_sequence: bool, sequence_entry_start_index: Option<u32>, sequence_entry_end_index: Option<u32>, enabled_tracks: Option<Vec<String>>, metronome: bool, trim_start_s: Option<f64>, trim_end_s: Option<f64>, trim_next_note_start_s: Option<f64>, soundfont: Vec<u8>) -> GenerateWavResponse;
+        generate_split_wavs(source: String, base_name: String, preset_name: Option<String>, soundfont: Vec<u8>, vocals: Vec<TrackVocals>) -> GenerateSplitWavsResponse;
+        generate_split_mp3s(source: String, base_name: String, preset_name: Option<String>, soundfont: Vec<u8>, vocals: Vec<TrackVocals>) -> GenerateSplitMp3sResponse;
+        generate_wav(source: String, enabled_tracks: Option<Vec<String>>, metronome: bool, soundfont: Vec<u8>, vocals: Vec<f32>) -> GenerateWavResponse;
+        generate_wav_for_measure_range(source: String, start_index: u32, end_index: u32, extend_to_last_occurrence: bool, respect_sequence: bool, sequence_entry_start_index: Option<u32>, sequence_entry_end_index: Option<u32>, enabled_tracks: Option<Vec<String>>, metronome: bool, trim_start_s: Option<f64>, trim_end_s: Option<f64>, trim_next_note_start_s: Option<f64>, soundfont: Vec<u8>, vocals: Vec<f32>) -> GenerateWavResponse;
         file_store_create_folder(state: FileStoreState, parent: Option<String>, name: String, context: FileOperationContext) -> FileStoreResponse;
         file_store_create_folder_error(state: FileStoreState, parent: Option<String>, name: String, context: FileOperationContext) -> Option<String>;
         file_store_move_targets(state: FileStoreState, excluded_folder: Option<String>) -> Vec<MoveTarget>;

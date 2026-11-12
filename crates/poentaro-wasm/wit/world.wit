@@ -1400,7 +1400,8 @@ world poentaro-wasm {
     }
 
     // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
-    export generate-wav: func(source: string, enabled-tracks: option<list<string>>, metronome: bool, soundfont: list<u8>) -> generate-wav-response;
+    // `vocals`: as in `generate-mp3`.
+    export generate-wav: func(source: string, enabled-tracks: option<list<string>>, metronome: bool, soundfont: list<u8>, vocals: list<f32>) -> generate-wav-response;
 
     // Phase 3, group 6 of PLAN-wit-bindgen-migration.md. Plain scalar params
     // (not wrapped in a record), matching group 3/4's convention for
@@ -1414,7 +1415,11 @@ world poentaro-wasm {
     // from the `wasm-bindgen` boundary (gated on `wasm-bindgen-boundary`) and
     // had to be ungated the same way group 5 ungated `types_export.rs`/
     // `responses_*.rs` — see PLAN-wit-bindgen-migration.md's Status section.
-    export generate-wav-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>, metronome: bool, trim-start-s: option<f64>, trim-end-s: option<f64>, trim-next-note-start-s: option<f64>, soundfont: list<u8>) -> generate-wav-response;
+    export generate-wav-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>, metronome: bool, trim-start-s: option<f64>, trim-end-s: option<f64>, trim-next-note-start-s: option<f64>, soundfont: list<u8>, vocals: list<f32>) -> generate-wav-response;
+
+    // What `generate-wav-for-measure-range` / `generate-mp3-for-measure-range`
+    // of the same range and tracks sing, like `singing-plan`.
+    export singing-plan-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>) -> option<list<u8>>;
 
     // Phase 3, group 6 of PLAN-wit-bindgen-migration.md.
     export generate-instrument-preview-wav: func(program-number: u8, soundfont: list<u8>) -> generate-wav-response;
@@ -1514,7 +1519,24 @@ world poentaro-wasm {
     }
 
     // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
-    export generate-split-wavs: func(source: string, base-name: string, preset-name: option<string>, soundfont: list<u8>) -> generate-split-wavs-response;
+    // One track of a split audio export and what it sings, as an opaque plan
+    // for the singer module's `sing`.
+    record track-singing-plan {
+        track-name: string,
+        plan: list<u8>,
+    }
+
+    // One track's samples from the singer module's `sing` of its plan.
+    record track-vocals {
+        track-name: string,
+        samples: list<f32>,
+    }
+
+    // What each track of `generate-split-wavs` / `generate-split-mp3s` of the
+    // same source and preset sings; only the tracks that sing.
+    export split-singing-plans: func(source: string, preset-name: option<string>) -> list<track-singing-plan>;
+
+    export generate-split-wavs: func(source: string, base-name: string, preset-name: option<string>, soundfont: list<u8>, vocals: list<track-vocals>) -> generate-split-wavs-response;
 
     record generate-mp3-success {
         mp3: list<u8>,
@@ -1531,8 +1553,7 @@ world poentaro-wasm {
     export generate-mp3: func(source: string, enabled-tracks: option<list<string>>, soundfont: list<u8>, vocals: list<f32>) -> generate-mp3-response;
 
     // What `generate-mp3` of the same source and tracks sings, as an opaque
-    // plan for the singer module's `sing`; none when no lyric part has a
-    // voice. Only then does the app load the singer.
+    // plan for the singer module's `sing`; none when no part sings. Only then does the app load the singer.
     export singing-plan: func(source: string, enabled-tracks: option<list<string>>) -> option<list<u8>>;
 
     // Phase 3, group 6 of PLAN-wit-bindgen-migration.md. See
@@ -1540,7 +1561,7 @@ world poentaro-wasm {
     // `sequence-entry-start-index`/`sequence-entry-end-index`/
     // `trim-start-s`/`trim-end-s`/`trim-next-note-start-s` — this mirrors it
     // exactly, only encoding to MP3 instead of WAV.
-    export generate-mp3-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>, trim-start-s: option<f64>, trim-end-s: option<f64>, trim-next-note-start-s: option<f64>, soundfont: list<u8>) -> generate-mp3-response;
+    export generate-mp3-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>, trim-start-s: option<f64>, trim-end-s: option<f64>, trim-next-note-start-s: option<f64>, soundfont: list<u8>, vocals: list<f32>) -> generate-mp3-response;
 
     record generate-split-mp3s-success {
         zip: list<u8>,
@@ -1552,7 +1573,7 @@ world poentaro-wasm {
     }
 
     // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
-    export generate-split-mp3s: func(source: string, base-name: string, preset-name: option<string>, soundfont: list<u8>) -> generate-split-mp3s-response;
+    export generate-split-mp3s: func(source: string, base-name: string, preset-name: option<string>, soundfont: list<u8>, vocals: list<track-vocals>) -> generate-split-mp3s-response;
 
     // ==================== lib_import.rs ====================
     // Phase 3, group 7 of PLAN-wit-bindgen-migration.md.

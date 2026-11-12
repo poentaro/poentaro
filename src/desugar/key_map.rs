@@ -1,4 +1,6 @@
-use crate::ast::parsed::PartDecl;
+use std::collections::HashMap;
+
+use crate::ast::parsed::{AlternativeLine, PartDecl};
 use crate::error::{RecoverableError, Span};
 
 use super::attribution::KeyedLine;
@@ -15,11 +17,28 @@ pub(super) fn filter_keyed_into_key_map(
     recoverable_error: &mut Option<RecoverableError>,
 ) -> KeyMap {
     let mut key_map: KeyMap = declarations.iter().map(|_| None).collect();
+    let mut lines_so_far: HashMap<String, u32> = HashMap::new();
 
     for line in keyed {
+        // A part's Nth line in the group goes to its alternative line `Key.N`
+        // (see `parser::alternative_lines`).
+        let number = {
+            let count = lines_so_far.entry(line.key.clone()).or_default();
+            *count += 1;
+            *count
+        };
+        let abbreviation = if number == 1 {
+            line.key.clone()
+        } else {
+            AlternativeLine {
+                base: line.key.clone(),
+                number,
+            }
+            .abbreviation()
+        };
         let Some(declaration_index) = declarations
             .iter()
-            .position(|declaration| declaration.abbreviation == line.key)
+            .position(|declaration| declaration.abbreviation == abbreviation)
         else {
             recoverable_error.get_or_insert_with(|| {
                 RecoverableError::part_key_unknown(line.key_prefix_span, &line.key)

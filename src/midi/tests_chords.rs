@@ -104,6 +104,7 @@ fn chord_major_expands_to_three_notes() {
                 volume: 100,
                 octave_offset: 0,
                 range_instrument: None,
+                singing_voice: None,
                 notes: Notes {
                     events: vec![NoteEvent::Chord(chord)],
                 },
@@ -168,7 +169,7 @@ score """
 fn measure_index_out_of_range_is_recoverable() {
     let score = one_measure_score();
     assert!(
-        write_midi_for_measure_range(&score, 999, 999).is_ok(),
+        write_midi_for_measure_range_with_metronome(&score, 999, 999, false).is_ok(),
         "out-of-range measure index must not abort MIDI generation"
     );
 }
@@ -228,6 +229,7 @@ fn slurred_same_pitch_notes_produce_two_note_ons() {
                 volume: 100,
                 octave_offset: 0,
                 range_instrument: None,
+                singing_voice: None,
                 notes: Notes {
                     events: vec![make_note(true), make_note(false)],
                 },
@@ -253,7 +255,7 @@ fn slurred_same_pitch_notes_produce_two_note_ons() {
 fn invalid_measure_range_is_recoverable() {
     let score = one_measure_score();
     assert!(
-        write_midi_for_measure_range(&score, 5, 0).is_ok(),
+        write_midi_for_measure_range_with_metronome(&score, 5, 0, false).is_ok(),
         "invalid measure range (start > end) must not abort MIDI generation"
     );
 }

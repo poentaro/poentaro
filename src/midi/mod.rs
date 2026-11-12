@@ -71,7 +71,7 @@ fn build_part_channel_assignments(
             .parts
             .iter()
             .map(|r| r.slice())
-            .filter(|p| is_melodic(p.kind))
+            .filter(|p| is_melodic(p.kind) && !p.is_alternative_line())
         {
             if assignments.iter().any(|a| a.name == slice.name) {
                 continue;
@@ -110,7 +110,7 @@ fn parts_matching(
         .parts
         .iter()
         .map(|r| r.slice())
-        .filter(|p| matches(p.kind))
+        .filter(|p| matches(p.kind) && !p.is_alternative_line())
         .collect()
 }
 
@@ -296,7 +296,8 @@ pub use timing::{
     build_measure_range_score, measure_start_times_seconds, note_timings_seconds,
     note_timings_seconds_for_literal_range, note_timings_seconds_for_range, NoteTiming,
 };
-pub use timing_range::{write_midi_for_measure_range, write_midi_for_measure_range_with_metronome};
+#[cfg(test)]
+pub(crate) use timing_range::write_midi_for_measure_range_with_metronome;
 
 pub(crate) fn process_measure(
     measure: &crate::ast::grouped::MultiPartMeasure,

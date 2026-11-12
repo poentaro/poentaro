@@ -22,6 +22,7 @@ pub(in crate::grouper) fn group_timed_track(
     let part_volume = part.volume;
     let part_octave_offset = part.octave_offset;
     let part_range_instrument = part.range_instrument;
+    let part_singing_voice = part.singing_voice;
     let mut grouper = PartGrouper::new(&part);
     for (slot_index, slot) in part.measure_slots.into_iter().enumerate() {
         match slot {
@@ -65,7 +66,8 @@ pub(in crate::grouper) fn group_timed_track(
         volume: part_volume,
         octave_offset: part_octave_offset,
         range_instrument: part_range_instrument,
-        singing_voice: None,
+        singing_voice: part_singing_voice,
+        lyric_targets: Vec::new(),
         measures,
     })
 }
@@ -94,7 +96,8 @@ pub(in crate::grouper) fn group_lyrics_track(
         volume: part.volume,
         octave_offset: part.octave_offset,
         range_instrument: part.range_instrument,
-        singing_voice: part.singing_voice,
+        singing_voice: None,
+        lyric_targets: part.lyric_targets,
         measures,
     }
 }

@@ -28,13 +28,49 @@ function singer(): Promise<Singer> {
   return singerPromise
 }
 
-/** What the score's voiced lyric parts sing, to mix into its audio; empty
- * when nothing sings. */
-export async function vocalsFor(
+/** Recently sung plans, so playing the same score again doesn't sing it
+ * again. Keyed by the plan's bytes. */
+const sungPlans = new Map<string, Float32Array>()
+const SUNG_PLANS_KEPT = 8
+
+/** `plan` sung; empty when there is no plan (nothing sings). */
+export async function sing(
+  plan: Uint8Array | undefined,
+): Promise<Float32Array> {
+  if (!plan) return new Float32Array()
+  const key = new TextDecoder().decode(plan)
+  const cached = sungPlans.get(key)
+  if (cached) return cached
+  const samples = (await singer()).sing(plan)
+  sungPlans.set(key, samples)
+  if (sungPlans.size > SUNG_PLANS_KEPT) {
+    const oldest = sungPlans.keys().next().value
+    if (oldest !== undefined) sungPlans.delete(oldest)
+  }
+  return samples
+}
+
+/** What the score's singing parts sing, to mix into its audio; empty when
+ * nothing sings. */
+export function vocalsFor(
   source: string,
   enabledTracks: string[] | undefined,
 ): Promise<Float32Array> {
-  const plan = poentaroWasm().singingPlan(source, enabledTracks)
-  if (!plan) return new Float32Array()
-  return (await singer()).sing(plan)
+  return sing(poentaroWasm().singingPlan(source, enabledTracks))
 }
+
+/** Each singing track of a split audio export, sung. */
+export async function splitVocalsFor(
+  source: string,
+  presetName: string | undefined,
+): Promise<TrackVocals[]> {
+  const plans = poentaroWasm().splitSingingPlans(source, presetName)
+  return Promise.all(
+    plans.map(async ({ trackName, plan }) => ({
+      trackName,
+      samples: await sing(plan),
+    })),
+  )
+}
+
+export type TrackVocals = { trackName: string; samples: Float32Array }

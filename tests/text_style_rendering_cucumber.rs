@@ -69,6 +69,7 @@ fn render_source(metadata_lines: &[String], title: &str, score_body: &str) -> Re
         parts_list_columns: 3,
         sequence: Some(vec![grid_layout::types::SequenceEntryInfo {
             label: "A".to_string(),
+            lines: Vec::new(),
             part_filter: None,
         }]),
         title_font_size: score.metadata.title_style.font_size as f32,

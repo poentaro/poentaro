@@ -212,6 +212,21 @@ pub(super) fn sequence_line_content(
             directive_font_sizes.sequence_italic,
             directive_font_sizes.sequence_underline,
         ));
+        if !entry.lines.is_empty() {
+            let lines = entry
+                .lines
+                .iter()
+                .map(|line| format!("{} {}", line.part, line.line))
+                .collect::<Vec<_>>()
+                .join(", ");
+            spans.push(TextSpan {
+                content: format!(" ({lines})"),
+                bold: false,
+                italic: false,
+                underline: false,
+                font_size,
+            });
+        }
         if let Some(filter) = &entry.part_filter {
             let content = match filter.kind {
                 PartFilterKind::Omit => format!(" (-{})", filter.parts.join(" -")),

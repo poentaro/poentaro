@@ -91,6 +91,14 @@ pub enum RecoverableErrorKind {
         attacks: usize,
         first_syllable_takes_beat_one: bool,
     },
+    /// The parts one lyric part is sung on take different numbers of
+    /// syllables in a measure.
+    LyricsTargetsDiffer {
+        first: String,
+        first_slots: usize,
+        other: String,
+        other_slots: usize,
+    },
     /// A part has a different number of measures than the first part.
     PartMeasureCountMismatch {
         part: String,
@@ -143,8 +151,14 @@ pub enum RecoverableErrorKind {
     /// An instrument on a part that isn't `notes` or `follow[X]` — ignored.
     PartsInstrumentOnNonNotesPart,
     /// A voice on a lyric part under a `chords` part, whose syllables have no
-    /// pitch to sing — ignored.
-    PartsVoiceOnChordLyrics,
+    /// A part that sings (its sound is a Chimera voice) with no lyric part
+    /// sung on it.
+    PartsSingingPartWithoutLyrics { part: String },
+    /// A part that sings with more than one lyric part sung on it.
+    PartsSingingPartWithSeveralLyrics {
+        part: String,
+        lyric_parts: Vec<String>,
+    },
     /// A `range` option that isn't two pitches joined by `to` — ignored.
     PartsMalformedRange,
     /// A `range` bound that isn't a pitch like `C3` — the range is ignored.
@@ -198,6 +212,7 @@ impl RecoverableErrorKind {
             Self::LyricsLineEmpty => "lyrics line cannot be empty; use '_' for no lyrics".to_string(),
             Self::LyricsNoNotesTrack { abbrev } => format!("lyrics line for '{abbrev}' has no matching notes track"),
             Self::LyricsBracketNotOneSyllable { found } => format!("a lyric bracket must hold exactly one syllable, found {found}"),
+            Self::LyricsTargetsDiffer { first, first_slots, other, other_slots } => format!("[{first}] takes {first_slots} syllable(s) in this measure but [{other}] takes {other_slots}; the parts a lyric part is sung on must share their rhythm"),
             Self::LyricsBracketUnclosed => "lyric bracket is never closed".to_string(),
             Self::LyricsBracketUnmatched => "closing lyric bracket has no opening bracket".to_string(),
             Self::LyricsBracketCountMismatch { brackets, attacks, first_syllable_takes_beat_one } => format!(
@@ -222,7 +237,7 @@ impl RecoverableErrorKind {
             Self::DanglingTie => "~ has no following note to tie to; ~ ignored".to_string(),
             Self::TiePitchMismatch { expected, got } => format!("tied notes must have the same pitch and octave; expected {expected}, got {got}; ~ ignored"),
             Self::PartsFollowUnknownTarget { target } => format!("no part with abbreviation '{target}'; follow targets must match a part declared earlier in parts"),
-            Self::PartsLyricsInvalidTarget { target } => format!("lyrics[{target}] must name a notes or chords part declared earlier in parts"),
+            Self::PartsLyricsInvalidTarget { target } => format!("lyrics [{target}] must name a notes or chords part declared earlier in parts; a lyric part sung on several parts names notes parts only"),
             Self::PartsFirstPartCannotFollow => "the first declared part cannot use follow[...]".to_string(),
             Self::PartsUnknownSoundfont { soundfont, suggestions } => Self::parts_unknown_soundfont_message(soundfont, suggestions),
             Self::PartsVolumeOutOfRange { volume } => Self::parts_volume_out_of_range_message(*volume),
@@ -232,7 +247,8 @@ impl RecoverableErrorKind {
                 crate::ast::parsed::RangeInstrument::ALL.iter().map(|instrument| instrument.keyword()).join(", ")
             ),
             Self::PartsInstrumentOnNonNotesPart => "only notes parts can name an instrument; ignored".to_string(),
-            Self::PartsVoiceOnChordLyrics => "lyrics under a chords part have no notes to sing; voice ignored".to_string(),
+            Self::PartsSingingPartWithoutLyrics { part } => format!("part [{part}] sings, but no lyric part is sung on it; add one, like `\"Words\" [w] : lyrics [{part}]`, or give it a General MIDI sound, like `sound : 52`"),
+            Self::PartsSingingPartWithSeveralLyrics { part, lyric_parts } => format!("part [{part}] sings, but {} lyric parts are sung on it ({}); keep one, and write each verse as another line of it", lyric_parts.len(), lyric_parts.iter().map(|lyric_part| format!("[{lyric_part}]")).join(", ")),
             Self::PartsMalformedRange => "a range is two pitches joined by `to`, like `range : C3 to G4`; ignored".to_string(),
             Self::PartsMalformedRangePitch { pitch } => format!("`{pitch}` is not a pitch; write a letter, an optional `b` for flat and an octave, like `C3` or `Bb4`, or quote a sharp, like `\"F#3\"`; range ignored"),
             Self::PartsRangeLowAboveHigh { lowest, highest } => format!("the range's low note {lowest} is above its high note {highest}; range ignored"),

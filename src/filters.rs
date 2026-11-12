@@ -1,6 +1,8 @@
 use crate::ast::grouped::Score;
+use crate::ast::parsed::AlternativeLine;
 
-/// Retain only parts whose names appear in `enabled_tracks`.
+/// Retain only parts whose names appear in `enabled_tracks`. A part's
+/// alternative line (`S.2`) goes with the part.
 ///
 /// `None` keeps every part. `Some([])` removes every part.
 pub fn apply_track_filter(score: &mut Score, enabled_tracks: Option<&[String]>) {
@@ -9,9 +11,11 @@ pub fn apply_track_filter(score: &mut Score, enabled_tracks: Option<&[String]>) 
     };
     for measure in &mut score.measures {
         measure.parts.retain(|part| {
-            part.name()
-                .as_ref()
-                .is_some_and(|name| tracks.contains(name))
+            part.name().as_ref().is_some_and(|name| {
+                let part_name =
+                    AlternativeLine::of(name).map_or_else(|| name.to_string(), |line| line.base);
+                tracks.contains(&part_name)
+            })
         });
     }
 }

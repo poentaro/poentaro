@@ -117,7 +117,8 @@ pub fn list_part_declarations_from_source(
 /// List part declarations from a `.poentaro` source string.
 ///
 /// Lyric parts are listed like any other part, right after the part they sing
-/// along to.
+/// along to. A part's alternative lines (`S.2`) aren't listed: they show and
+/// hide with the part.
 pub fn list_parts_from_source(
     source: &str,
     filename: &str,
@@ -127,6 +128,7 @@ pub fn list_parts_from_source(
     Ok(doc
         .declarations
         .into_iter()
+        .filter(|declaration| declaration.alternative_line.is_none())
         .map(|declaration| PartInfo {
             abbreviation: declaration.abbreviation,
             display_name: declaration.display_name,

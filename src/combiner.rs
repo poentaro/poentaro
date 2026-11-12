@@ -188,6 +188,14 @@ fn build_part_rows(
                     ));
                     continue;
                 };
+                diagnostics.extend(
+                    crate::lyric_targets_rhythm::lyric_targets_rhythm_error(
+                        grouped_tracks,
+                        part,
+                        measure_idx,
+                    )
+                    .map(Diagnostic::Error),
+                );
                 let lyrics = match part.kind {
                     PartKind::Lyrics { target_part_index } => {
                         grouped_tracks.get(target_part_index).map(|target| {
@@ -200,7 +208,14 @@ fn build_part_rows(
                                     .map_or_else(Vec::new, |measure| measure.notes.events.clone()),
                                 targets_chords: target.kind == PartKind::Chords,
                                 syllables: measure.paired_lyrics.clone(),
-                                singing_voice: part.singing_voice,
+                                sung_on: part
+                                    .lyric_targets
+                                    .iter()
+                                    .filter_map(|&index| match grouped_tracks.get(index) {
+                                        Some(GroupedTrack::Timed(target)) => target.name.clone(),
+                                        None => None,
+                                    })
+                                    .collect(),
                             }
                         })
                     }
@@ -213,6 +228,7 @@ fn build_part_rows(
                     volume: part.volume,
                     octave_offset: part.octave_offset,
                     range_instrument: part.range_instrument,
+                    singing_voice: part.singing_voice,
                     notes: Notes {
                         events: measure.notes.events.clone(),
                     },

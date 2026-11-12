@@ -2,7 +2,7 @@
 
 mod lyrics;
 
-use chimera::anatomy::human::{HumanBody, BODY_CHILD, BODY_FEMALE, BODY_MALE};
+use chimera::anatomy::human::{HumanBody, BODY_FEMALE, BODY_MALE};
 use chimera::phonetics::sing::{midi_to_hz, plan_song, SongOptions};
 use chimera::voice::human_voice::{HumanVoice, SourcePatch};
 
@@ -24,17 +24,16 @@ const VIBRATO_CENTS: f64 = 35.0;
 impl Voice {
     fn body(self) -> HumanBody {
         match self {
-            Voice::Male => BODY_MALE,
-            Voice::Female => BODY_FEMALE,
-            Voice::Child => BODY_CHILD,
+            Voice::Soprano | Voice::Alto => BODY_FEMALE,
+            Voice::Tenor | Voice::Bass => BODY_MALE,
         }
     }
 
+    /// chimera's name for [`Voice::body`].
     fn name(self) -> &'static str {
         match self {
-            Voice::Male => "male",
-            Voice::Female => "female",
-            Voice::Child => "child",
+            Voice::Soprano | Voice::Alto => "female",
+            Voice::Tenor | Voice::Bass => "male",
         }
     }
 }

@@ -1,6 +1,7 @@
 use crate::ast::parsed::{ParsedDocument, ParsedMetadata, PartDecl};
 use crate::error::{IrrecoverableError, RecoverableError};
 
+mod alternative_lines;
 pub mod anyfix;
 pub mod lyrics;
 pub mod parts_parser;
@@ -37,7 +38,9 @@ pub fn parse(
     instruments: &[parts_parser::InstrumentInfo],
 ) -> Result<ParsedDocument, IrrecoverableError> {
     let path = std::path::Path::new(filename);
-    let read = read_document(input, instruments);
+    let mut read = read_document(input, instruments);
+    read.declarations =
+        alternative_lines::with_alternative_lines(read.declarations, &read.score.text);
 
     let (tracks, directive_events_per_measure, per_measure_parse_errors, abbreviation_references) =
         if read.declarations.is_empty() {

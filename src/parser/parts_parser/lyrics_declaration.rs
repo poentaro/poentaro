@@ -1,51 +1,37 @@
-//! Resolving a `lyrics[X]` declaration against the parts declared before it.
+//! Resolving a `lyrics [X]` / `lyrics [S, A, T, B]` declaration against the
+//! parts declared before it.
 
-use crate::ast::parsed::{PartDecl, PartKind, SingingVoice};
-use crate::error::{RecoverableError, Span, Spanned};
+use crate::ast::parsed::{PartDecl, PartKind};
+use crate::error::{RecoverableError, Span};
 
-use super::{DEFAULT_PART_OCTAVE_OFFSET, DEFAULT_PART_VOLUME};
+use super::{LyricTarget, DEFAULT_PART_OCTAVE_OFFSET, DEFAULT_PART_VOLUME};
 
-/// A `lyrics[X]` declaration's own fields, before its target is resolved.
+/// A lyric part's own fields, before its targets are resolved.
 pub(super) struct LyricsDeclarationHeader {
     pub(super) abbreviation: String,
     pub(super) abbreviation_span: Span,
     pub(super) display_name: String,
-    pub(super) singing_voice: Option<Spanned<SingingVoice>>,
-    pub(super) volume: Option<u8>,
 }
 
-/// Resolves a `lyrics[target]` declaration against the parts declared so far,
-/// reporting an error (and yielding nothing) when `target` isn't an earlier
-/// notes or chords part.
+/// Resolves a lyric part against the parts declared so far, reporting an
+/// error (and yielding nothing) when a target isn't an earlier notes or
+/// chords part. Several targets must all be notes parts: chords have no
+/// notes to share syllables with.
 pub(super) fn resolve_lyrics_declaration(
     declarations: &[PartDecl],
     header: LyricsDeclarationHeader,
-    target: &str,
-    target_span: Span,
+    targets: &[LyricTarget],
     errors: &mut Vec<RecoverableError>,
 ) -> Option<PartDecl> {
-    let target_part_index = declarations.iter().position(|declaration| {
-        declaration.abbreviation == target
-            && matches!(declaration.kind, PartKind::Notes | PartKind::Chords)
-    });
-    let Some(target_part_index) = target_part_index else {
-        errors.push(RecoverableError::parts_lyrics_invalid_target(
-            target_span,
-            target,
-        ));
-        return None;
-    };
-    let targets_chords = declarations
-        .get(target_part_index)
-        .is_some_and(|target| target.kind == PartKind::Chords);
-    let singing_voice = match header.singing_voice {
-        // Syllables under chords have no pitch of their own to sing.
-        Some(voice) if targets_chords => {
-            errors.push(RecoverableError::parts_voice_on_chord_lyrics(voice.span));
-            None
-        }
-        voice => voice.map(|voice| voice.value),
-    };
+    let lyric_targets = targets
+        .iter()
+        .map(|target| target_index(declarations, target, targets.len() > 1))
+        .collect::<Result<Vec<usize>, RecoverableError>>()
+        .map_err(|error| errors.push(error))
+        .ok()?;
+    // The row is drawn under the bottommost target, and its syllables are
+    // paired against that target's notes.
+    let target_part_index = lyric_targets.iter().copied().max()?;
     Some(PartDecl {
         abbreviation: header.abbreviation,
         abbreviation_span: header.abbreviation_span,
@@ -55,8 +41,30 @@ pub(super) fn resolve_lyrics_declaration(
         range_instrument: None,
         written_range: None,
         soundfont: PartKind::Lyrics { target_part_index }.default_soundfont(),
-        volume: header.volume.unwrap_or(DEFAULT_PART_VOLUME),
+        volume: DEFAULT_PART_VOLUME,
         octave_offset: DEFAULT_PART_OCTAVE_OFFSET,
-        singing_voice,
+        singing_voice: None,
+        lyric_targets,
+        alternative_line: None,
     })
+}
+
+fn target_index(
+    declarations: &[PartDecl],
+    target: &LyricTarget,
+    one_of_several: bool,
+) -> Result<usize, RecoverableError> {
+    declarations
+        .iter()
+        .position(|declaration| {
+            declaration.abbreviation == target.abbreviation
+                && match declaration.kind {
+                    PartKind::Notes => true,
+                    PartKind::Chords => !one_of_several,
+                    _ => false,
+                }
+        })
+        .ok_or_else(|| {
+            RecoverableError::parts_lyrics_invalid_target(target.span, &target.abbreviation)
+        })
 }

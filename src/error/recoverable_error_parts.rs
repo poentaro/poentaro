@@ -91,6 +91,24 @@ impl RecoverableError {
         }
     }
 
+    pub fn lyrics_targets_differ(
+        span: Span,
+        first: &str,
+        first_slots: usize,
+        other: &str,
+        other_slots: usize,
+    ) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::LyricsTargetsDiffer {
+                first: first.to_string(),
+                first_slots,
+                other: other.to_string(),
+                other_slots,
+            },
+        }
+    }
+
     pub fn lyrics_bracket_unclosed(span: Span) -> Self {
         Self {
             span,
@@ -194,10 +212,26 @@ impl RecoverableError {
         }
     }
 
-    pub fn parts_voice_on_chord_lyrics(span: Span) -> Self {
+    pub fn parts_singing_part_without_lyrics(span: Span, part: &str) -> Self {
         Self {
             span,
-            kind: RecoverableErrorKind::PartsVoiceOnChordLyrics,
+            kind: RecoverableErrorKind::PartsSingingPartWithoutLyrics {
+                part: part.to_string(),
+            },
+        }
+    }
+
+    pub fn parts_singing_part_with_several_lyrics(
+        span: Span,
+        part: &str,
+        lyric_parts: Vec<String>,
+    ) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsSingingPartWithSeveralLyrics {
+                part: part.to_string(),
+                lyric_parts,
+            },
         }
     }
 

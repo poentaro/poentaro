@@ -70,7 +70,7 @@ fn a_sung_part_peaks_at_its_volume_and_starts_where_its_notes_do() {
     let samples = sing(&SingingPlan {
         sample_rate,
         parts: vec![SungPart {
-            voice: Voice::Female,
+            voice: Voice::Soprano,
             volume_percent: 50,
             notes: vec![note(2.0, 2.5, word("la"))],
         }],

@@ -23,6 +23,18 @@ pub struct PartFilter {
     pub part_spans: Vec<Span>,
 }
 
+/// A `sequence` entry's `WITH ([w] 2)` choice: the part plays its Nth line
+/// (see `parser::alternative_lines`) in that one occurrence.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LineChoice {
+    pub part: String,
+    /// Byte span of the part's abbreviation, for rename-symbol.
+    pub part_span: Span,
+    /// 1-based; 1 is the part's own line.
+    pub line: u32,
+    pub span: Span,
+}
+
 /// One label reference inside a `sequence` section.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SequenceEntry {
@@ -33,6 +45,8 @@ pub struct SequenceEntry {
     /// Optional `(-abbrev ...)` / `(abbrev ...)` suffix naming part
     /// abbreviations to omit from, or restrict this occurrence's playback to.
     pub part_filter: Option<PartFilter>,
+    /// The `WITH (...)` lines this occurrence plays.
+    pub line_choices: Vec<LineChoice>,
     pub span: Span,
 }
 

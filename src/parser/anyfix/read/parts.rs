@@ -10,12 +10,12 @@ use crate::ast::parsed::{
 };
 use crate::error::{RecoverableError, Span, Spanned};
 use crate::parser::anyfix::tree::{
-    abbreviation_text, as_field, as_part, invalid, list_of, name_span, percentage, record_of,
-    signed_number, span_of, unconverted_error, value_text, whole_number, PartNode,
+    abbreviation_text, as_bare_words, as_field, as_part, invalid, list_of, name_span, percentage,
+    record_of, signed_number, span_of, unconverted_error, value_text, whole_number, PartNode,
 };
 use crate::parser::parts_parser::{
     checked_octave_offset, checked_range_instrument, checked_volume, checked_written_range,
-    resolve_declarations, validate_soundfont, InstrumentInfo, RawDecl, RawKind,
+    resolve_declarations, validate_soundfont, InstrumentInfo, LyricTarget, RawDecl, RawKind,
 };
 use crate::sound_label::sound_label;
 
@@ -164,6 +164,8 @@ struct PartOptions {
 enum OptionsOwner {
     Percussion,
     Lyrics,
+    /// A `notes` or `follow` part: its sound may be a Chimera voice.
+    Notes,
     Other,
 }
 
@@ -203,7 +205,8 @@ fn part_kind(
     let owner = match kind {
         RawKind::Concrete(PartKind::Percussion) => OptionsOwner::Percussion,
         RawKind::Lyrics { .. } => OptionsOwner::Lyrics,
-        _ => OptionsOwner::Other,
+        RawKind::Concrete(PartKind::Notes) | RawKind::Follow { .. } => OptionsOwner::Notes,
+        RawKind::Concrete(_) => OptionsOwner::Other,
     };
     let options = match options {
         Some(options) => part_options(options, owner, instruments, errors)?,
@@ -212,12 +215,25 @@ fn part_kind(
     Ok((kind, options))
 }
 
-fn lyrics_kind(target: &Node) -> Result<RawKind, RecoverableError> {
-    let target = bracketed_abbreviation(target)?;
-    Ok(RawKind::Lyrics {
-        target: target.text,
-        target_span: target.span,
-    })
+/// `lyrics [S]` or `lyrics [S, A, T, B]`.
+fn lyrics_kind(targets: &Node) -> Result<RawKind, RecoverableError> {
+    let expected = "expected the parts the lyrics are sung on, in brackets, like `[S]` or `[S, A]`";
+    let NodeKind::Brackets(elements) = &targets.kind else {
+        return Err(invalid(targets, expected));
+    };
+    if elements.is_empty() {
+        return Err(invalid(targets, expected));
+    }
+    let targets = elements
+        .iter()
+        .map(|element| {
+            Ok(LyricTarget {
+                abbreviation: abbreviation_text(element)?,
+                span: name_span(element),
+            })
+        })
+        .collect::<Result<Vec<_>, RecoverableError>>()?;
+    Ok(RawKind::Lyrics { targets })
 }
 
 fn follow_kind(target: &Node) -> Result<RawKind, RecoverableError> {
@@ -228,26 +244,29 @@ fn follow_kind(target: &Node) -> Result<RawKind, RecoverableError> {
     })
 }
 
-/// `voice : female`; `None` (with an error) for anything but a known voice.
-fn singing_voice(
-    value: &Node,
-    errors: &mut Vec<RecoverableError>,
-) -> Option<Spanned<SingingVoice>> {
-    let name = value_text(value).map_err(|error| errors.push(error)).ok()?;
-    let voice = SingingVoice::from_keyword(&name);
-    if voice.is_none() {
-        errors.push(invalid(
-            value,
-            format!(
-                "unknown voice `{name}`; expected {}",
-                SingingVoice::ALL
-                    .iter()
-                    .map(|voice| voice.keyword())
-                    .join(", ")
-            ),
-        ));
-    }
-    voice.map(|voice| Spanned::new(voice, span_of(value)))
+/// `chimera soprano`: `None` when `value` isn't a `chimera` sound, and `Some`
+/// error when it is but names no known voice.
+fn chimera_voice(value: &Node) -> Option<Result<Spanned<SingingVoice>, RecoverableError>> {
+    let words = as_bare_words(value)?;
+    let [SingingVoice::SOUND_WORD, voice] = words.as_slice() else {
+        return None;
+    };
+    Some(
+        SingingVoice::from_keyword(voice)
+            .map(|voice| Spanned::new(voice, span_of(value)))
+            .ok_or_else(|| {
+                invalid(
+                    value,
+                    format!(
+                        "unknown voice `{voice}`; expected {}",
+                        SingingVoice::ALL
+                            .iter()
+                            .map(|voice| format!("`chimera {}`", voice.keyword()))
+                            .join(", ")
+                    ),
+                )
+            }),
+    )
 }
 
 /// `{ instrument : violin, range : G3 to E6, sound : 41, volume : 80%, octave : +1 }`.
@@ -284,6 +303,13 @@ fn part_options(
                 options.written_range =
                     written_range(value, errors).map(|range| Spanned::new(range, span));
             }
+            ["sound"] if owner == OptionsOwner::Notes && chimera_voice(value).is_some() => {
+                match chimera_voice(value) {
+                    Some(Ok(voice)) => options.singing_voice = Some(voice),
+                    Some(Err(error)) => errors.push(error),
+                    None => {}
+                }
+            }
             ["sound"] => match whole_number(value) {
                 Some(program) => {
                     options.soundfont = validate_soundfont(
@@ -296,10 +322,13 @@ fn part_options(
                 }
                 None => errors.push(invalid(
                     value,
-                    "a sound is a General MIDI number, like `sound : 41`",
+                    if owner == OptionsOwner::Notes {
+                        "a sound is a General MIDI number, like `sound : 41`, or a voice, like `sound : chimera soprano`"
+                    } else {
+                        "a sound is a General MIDI number, like `sound : 41`"
+                    },
                 )),
             },
-            ["voice"] => options.singing_voice = singing_voice(value, errors),
             ["volume"] => match percentage(value) {
                 Some(written) => options.volume = Some(checked_volume(written, span, errors)),
                 None => errors.push(invalid(
@@ -319,7 +348,7 @@ fn part_options(
             words => errors.push(invalid(
                 element,
                 format!(
-                    "unknown part option `{}`; expected instrument, range, sound, volume, octave or voice",
+                    "unknown part option `{}`; expected instrument, range, sound, volume or octave",
                     words.join(" ")
                 ),
             )),
@@ -329,14 +358,10 @@ fn part_options(
 }
 
 /// Why `words` can't be an option of a part `owner`, if it can't: a lyric
-/// part takes only a voice and a volume, and only a lyric part takes a voice.
-fn misplaced_option(words: &[&str], owner: OptionsOwner) -> Option<&'static str> {
-    match (owner, words) {
-        (OptionsOwner::Lyrics, ["voice"] | ["volume"]) => None,
-        (OptionsOwner::Lyrics, _) => Some(
-            "a lyric part takes only a voice and a volume, like `{ voice : female, volume : 80% }`",
-        ),
-        (_, ["voice"]) => Some("only a lyric part sings, like `lyrics [S] { voice : female }`"),
-        _ => None,
-    }
+/// part takes no options, since the parts it is sung on set the voice and
+/// the volume.
+fn misplaced_option(_words: &[&str], owner: OptionsOwner) -> Option<&'static str> {
+    (owner == OptionsOwner::Lyrics).then_some(
+        "a lyric part takes no options; the voice and the volume are the options of the parts it is sung on",
+    )
 }

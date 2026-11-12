@@ -220,7 +220,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   }
 
   if (msg.type === 'generateSplitWav') {
-    handleGenerateSplitWav(msg, loadedSoundfont)
+    void handleGenerateSplitWav(msg, loadedSoundfont)
     return
   }
 
@@ -230,17 +230,17 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   }
 
   if (msg.type === 'generateSplitMp3') {
-    handleGenerateSplitMp3(msg, loadedSoundfont)
+    void handleGenerateSplitMp3(msg, loadedSoundfont)
     return
   }
 
   if (msg.type === 'generateAudio') {
-    handleGenerateAudio(msg, loadedSoundfont)
+    void handleGenerateAudio(msg, loadedSoundfont)
     return
   }
 
   if (msg.type === 'generateMeasureRangeAudio') {
-    handleGenerateMeasureRangeAudio(msg, loadedSoundfont)
+    void handleGenerateMeasureRangeAudio(msg, loadedSoundfont)
     return
   }
 

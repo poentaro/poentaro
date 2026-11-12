@@ -11,6 +11,8 @@
 pub struct SequenceEntryInfo {
     pub label: String,
     pub part_filter: Option<SequenceEntryPartFilter>,
+    /// The entry's `WITH ([w] 2, …)` choices, shown as `(w 2, …)`.
+    pub lines: Vec<crate::ast::grouped::ChosenLine>,
 }
 
 /// The part abbreviations named in a `sequence` entry's `(...)` suffix,

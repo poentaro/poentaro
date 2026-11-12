@@ -20,6 +20,7 @@ pub(crate) fn generate_wav_response(
     enabled_tracks: Option<&[String]>,
     metronome: bool,
     soundfont: Vec<u8>,
+    vocals: Vec<f32>,
 ) -> GenerateWavResponse {
     if let Err(diagnostics) = open_checked(source, &[]) {
         return GenerateWavResponse::Err { diagnostics };
@@ -31,7 +32,7 @@ pub(crate) fn generate_wav_response(
         enabled_tracks,
         sf2_bytes: &soundfont,
         instruments: &[],
-        vocals: &[],
+        vocals: &vocals,
     };
     match write_wav_from_source_filtered(&export, metronome) {
         Ok(wav) => GenerateWavResponse::Ok { wav },
@@ -53,6 +54,7 @@ pub(crate) fn generate_wav_for_measure_range_response(
     metronome: bool,
     trim: Option<wav::TrimWindow>,
     soundfont: Vec<u8>,
+    vocals: Vec<f32>,
 ) -> GenerateWavResponse {
     if let Err(diagnostics) = open_checked(source, &[]) {
         return GenerateWavResponse::Err { diagnostics };
@@ -71,6 +73,7 @@ pub(crate) fn generate_wav_for_measure_range_response(
             enabled_tracks,
             metronome,
             trim,
+            vocals: &vocals,
         },
         &soundfont,
         &[],
@@ -192,6 +195,7 @@ pub(crate) fn generate_split_wavs_response(
     base_name: &str,
     preset_name: Option<&str>,
     soundfont: Vec<u8>,
+    vocals: &[poentaro::TrackVocals],
 ) -> GenerateSplitWavsResponse {
     if let Err(diagnostics) = open_checked(source, &[]) {
         return GenerateSplitWavsResponse::Err { diagnostics };
@@ -206,6 +210,7 @@ pub(crate) fn generate_split_wavs_response(
             preset_name,
         },
         &soundfont,
+        vocals,
     ) {
         Ok(entries) => match zip_split_entries(&entries) {
             Ok(zip) => GenerateSplitWavsResponse::Ok { zip },

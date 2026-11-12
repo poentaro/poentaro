@@ -50,10 +50,12 @@ fn sequence_line_renders_label_and_omit_parts_spans() {
             entries: vec![
                 SequenceEntryInfo {
                     label: "Verse".to_string(),
+                    lines: Vec::new(),
                     part_filter: None,
                 },
                 SequenceEntryInfo {
                     label: "Chorus".to_string(),
+                    lines: Vec::new(),
                     part_filter: Some(SequenceEntryPartFilter {
                         kind: PartFilterKind::Omit,
                         parts: vec!["S".to_string(), "A2".to_string()],
@@ -120,6 +122,7 @@ fn sequence_line_label_span_uses_the_sequence_style() {
         content: GridContent::SequenceLine {
             entries: vec![SequenceEntryInfo {
                 label: "Verse".to_string(),
+                lines: Vec::new(),
                 part_filter: None,
             }],
             font_size: 12.0,
@@ -191,6 +194,7 @@ fn sequence_line_renders_only_parts_suffix_without_a_dash() {
         content: GridContent::SequenceLine {
             entries: vec![SequenceEntryInfo {
                 label: "Chorus".to_string(),
+                lines: Vec::new(),
                 part_filter: Some(SequenceEntryPartFilter {
                     kind: PartFilterKind::Only,
                     parts: vec!["S".to_string()],

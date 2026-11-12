@@ -7,9 +7,9 @@ fn source_of(melody: &str, score_body: &str) -> String {
 }
 
 fn notes_of(score_body: &str) -> Vec<SungNote> {
-    let source = source_of("notes", score_body);
+    let source = source_of("notes { sound: chimera soprano }", score_body);
     let score = crate::compile(&source, "test.poentaro", &[]).expect("compiles");
-    sung_notes(&score, "L").expect("sung notes")
+    sung_notes(&score, "M").expect("sung notes")
 }
 
 fn word(text: &str) -> SungSyllable {
@@ -55,8 +55,8 @@ fn a_tie_onto_the_same_pitch_lengthens_the_note_across_the_bar() {
 }
 
 #[test]
-fn a_held_marker_and_a_slur_onto_a_new_pitch_both_carry_the_vowel_on() {
-    let notes = notes_of("time=4/4 key=C4 bpm=60\n[M] 1 2 3~4\n[L] 有 - 约\n");
+fn a_held_marker_carries_the_vowel_on_into_a_new_pitch() {
+    let notes = notes_of("time=4/4 key=C4 bpm=60\n[M] 1 2 (3 4)\n[L] 有 - 约 -\n");
     assert_eq!(
         notes
             .iter()
@@ -82,11 +82,11 @@ fn a_no_lyrics_measure_sings_nothing() {
 #[test]
 fn a_bpm_change_moves_later_notes_and_octave_offset_shifts_pitch() {
     let source = source_of(
-        "notes { octave: - 1 }",
+        "notes { sound: chimera soprano, octave: - 1 }",
         "time=2/4 key=C4 bpm=60\n[M] 1 1\n[L] 一 二\n\nbpm=120\n[M] 1 1\n[L] 三 四\n",
     );
     let score = crate::compile(&source, "test.poentaro", &[]).expect("compiles");
-    let notes = sung_notes(&score, "L").expect("sung notes");
+    let notes = sung_notes(&score, "M").expect("sung notes");
     assert_eq!(
         notes
             .iter()
@@ -97,19 +97,12 @@ fn a_bpm_change_moves_later_notes_and_octave_offset_shifts_pitch() {
 }
 
 #[test]
-fn the_lyric_part_alone_still_keeps_its_measure_lengths() {
+fn a_hidden_singer_sings_nothing() {
     let source = source_of(
-        "notes",
-        "time=2/4 key=C4 bpm=60\n[M] 1 1\n[L] 一 二\n\n[M] 1 1\n[L] 三 四\n",
+        "notes { sound: chimera soprano }",
+        "time=2/4 key=C4 bpm=60\n[M] 1 1\n[L] 一 二\n",
     );
     let mut score = crate::compile(&source, "test.poentaro", &[]).expect("compiles");
     crate::filter_tracks(&mut score, &["L".to_string()]);
-    let notes = sung_notes(&score, "L").expect("sung notes");
-    assert_eq!(
-        notes
-            .iter()
-            .map(|note| note.start_seconds)
-            .collect::<Vec<_>>(),
-        vec![0.0, 1.0, 2.0, 3.0]
-    );
+    assert!(sung_notes(&score, "M").expect("sung notes").is_empty());
 }

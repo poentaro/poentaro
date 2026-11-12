@@ -3,14 +3,14 @@ import { Given, Then } from './fixtures'
 
 const SINGING_SOURCE = [
   'parts [',
-  '    "Melody" [M]: notes,',
-  '    "Verse" [v]: lyrics [M] { voice: female },',
+  '    "Soprano" [S]: notes { instrument: soprano },',
+  '    "Words" [w]: lyrics [S],',
   '],',
   '',
   'score """',
   '    time=4/4 key=C4 bpm=120',
-  '    [M] 1 2 3 4',
-  '    [v] 记 得 我 们',
+  '    [S] 1 2 3 4',
+  '    [w] 记 得 我 们',
   '    """,',
 ].join('\n')
 
@@ -26,7 +26,7 @@ Given('downloads of the singing voice are recorded', async ({ page }) => {
 })
 
 Given(
-  'a score whose lyric part sings in a female voice is loaded',
+  'a score whose soprano part sings its lyrics is loaded',
   async ({ page }) => {
     await page.addInitScript((source) => {
       localStorage.setItem(
@@ -54,3 +54,15 @@ Then('the singing voice was downloaded', async () => {
 Then('the singing voice was never downloaded', async () => {
   expect(singerDownloads).toHaveLength(0)
 })
+
+Then(
+  'the Play All button eventually shows the playing state',
+  async ({ page }) => {
+    // Play waits while the voice is sung, so this allows more time than the
+    // instrumental `the Play All button shows the playing state`.
+    await expect(page.locator('button.play-all-btn')).toHaveClass(
+      /play-all-btn--playing/,
+      { timeout: 50_000 },
+    )
+  },
+)

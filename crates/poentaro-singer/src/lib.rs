@@ -1,5 +1,5 @@
 #![cfg_attr(test, allow(clippy::disallowed_macros))]
-//! Sings a score's voiced lyric parts.
+//! Sings a score's singing parts: the parts whose sound is a Chimera voice.
 //!
 //! The score side (`poentaro::sing`) turns a score into a [`SingingPlan`]:
 //! plain notes with the syllable each sings. This crate turns a plan into
@@ -22,7 +22,7 @@ pub struct SingingPlan {
     pub parts: Vec<SungPart>,
 }
 
-/// One lyric part, sung by one voice.
+/// One singing part: its own notes, with its lyric part's syllables.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SungPart {
     pub voice: Voice,
@@ -33,9 +33,10 @@ pub struct SungPart {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Voice {
-    Male,
-    Female,
-    Child,
+    Soprano,
+    Alto,
+    Tenor,
+    Bass,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
