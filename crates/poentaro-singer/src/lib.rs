@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "render")]
 mod render;
 #[cfg(feature = "render")]
-pub use render::sing;
+pub use render::{mix, piece_count, sing, sing_piece, SungPiece};
 
 /// Everything to sing in one score, in playback order.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

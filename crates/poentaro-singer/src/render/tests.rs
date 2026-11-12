@@ -1,5 +1,5 @@
 use super::lyrics::phrase_text;
-use super::{phrases, segments, sing};
+use super::{mix, phrases, piece_count, segments, sing, sing_piece};
 use crate::{SingingPlan, SungNote, SungPart, SungSyllable, Voice};
 
 fn note(start_seconds: f64, end_seconds: f64, syllable: SungSyllable) -> SungNote {
@@ -85,4 +85,30 @@ fn a_sung_part_peaks_at_its_volume_and_starts_where_its_notes_do() {
         first_sound_seconds.is_some_and(|seconds| (1.5..2.5).contains(&seconds)),
         "first sound at {first_sound_seconds:?}"
     );
+}
+
+#[test]
+fn pieces_sung_separately_and_mixed_in_any_order_make_the_same_song() {
+    let plan = SingingPlan {
+        sample_rate: 44100,
+        parts: vec![
+            SungPart {
+                voice: Voice::Soprano,
+                volume_percent: 80,
+                notes: vec![note(0.0, 0.5, word("la")), note(4.0, 4.5, word("li"))],
+            },
+            SungPart {
+                voice: Voice::Bass,
+                volume_percent: 60,
+                notes: vec![note(1.0, 1.5, word("lo"))],
+            },
+        ],
+    };
+    assert_eq!(piece_count(&plan), 3);
+    let reversed = (0..piece_count(&plan))
+        .rev()
+        .filter_map(|index| sing_piece(&plan, index))
+        .collect::<Vec<_>>();
+    assert_eq!(mix(&plan, &reversed), sing(&plan));
+    assert_eq!(sing_piece(&plan, 3), None);
 }

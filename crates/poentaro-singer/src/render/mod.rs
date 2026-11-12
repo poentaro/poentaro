@@ -42,32 +42,120 @@ impl Voice {
 /// sample rate, starting at the score's time zero. Each part peaks at its
 /// volume, where 1.0 is the instruments' peak.
 pub fn sing(plan: &SingingPlan) -> Vec<f32> {
-    let sample_rate = f64::from(plan.sample_rate);
-    plan.parts.iter().fold(Vec::new(), |mut mix, part| {
-        let peak = f32::from(part.volume_percent) / 100.0;
-        let samples = scaled_to_peak(render_part(&part.notes, part.voice, sample_rate), peak);
-        add_at(&mut mix, 0, &samples);
-        mix
+    mix(plan, &sing_pieces(plan))
+}
+
+/// One stretch of one part that a voice sings on its own (see [`segments`]),
+/// sung. Pieces don't depend on each other, so a song's pieces can be sung
+/// in parallel and then [`mix`]ed.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SungPiece {
+    /// The index of its part in the plan.
+    pub part: usize,
+    /// Where it starts in the song, in samples from time zero.
+    pub start_sample: usize,
+    pub samples: Vec<f32>,
+}
+
+struct Piece<'a> {
+    part: usize,
+    voice: Voice,
+    phrases: Vec<Vec<&'a SungNote>>,
+}
+
+fn pieces(plan: &SingingPlan) -> impl Iterator<Item = Piece<'_>> {
+    plan.parts.iter().enumerate().flat_map(|(part, sung)| {
+        segments(phrases(&sung.notes))
+            .into_iter()
+            .map(move |phrases| Piece {
+                part,
+                voice: sung.voice,
+                phrases,
+            })
     })
 }
 
-/// One part's voice, only run around what it sings: phrases close together
-/// share one voice (so breaths and pitch carry over), and a long rest starts
-/// a fresh one, so instrumental stretches cost nothing.
-fn render_part(notes: &[SungNote], voice: Voice, sample_rate: f64) -> Vec<f32> {
-    let mut output = Vec::new();
-    for segment in segments(phrases(notes)) {
-        let Some(first) = segment.first().and_then(|phrase| phrase.first()) else {
-            continue;
-        };
-        let origin = first.start_seconds - LEAD_SECONDS;
-        let samples = render_segment(&segment, voice, origin, sample_rate);
-        let offset = (origin * sample_rate).round() as i64;
-        let skip = usize::try_from(-offset).unwrap_or(0);
-        let start = usize::try_from(offset).unwrap_or(0);
-        add_at(&mut output, start, samples.get(skip..).unwrap_or_default());
+/// How many pieces [`sing_piece`] can sing for `plan`.
+pub fn piece_count(plan: &SingingPlan) -> usize {
+    pieces(plan).count()
+}
+
+/// The piece at `index` (below [`piece_count`]) sung; `None` past the last.
+pub fn sing_piece(plan: &SingingPlan, index: usize) -> Option<SungPiece> {
+    let piece = pieces(plan).nth(index)?;
+    Some(render_piece(&piece, f64::from(plan.sample_rate)))
+}
+
+/// `pieces` (in any order) summed into one track, each part scaled so it
+/// peaks at its volume.
+pub fn mix(plan: &SingingPlan, pieces: &[SungPiece]) -> Vec<f32> {
+    plan.parts
+        .iter()
+        .enumerate()
+        .fold(Vec::new(), |mut mix, (index, part)| {
+            let voice = pieces.iter().filter(|piece| piece.part == index).fold(
+                Vec::new(),
+                |mut voice, piece| {
+                    add_at(&mut voice, piece.start_sample, &piece.samples);
+                    voice
+                },
+            );
+            let peak = f32::from(part.volume_percent) / 100.0;
+            add_at(&mut mix, 0, &scaled_to_peak(voice, peak));
+            mix
+        })
+}
+
+/// Every piece sung, one thread per core.
+#[cfg(not(target_arch = "wasm32"))]
+fn sing_pieces(plan: &SingingPlan) -> Vec<SungPiece> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let count = piece_count(plan);
+    let threads = std::thread::available_parallelism()
+        .map_or(1, std::num::NonZeroUsize::get)
+        .min(count);
+    let next = AtomicUsize::new(0);
+    std::thread::scope(|scope| {
+        let workers = (0..threads)
+            .map(|_| {
+                scope.spawn(|| {
+                    std::iter::from_fn(|| sing_piece(plan, next.fetch_add(1, Ordering::Relaxed)))
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect::<Vec<_>>();
+        workers
+            .into_iter()
+            .flat_map(|worker| worker.join().unwrap_or_default())
+            .collect()
+    })
+}
+
+/// Every piece sung in turn: wasm has no threads (the web app spreads pieces
+/// over web workers instead).
+#[cfg(target_arch = "wasm32")]
+fn sing_pieces(plan: &SingingPlan) -> Vec<SungPiece> {
+    (0..piece_count(plan))
+        .filter_map(|index| sing_piece(plan, index))
+        .collect()
+}
+
+/// One piece's voice, placed in the song. Its voice starts a little before
+/// its first note, so the first syllable's onset isn't cut off.
+fn render_piece(piece: &Piece, sample_rate: f64) -> SungPiece {
+    let origin = piece
+        .phrases
+        .first()
+        .and_then(|phrase| phrase.first())
+        .map_or(0.0, |first| first.start_seconds - LEAD_SECONDS);
+    let samples = render_segment(&piece.phrases, piece.voice, origin, sample_rate);
+    let offset = (origin * sample_rate).round() as i64;
+    let skip = usize::try_from(-offset).unwrap_or(0);
+    SungPiece {
+        part: piece.part,
+        start_sample: usize::try_from(offset).unwrap_or(0),
+        samples: samples.get(skip..).unwrap_or_default().to_vec(),
     }
-    output
 }
 
 /// One voice singing `phrases`, with voice time zero at score time `origin`.
