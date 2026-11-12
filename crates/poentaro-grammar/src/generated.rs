@@ -19,24 +19,28 @@ pub struct Document {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DocumentMetadata {
+    pub keyword: Span,
     pub fields: Record,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DocumentParts {
+    pub keyword: Span,
     pub parts: PartList,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DocumentSequence {
+    pub keyword: Span,
     pub entries: EntryList,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DocumentPreset {
+    pub keyword: Span,
     pub name: Spanned<StringLiteral>,
     pub fields: Record,
     pub span: Span,
@@ -44,6 +48,7 @@ pub struct DocumentPreset {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DocumentScore {
+    pub keyword: Span,
     pub text: Spanned<StringLiteral>,
     pub span: Span,
 }
@@ -127,23 +132,28 @@ pub enum Part {
 #[derive(Clone, Debug, PartialEq)]
 pub enum PartKind {
     Notes {
+        keyword: Span,
         options: Option<Options>,
         span: Span,
     },
     Chords {
+        keyword: Span,
         options: Option<Options>,
         span: Span,
     },
     Percussion {
+        keyword: Span,
         options: Option<Options>,
         span: Span,
     },
     Follow {
+        keyword: Span,
         target: Spanned<Abbreviation>,
         options: Option<Options>,
         span: Span,
     },
     Lyrics {
+        keyword: Span,
         target: Spanned<Abbreviation>,
         span: Span,
     },
@@ -158,22 +168,27 @@ pub struct Options {
 #[derive(Clone, Debug, PartialEq)]
 pub enum PartOption {
     Instrument {
+        keyword: Span,
         name: Words,
         span: Span,
     },
     Range {
+        keyword: Span,
         value: Node,
         span: Span,
     },
     Sound {
+        keyword: Span,
         program: Spanned<i64>,
         span: Span,
     },
     Volume {
+        keyword: Span,
         percentage: Percentage,
         span: Span,
     },
     Octave {
+        keyword: Span,
         signed_integer: SignedInteger,
         span: Span,
     },
@@ -344,7 +359,8 @@ pub fn decode_document(nodes: &[Node]) -> Result<Document, DecodeError> {
 fn decode_document_metadata(node: &Node) -> Result<DocumentMetadata, DecodeError> {
     let mut parts = support::call(node, "the call `metadata _`")?;
     let decoded = DocumentMetadata {
-        fields: parts.word("metadata")?.one(decode_record, "a record")?,
+        keyword: parts.word_span("metadata")?,
+        fields: parts.one(decode_record, "a record")?,
         span: node.span,
     };
     parts.finish()?;
@@ -354,7 +370,8 @@ fn decode_document_metadata(node: &Node) -> Result<DocumentMetadata, DecodeError
 fn decode_document_parts(node: &Node) -> Result<DocumentParts, DecodeError> {
     let mut parts = support::call(node, "the call `parts _`")?;
     let decoded = DocumentParts {
-        parts: parts.word("parts")?.one(decode_part_list, "a part list")?,
+        keyword: parts.word_span("parts")?,
+        parts: parts.one(decode_part_list, "a part list")?,
         span: node.span,
     };
     parts.finish()?;
@@ -364,9 +381,8 @@ fn decode_document_parts(node: &Node) -> Result<DocumentParts, DecodeError> {
 fn decode_document_sequence(node: &Node) -> Result<DocumentSequence, DecodeError> {
     let mut parts = support::call(node, "the call `sequence _`")?;
     let decoded = DocumentSequence {
-        entries: parts
-            .word("sequence")?
-            .one(decode_entry_list, "an entry list")?,
+        keyword: parts.word_span("sequence")?,
+        entries: parts.one(decode_entry_list, "an entry list")?,
         span: node.span,
     };
     parts.finish()?;
@@ -376,7 +392,8 @@ fn decode_document_sequence(node: &Node) -> Result<DocumentSequence, DecodeError
 fn decode_document_preset(node: &Node) -> Result<DocumentPreset, DecodeError> {
     let mut parts = support::call(node, "the call `preset _ _`")?;
     let decoded = DocumentPreset {
-        name: parts.word("preset")?.one(
+        keyword: parts.word_span("preset")?,
+        name: parts.one(
             |node| support::string(node, |_| true, "a string"),
             "a string",
         )?,
@@ -390,7 +407,8 @@ fn decode_document_preset(node: &Node) -> Result<DocumentPreset, DecodeError> {
 fn decode_document_score(node: &Node) -> Result<DocumentScore, DecodeError> {
     let mut parts = support::call(node, "the call `score _`")?;
     let decoded = DocumentScore {
-        text: parts.word("score")?.one(
+        keyword: parts.word_span("score")?,
+        text: parts.one(
             |node| support::string(node, |_| true, "a string"),
             "a string",
         )?,
@@ -595,7 +613,8 @@ pub fn decode_part_kind(node: &Node) -> Result<PartKind, DecodeError> {
 fn decode_part_kind_notes(node: &Node) -> Result<PartKind, DecodeError> {
     let mut parts = support::call(node, "the call `notes _?`")?;
     let decoded = PartKind::Notes {
-        options: parts.word("notes")?.optional(decode_options),
+        keyword: parts.word_span("notes")?,
+        options: parts.optional(decode_options),
         span: node.span,
     };
     parts.finish()?;
@@ -605,7 +624,8 @@ fn decode_part_kind_notes(node: &Node) -> Result<PartKind, DecodeError> {
 fn decode_part_kind_chords(node: &Node) -> Result<PartKind, DecodeError> {
     let mut parts = support::call(node, "the call `chords _?`")?;
     let decoded = PartKind::Chords {
-        options: parts.word("chords")?.optional(decode_options),
+        keyword: parts.word_span("chords")?,
+        options: parts.optional(decode_options),
         span: node.span,
     };
     parts.finish()?;
@@ -615,7 +635,8 @@ fn decode_part_kind_chords(node: &Node) -> Result<PartKind, DecodeError> {
 fn decode_part_kind_percussion(node: &Node) -> Result<PartKind, DecodeError> {
     let mut parts = support::call(node, "the call `percussion _?`")?;
     let decoded = PartKind::Percussion {
-        options: parts.word("percussion")?.optional(decode_options),
+        keyword: parts.word_span("percussion")?,
+        options: parts.optional(decode_options),
         span: node.span,
     };
     parts.finish()?;
@@ -625,9 +646,8 @@ fn decode_part_kind_percussion(node: &Node) -> Result<PartKind, DecodeError> {
 fn decode_part_kind_follow(node: &Node) -> Result<PartKind, DecodeError> {
     let mut parts = support::call(node, "the call `follow _ _?`")?;
     let decoded = PartKind::Follow {
-        target: parts
-            .word("follow")?
-            .one(decode_part_kind_follow_target, "`[...]`")?,
+        keyword: parts.word_span("follow")?,
+        target: parts.one(decode_part_kind_follow_target, "`[...]`")?,
         options: parts.optional(decode_options),
         span: node.span,
     };
@@ -648,9 +668,8 @@ fn decode_part_kind_follow_target(node: &Node) -> Result<Spanned<Abbreviation>, 
 fn decode_part_kind_lyrics(node: &Node) -> Result<PartKind, DecodeError> {
     let mut parts = support::call(node, "the call `lyrics _`")?;
     let decoded = PartKind::Lyrics {
-        target: parts
-            .word("lyrics")?
-            .one(decode_part_kind_lyrics_target, "`[...]`")?,
+        keyword: parts.word_span("lyrics")?,
+        target: parts.one(decode_part_kind_lyrics_target, "`[...]`")?,
         span: node.span,
     };
     parts.finish()?;
@@ -688,7 +707,8 @@ pub fn decode_part_option(node: &Node) -> Result<PartOption, DecodeError> {
 fn decode_part_option_instrument(node: &Node) -> Result<PartOption, DecodeError> {
     let mut parts = support::call(node, "the call `instrument _`")?;
     let decoded = PartOption::Instrument {
-        name: parts.word("instrument")?.one(decode_words, "words")?,
+        keyword: parts.word_span("instrument")?,
+        name: parts.one(decode_words, "words")?,
         span: node.span,
     };
     parts.finish()?;
@@ -698,7 +718,8 @@ fn decode_part_option_instrument(node: &Node) -> Result<PartOption, DecodeError>
 fn decode_part_option_range(node: &Node) -> Result<PartOption, DecodeError> {
     let mut parts = support::call(node, "the call `range _`")?;
     let decoded = PartOption::Range {
-        value: parts.word("range")?.one(support::any_node, "a node")?,
+        keyword: parts.word_span("range")?,
+        value: parts.one(support::any_node, "a node")?,
         span: node.span,
     };
     parts.finish()?;
@@ -708,7 +729,8 @@ fn decode_part_option_range(node: &Node) -> Result<PartOption, DecodeError> {
 fn decode_part_option_sound(node: &Node) -> Result<PartOption, DecodeError> {
     let mut parts = support::call(node, "the call `sound _`")?;
     let decoded = PartOption::Sound {
-        program: parts.word("sound")?.one(
+        keyword: parts.word_span("sound")?,
+        program: parts.one(
             |node| {
                 support::integer::<i64>(
                     node,
@@ -729,9 +751,8 @@ fn decode_part_option_sound(node: &Node) -> Result<PartOption, DecodeError> {
 fn decode_part_option_volume(node: &Node) -> Result<PartOption, DecodeError> {
     let mut parts = support::call(node, "the call `volume _`")?;
     let decoded = PartOption::Volume {
-        percentage: parts
-            .word("volume")?
-            .one(decode_percentage, "a percentage")?,
+        keyword: parts.word_span("volume")?,
+        percentage: parts.one(decode_percentage, "a percentage")?,
         span: node.span,
     };
     parts.finish()?;
@@ -741,9 +762,8 @@ fn decode_part_option_volume(node: &Node) -> Result<PartOption, DecodeError> {
 fn decode_part_option_octave(node: &Node) -> Result<PartOption, DecodeError> {
     let mut parts = support::call(node, "the call `octave _`")?;
     let decoded = PartOption::Octave {
-        signed_integer: parts
-            .word("octave")?
-            .one(decode_signed_integer, "a signed integer")?,
+        keyword: parts.word_span("octave")?,
+        signed_integer: parts.one(decode_signed_integer, "a signed integer")?,
         span: node.span,
     };
     parts.finish()?;

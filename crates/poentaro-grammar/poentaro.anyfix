@@ -7,19 +7,20 @@
 # Rust. Lists people edit by hand use `EACH`, so that one mistake does not
 # hide the rest.
 
-# Sections may come in any order. A second metadata, parts, sequence or
+# Sections may come in any order. A section's `keyword` and a part's or
+# option's are where the highlighter colors them. A second metadata, parts, sequence or
 # score section is kept as an error, and the first one is read.
 ENTRY: ANY ORDER [
   unconverted: ZERO OR MORE: unconverted,
-  metadata: OPTIONAL: SPECIFIC ANYFIX CALL [WORD "metadata", fields: record],
-  parts: OPTIONAL: SPECIFIC ANYFIX CALL [WORD "parts", parts: part list],
-  sequence: OPTIONAL: SPECIFIC ANYFIX CALL [WORD "sequence", entries: entry list],
-  preset: ZERO OR MORE: SPECIFIC ANYFIX CALL [WORD "preset", name: STRING, fields: record],
-  score: OPTIONAL: SPECIFIC ANYFIX CALL [WORD "score", text: STRING],
+  metadata: OPTIONAL: ANYFIX CALL [keyword: WORD "metadata", fields: record],
+  parts: OPTIONAL: ANYFIX CALL [keyword: WORD "parts", parts: part list],
+  sequence: OPTIONAL: ANYFIX CALL [keyword: WORD "sequence", entries: entry list],
+  preset: ZERO OR MORE: ANYFIX CALL [keyword: WORD "preset", name: STRING, fields: record],
+  score: OPTIONAL: ANYFIX CALL [keyword: WORD "score", text: STRING],
 ],
 
 # Text the converter from the old syntax kept because it could not read it.
-unconverted: SPECIFIC ANYFIX CALL [WORD "could", WORD "not", WORD "convert", text: STRING],
+unconverted: ANYFIX CALL [WORD "could", WORD "not", WORD "convert", text: STRING],
 
 # ── fields ──────────────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ value: ONE OF [
 signed integer: NUMBER [INTEGER, SIGNED],
 
 # `80 %`.
-percentage: SPECIFIC ANYFIX CALL [number: NUMBER [INTEGER], WORD "%"],
+percentage: ANYFIX CALL [number: NUMBER [INTEGER], WORD "%"],
 
 # Words and nothing else: `yes`, `sans serif`, `Verse two`.
 words: ANYFIX CALL [NO ARGUMENTS],
@@ -57,36 +58,36 @@ part list: SQUARE BRACKET: EACH: part,
 
 part: ONE OF [
   unconverted,
-  abbreviated: SPECIFIC ANYFIX CALL [
+  abbreviated: ANYFIX CALL [
     display: STRING,
     abbreviation: SQUARE BRACKET: abbreviation,
     kind: part kind,
   ],
-  named: SPECIFIC ANYFIX CALL [display: STRING, kind: part kind],
+  named: ANYFIX CALL [display: STRING, kind: part kind],
 ],
 
 part kind: ONE OF [
-  notes: SPECIFIC ANYFIX CALL [WORD "notes", OPTIONAL: options],
-  chords: SPECIFIC ANYFIX CALL [WORD "chords", OPTIONAL: options],
-  percussion: SPECIFIC ANYFIX CALL [WORD "percussion", OPTIONAL: options],
-  follow: SPECIFIC ANYFIX CALL [
-    WORD "follow",
+  notes: ANYFIX CALL [keyword: WORD "notes", OPTIONAL: options],
+  chords: ANYFIX CALL [keyword: WORD "chords", OPTIONAL: options],
+  percussion: ANYFIX CALL [keyword: WORD "percussion", OPTIONAL: options],
+  follow: ANYFIX CALL [
+    keyword: WORD "follow",
     target: SQUARE BRACKET: abbreviation,
     OPTIONAL: options,
   ],
-  lyrics: SPECIFIC ANYFIX CALL [WORD "lyrics", target: SQUARE BRACKET: abbreviation],
+  lyrics: ANYFIX CALL [keyword: WORD "lyrics", target: SQUARE BRACKET: abbreviation],
 ],
 
 options: CURLY BRACE: EACH: part option,
 
 part option: ONE OF [
-  instrument: SPECIFIC ANYFIX CALL [WORD "instrument", name: words],
+  instrument: ANYFIX CALL [keyword: WORD "instrument", name: words],
   # `C3 to G4`, whose capitalised words split anyfix's word runs, so Rust
   # reads it from the node.
-  range: SPECIFIC ANYFIX CALL [WORD "range", value: ANY NODE],
-  sound: SPECIFIC ANYFIX CALL [WORD "sound", program: NUMBER [INTEGER]],
-  volume: SPECIFIC ANYFIX CALL [WORD "volume", percentage],
-  octave: SPECIFIC ANYFIX CALL [WORD "octave", signed integer],
+  range: ANYFIX CALL [keyword: WORD "range", value: ANY NODE],
+  sound: ANYFIX CALL [keyword: WORD "sound", program: NUMBER [INTEGER]],
+  volume: ANYFIX CALL [keyword: WORD "volume", percentage],
+  octave: ANYFIX CALL [keyword: WORD "octave", signed integer],
 ],
 
 # A part's abbreviation: a string, or words, numbers and symbols that are
@@ -102,8 +103,8 @@ abbreviation: ONE OF [
 entry list: SQUARE BRACKET: EACH: sequence entry,
 
 sequence entry: ONE OF [
-  without: SPECIFIC ANYFIX CALL [label, WORD "WITHOUT", parts: SQUARE BRACKET: EACH: abbreviation],
-  only: SPECIFIC ANYFIX CALL [label, WORD "ONLY", parts: SQUARE BRACKET: EACH: abbreviation],
+  without: ANYFIX CALL [label, WORD "WITHOUT", parts: SQUARE BRACKET: EACH: abbreviation],
+  only: ANYFIX CALL [label, WORD "ONLY", parts: SQUARE BRACKET: EACH: abbreviation],
   label,
 ],
 

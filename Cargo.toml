@@ -97,7 +97,7 @@ rusty_mp3 = { version = "0.7", optional = true }
 zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 base64 = "0.22"
-anyfix-expr = { git = "https://github.com/wongjiahau/anyfix-expr", rev = "2f6c4dc55057beaecac030b9342b98fdc7deb46d" }
+anyfix-expr = { git = "https://github.com/wongjiahau/anyfix-expr", rev = "6992e5d4ac18d85ff00beb80e8c362b1d214422c" }
 poentaro-grammar = { path = "crates/poentaro-grammar" }
 
 [build-dependencies]

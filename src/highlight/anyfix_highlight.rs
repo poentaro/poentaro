@@ -2,107 +2,113 @@
 //! part kinds come from its tree. The score's directive keywords come from the
 //! score lexer, since the score string holds the section syntax's text.
 
-use anyfix_expr::{Call, NamePart, Node, NodeKind};
 use itertools::Itertools;
 
 use super::{HighlightKind, HighlightToken, SectionHeader};
 use crate::error::{Diagnostic, RecoverableErrorKind, Span};
+use crate::parser::anyfix::decoded::{decode, span};
 use crate::parser::score::interleaved_parser::directive_keyword_spans;
 use crate::parser::section::SectionKind;
 use crate::parser::{read_document, ReadDocument};
+use anyfix_expr::NamePart;
+use poentaro_grammar::{Document, Part, PartKind, PartOption, Record, Value};
 
-const PART_KINDS: [&str; 5] = ["notes", "chords", "percussion", "follow", "lyrics"];
-
-struct Section<'n> {
-    kind: SectionKind,
-    keyword: Span,
-    call: &'n Call,
-}
-
-fn word_spans(call: &Call) -> Vec<Span> {
-    call.name
-        .iter()
-        .filter_map(|part| match part {
-            NamePart::Word { span, .. } => Some(Span::new(span.start, span.end)),
-            NamePart::Slot => None,
-        })
-        .collect()
-}
-
-fn section(node: &Node) -> Option<Section<'_>> {
-    let NodeKind::Call(call) = &node.kind else {
-        return None;
-    };
-    let kind = match call.name_text().as_str() {
-        "metadata _" => SectionKind::Metadata,
-        "parts _" => SectionKind::Parts,
-        "sequence _" => SectionKind::Sequence,
-        "preset _ _" => SectionKind::Preset,
-        "score _" => SectionKind::Score,
-        _ => return None,
-    };
-    let keyword = *word_spans(call).first()?;
-    Some(Section {
+fn token(kind: HighlightKind, at: anyfix_expr::Span) -> HighlightToken {
+    HighlightToken {
         kind,
-        keyword,
-        call,
-    })
-}
-
-fn children(node: &Node) -> &[Node] {
-    match &node.kind {
-        NodeKind::Braces(children) | NodeKind::Brackets(children) | NodeKind::Parens(children) => {
-            children
-        }
-        _ => &[],
+        span: span(at),
     }
 }
 
-/// Field names in a `{ … }` record, nested records included.
-fn field_keys(node: &Node) -> Vec<HighlightToken> {
-    let NodeKind::Braces(fields) = &node.kind else {
-        return Vec::new();
+/// Each section's keyword, in source order.
+fn headers(document: &Document) -> Vec<SectionHeader> {
+    let header = |kind, keyword| SectionHeader {
+        kind,
+        span: span(keyword),
     };
-    fields
+    [
+        document
+            .metadata
+            .as_ref()
+            .map(|section| header(SectionKind::Metadata, section.keyword)),
+        document
+            .parts
+            .as_ref()
+            .map(|section| header(SectionKind::Parts, section.keyword)),
+        document
+            .sequence
+            .as_ref()
+            .map(|section| header(SectionKind::Sequence, section.keyword)),
+        document
+            .score
+            .as_ref()
+            .map(|section| header(SectionKind::Score, section.keyword)),
+    ]
+    .into_iter()
+    .flatten()
+    .chain(
+        document
+            .preset
+            .iter()
+            .map(|section| header(SectionKind::Preset, section.keyword)),
+    )
+    .sorted_by_key(|header| header.span.start)
+    .collect()
+}
+
+/// Field names in a `{ … }` record, nested records included.
+fn field_keys(record: &Record) -> Vec<HighlightToken> {
+    record
+        .field
         .iter()
-        .flat_map(|field| match &field.kind {
-            NodeKind::Call(call) => word_spans(call)
-                .into_iter()
-                .map(|span| HighlightToken {
-                    kind: HighlightKind::MetadataKey,
-                    span,
-                })
-                .chain(call.arguments.iter().flat_map(field_keys))
-                .collect_vec(),
-            _ => Vec::new(),
+        .flatten()
+        .flat_map(|field| {
+            let words = field.name.parts.iter().filter_map(|part| match part {
+                NamePart::Word { span, .. } => Some(token(HighlightKind::MetadataKey, *span)),
+                NamePart::Slot => None,
+            });
+            let nested = match &field.arguments {
+                Value::Record(record) => field_keys(record),
+                _ => Vec::new(),
+            };
+            words.chain(nested).collect_vec()
         })
         .collect()
 }
 
-/// The part kind words of a `parts [ … ]` entry, and its option names.
-fn part_tokens(node: &Node) -> Vec<HighlightToken> {
-    let NodeKind::Call(call) = &node.kind else {
+/// A part's kind word, and its option names.
+fn part_tokens(part: &Part) -> Vec<HighlightToken> {
+    let (Part::Abbreviated { kind, .. } | Part::Named { kind, .. }) = part else {
         return Vec::new();
     };
-    let name = call.name_text();
-    let is_part_kind = name
-        .split(' ')
-        .next()
-        .is_some_and(|word| PART_KINDS.contains(&word));
-    let own = word_spans(call)
+    let (keyword, options) = match kind {
+        PartKind::Notes {
+            keyword, options, ..
+        }
+        | PartKind::Chords {
+            keyword, options, ..
+        }
+        | PartKind::Percussion {
+            keyword, options, ..
+        }
+        | PartKind::Follow {
+            keyword, options, ..
+        } => (keyword, options.as_ref()),
+        PartKind::Lyrics { keyword, .. } => (keyword, None),
+    };
+    let option_keys = options
         .into_iter()
-        .take(usize::from(is_part_kind))
-        .map(|span| HighlightToken {
-            kind: HighlightKind::PartKind,
-            span,
+        .flat_map(|options| options.part_option.iter().flatten())
+        .map(|option| match option {
+            PartOption::Instrument { keyword, .. }
+            | PartOption::Range { keyword, .. }
+            | PartOption::Sound { keyword, .. }
+            | PartOption::Volume { keyword, .. }
+            | PartOption::Octave { keyword, .. } => token(HighlightKind::MetadataKey, *keyword),
         });
-    own.chain(call.arguments.iter().flat_map(|argument| {
-        part_tokens(argument)
-            .into_iter()
-            .chain(field_keys(argument))
-            .collect_vec()
-    }))
-    .collect()
+    std::iter::once(token(HighlightKind::PartKind, *keyword))
+        .chain(option_keys)
+        .collect()
 }
 
 fn directive_tokens(read: &ReadDocument) -> Vec<HighlightToken> {
@@ -139,37 +145,27 @@ fn unknown_field_spans(read: &ReadDocument) -> Vec<Span> {
 }
 
 pub(super) fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
-    let parsed = anyfix_expr::parse(source);
+    let document = decode(source).document;
     let read = read_document(source, &[]);
     let unknown_fields = unknown_field_spans(&read);
-    parsed
-        .syntax
-        .nodes()
+    let headers = headers(&document).into_iter().map(|header| HighlightToken {
+        kind: HighlightKind::SectionHeader,
+        span: header.span,
+    });
+    let records = document
+        .metadata
         .iter()
-        .filter_map(section)
-        .flat_map(|section| {
-            let header = HighlightToken {
-                kind: HighlightKind::SectionHeader,
-                span: section.keyword,
-            };
-            let body = match section.kind {
-                SectionKind::Metadata | SectionKind::Preset => section
-                    .call
-                    .arguments
-                    .iter()
-                    .flat_map(field_keys)
-                    .collect_vec(),
-                SectionKind::Parts => section
-                    .call
-                    .arguments
-                    .iter()
-                    .flat_map(children)
-                    .flat_map(part_tokens)
-                    .collect_vec(),
-                SectionKind::Sequence | SectionKind::Score => Vec::new(),
-            };
-            std::iter::once(header).chain(body).collect_vec()
-        })
+        .map(|section| &section.fields)
+        .chain(document.preset.iter().map(|section| &section.fields))
+        .flat_map(field_keys);
+    let parts = document
+        .parts
+        .iter()
+        .flat_map(|section| section.parts.part.iter().flatten())
+        .flat_map(part_tokens);
+    headers
+        .chain(records)
+        .chain(parts)
         .filter(|token| {
             !unknown_fields
                 .iter()
@@ -181,16 +177,7 @@ pub(super) fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
 }
 
 pub(super) fn section_headers(source: &str) -> Vec<SectionHeader> {
-    anyfix_expr::parse(source)
-        .syntax
-        .nodes()
-        .iter()
-        .filter_map(section)
-        .map(|section| SectionHeader {
-            kind: section.kind,
-            span: section.keyword,
-        })
-        .collect()
+    headers(&decode(source).document)
 }
 
 #[cfg(test)]
