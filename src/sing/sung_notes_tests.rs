@@ -125,3 +125,22 @@ fn a_singer_holds_the_syllable_over_notes_slurred_where_the_paired_part_has_one_
         ]
     );
 }
+
+#[test]
+fn a_slur_into_a_measure_without_words_holds_the_syllable_to_its_end() {
+    let notes = notes_of("time=3/4 key=C4 bpm=60\n[M] (1--~\n[L] 露\n\n[M] 1_2_3_2_1_2_)\n");
+    assert_eq!(
+        notes
+            .iter()
+            .map(|note| note.syllable.clone())
+            .collect::<Vec<_>>(),
+        vec![
+            word("露"),
+            SungSyllable::Held,
+            SungSyllable::Held,
+            SungSyllable::Held,
+            SungSyllable::Held,
+            SungSyllable::Held,
+        ]
+    );
+}

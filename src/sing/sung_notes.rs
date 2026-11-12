@@ -151,8 +151,9 @@ impl<'a> MeasureLyrics<'a> {
         }
     }
 
-    /// The syllable the singer's note starting at `column` sings. A note no
-    /// syllable starts on holds the one before when it's `slurred_on` to.
+    /// The syllable the singer's note starting at `column` sings. A note with
+    /// no word of its own (no syllable starts on it, or the measure has no
+    /// words) holds the one before when it's `slurred_on` to.
     fn syllable_at(&self, column: u32, slurred_on: bool) -> SungSyllable {
         let time = MeasureTime {
             column,
@@ -162,14 +163,14 @@ impl<'a> MeasureLyrics<'a> {
             .times
             .iter()
             .position(|syllable| syllable.same_as(time));
-        match index.and_then(|index| self.syllables.get(index)) {
-            Some(syllable) if syllable.text == "-" => SungSyllable::Held,
-            Some(syllable) if !syllable.text.is_empty() => {
-                SungSyllable::Word(syllable.text.clone())
-            }
-            Some(_) => SungSyllable::Silent,
-            None if index.is_none() && slurred_on => SungSyllable::Held,
-            None => SungSyllable::Silent,
+        let text = index
+            .and_then(|index| self.syllables.get(index))
+            .map(|syllable| syllable.text.as_str());
+        match text {
+            Some("-") => SungSyllable::Held,
+            Some(text) if !text.is_empty() => SungSyllable::Word(text.to_string()),
+            _ if slurred_on => SungSyllable::Held,
+            _ => SungSyllable::Silent,
         }
     }
 }
