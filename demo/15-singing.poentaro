@@ -1,0 +1,33 @@
+metadata { title "Singing", max measures per system 2 },
+
+parts [
+    "Melody" [M]: notes,
+    "Verse" [v]: lyrics [M] { voice: female, volume: 80 % },
+],
+
+score """
+    time=4/4 key=C4 bpm=100 label="两只老虎"
+    [M] 1 2 3 1
+    [v] 两 只 老 虎
+
+    [M] 1 2 3 1
+    [v] 两 只 老 虎
+
+    [M] 3 4 5 -
+    [v] 跑 得 快
+
+    [M] 3 4 5 -
+    [v] 跑 得 快
+
+    [M] 5_ 6_ 5_ 4_ 3 1
+    [v] 一 只 没 有 眼 睛
+
+    [M] 5_ 6_ 5_ 4_ 3 1
+    [v] 一 只 没 有 尾 巴
+
+    [M] 1 5, 1 -
+    [v] 真 奇 怪
+
+    [M] 1 5, 1 -
+    [v] 真 奇 怪
+    """,
