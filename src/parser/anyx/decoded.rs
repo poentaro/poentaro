@@ -15,7 +15,7 @@ pub(crate) fn span(span: anyx::Span) -> Span {
 }
 
 pub(crate) fn invalid(at: anyx::Span, message: impl Into<String>) -> RecoverableError {
-    RecoverableError::anyfix_invalid(span(at), message)
+    RecoverableError::anyx_invalid(span(at), message)
 }
 
 pub(crate) fn decode_error(error: &DecodeError) -> RecoverableError {
@@ -23,7 +23,7 @@ pub(crate) fn decode_error(error: &DecodeError) -> RecoverableError {
 }
 
 /// The source's sections, and what is wrong with the document as a whole: its
-/// anyfix syntax errors, a repeated section, a node that is no section, and
+/// anyx syntax errors, a repeated section, a node that is no section, and
 /// text the converter couldn't read.
 pub(crate) struct Decoded {
     pub document: Document,

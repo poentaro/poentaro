@@ -2,11 +2,11 @@
 //! rewriting one preset's `visible_parts`, `soloed_parts` or `notation` line, adding a new
 //! preset, and following a preset renamed in the editor. Each edit touches
 //! only the lines it needs, so the rest of the file keeps its formatting. A
-//! document in anyfix expressions goes through [`super::anyfix_edit`].
+//! document in anyx expressions goes through [`super::anyx_edit`].
 
 use itertools::Itertools;
 
-use super::anyfix_edit;
+use super::anyx_edit;
 use crate::ast::parsed::{Notation, PresetKey, DEFAULT_PRESET_NAME};
 
 /// One line a preset menu control writes into a `preset` section.
@@ -63,7 +63,7 @@ pub struct PresetSummary {
 /// so a half-typed score doesn't empty the menu. Like the parser, it skips
 /// `"Default"` and every repeat of an earlier name.
 pub fn list_presets(source: &str) -> Vec<PresetSummary> {
-    anyfix_edit::list_presets(source)
+    anyx_edit::list_presets(source)
 }
 
 /// Why "New preset…" can't use `name`, or `None` when it can.
@@ -118,13 +118,13 @@ pub fn follow_preset_rename(previous_source: &str, source: &str, name: &str) -> 
 /// line](PresetEdit::removes_line) deletes every `edit.key()` line instead.
 /// Returns `source` unchanged when no preset is called `name`.
 pub fn update_preset_field(source: &str, name: &str, edit: &PresetEdit) -> String {
-    anyfix_edit::update_preset_field(source, name, edit)
+    anyx_edit::update_preset_field(source, name, edit)
 }
 
 /// The named preset's part list under `key`: `None` when no preset has that
 /// name, `Some(None)` when it sets none.
 fn preset_part_list(source: &str, name: &str, key: PresetKey) -> Option<Option<Vec<String>>> {
-    anyfix_edit::has_preset(source, name).then(|| anyfix_edit::part_list_of(source, name, key))
+    anyx_edit::has_preset(source, name).then(|| anyx_edit::part_list_of(source, name, key))
 }
 
 /// A part pill clicked under a preset: which part, and whether it now shows.
@@ -199,7 +199,7 @@ pub fn set_preset_part_soloed(
 
 /// Adds a preset holding `preset`'s parts, solos and notation.
 pub fn add_preset_section(source: &str, preset: NewPreset) -> String {
-    anyfix_edit::add_preset_section(source, preset)
+    anyx_edit::add_preset_section(source, preset)
 }
 
 #[cfg(test)]

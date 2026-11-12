@@ -1,7 +1,7 @@
 //! How anyx splits text into words, as far as the converter and the
 //! reader need to know, so a value written one way reads back the same.
 
-/// Whether `text` is one anyfix name word: a letter or `_`, then letters,
+/// Whether `text` is one anyx name word: a letter or `_`, then letters,
 /// digits or `_`.
 pub(super) fn is_name_word(text: &str) -> bool {
     let mut chars = text.chars();
@@ -12,7 +12,7 @@ pub(super) fn is_name_word(text: &str) -> bool {
         && text != "_"
 }
 
-/// Whether `text` is an anyfix keyword: a name word with an uppercase letter
+/// Whether `text` is an anyx keyword: a name word with an uppercase letter
 /// and no lowercase one. Keywords split a run, so a keyword can't stand where
 /// a plain word is expected.
 pub(super) fn is_keyword(text: &str) -> bool {
@@ -21,7 +21,7 @@ pub(super) fn is_keyword(text: &str) -> bool {
         && !text.chars().any(char::is_lowercase)
 }
 
-/// A snake_case name (`max_measures_per_system`) as an anyfix run of words
+/// A snake_case name (`max_measures_per_system`) as an anyx run of words
 /// (`max measures per system`), when every part is a non-keyword name word.
 pub(super) fn snake_case_as_words(text: &str) -> Option<String> {
     let parts: Vec<&str> = text.split('_').collect();
@@ -31,14 +31,14 @@ pub(super) fn snake_case_as_words(text: &str) -> Option<String> {
         .then(|| parts.join(" "))
 }
 
-/// `text` as an anyfix quoted string.
+/// `text` as an anyx quoted string.
 pub(crate) fn quoted(text: &str) -> String {
     let escaped = text.replace('\\', "\\\\").replace('"', "\\\"");
     format!("\"{escaped}\"")
 }
 
 /// The characters that can't appear in an abbreviation written bare between
-/// brackets or commas: anyfix's special characters, plus whitespace.
+/// brackets or commas: anyx's special characters, plus whitespace.
 fn breaks_bare_abbreviation(c: char) -> bool {
     c.is_whitespace() || ",:.()[]{}#\"".contains(c)
 }

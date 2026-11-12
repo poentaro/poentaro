@@ -36,11 +36,11 @@ pub fn read_source(input: &Path) -> Result<String, IrrecoverableError> {
     })
 }
 
-/// Reads a document to compile. A document with anyfix errors is an error
+/// Reads a document to compile. A document with anyx errors is an error
 /// listing each one, since part of what it says can't be read.
 pub fn read_document_source(input: &Path) -> Result<String, IrrecoverableError> {
     let source = read_source(input)?;
-    let errors = crate::document::anyfix_errors(&source, &[]);
+    let errors = crate::document::anyx_errors(&source, &[]);
     if errors.is_empty() {
         return Ok(source);
     }
@@ -59,7 +59,7 @@ pub fn read_document_source(input: &Path) -> Result<String, IrrecoverableError> 
         .collect::<Vec<_>>()
         .join("\n");
     Err(IrrecoverableError::new(
-        IrrecoverableErrorKind::AnyfixSourceInvalid {
+        IrrecoverableErrorKind::AnyxSourceInvalid {
             span: Span::new(0, 0),
             report,
         },
@@ -69,7 +69,7 @@ pub fn read_document_source(input: &Path) -> Result<String, IrrecoverableError> 
 /// Formats a document in place.
 pub fn format_file(input: &Path) -> Result<(), IrrecoverableError> {
     let source = read_source(input)?;
-    let formatted = crate::format_anyfix::format_anyfix(&source);
+    let formatted = crate::format_anyx::format_anyx(&source);
     if formatted == source {
         return Ok(());
     }

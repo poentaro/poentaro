@@ -1,4 +1,4 @@
-//! [`format_anyfix`]: formats a document (see `syntax.md`).
+//! [`format_anyx`]: formats a document (see `syntax.md`).
 //!
 //! 1. anyx's canonical formatter lays out the whole document.
 //! 2. The score's raw string then goes through the same
@@ -7,18 +7,18 @@
 //! 3. The canonical formatter runs again, so the rewritten strings are
 //!    indented like everything else.
 //!
-//! A document with anyfix errors comes back unchanged: laying out text that
-//! isn't really anyfix, like a file still in an older syntax, scrambles it. A
+//! A document with anyx errors comes back unchanged: laying out text that
+//! isn't really anyx, like a file still in an older syntax, scrambles it. A
 //! score string holding a `//` comment is left as it is, since the measure
 //! cleanups would drop the comment.
 
 use crate::format_source::format_measures;
 use crate::parser;
-use crate::parser::anyfix::decoded::{decode, span};
+use crate::parser::anyx::decoded::{decode, span};
 
-/// Formats an `.anyfix` document; see the module docs.
-pub fn format_anyfix(source: &str) -> String {
-    if !crate::document::anyfix_errors(source, &[]).is_empty() {
+/// Formats an `.anyx` document; see the module docs.
+pub fn format_anyx(source: &str) -> String {
+    if !crate::document::anyx_errors(source, &[]).is_empty() {
         return source.to_string();
     }
     let Ok(formatted) = anyx::format(source) else {
@@ -65,5 +65,5 @@ fn raw_string(measures: &str) -> String {
 }
 
 #[cfg(test)]
-#[path = "format_anyfix_tests.rs"]
+#[path = "format_anyx_tests.rs"]
 mod tests;

@@ -8,7 +8,7 @@ use crate::ast::parsed::{
     DIRECTIVE_ROW_OFFSET_KEY,
 };
 use crate::error::RecoverableError;
-use crate::parser::anyfix::decoded::{decode_error, invalid, span, FieldName, ValueText};
+use crate::parser::anyx::decoded::{decode_error, invalid, span, FieldName, ValueText};
 use poentaro_grammar::{DecodeError, Field, Record, Value};
 
 /// A recognized `metadata` key, classified by the value it takes.

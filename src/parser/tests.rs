@@ -114,7 +114,7 @@ parts ["Melody": notes],
         !doc.section_structure_errors.iter().any(|e| matches!(
             &e.kind,
             crate::error::RecoverableErrorKind::SectionMissing { .. }
-                | crate::error::RecoverableErrorKind::AnyfixInvalid { .. }
+                | crate::error::RecoverableErrorKind::AnyxInvalid { .. }
         )),
         "out-of-order sections must not produce a structure error: {:?}",
         doc.section_structure_errors

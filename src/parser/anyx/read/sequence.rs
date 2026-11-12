@@ -3,9 +3,7 @@
 use itertools::Itertools;
 
 use crate::error::RecoverableError;
-use crate::parser::anyfix::decoded::{
-    content_span, decode_error, span, AbbreviationText, WordsText,
-};
+use crate::parser::anyx::decoded::{content_span, decode_error, span, AbbreviationText, WordsText};
 use crate::parser::sequence_parser::{PartFilter, PartFilterKind, SequenceEntry, SequenceSection};
 use poentaro_grammar::{self as shape, Abbreviation, DecodeError, EntryList, Label, Spanned};
 

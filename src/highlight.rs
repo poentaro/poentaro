@@ -26,7 +26,7 @@ pub struct HighlightToken {
 /// Every keyword in `source`, ordered by position. Each token lies on a
 /// single line.
 pub fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
-    anyfix_highlight::highlight_tokens(source)
+    anyx_highlight::highlight_tokens(source)
 }
 
 /// A known section: which one, and its header's span (the same span its
@@ -39,7 +39,7 @@ pub struct SectionHeader {
 
 /// Every known section header in `source`, ordered by position.
 pub fn section_headers(source: &str) -> Vec<SectionHeader> {
-    anyfix_highlight::section_headers(source)
+    anyx_highlight::section_headers(source)
 }
 
-mod anyfix_highlight;
+mod anyx_highlight;

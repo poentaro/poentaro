@@ -4,7 +4,7 @@ use anyx::{FlatWord, Node};
 
 use crate::ast::parsed::{midi_note_name, parse_midi_note_name, PitchRange};
 use crate::error::RecoverableError;
-use crate::parser::anyfix::decoded::span;
+use crate::parser::anyx::decoded::span;
 
 /// The range `value` writes (`C3 to G4`, `Bb2 to "F#4"`), or `None` with a
 /// diagnostic when it isn't one.
@@ -13,7 +13,7 @@ pub(super) fn written_range(
     errors: &mut Vec<RecoverableError>,
 ) -> Option<PitchRange> {
     let malformed = || RecoverableError::parts_malformed_range(span(value.span));
-    // Keywords like `C3` split anyfix's word runs, so `C3 to G4` is nested
+    // Keywords like `C3` split anyx's word runs, so `C3 to G4` is nested
     // calls; read flat, it is its words in order. A quoted word (`"F#3"`,
     // since `#` starts a comment) is one word too.
     let Ok(words) = value.flat_words() else {

@@ -1,5 +1,5 @@
-mod anyfix_edit;
-mod anyfix_part_edit;
+mod anyx_edit;
+mod anyx_part_edit;
 mod metadata_edit;
 mod octave_shift;
 mod preset_edit;
@@ -79,7 +79,7 @@ pub fn update_part_declaration(
     abbreviation: &str,
     settings: &PartSettings,
 ) -> Option<String> {
-    anyfix_part_edit::update_part_declaration(source, abbreviation, settings)
+    anyx_part_edit::update_part_declaration(source, abbreviation, settings)
 }
 
 #[cfg(test)]

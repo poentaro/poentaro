@@ -1,4 +1,4 @@
-//! The source edits of a document written in anyfix expressions. Each finds the
+//! The source edits of a document written in anyx expressions. Each finds the
 //! node it changes in the tree, rewrites that node's text, and formats only the
 //! section it sits in, so every other section keeps its layout and comments.
 
@@ -8,9 +8,9 @@ use crate::ast::parsed::{
     ParsedMetadata, PresetKey, DEFAULT_PRESET_NAME, DIRECTIVE_ROW_OFFSET_KEY,
 };
 use crate::error::Span;
-use crate::parser::anyfix::decoded::{decode, span, AbbreviationText, FieldName, ValueText};
-use crate::parser::anyfix::quoted;
-use crate::parser::anyfix::{field_text, read_metadata_field};
+use crate::parser::anyx::decoded::{decode, span, AbbreviationText, FieldName, ValueText};
+use crate::parser::anyx::quoted;
+use crate::parser::anyx::{field_text, read_metadata_field};
 use poentaro_grammar::{DecodeError, Document, DocumentPreset, Field, Record, Value};
 
 use super::metadata_edit::{canonical_fields, MetadataEdit, MetadataFields};

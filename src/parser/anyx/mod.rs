@@ -1,4 +1,4 @@
-//! Reads and writes `.poentaro` documents, written in anyfix expressions (see
+//! Reads and writes `.poentaro` documents, written in anyx expressions (see
 //! `syntax.md`).
 //!
 //! - The `poentaro_grammar` crate decodes the shapes a document is made of.

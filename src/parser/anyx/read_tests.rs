@@ -1,11 +1,11 @@
-use crate::document::anyfix_errors;
+use crate::document::anyx_errors;
 use crate::parser::read_document;
 use crate::parser::sequence_parser::PartFilterKind;
 use crate::part_info::SourcePartDeclaration;
 use crate::source_edit::{parse_metadata_fields, MetadataFields};
 
 fn error_messages(source: &str) -> Vec<String> {
-    anyfix_errors(source, &[])
+    anyx_errors(source, &[])
         .iter()
         .map(crate::error::RecoverableError::message)
         .collect()
@@ -28,7 +28,7 @@ fn metadata_debug(fields: &MetadataFields) -> String {
 
 #[test]
 fn metadata_reads_like_the_section_syntax() {
-    let anyfix = r#"metadata {
+    let anyx = r#"metadata {
         title : "Song",
         max measures per system : 4,
         hide resting parts : no,
@@ -48,16 +48,16 @@ parts [],
 score """
     """,
 "#;
-    assert_eq!(error_messages(anyfix), [] as [String; 0]);
+    assert_eq!(error_messages(anyx), [] as [String; 0]);
     assert_eq!(
-        metadata_debug(&parse_metadata_fields(anyfix, None)),
+        metadata_debug(&parse_metadata_fields(anyx, None)),
         metadata_debug(&parse_metadata_fields(section_syntax, None))
     );
 }
 
 #[test]
 fn parts_read_like_the_section_syntax() {
-    let anyfix = r#"parts [
+    let anyx = r#"parts [
         "Violin" [V] : notes { octave : -1, volume : 80%, instrument : violin },
         "Echo" [E] : follow [V] { volume : 50% },
         "Words" [Vv1] : lyrics [V],
@@ -75,8 +75,8 @@ fn parts_read_like_the_section_syntax() {
 score """
     """,
 "#;
-    assert_eq!(error_messages(anyfix), [] as [String; 0]);
-    assert_eq!(declarations(anyfix), declarations(section_syntax));
+    assert_eq!(error_messages(anyx), [] as [String; 0]);
+    assert_eq!(declarations(anyx), declarations(section_syntax));
 }
 
 #[test]
@@ -186,7 +186,7 @@ fn an_unknown_metadata_field_is_reported_as_written() {
 }
 
 #[test]
-fn anyfix_syntax_errors_are_reported() {
+fn anyx_syntax_errors_are_reported() {
     assert_eq!(error_messages("parts [").len(), 1);
 }
 

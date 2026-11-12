@@ -1,4 +1,4 @@
-//! Keywords of a document written in anyfix expressions. Sections, fields and
+//! Keywords of a document written in anyx expressions. Sections, fields and
 //! part kinds come from its tree. The score's directive keywords come from the
 //! score lexer, since the score string holds the section syntax's text.
 
@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use super::{HighlightKind, HighlightToken, SectionHeader};
 use crate::error::{Diagnostic, RecoverableErrorKind, Span};
-use crate::parser::anyfix::decoded::{decode, span};
+use crate::parser::anyx::decoded::{decode, span};
 use crate::parser::score::interleaved_parser::directive_keyword_spans;
 use crate::parser::section::SectionKind;
 use crate::parser::{read_document, ReadDocument};
@@ -181,5 +181,5 @@ pub(super) fn section_headers(source: &str) -> Vec<SectionHeader> {
 }
 
 #[cfg(test)]
-#[path = "anyfix_highlight_tests.rs"]
-mod anyfix_highlight_tests;
+#[path = "anyx_highlight_tests.rs"]
+mod anyx_highlight_tests;

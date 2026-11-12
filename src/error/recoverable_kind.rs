@@ -14,9 +14,9 @@ pub enum RecoverableErrorKind {
     TimedPartMeasureMissing,
     /// Generic recoverable error with a free-form message.
     General { message: String },
-    /// Text that doesn't read as an anyfix document: a syntax error, or an
+    /// Text that doesn't read as an anyx document: a syntax error, or an
     /// expression of the wrong shape. That expression is left out.
-    AnyfixInvalid { message: String },
+    AnyxInvalid { message: String },
     /// A note has both octave-up (`'`) and octave-down (`,`) markers — octave shift is zeroed.
     DurationMixedOctaveMarkers,
     /// An unexpected character was encountered while lexing a notes line — the line is dropped.
@@ -162,7 +162,7 @@ impl RecoverableErrorKind {
             Self::MeasureDirectivesMissing => "internal invariant: measure_directives shorter than measure count".to_string(),
             Self::SourceSpanMissing { index } => format!("internal invariant: source_span missing for measure {index}"),
             Self::TimedPartMeasureMissing => "internal invariant: timed part measure missing".to_string(),
-            Self::General { message } | Self::AnyfixInvalid { message } => message.clone(),
+            Self::General { message } | Self::AnyxInvalid { message } => message.clone(),
             Self::LexUnexpectedChar { ch } => format!("unexpected character: {ch}"),
             Self::MeasureNoDataLines => "measure has no data lines; treating all parts as empty".to_string(),
             Self::DottedEighthNeedsSixteenth => "dotted eighth must be followed by a sixteenth note or rest".to_string(),

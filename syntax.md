@@ -6,7 +6,7 @@ This document describes the input syntax accepted by **Poentaro** (formerly jian
 
 ## File structure
 
-A document is a list of sections written in [anyfix expressions](https://github.com/wongjiahau/anyx), each followed by a comma, in any order:
+A document is a list of sections written in [anyx expressions](https://github.com/wongjiahau/anyx), each followed by a comma, in any order:
 
 ```poentaro
 # A comment runs from `#` to the end of the line.

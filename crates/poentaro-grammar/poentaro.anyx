@@ -1,4 +1,4 @@
-# A `.poentaro` document, as an anyfix grammar (see anyx's
+# A `.poentaro` document, as an anyx grammar (see anyx's
 # crates/anyx-generator/README.md). `just generate-parser` writes
 # `generated.rs` from it.
 #
@@ -82,7 +82,7 @@ options: CURLY BRACE: EACH: part option,
 
 part option: ONE OF [
   instrument: ANYFIX CALL [keyword: WORD "instrument", name: words],
-  # `C3 to G4`, whose capitalised words split anyfix's word runs, so Rust
+  # `C3 to G4`, whose capitalised words split anyx's word runs, so Rust
   # reads it from the node.
   range: ANYFIX CALL [keyword: WORD "range", value: ANY NODE],
   sound: ANYFIX CALL [keyword: WORD "sound", program: NUMBER [INTEGER]],

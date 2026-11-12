@@ -1,11 +1,11 @@
 //! Reading and editing `metadata`, or a preset's overrides of it, as a whole,
-//! for the web editor's Edit Metadata form, through [`super::anyfix_edit`].
+//! for the web editor's Edit Metadata form, through [`super::anyx_edit`].
 
 use std::iter::once;
 
 use itertools::Itertools;
 
-use super::anyfix_edit;
+use super::anyx_edit;
 use crate::ast::parsed::{
     MetadataFlagKey, MetadataNumberKey, MetadataTextKey, ParsedMetadata, TextStyle,
     TextStyleComponent, TextStyleComponentValue, TextStyleKind, YesNo, DIRECTIVE_ROW_OFFSET_KEY,
@@ -72,11 +72,11 @@ impl MetadataEdit {
 /// The field values of the preset called `preset_name`, or of `metadata`
 /// when `None`; all-unset when the source has no such section.
 pub fn parse_metadata_fields(source: &str, preset_name: Option<&str>) -> MetadataFields {
-    anyfix_edit::parse_metadata_fields(source, preset_name)
+    anyx_edit::parse_metadata_fields(source, preset_name)
 }
 
 /// One field in canonical order, with its value in the form
-/// [`crate::parser::anyfix::field_text`] takes.
+/// [`crate::parser::anyx::field_text`] takes.
 pub(super) struct CanonicalField {
     pub key: String,
     pub value: String,
@@ -155,7 +155,7 @@ pub fn update_metadata_field(
     preset_name: Option<&str>,
     edit: MetadataEdit,
 ) -> String {
-    anyfix_edit::update_metadata_field(source, preset_name, edit)
+    anyx_edit::update_metadata_field(source, preset_name, edit)
 }
 
 #[cfg(test)]

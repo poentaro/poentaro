@@ -1,4 +1,4 @@
-//! Reads an anyfix document's tree into the document it describes.
+//! Reads an anyx document's tree into the document it describes.
 
 mod metadata;
 mod parts;

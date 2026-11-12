@@ -3,7 +3,7 @@
 //! `just generate-parser` writes it again after the grammar changes.
 //!
 //! What the shapes mean, such as which metadata keys exist, is read in the
-//! main crate (`src/parser/anyfix/`).
+//! main crate (`src/parser/anyx/`).
 
 #[rustfmt::skip]
 mod generated;

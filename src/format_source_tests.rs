@@ -1,6 +1,6 @@
 //! Tests for [`super::format_measures`], through the document formatter.
 
-use crate::format_anyfix::format_anyfix as format_score;
+use crate::format_anyx::format_anyx as format_score;
 
 #[test]
 fn drops_a_trailing_all_rest_measure_for_a_plain_notes_part() {

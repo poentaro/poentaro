@@ -1,16 +1,16 @@
-//! The part edit of a document written in anyfix expressions: rewrites the kind
+//! The part edit of a document written in anyx expressions: rewrites the kind
 //! of one part in the tree and formats only the `parts` section.
 
 use crate::ast::parsed::{PitchRange, RangeInstrument};
 use crate::error::Span;
-use crate::parser::anyfix::decoded::{decode, span, AbbreviationText};
-use crate::parser::anyfix::{abbreviation, part_kind_text, PartKindText};
+use crate::parser::anyx::decoded::{decode, span, AbbreviationText};
+use crate::parser::anyx::{abbreviation, part_kind_text, PartKindText};
 use crate::parser::parts_parser::{
     DEFAULT_PART_OCTAVE_OFFSET, DEFAULT_PART_VOLUME, PART_SETTING_LIMITS,
 };
 use poentaro_grammar::Part;
 
-use super::anyfix_edit::{formatted_section, replace_span, text_of};
+use super::anyx_edit::{formatted_section, replace_span, text_of};
 use super::{PartMode, PartSettings};
 
 pub(super) fn update_part_declaration(

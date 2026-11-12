@@ -88,7 +88,7 @@ fn skips_bad_line_keeps_valid_declaration() {
     assert_eq!(errors.len(), 1);
     assert!(matches!(
         errors[0].kind,
-        RecoverableErrorKind::AnyfixInvalid { .. }
+        RecoverableErrorKind::AnyxInvalid { .. }
     ));
 }
 
@@ -310,7 +310,7 @@ fn source_level_follow_soundfont_is_explicit_only() {
     let content = r#"parts ["Chords" [C]: follow [M] { sound 40 }]
 "#;
     let mut errors = Vec::new();
-    let decls = crate::parser::anyfix::source_part_declarations(content, &mut errors, &instruments);
+    let decls = crate::parser::anyx::source_part_declarations(content, &mut errors, &instruments);
     assert!(errors.is_empty());
     assert_eq!(decls.len(), 1);
     assert_eq!(decls[0].mode, SourcePartMode::Follow);
@@ -325,7 +325,7 @@ fn source_level_follow_without_soundfont_does_not_inherit() {
     let content = r#"parts ["Melody" [M]: notes { sound 48 }, "Chords" [C]: follow [M]]
 "#;
     let mut errors = Vec::new();
-    let decls = crate::parser::anyfix::source_part_declarations(content, &mut errors, &[]);
+    let decls = crate::parser::anyx::source_part_declarations(content, &mut errors, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls.len(), 2);
     assert_eq!(decls[1].mode, SourcePartMode::Follow);

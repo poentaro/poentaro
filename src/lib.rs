@@ -30,7 +30,7 @@ pub mod file_tree;
 pub mod filters;
 mod font_metrics;
 pub mod fonts;
-pub mod format_anyfix;
+pub mod format_anyx;
 pub mod format_source;
 pub mod grid_layout;
 pub mod grouper;
