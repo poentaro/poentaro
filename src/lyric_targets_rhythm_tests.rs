@@ -1,8 +1,12 @@
 use crate::error::Diagnostic;
 
 fn errors_of(soprano: &str, alto: &str) -> Vec<String> {
+    errors_with_words(soprano, alto, "我 们")
+}
+
+fn errors_with_words(soprano: &str, alto: &str, words: &str) -> Vec<String> {
     let source = format!(
-        "parts [\"S\" [S]: notes, \"A\" [A]: notes, \"w\" [w]: lyrics [S, A]],\nscore \"\"\"\ntime=2/4 key=C4 bpm=60\n[S] {soprano}\n[A] {alto}\n[w] 我 们\n\"\"\",\n"
+        "parts [\"S\" [S]: notes, \"A\" [A]: notes, \"w\" [w]: lyrics [S, A]],\nscore \"\"\"\ntime=2/4 key=C4 bpm=60\n[S] {soprano}\n[A] {alto}\n[w] {words}\n\"\"\",\n"
     );
     let score = crate::compile(&source, "test.poentaro", &[]).expect("compiles");
     score
@@ -46,6 +50,16 @@ fn a_tie_onto_the_same_pitch_takes_no_syllable_of_its_own() {
 fn targets_taking_as_many_syllables_at_different_times_are_an_error() {
     let errors = errors_of("1. 2_", "5, 7,");
     assert_eq!(errors.len(), 1, "{errors:?}");
+}
+
+#[test]
+fn a_target_resting_all_measure_is_not_checked() {
+    assert!(errors_of("0 0", "5, 7,").is_empty());
+}
+
+#[test]
+fn a_target_may_hold_its_note_through_a_held_syllable() {
+    assert!(errors_with_words("1 -", "5, 7,", "我 -").is_empty());
 }
 
 #[test]

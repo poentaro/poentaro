@@ -1,9 +1,10 @@
 //! A lyric part sung on several parts (`lyrics [S, A, T, B]`) puts each
 //! syllable at the same time in every one of them. The syllables are paired
 //! with the bottommost part's notes, so every other part must start a note
-//! at each of those times, and may start no other note that would want a
-//! syllable of its own. A note slurred into from the note before it carries
-//! the syllable on, so it needs none.
+//! at each word's time, and may start no note at a time no syllable is sung.
+//! A held `-` carries the word before on, so a part may hold its note through
+//! it; likewise a note slurred into needs no syllable of its own. A part
+//! resting all measure sings none of it, so isn't checked.
 
 use crate::ast::grouped::{GroupedPart, GroupedTrack, NoteEvent};
 use crate::ast::parsed::PartKind;
@@ -40,16 +41,23 @@ pub(crate) fn lyric_targets_rhythm_error(
     };
     let paired = times_of(target_part_index)?;
     let syllable_times = &paired.may_take;
+    let word_times = syllable_times
+        .iter()
+        .zip(&measure.paired_lyrics)
+        .filter(|(_, syllable)| syllable.text != "-")
+        .map(|(&time, _)| time)
+        .collect::<Vec<_>>();
     let other = lyric_part
         .lyric_targets
         .iter()
         .filter_map(|&index| times_of(index))
+        .filter(|target| !target.may_take.is_empty())
         .find(|target| {
             !target
                 .must_take
                 .iter()
                 .all(|&time| contains(syllable_times, time))
-                || !syllable_times
+                || !word_times
                     .iter()
                     .all(|&time| contains(&target.may_take, time))
         })?;
