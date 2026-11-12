@@ -106,3 +106,22 @@ fn a_hidden_singer_sings_nothing() {
     crate::filter_tracks(&mut score, &["L".to_string()]);
     assert!(sung_notes(&score, "M").expect("sung notes").is_empty());
 }
+
+#[test]
+fn a_singer_holds_the_syllable_over_notes_slurred_where_the_paired_part_has_one_note() {
+    let source = "parts [\"S\" [S]: notes { sound: chimera soprano }, \"A\" [A]: notes, \"Words\" [i]: lyrics [S, A]],\nscore \"\"\"\ntime=3/4 key=C4 bpm=60\n[S] 3 3 (2_1_)\n[A] 6,6,5,\n[i] 我們道\n\"\"\",\n";
+    let score = crate::compile(source, "test.poentaro", &[]).expect("compiles");
+    let notes = sung_notes(&score, "S").expect("sung notes");
+    assert_eq!(
+        notes
+            .iter()
+            .map(|note| (note.start_seconds, note.midi, note.syllable.clone()))
+            .collect::<Vec<_>>(),
+        vec![
+            (0.0, 64, word("我")),
+            (1.0, 64, word("們")),
+            (2.0, 62, word("道")),
+            (2.5, 60, SungSyllable::Held),
+        ]
+    );
+}

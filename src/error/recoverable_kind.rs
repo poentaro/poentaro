@@ -91,14 +91,9 @@ pub enum RecoverableErrorKind {
         attacks: usize,
         first_syllable_takes_beat_one: bool,
     },
-    /// The parts one lyric part is sung on take different numbers of
-    /// syllables in a measure.
-    LyricsTargetsDiffer {
-        first: String,
-        first_slots: usize,
-        other: String,
-        other_slots: usize,
-    },
+    /// A part one lyric part is sung on doesn't take its syllables at the
+    /// times the part they're paired with (`paired`) does.
+    LyricsTargetsDiffer { paired: String, other: String },
     /// A part has a different number of measures than the first part.
     PartMeasureCountMismatch {
         part: String,
@@ -212,7 +207,7 @@ impl RecoverableErrorKind {
             Self::LyricsLineEmpty => "lyrics line cannot be empty; use '_' for no lyrics".to_string(),
             Self::LyricsNoNotesTrack { abbrev } => format!("lyrics line for '{abbrev}' has no matching notes track"),
             Self::LyricsBracketNotOneSyllable { found } => format!("a lyric bracket must hold exactly one syllable, found {found}"),
-            Self::LyricsTargetsDiffer { first, first_slots, other, other_slots } => format!("[{first}] takes {first_slots} syllable(s) in this measure but [{other}] takes {other_slots}; the parts a lyric part is sung on must share their rhythm"),
+            Self::LyricsTargetsDiffer { paired, other } => format!("[{other}] doesn't take its syllables at the same times as [{paired}] in this measure; the parts a lyric part is sung on must share their rhythm"),
             Self::LyricsBracketUnclosed => "lyric bracket is never closed".to_string(),
             Self::LyricsBracketUnmatched => "closing lyric bracket has no opening bracket".to_string(),
             Self::LyricsBracketCountMismatch { brackets, attacks, first_syllable_takes_beat_one } => format!(

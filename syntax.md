@@ -865,7 +865,7 @@ score """
 ```
 
 - A lyric part's line is written with its own `[Abbrev]` key, anywhere in the measure group; it is not tied to the line above it. A lyric part takes no options.
-- A lyric part may name several parts, `lyrics [S, A, T, B]`, when they sing the same words to the same rhythm. Its row is drawn under the bottommost of them. In a measure where the parts take a different number of syllables, it is an error.
+- A lyric part may name several parts, `lyrics [S, A, T, B]`, when they sing the same words to the same rhythm. Its row is drawn under the bottommost of them, and its syllables are paired with that part's notes. Every other part must start a note at each syllable's time and nowhere else, except on a note slurred into from the note before it, which carries that syllable on: `[S] 3 3 (2_1_)` sings three syllables, like `[A] 6, 6, 5,`. Any other mismatch is an error.
 - Lyric parts have their own abbreviation and display name, and share the abbreviation namespace with every other part (a duplicate abbreviation is an error).
 - Each lyric part renders as its own row directly under its target's notes row, in declaration order, and is tallied and tie-paired against the notes row independently — a lyric part can have its own `-` held syllables and `_` no-lyrics marker.
 - Each verse row's left-margin label shows that lyric part's own abbreviation (e.g. `v1`, `v2`); clicking it, or including it in a click-and-click range selection, selects every syllable that verse sings across the system.
@@ -897,7 +897,7 @@ score """
 - The voices are `chimera soprano`, `chimera alto`, `chimera tenor` and `chimera bass`. Soprano and alto sing with a female voice, tenor and bass with a male one. The `soprano`, `alto`, `tenor` and `bass` instruments sing by default; any part can take any voice.
 - The part's `volume` sets the voice's peak relative to the instruments' peak.
 - A singing part with no lyric part naming it, or with more than one, is an error.
-- Each syllable is sung on its note's pitch and for its note's length. A tie lengthens the note, and a held `-` carries the vowel on into the next note. A `_` measure sings nothing.
+- Each syllable is sung on its note's pitch and for its note's length. A tie lengthens the note, and a held `-`, or a slur onto a note no syllable starts on, carries the vowel on into the next note. A `_` measure sings nothing.
 - Chinese, English and Korean lyrics are read for pronunciation; Chinese is sung on the melody, not on each character's spoken tone.
 - A MIDI file export plays the part's General MIDI choir sound instead, since a voice can't be written there.
 - Playback may wait a moment while the voices are sung. Hidden parts don't sing.

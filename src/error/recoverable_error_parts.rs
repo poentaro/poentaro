@@ -91,20 +91,12 @@ impl RecoverableError {
         }
     }
 
-    pub fn lyrics_targets_differ(
-        span: Span,
-        first: &str,
-        first_slots: usize,
-        other: &str,
-        other_slots: usize,
-    ) -> Self {
+    pub fn lyrics_targets_differ(span: Span, paired: &str, other: &str) -> Self {
         Self {
             span,
             kind: RecoverableErrorKind::LyricsTargetsDiffer {
-                first: first.to_string(),
-                first_slots,
+                paired: paired.to_string(),
                 other: other.to_string(),
-                other_slots,
             },
         }
     }

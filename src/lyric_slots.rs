@@ -18,6 +18,22 @@ pub(crate) struct LyricSlot {
     pub(crate) column: u32,
 }
 
+/// A point in a measure, as a fraction of the measure's length, so parts
+/// written at different resolutions can be compared.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct MeasureTime {
+    pub(crate) column: u32,
+    /// The measure's length in the same units as `column`.
+    pub(crate) length: u32,
+}
+
+impl MeasureTime {
+    pub(crate) fn same_as(self, other: MeasureTime) -> bool {
+        u64::from(self.column) * u64::from(other.length)
+            == u64::from(other.column) * u64::from(self.length)
+    }
+}
+
 /// The lyric slots of one measure's `events`, and the state it hands to the
 /// next measure.
 #[derive(Debug, Clone, PartialEq, Eq)]
