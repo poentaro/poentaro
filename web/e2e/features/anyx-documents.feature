@@ -37,7 +37,7 @@ Feature: Documents written in anyx expressions
     When I click the "Edit Parts" CodeLens link
     And I change the octave select for part "M" to "-1"
     And I close the anyx document's edit parts modal
-    Then the editor source contains "octave: - 1"
+    Then the editor source contains "octave -1"
     And the anyx document still has its comments
 
   Scenario: Formatting keeps the comments and the anyx form
