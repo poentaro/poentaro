@@ -49,17 +49,20 @@ pub(crate) fn singing_plan_response(
 }
 
 /// What the measure-range audio of the same arguments sings, like
-/// [`singing_plan_response`].
+/// [`singing_plan_response`]; selected lyrics alone sing on their
+/// `visible_tracks` singers.
 pub(crate) fn singing_plan_for_measure_range_response(
     source: &str,
     selection: &MeasureRangeSelection,
     enabled_tracks: Option<&[String]>,
+    visible_tracks: Option<&[String]>,
 ) -> Option<Vec<u8>> {
     singing_plan_for_measure_range_from_source(
         source,
         "input.poentaro",
         selection,
         enabled_tracks,
+        visible_tracks,
         &[],
     )
     .ok()

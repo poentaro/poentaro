@@ -66,3 +66,14 @@ Then(
     )
   },
 )
+
+Then(
+  'the play-selection button eventually shows the playing state',
+  async ({ page }) => {
+    // Playing waits while the voice is sung, like Play All above.
+    await expect(page.locator('button.play-measure-btn')).toHaveClass(
+      /play-measure-btn--playing/,
+      { timeout: 50_000 },
+    )
+  },
+)

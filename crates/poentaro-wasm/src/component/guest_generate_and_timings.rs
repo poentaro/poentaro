@@ -98,6 +98,7 @@ pub(super) fn singing_plan_for_measure_range(
     sequence_entry_start_index: Option<u32>,
     sequence_entry_end_index: Option<u32>,
     enabled_tracks: Option<Vec<String>>,
+    visible_tracks: Option<Vec<String>>,
 ) -> Option<Vec<u8>> {
     crate::responses::singing_plan_for_measure_range_response(
         &source,
@@ -111,6 +112,7 @@ pub(super) fn singing_plan_for_measure_range(
             ),
         },
         enabled_tracks.as_deref(),
+        visible_tracks.as_deref(),
     )
 }
 

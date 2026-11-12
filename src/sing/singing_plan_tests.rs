@@ -28,3 +28,16 @@ fn parts_without_a_chimera_sound_sing_nothing() {
     let plan = plan_of(r#""Soprano" [S]: notes, "Alto" [A]: notes, "Words" [w]: lyrics [S, A]"#);
     assert!(plan.parts.is_empty());
 }
+
+#[test]
+fn a_singing_part_with_no_words_to_sing_is_left_out() {
+    let source = "parts [\"Soprano\" [S]: notes { instrument: soprano }, \"Alto\" [A]: notes { instrument: alto }, \"Words\" [w]: lyrics [S]],\nscore \"\"\"\ntime=2/4 key=C4 bpm=60\n[S] 1 2\n[A] 1 2\n[w] 我 们\n\"\"\",\n";
+    let score = crate::compile(source, "test.poentaro", &[]).expect("compiles");
+    let voices = singing_plan(&score, 44_100)
+        .expect("plan")
+        .parts
+        .iter()
+        .map(|part| part.voice)
+        .collect::<Vec<_>>();
+    assert_eq!(voices, vec![Voice::Soprano]);
+}

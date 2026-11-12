@@ -12,8 +12,23 @@ fn playback_score(
     enabled_tracks: Option<&[String]>,
     instruments: &[InstrumentInfo],
 ) -> Result<Score, IrrecoverableError> {
+    playback_score_keeping(source, filename, instruments, |_| {
+        enabled_tracks.map(<[String]>::to_vec)
+    })
+}
+
+/// [`playback_score`] keeping the parts `kept` chooses from the compiled,
+/// unfiltered score.
+#[cfg(feature = "midi")]
+fn playback_score_keeping(
+    source: &str,
+    filename: &str,
+    instruments: &[InstrumentInfo],
+    kept: impl FnOnce(&Score) -> Option<Vec<String>>,
+) -> Result<Score, IrrecoverableError> {
     let mut score = compile(source, filename, instruments)?;
-    apply_track_filter(&mut score, enabled_tracks);
+    let tracks = kept(&score);
+    apply_track_filter(&mut score, tracks.as_deref());
     crate::midi::expand_navigation(&score)
 }
 
@@ -27,7 +42,11 @@ pub fn singing_plan_from_source_filtered(
     enabled_tracks: Option<&[String]>,
     instruments: &[InstrumentInfo],
 ) -> Result<crate::sing::SingingPlan, IrrecoverableError> {
-    let score = playback_score(source, filename, enabled_tracks, instruments)?;
+    // What plays is what is visible here, so a lyric part never brings in a
+    // singer that doesn't play.
+    let score = playback_score_keeping(source, filename, instruments, |score| {
+        crate::sing::singing_tracks(score, enabled_tracks, enabled_tracks)
+    })?;
     crate::sing::singing_plan(&score, crate::wav::SAMPLE_RATE)
 }
 
@@ -139,17 +158,20 @@ pub struct MeasureRangeAudioOptions<'a> {
 }
 
 /// The measures `selection` plays, as their own score starting at time zero
-/// (see [`crate::midi::build_measure_range_score`]); `None` for no measures.
+/// (see [`crate::midi::build_measure_range_score`]), keeping the parts
+/// `kept` chooses from the compiled, unfiltered score; `None` for no
+/// measures.
 #[cfg(feature = "wav")]
 fn measure_range_score(
     source: &str,
     filename: &str,
     selection: &MeasureRangeSelection,
-    enabled_tracks: Option<&[String]>,
     instruments: &[InstrumentInfo],
+    kept: impl FnOnce(&Score) -> Option<Vec<String>>,
 ) -> Result<Option<Score>, IrrecoverableError> {
     let mut score = compile(source, filename, instruments)?;
-    apply_track_filter(&mut score, enabled_tracks);
+    let tracks = kept(&score);
+    apply_track_filter(&mut score, tracks.as_deref());
     let (score, start, end) = crate::midi::expand_for_measure_range(
         &score,
         *selection.range.start(),
@@ -162,16 +184,21 @@ fn measure_range_score(
 }
 
 /// What the measure-range audio of the same arguments sings, like
-/// [`singing_plan_from_source_filtered`] for the whole score.
+/// [`singing_plan_from_source_filtered`] for the whole score. Its singing
+/// parts sing whenever their notes or their lyrics are enabled (see
+/// [`crate::sing::singing_tracks`]); a lyric part only brings in
+/// `visible_tracks` (every part when `None`).
 #[cfg(feature = "wav")]
 pub fn singing_plan_for_measure_range_from_source(
     source: &str,
     filename: &str,
     selection: &MeasureRangeSelection,
     enabled_tracks: Option<&[String]>,
+    visible_tracks: Option<&[String]>,
     instruments: &[InstrumentInfo],
 ) -> Result<crate::sing::SingingPlan, IrrecoverableError> {
-    match measure_range_score(source, filename, selection, enabled_tracks, instruments)? {
+    let kept = |score: &Score| crate::sing::singing_tracks(score, enabled_tracks, visible_tracks);
+    match measure_range_score(source, filename, selection, instruments, kept)? {
         Some(score) => crate::sing::singing_plan(&score, crate::wav::SAMPLE_RATE),
         None => Ok(crate::sing::SingingPlan {
             sample_rate: crate::wav::SAMPLE_RATE,
@@ -188,13 +215,8 @@ fn measure_range_midi(
     options: &MeasureRangeAudioOptions,
     instruments: &[InstrumentInfo],
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    match measure_range_score(
-        source,
-        filename,
-        selection,
-        options.enabled_tracks,
-        instruments,
-    )? {
+    let kept = |_: &Score| options.enabled_tracks.map(<[String]>::to_vec);
+    match measure_range_score(source, filename, selection, instruments, kept)? {
         Some(score) => {
             crate::midi::write_midi_with_metronome(&instruments_only(score), options.metronome)
         }

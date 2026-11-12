@@ -1418,8 +1418,10 @@ world poentaro-wasm {
     export generate-wav-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>, metronome: bool, trim-start-s: option<f64>, trim-end-s: option<f64>, trim-next-note-start-s: option<f64>, soundfont: list<u8>, vocals: list<f32>) -> generate-wav-response;
 
     // What `generate-wav-for-measure-range` / `generate-mp3-for-measure-range`
-    // of the same range and tracks sing, like `singing-plan`.
-    export singing-plan-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>) -> option<list<u8>>;
+    // of the same range and tracks sing, like `singing-plan`. A singing part
+    // sings when its notes or its lyrics are enabled; lyrics alone bring in
+    // only their `visible-tracks` singers.
+    export singing-plan-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>, visible-tracks: option<list<string>>) -> option<list<u8>>;
 
     // Phase 3, group 6 of PLAN-wit-bindgen-migration.md.
     export generate-instrument-preview-wav: func(program-number: u8, soundfont: list<u8>) -> generate-wav-response;

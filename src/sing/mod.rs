@@ -4,17 +4,19 @@
 //! `poentaro_singer::sing`, kept apart so a build that never sings doesn't
 //! carry the voice.
 
+mod singing_tracks;
 mod sung_notes;
 
 pub use poentaro_singer::{SingingPlan, SungNote, SungPart, SungSyllable, Voice};
+pub use singing_tracks::singing_tracks;
 pub use sung_notes::sung_notes;
 
 use crate::ast::grouped::Score;
 use crate::ast::parsed::SingingVoice;
 use crate::error::IrrecoverableError;
 
-/// Every singing part left in `score` (after visibility filtering), in order
-/// of first appearance, ready for `poentaro_singer::sing` at `sample_rate`.
+/// Every singing part left in `score` (after visibility filtering) that has
+/// a word to sing, in order of first appearance, ready for `poentaro_singer::sing` at `sample_rate`.
 /// `score` must already be in playback order (see `midi::expand_navigation`).
 /// No parts when nothing sings.
 pub fn singing_plan(score: &Score, sample_rate: u32) -> Result<SingingPlan, IrrecoverableError> {
@@ -27,8 +29,15 @@ pub fn singing_plan(score: &Score, sample_rate: u32) -> Result<SingingPlan, Irre
                 notes: sung_notes(score, &part.abbreviation)?,
             })
         })
+        .filter(|part| part.as_ref().map_or(true, sings_a_word))
         .collect::<Result<Vec<_>, IrrecoverableError>>()?;
     Ok(SingingPlan { sample_rate, parts })
+}
+
+fn sings_a_word(part: &SungPart) -> bool {
+    part.notes
+        .iter()
+        .any(|note| matches!(note.syllable, SungSyllable::Word(_)))
 }
 
 struct SingingPart {
@@ -85,3 +94,7 @@ fn singer_voice(voice: SingingVoice) -> Voice {
 #[cfg(test)]
 #[path = "singing_plan_tests.rs"]
 mod tests;
+
+#[cfg(all(test, feature = "wav"))]
+#[path = "singing_tracks_tests.rs"]
+mod singing_tracks_tests;

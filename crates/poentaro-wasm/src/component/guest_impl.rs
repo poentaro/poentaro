@@ -104,7 +104,7 @@ impl Guest for Component {
     forward_to_free_functions! {
         generate_mp3(source: String, enabled_tracks: Option<Vec<String>>, soundfont: Vec<u8>, vocals: Vec<f32>) -> GenerateMp3Response;
         singing_plan(source: String, enabled_tracks: Option<Vec<String>>) -> Option<Vec<u8>>;
-        singing_plan_for_measure_range(source: String, start_index: u32, end_index: u32, extend_to_last_occurrence: bool, respect_sequence: bool, sequence_entry_start_index: Option<u32>, sequence_entry_end_index: Option<u32>, enabled_tracks: Option<Vec<String>>) -> Option<Vec<u8>>;
+        singing_plan_for_measure_range(source: String, start_index: u32, end_index: u32, extend_to_last_occurrence: bool, respect_sequence: bool, sequence_entry_start_index: Option<u32>, sequence_entry_end_index: Option<u32>, enabled_tracks: Option<Vec<String>>, visible_tracks: Option<Vec<String>>) -> Option<Vec<u8>>;
         split_singing_plans(source: String, preset_name: Option<String>) -> Vec<TrackSingingPlan>;
     }
 

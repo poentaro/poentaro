@@ -162,6 +162,7 @@ export async function handleGenerateMeasureRangeAudio(
         msg.sequenceEntryStartIndex,
         msg.sequenceEntryEndIndex,
         msg.enabledTracks,
+        msg.visibleTracks,
       ),
     )
   } catch {

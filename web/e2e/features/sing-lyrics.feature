@@ -19,6 +19,17 @@ Feature: Sing lyrics with a Chimera voice
     Then the Play All button eventually shows the playing state
     And the singing voice was downloaded
 
+  Scenario: Playing a selection of a singing part's notes sings them
+    Given the export test timeout is extended to 60 seconds
+    And downloads of the singing voice are recorded
+    And a score whose soprano part sings its lyrics is loaded
+    When I click-and-click select the first three notes in the measure
+    Then the play-measure button label switches to Selection
+    And the play-selection button becomes enabled once the soundfont loads
+    When I click the play-selection button
+    Then the play-selection button eventually shows the playing state
+    And the singing voice was downloaded
+
   Scenario: Exporting MP3 of a score without a singing part never downloads the singing voice
     Given the export test timeout is extended to 60 seconds
     And downloads of the singing voice are recorded
