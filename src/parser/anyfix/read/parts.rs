@@ -2,33 +2,32 @@
 
 use std::collections::HashSet;
 
-use anyfix_expr::{Node, NodeKind};
-
 use crate::ast::parsed::{PartDecl, PartKind, PitchRange, RangeInstrument, Soundfont};
 use crate::error::{RecoverableError, Span, Spanned};
-use crate::parser::anyfix::tree::{
-    abbreviation_text, as_field, as_part, invalid, list_of, name_span, percentage, record_of,
-    signed_number, span_of, unconverted_error, value_text, whole_number, PartNode,
+use crate::parser::anyfix::decoded::{
+    content_span, decode_error, invalid, span, unconverted_error, AbbreviationText, PartList,
+    Signed, WordsText,
 };
 use crate::parser::parts_parser::{
     checked_octave_offset, checked_range_instrument, checked_volume, checked_written_range,
     resolve_declarations, validate_soundfont, InstrumentInfo, RawDecl, RawKind,
 };
 use crate::sound_label::sound_label;
+use poentaro_grammar::{self as shape, Options, Part, PartOption};
 
 use super::written_range::written_range;
 
 pub(super) fn read_parts(
-    body: Option<&Node>,
+    parts: Option<&PartList>,
     doc_span: Span,
     instruments: &[InstrumentInfo],
 ) -> (Vec<PartDecl>, Vec<RecoverableError>) {
     let mut errors = Vec::new();
-    let raw = body.map_or_else(Vec::new, |body| raw_parts(body, instruments, &mut errors));
+    let raw = parts.map_or_else(Vec::new, |parts| raw_parts(parts, instruments, &mut errors));
     let declarations = resolve_declarations(raw, &mut errors);
     // A part that failed to read has already explained why none are left.
     if declarations.is_empty() && errors.is_empty() {
-        let section_span = body.map_or(doc_span, span_of);
+        let section_span = parts.map_or(doc_span, |parts| span(parts.span));
         errors.push(RecoverableError::parts_empty_section(section_span));
     }
     (declarations, errors)
@@ -36,22 +35,19 @@ pub(super) fn read_parts(
 
 /// Every well-formed part in `parts [ … ]`, each abbreviation once.
 pub(super) fn raw_parts(
-    body: &Node,
+    parts: &PartList,
     instruments: &[InstrumentInfo],
     errors: &mut Vec<RecoverableError>,
 ) -> Vec<RawDecl> {
-    let elements = match list_of(body) {
-        Ok(elements) => elements,
-        Err(error) => {
-            errors.push(error);
-            return Vec::new();
-        }
-    };
     let mut seen = HashSet::new();
-    let mut parts = Vec::new();
-    for element in elements {
-        match part(element, instruments, errors) {
-            Ok(raw) if seen.insert(raw.abbreviation.clone()) => parts.push(raw),
+    let mut raw_parts = Vec::new();
+    for element in &parts.value {
+        let raw = element
+            .as_ref()
+            .map_err(decode_error)
+            .and_then(|element| part(element, instruments, errors));
+        match raw {
+            Ok(raw) if seen.insert(raw.abbreviation.clone()) => raw_parts.push(raw),
             Ok(raw) => errors.push(RecoverableError::parts_duplicate_abbreviation(
                 raw.span,
                 &raw.abbreviation,
@@ -59,58 +55,47 @@ pub(super) fn raw_parts(
             Err(error) => errors.push(error),
         }
     }
-    parts
+    raw_parts
 }
 
 /// `"Name" [Abbr] : kind` or `"Name" : kind`.
 fn part(
-    node: &Node,
+    part: &Part,
     instruments: &[InstrumentInfo],
     errors: &mut Vec<RecoverableError>,
 ) -> Result<RawDecl, RecoverableError> {
-    if let Some(error) = unconverted_error(node) {
-        return Err(error);
-    }
-    let Some(PartNode {
-        display,
-        abbreviation,
-        kind,
-    }) = as_part(node)
-    else {
-        return Err(invalid(
-            node,
-            "expected a part, like `\"Soprano\" [S] : notes`",
-        ));
-    };
-    let NodeKind::String(display_name) = &display.kind else {
-        return Err(invalid(display, "a part's display name must be a string"));
-    };
-    let display_name = display_name.value.clone();
-    let span = span_of(node);
-    let (abbreviation, abbreviation_span) = match abbreviation {
-        Some(abbreviation) => {
-            if display_name.is_empty() {
-                return Err(RecoverableError::parts_empty_display_name(span));
+    let whole = span(part.span());
+    let (display_name, abbreviation, abbreviation_span, kind) = match part {
+        Part::Unconverted(unconverted) => return Err(unconverted_error(unconverted)),
+        Part::Abbreviated {
+            display,
+            abbreviation,
+            kind,
+            ..
+        } => {
+            if display.value.value.is_empty() {
+                return Err(RecoverableError::parts_empty_display_name(whole));
             }
-            let target = bracketed_abbreviation(abbreviation)?;
-            if target.text.is_empty() {
-                return Err(RecoverableError::parts_empty_abbreviation(span));
+            let text = abbreviation.text()?;
+            if text.is_empty() {
+                return Err(RecoverableError::parts_empty_abbreviation(whole));
             }
-            (target.text, target.span)
+            (&display.value.value, text, abbreviation.text_span(), kind)
         }
-        None => {
-            if display_name.is_empty() {
-                return Err(RecoverableError::parts_empty_track_name(span));
+        Part::Named { display, kind, .. } => {
+            if display.value.value.is_empty() {
+                return Err(RecoverableError::parts_empty_track_name(whole));
             }
-            (display_name.clone(), name_span(display))
+            let name = &display.value.value;
+            (name, name.clone(), content_span(display), kind)
         }
     };
     let (kind, options) = part_kind(kind, instruments, errors)?;
     Ok(RawDecl {
-        display_name,
+        display_name: display_name.clone(),
         abbreviation,
         abbreviation_span,
-        span,
+        span: whole,
         range_instrument: checked_range_instrument(options.range_instrument, &kind, errors),
         written_range: checked_written_range(options.written_range, &kind, errors),
         kind,
@@ -118,31 +103,6 @@ fn part(
         volume: options.volume,
         octave_offset: options.octave_offset,
     })
-}
-
-struct Abbreviation {
-    text: String,
-    span: Span,
-}
-
-/// The one abbreviation inside `[ ]`.
-fn bracketed_abbreviation(node: &Node) -> Result<Abbreviation, RecoverableError> {
-    match &node.kind {
-        NodeKind::Brackets(elements) => match elements.as_slice() {
-            [element] => Ok(Abbreviation {
-                text: abbreviation_text(element)?,
-                span: name_span(element),
-            }),
-            _ => Err(invalid(
-                node,
-                "expected one part abbreviation in brackets, like `[S1]`",
-            )),
-        },
-        _ => Err(invalid(
-            node,
-            "expected one part abbreviation in brackets, like `[S1]`",
-        )),
-    }
 }
 
 #[derive(Default)]
@@ -155,130 +115,104 @@ struct PartOptions {
 }
 
 fn part_kind(
-    node: &Node,
+    kind: &shape::PartKind,
     instruments: &[InstrumentInfo],
     errors: &mut Vec<RecoverableError>,
 ) -> Result<(RawKind, PartOptions), RecoverableError> {
-    let NodeKind::Call(call) = &node.kind else {
-        return Err(invalid(
-            node,
-            "expected a part kind: notes, chords, percussion, follow [X] or lyrics [X]",
-        ));
-    };
-    let name = call.name_text();
-    let (kind, options) = match (name.as_str(), call.arguments.as_slice()) {
-        ("notes", []) => (RawKind::Concrete(PartKind::Notes), None),
-        ("chords", []) => (RawKind::Concrete(PartKind::Chords), None),
-        ("percussion", []) => (RawKind::Concrete(PartKind::Percussion), None),
-        ("notes _", [options]) => (RawKind::Concrete(PartKind::Notes), Some(options)),
-        ("chords _", [options]) => (RawKind::Concrete(PartKind::Chords), Some(options)),
-        ("percussion _", [options]) => (RawKind::Concrete(PartKind::Percussion), Some(options)),
-        ("follow _", [target]) => (follow_kind(target)?, None),
-        ("follow _ _", [target, options]) => (follow_kind(target)?, Some(options)),
-        ("lyrics _", [target]) => {
-            let target = bracketed_abbreviation(target)?;
-            (
-                RawKind::Lyrics {
-                    target: target.text,
-                    target_span: target.span,
-                },
-                None,
-            )
+    let (kind, options) = match kind {
+        shape::PartKind::Notes { options, .. } => (RawKind::Concrete(PartKind::Notes), options),
+        shape::PartKind::Chords { options, .. } => (RawKind::Concrete(PartKind::Chords), options),
+        shape::PartKind::Percussion { options, .. } => {
+            (RawKind::Concrete(PartKind::Percussion), options)
         }
-        _ => {
-            return Err(invalid(
-                node,
-                format!(
-                    "found `{name}`; expected notes, chords, percussion, follow [X] or lyrics [X], \
-                     each optionally followed by `{{ options }}`"
-                ),
-            ))
+        shape::PartKind::Follow {
+            target, options, ..
+        } => (
+            RawKind::Follow {
+                target: target.text()?,
+                target_span: target.text_span(),
+            },
+            options,
+        ),
+        shape::PartKind::Lyrics { target, .. } => {
+            let kind = RawKind::Lyrics {
+                target: target.text()?,
+                target_span: target.text_span(),
+            };
+            return Ok((kind, PartOptions::default()));
         }
     };
     let is_percussion = matches!(kind, RawKind::Concrete(PartKind::Percussion));
-    let options = match options {
-        Some(options) => part_options(options, is_percussion, instruments, errors)?,
-        None => PartOptions::default(),
-    };
+    let options = options
+        .as_ref()
+        .map(|options| part_options(options, is_percussion, instruments, errors))
+        .unwrap_or_default();
     Ok((kind, options))
-}
-
-fn follow_kind(target: &Node) -> Result<RawKind, RecoverableError> {
-    let target = bracketed_abbreviation(target)?;
-    Ok(RawKind::Follow {
-        target: target.text,
-        target_span: target.span,
-    })
 }
 
 /// `{ instrument : violin, range : G3 to E6, sound : 41, volume : 80%, octave : +1 }`.
 fn part_options(
-    node: &Node,
+    options: &Options,
     is_percussion: bool,
     instruments: &[InstrumentInfo],
     errors: &mut Vec<RecoverableError>,
-) -> Result<PartOptions, RecoverableError> {
-    let mut options = PartOptions::default();
-    for element in record_of(node)? {
-        let Some(field) = as_field(element) else {
-            errors.push(invalid(element, "expected an option, like `volume : 80%`"));
-            continue;
-        };
-        let value = field.value;
-        let span = span_of(value);
-        match field.words.as_slice() {
-            ["instrument"] => match value_text(value) {
-                Ok(name) => match RangeInstrument::from_keyword(&name) {
-                    Some(instrument) => {
-                        options.range_instrument = Some(Spanned::new(instrument, span))
-                    }
-                    None => errors.push(RecoverableError::parts_unknown_instrument(span, &name)),
-                },
-                Err(error) => errors.push(error),
-            },
-            ["range"] => {
-                options.written_range =
-                    written_range(value, errors).map(|range| Spanned::new(range, span));
+) -> PartOptions {
+    let mut read = PartOptions::default();
+    for option in &options.part_option {
+        let option = match option {
+            Ok(option) => option,
+            Err(error) => {
+                errors.push(decode_error(error));
+                continue;
             }
-            ["sound"] => match whole_number(value) {
-                Some(program) => {
-                    options.soundfont = validate_soundfont(
-                        &sound_label(program, is_percussion, instruments),
-                        span,
+        };
+        match option {
+            PartOption::Instrument { name, .. } => {
+                let value_span = span(name.span);
+                let name = name.text("_");
+                match RangeInstrument::from_keyword(&name) {
+                    Some(instrument) => {
+                        read.range_instrument = Some(Spanned::new(instrument, value_span))
+                    }
+                    None => errors.push(RecoverableError::parts_unknown_instrument(
+                        value_span, &name,
+                    )),
+                }
+            }
+            PartOption::Range { value, .. } => {
+                read.written_range =
+                    written_range(value, errors).map(|range| Spanned::new(range, span(value.span)));
+            }
+            PartOption::Sound { program, .. } => match u8::try_from(program.value) {
+                Ok(number) => {
+                    read.soundfont = validate_soundfont(
+                        &sound_label(number, is_percussion, instruments),
+                        span(program.span),
                         errors,
                         instruments,
                         is_percussion,
                     );
                 }
-                None => errors.push(invalid(
-                    value,
+                Err(_) => errors.push(invalid(
+                    program.span,
                     "a sound is a General MIDI number, like `sound : 41`",
                 )),
             },
-            ["volume"] => match percentage(value) {
-                Some(written) => options.volume = Some(checked_volume(written, span, errors)),
-                None => errors.push(invalid(
-                    value,
-                    "a volume is a percentage, like `volume : 80%`",
-                )),
-            },
-            ["octave"] => match signed_number(value) {
-                Some(written) => {
-                    options.octave_offset = Some(checked_octave_offset(written, span, errors))
-                }
-                None => errors.push(invalid(
-                    value,
-                    "an octave is a signed number, like `octave : +1`",
-                )),
-            },
-            words => errors.push(invalid(
-                element,
-                format!(
-                    "unknown part option `{}`; expected instrument, range, sound, volume or octave",
-                    words.join(" ")
-                ),
-            )),
+            PartOption::Volume { percentage, .. } => {
+                let written = u16::try_from(percentage.number.value).unwrap_or(u16::MAX);
+                read.volume = Some(checked_volume(written, span(percentage.span), errors));
+            }
+            PartOption::Octave { signed_integer, .. } => {
+                let value = signed_integer.value();
+                let written =
+                    i16::try_from(value).unwrap_or(if value < 0 { i16::MIN } else { i16::MAX });
+                read.octave_offset = Some(checked_octave_offset(
+                    written,
+                    span(signed_integer.span()),
+                    errors,
+                ));
+            }
         }
     }
-    Ok(options)
+    read
 }

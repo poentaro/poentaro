@@ -151,7 +151,7 @@ fn an_empty_score_string_is_an_empty_score() {
 fn a_score_that_is_not_a_string_is_reported() {
     assert_eq!(
         error_messages("parts [], score [ 1 ]"),
-        ["the score is one string of measures, like `score \"\"\" … \"\"\"`"]
+        ["found `[...]`; expected a string"]
     );
 }
 
@@ -159,7 +159,7 @@ fn a_score_that_is_not_a_string_is_reported() {
 fn an_unknown_section_is_reported() {
     assert_eq!(
         error_messages("lyrics []"),
-        ["found `lyrics _` at the top level; expected `metadata {…}`, `parts […]`, `sequence […]`, `preset \"Name\" {…}` or `score \"\"\"…\"\"\"`"]
+        ["found the word `lyrics`; expected the word `could`, `metadata`, `parts`, `sequence`, `preset` or `score`"]
     );
 }
 
@@ -167,7 +167,7 @@ fn an_unknown_section_is_reported() {
 fn an_unknown_part_option_is_reported() {
     assert_eq!(
         error_messages(r#"parts [ "Piano" [P] : notes { loudness : 3 } ], score """#),
-        ["unknown part option `loudness`; expected instrument, range, sound, volume or octave"]
+        ["found the word `loudness`; expected the word `instrument`, `range`, `sound`, `volume` or `octave`"]
     );
 }
 

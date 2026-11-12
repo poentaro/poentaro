@@ -1,73 +1,66 @@
 //! Reads `sequence [ … ]`.
 
-use anyfix_expr::{Node, NodeKind};
 use itertools::Itertools;
 
 use crate::error::RecoverableError;
-use crate::parser::anyfix::tree::{
-    abbreviation_text, as_bare_words, invalid, list_of, name_span, span_of,
+use crate::parser::anyfix::decoded::{
+    content_span, decode_error, span, AbbreviationText, EntryList,
 };
 use crate::parser::sequence_parser::{PartFilter, PartFilterKind, SequenceEntry, SequenceSection};
+use poentaro_grammar::{self as shape, Abbreviation, DecodeError, Label, Spanned};
 
-pub(super) fn read_sequence(body: &Node) -> (Option<SequenceSection>, Vec<RecoverableError>) {
-    let mut errors = Vec::new();
-    let elements = match list_of(body) {
-        Ok(elements) => elements,
-        Err(error) => return (None, vec![error]),
-    };
-    if elements.is_empty() {
-        return (None, errors);
+pub(super) fn read_sequence(
+    entries: &EntryList,
+) -> (Option<SequenceSection>, Vec<RecoverableError>) {
+    if entries.value.is_empty() {
+        return (None, Vec::new());
     }
-    let entries = elements
+    let (entries, errors): (Vec<_>, Vec<_>) = entries
+        .value
         .iter()
-        .filter_map(|element| entry(element).map_err(|error| errors.push(error)).ok())
-        .collect();
+        .map(|entry| entry.as_ref().map_err(decode_error).and_then(read_entry))
+        .partition_result();
     (Some(SequenceSection { entries }), errors)
 }
 
 /// A label, optionally followed by `WITHOUT [parts]` or `ONLY [parts]`.
-fn entry(node: &Node) -> Result<SequenceEntry, RecoverableError> {
-    let filtered = match &node.kind {
-        NodeKind::Call(call) => match (call.name_text().as_str(), call.arguments.as_slice()) {
-            ("_ WITHOUT _", [label, parts]) => Some((label, parts, PartFilterKind::Omit)),
-            ("_ ONLY _", [label, parts]) => Some((label, parts, PartFilterKind::Only)),
-            _ => None,
-        },
-        _ => None,
+fn read_entry(entry: &shape::SequenceEntry) -> Result<SequenceEntry, RecoverableError> {
+    let (label, part_filter) = match entry {
+        shape::SequenceEntry::Without { label, parts, .. } => {
+            (label, part_filter(parts, PartFilterKind::Omit)?)
+        }
+        shape::SequenceEntry::Only { label, parts, .. } => {
+            (label, part_filter(parts, PartFilterKind::Only)?)
+        }
+        shape::SequenceEntry::Label(label) => (label, None),
     };
-    let (label_node, part_filter) = match filtered {
-        Some((label, parts, kind)) => (label, part_filter(parts, kind)?),
-        None => (node, None),
+    let (label, label_span) = match label {
+        Label::Text(text) => (text.value.value.clone(), content_span(text)),
+        Label::Words(words) => (words.name.value.clone(), span(words.span)),
     };
     Ok(SequenceEntry {
-        label: label_text(label_node)?,
-        label_span: name_span(label_node),
+        label,
+        label_span,
         part_filter,
-        span: span_of(node),
+        span: span(entry.span()),
     })
 }
 
-fn label_text(node: &Node) -> Result<String, RecoverableError> {
-    match &node.kind {
-        NodeKind::String(literal) => Some(literal.value.clone()),
-        _ => as_bare_words(node).map(|words| words.join(" ")),
-    }
-    .ok_or_else(|| {
-        invalid(
-            node,
-            "expected a label, optionally followed by `WITHOUT [parts]` or `ONLY [parts]`",
-        )
-    })
-}
-
-fn part_filter(parts: &Node, kind: PartFilterKind) -> Result<Option<PartFilter>, RecoverableError> {
-    let elements = list_of(parts)?;
-    if elements.is_empty() {
+fn part_filter(
+    parts: &Spanned<Vec<Result<Abbreviation, DecodeError>>>,
+    kind: PartFilterKind,
+) -> Result<Option<PartFilter>, RecoverableError> {
+    if parts.value.is_empty() {
         return Ok(None);
     }
+    let parts: Vec<&Abbreviation> = parts
+        .value
+        .iter()
+        .map(|part| part.as_ref().map_err(decode_error))
+        .try_collect()?;
     Ok(Some(PartFilter {
         kind,
-        parts: elements.iter().map(abbreviation_text).try_collect()?,
-        part_spans: elements.iter().map(name_span).collect(),
+        parts: parts.iter().map(|part| part.text()).try_collect()?,
+        part_spans: parts.iter().map(|part| part.text_span()).collect(),
     }))
 }

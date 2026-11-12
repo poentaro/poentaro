@@ -1,13 +1,15 @@
 //! Reads and writes `.poentaro` documents, written in anyfix expressions (see
 //! `syntax.md`).
 //!
-//! - [`read`] reads a document's anyfix tree into the document it describes.
+//! - The `poentaro_grammar` crate decodes the shapes a document is made of.
+//! - [`decoded`] says what those shapes mean.
+//! - [`read`] reads a decoded document into the document it describes.
 //! - [`write`] writes the fields and part kinds the editor's forms change.
 //!
 //! Notes, lyrics and chords stay text: a score is one raw string.
 
+pub(crate) mod decoded;
 mod read;
-pub(crate) mod tree;
 mod words;
 mod write;
 

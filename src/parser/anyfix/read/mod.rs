@@ -6,29 +6,23 @@ mod preset;
 mod sequence;
 mod written_range;
 
-use anyfix_expr::{Node, NodeKind};
+use anyfix_expr::StringLiteral;
 
-use super::tree::{invalid, Sections};
+use super::decoded::{content_span, decode, invalid, Sections};
 use crate::ast::parsed::ParsedMetadata;
 use crate::error::{DocumentSection, RecoverableError, Span};
 use crate::parser::parts_parser::{InstrumentInfo, SourceRawPartDecl};
 use crate::parser::{ReadDocument, ScoreText};
+use poentaro_grammar::Spanned;
 
 pub(crate) use metadata::read_metadata_field;
 
 /// Reads `source`'s tree. `instruments` names the sound a `sound : N` option picks.
 pub(crate) fn read(source: &str, instruments: &[InstrumentInfo]) -> ReadDocument {
-    let parsed = anyfix_expr::parse(source);
-    let nodes = parsed.syntax.nodes();
+    let decoded = decode(source);
     let doc_span = Span::new(0, source.len());
-    let sections = Sections::of(&nodes, doc_span);
-    let syntax_errors = parsed.errors.iter().map(|error| {
-        RecoverableError::anyfix_invalid(
-            Span::new(error.span.start, error.span.end),
-            error.message.clone(),
-        )
-    });
-    let mut section_structure_errors = syntax_errors.collect::<Vec<_>>();
+    let sections = Sections::of(&decoded.document, doc_span);
+    let mut section_structure_errors = decoded.syntax_errors;
     section_structure_errors.extend(sections.errors.iter().cloned());
 
     let (metadata, metadata_parse_errors) = match sections.metadata {
@@ -85,8 +79,8 @@ pub(crate) fn source_part_declarations(
     errors: &mut Vec<RecoverableError>,
     instruments: &[InstrumentInfo],
 ) -> Vec<SourceRawPartDecl> {
-    let nodes = anyfix_expr::parse(source).syntax.nodes();
-    let sections = Sections::of(&nodes, Span::new(0, source.len()));
+    let decoded = decode(source);
+    let sections = Sections::of(&decoded.document, Span::new(0, source.len()));
     let raw = sections
         .parts
         .map(|section| parts::raw_parts(section.body, instruments, errors))
@@ -104,26 +98,20 @@ fn empty_score() -> ScoreText {
 /// The score string's source text, which the score parser reads as it is. Its
 /// spans are spans in the document. A comment in it is a `//` line, as in any
 /// score, so it is blanked here, keeping offsets.
-fn score_text(body: &Node, source: &str) -> Result<ScoreText, RecoverableError> {
-    let NodeKind::String(literal) = &body.kind else {
-        return Err(invalid(
-            body,
-            "the score is one string of measures, like `score \"\"\" … \"\"\"`",
-        ));
-    };
+fn score_text(
+    literal: &Spanned<StringLiteral>,
+    source: &str,
+) -> Result<ScoreText, RecoverableError> {
     if literal.pieces.iter().any(|piece| !piece.verbatim) {
         return Err(invalid(
-            body,
+            literal.span,
             "write the score as a raw string, without escapes, like `score \"\"\" … \"\"\"`",
         ));
     }
+    let content = content_span(literal);
     Ok(ScoreText {
-        text: strip_comments(
-            source
-                .get(literal.content.start..literal.content.end)
-                .unwrap_or_default(),
-        ),
-        offset: literal.content.start,
+        text: strip_comments(source.get(content.start..content.end).unwrap_or_default()),
+        offset: content.start,
     })
 }
 

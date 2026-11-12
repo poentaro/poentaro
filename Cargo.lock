@@ -91,7 +91,17 @@ dependencies = [
 [[package]]
 name = "anyfix-expr"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyfix-expr?rev=72373cf2c3ecb243e373a70fb2307b61ce75491c#72373cf2c3ecb243e373a70fb2307b61ce75491c"
+source = "git+https://github.com/wongjiahau/anyfix-expr?rev=6ee981e0f245afd0c86d8e08b058925688f152e7#6ee981e0f245afd0c86d8e08b058925688f152e7"
+
+[[package]]
+name = "anyfix-generator"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyfix-expr?rev=6ee981e0f245afd0c86d8e08b058925688f152e7#6ee981e0f245afd0c86d8e08b058925688f152e7"
+dependencies = [
+ "anyfix-expr",
+ "regex",
+ "regex-automata",
+]
 
 [[package]]
 name = "anyhow"
@@ -1924,6 +1934,7 @@ dependencies = [
  "nonempty",
  "oxisynth",
  "pdf-writer",
+ "poentaro-grammar",
  "quickcheck",
  "rusty_mp3",
  "serde",
@@ -1932,6 +1943,14 @@ dependencies = [
  "tokio",
  "ttf-parser 0.25.1",
  "zip",
+]
+
+[[package]]
+name = "poentaro-grammar"
+version = "0.1.0"
+dependencies = [
+ "anyfix-expr",
+ "anyfix-generator",
 ]
 
 [[package]]

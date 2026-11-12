@@ -4,7 +4,7 @@ use anyfix_expr::{NamePart, Node, NodeKind};
 
 use crate::ast::parsed::{midi_note_name, parse_midi_note_name, PitchRange};
 use crate::error::{RecoverableError, Span};
-use crate::parser::anyfix::tree::span_of;
+use crate::parser::anyfix::decoded::span;
 
 /// One word of a range as written: a bare word (`C3`, `to`) or a quoted
 /// one (`"F#3"`, since `#` starts a comment).
@@ -19,7 +19,7 @@ pub(super) fn written_range(
     value: &Node,
     errors: &mut Vec<RecoverableError>,
 ) -> Option<PitchRange> {
-    let malformed = || RecoverableError::parts_malformed_range(span_of(value));
+    let malformed = || RecoverableError::parts_malformed_range(span(value.span));
     let Some(words) = range_words(value) else {
         errors.push(malformed());
         return None;
@@ -45,7 +45,7 @@ pub(super) fn written_range(
     let (lowest, highest) = (lowest?, highest?);
     if lowest > highest {
         errors.push(RecoverableError::parts_range_low_above_high(
-            span_of(value),
+            span(value.span),
             &midi_note_name(lowest),
             &midi_note_name(highest),
         ));

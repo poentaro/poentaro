@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/cloud-outbox", "crates/poentaro-wasm", "crates/live-share-worker", "tools/dead-pub-check"]
+members = [".", "crates/cloud-outbox", "crates/poentaro-grammar", "crates/poentaro-wasm", "crates/live-share-worker", "tools/dead-pub-check"]
 resolver = "2"
 
 [patch.crates-io]
@@ -97,7 +97,8 @@ rusty_mp3 = { version = "0.7", optional = true }
 zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 base64 = "0.22"
-anyfix-expr = { git = "https://github.com/wongjiahau/anyfix-expr", rev = "72373cf2c3ecb243e373a70fb2307b61ce75491c" }
+anyfix-expr = { git = "https://github.com/wongjiahau/anyfix-expr", rev = "6ee981e0f245afd0c86d8e08b058925688f152e7" }
+poentaro-grammar = { path = "crates/poentaro-grammar" }
 
 [build-dependencies]
 serde = { version = "1", features = ["derive"] }

@@ -68,7 +68,7 @@ fn an_unknown_top_level_form_is_reported() {
     assert!(doc
         .section_structure_errors
         .iter()
-        .any(|e| e.message().contains("found `unknown _` at the top level")));
+        .any(|e| e.message().contains("found the word `unknown`")));
 }
 
 #[test]

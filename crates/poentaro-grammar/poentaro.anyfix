@@ -1,0 +1,111 @@
+# A `.poentaro` document, as an anyfix grammar (see anyfix-expr's
+# crates/anyfix-generator/README.md). `just generate-parser` writes
+# `generated.rs` from it.
+#
+# The grammar says which shapes are allowed. What the shapes mean, such as
+# which metadata keys exist or which instrument a word names, is checked in
+# Rust. Lists people edit by hand use `EACH`, so that one mistake does not
+# hide the rest.
+
+ENTRY [EACH: section],
+
+section: ONE OF [
+  unconverted,
+  metadata: SPECIFIC ANYFIX CALL [WORD "metadata", fields: record],
+  parts: SPECIFIC ANYFIX CALL [WORD "parts", parts: SQUARE BRACKET: EACH: part],
+  sequence: SPECIFIC ANYFIX CALL [WORD "sequence", entries: SQUARE BRACKET: EACH: sequence entry],
+  preset: SPECIFIC ANYFIX CALL [WORD "preset", name: STRING, fields: record],
+  score: SPECIFIC ANYFIX CALL [WORD "score", text: STRING],
+],
+
+# Text the converter from the old syntax kept because it could not read it.
+unconverted: SPECIFIC ANYFIX CALL [WORD "could", WORD "not", WORD "convert", text: STRING],
+
+# ── fields ──────────────────────────────────────────────────────────────
+
+record: CURLY BRACE: EACH: field,
+
+# `max measures per system: 6` is the call `max measures per system _`.
+# Unconverted text in a record is the field `could not convert _`.
+field: ANYFIX CALL [NAME [ENDS WITH " _"], ARGUMENTS: value],
+
+value: ONE OF [
+  integer: signed integer,
+  text: STRING,
+  percentage,
+  pair: PARENTHESIS [x: value, y: value],
+  record,
+  list: SQUARE BRACKET: EACH: abbreviation,
+  words,
+  # Anything else, such as `20k`, which Rust reports as the wrong value for
+  # its field.
+  written: ANYFIX CALL,
+],
+
+# `4`, `-4`, `+ 4` or `- 4`.
+signed integer: ONE OF [
+  number: NUMBER [INTEGER],
+  plus: SPECIFIC ANYFIX CALL [WORD "+", number: NUMBER [INTEGER]],
+  minus: SPECIFIC ANYFIX CALL [WORD "-", number: NUMBER [INTEGER]],
+],
+
+# `80 %`.
+percentage: SPECIFIC ANYFIX CALL [number: NUMBER [INTEGER], WORD "%"],
+
+# Words and nothing else: `yes`, `sans serif`, `Verse two`.
+words: ANYFIX CALL [NO ARGUMENTS],
+
+# ── parts ───────────────────────────────────────────────────────────────
+
+part: ONE OF [
+  unconverted,
+  abbreviated: SPECIFIC ANYFIX CALL [
+    display: STRING,
+    abbreviation: SQUARE BRACKET: abbreviation,
+    kind: part kind,
+  ],
+  named: SPECIFIC ANYFIX CALL [display: STRING, kind: part kind],
+],
+
+part kind: ONE OF [
+  notes: SPECIFIC ANYFIX CALL [WORD "notes", OPTIONAL: options],
+  chords: SPECIFIC ANYFIX CALL [WORD "chords", OPTIONAL: options],
+  percussion: SPECIFIC ANYFIX CALL [WORD "percussion", OPTIONAL: options],
+  follow: SPECIFIC ANYFIX CALL [
+    WORD "follow",
+    target: SQUARE BRACKET: abbreviation,
+    OPTIONAL: options,
+  ],
+  lyrics: SPECIFIC ANYFIX CALL [WORD "lyrics", target: SQUARE BRACKET: abbreviation],
+],
+
+options: CURLY BRACE: EACH: part option,
+
+part option: ONE OF [
+  instrument: SPECIFIC ANYFIX CALL [WORD "instrument", name: words],
+  # `C3 to G4`, whose capitalised words split anyfix's word runs, so Rust
+  # reads it from the node.
+  range: SPECIFIC ANYFIX CALL [WORD "range", value: ANY NODE],
+  sound: SPECIFIC ANYFIX CALL [WORD "sound", program: NUMBER [INTEGER]],
+  volume: SPECIFIC ANYFIX CALL [WORD "volume", percentage],
+  octave: SPECIFIC ANYFIX CALL [WORD "octave", signed integer],
+],
+
+# A part's abbreviation: a string, or words, numbers and symbols that are
+# joined without spaces (`A1 & T` is the call `A1 _ T` of the word `&`).
+abbreviation: ONE OF [
+  text: STRING,
+  number: NUMBER,
+  written: ANYFIX CALL,
+],
+
+# ── sequence ────────────────────────────────────────────────────────────
+
+sequence entry: ONE OF [
+  without: SPECIFIC ANYFIX CALL [label, WORD "WITHOUT", parts: SQUARE BRACKET: EACH: abbreviation],
+  only: SPECIFIC ANYFIX CALL [label, WORD "ONLY", parts: SQUARE BRACKET: EACH: abbreviation],
+  label,
+],
+
+# `Verse`, `Verse two` or `"Last chorus"`.
+label: ONE OF [text: STRING, words],

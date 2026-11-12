@@ -187,7 +187,7 @@ parts [
 
 ### Options
 
-Every kind but `lyrics` takes options in braces: `notes { instrument: violin, range: G3 to E6, sound 41, volume: 80 %, octave: - 1 }`.
+Every kind but `lyrics` takes options in braces: `notes { instrument: violin, range: G3 to E6, sound 41, volume: 80 %, octave -1 }`.
 
 `sound` selects the MIDI timbre, as a General MIDI program number (0–127). For example: `notes { sound 52 }` for Choir Aahs, or `follow [A] { sound 1 }`. If omitted on a `chords` or `notes` part, the default is the sound of the part's [instrument](#instrument-range), or program 0 (Acoustic Grand Piano) when it names none. On a `follow [X]` part, the sound is inherited from the target when omitted, unless the follow part names its own instrument.
 
@@ -195,7 +195,7 @@ For `percussion` parts, the number is instead a **GM percussion key** (e.g. `38`
 
 `volume` sets the MIDI volume for that part, as a percentage. The valid range is `0 %` to `100 %`, where `0 %` silences the part; a value above `100 %` emits a recoverable error and is clamped to `100 %`. If omitted on a concrete part, the default is 100%. On a `follow [X]` part, volume is inherited from the target when omitted and may be overridden.
 
-`octave` shifts every note in that part up or down by N octaves in MIDI output only, written with its sign: `octave: - 1`, `octave: + 1`. The valid range is `-4` to `+4`. The offset does not change octave dots in the rendered SVG. If omitted on a concrete part, the default is 0. On a `follow [X]` part, the octave offset is inherited from the target when omitted and may be overridden. Values outside the range emit a recoverable error and are clamped to the nearest bound.
+`octave` shifts every note in that part up or down by N octaves in MIDI output only, written with its sign: `octave -1`, `octave: + 1`. The valid range is `-4` to `+4`. The offset does not change octave dots in the rendered SVG. If omitted on a concrete part, the default is 0. On a `follow [X]` part, the octave offset is inherited from the target when omitted and may be overridden. Values outside the range emit a recoverable error and are clamped to the nearest bound.
 
 #### Instrument range
 
@@ -217,7 +217,7 @@ For `percussion` parts, the number is instead a **GM percussion key** (e.g. `38`
 
 General MIDI has no liuqin or guzheng, so they default to the closest plucked lute and zither. A set `sound` always wins over the default sound.
 
-Each note whose sounding pitch (the key plus the part's `octave`) falls outside the range gets its own warning, pointing at the note, e.g. `V: note sounds as F3, below the violin's lowest note G3`. The warning doesn't stop rendering or playback. A part with no instrument is not checked. A `follow [X]` part inherits its target's instrument and sound, and may name its own instrument to override both (`"Violin 2" [V2]: follow [V] { octave: - 1 }`, `"Cello" [C]: follow [V] { instrument: cello, octave: - 1 }`).
+Each note whose sounding pitch (the key plus the part's `octave`) falls outside the range gets its own warning, pointing at the note, e.g. `V: note sounds as F3, below the violin's lowest note G3`. The warning doesn't stop rendering or playback. A part with no instrument is not checked. A `follow [X]` part inherits its target's instrument and sound, and may name its own instrument to override both (`"Violin 2" [V2]: follow [V] { octave -1 }`, `"Cello" [C]: follow [V] { instrument: cello, octave -1 }`).
 
 An unknown name emits a recoverable error listing the valid names and is ignored. A name on a `chords` or `percussion` part emits a recoverable error and is ignored.
 
@@ -287,7 +287,7 @@ options    : "{" { option "," } "}",
 option     : "instrument" ":" word          # violin, soprano, …
            | "sound" ":" number             # GM program, or GM drum key on percussion
            | "volume" ":" number "%"
-           | "octave" ":" sign number,
+           | "octave" ( "-" number | ":" sign number ),  # `octave -1`, `octave: + 1`
 abbreviation : string | ? words, numbers and symbols, joined without spaces ?,
 
 # ── sequence ────────────────────────────────────────────────────────────
