@@ -89,15 +89,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyfix-expr"
-version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyfix-expr?rev=72373cf2c3ecb243e373a70fb2307b61ce75491c#72373cf2c3ecb243e373a70fb2307b61ce75491c"
-
-[[package]]
 name = "anyhow"
 version = "1.0.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
+
+[[package]]
+name = "anyx"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyx?rev=913846cc3b7c3f3fdd8d3be737b9c8acce6bfb1e#913846cc3b7c3f3fdd8d3be737b9c8acce6bfb1e"
+
+[[package]]
+name = "anyx-generator"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyx?rev=913846cc3b7c3f3fdd8d3be737b9c8acce6bfb1e#913846cc3b7c3f3fdd8d3be737b9c8acce6bfb1e"
+dependencies = [
+ "anyx",
+ "regex",
+ "regex-automata",
+]
 
 [[package]]
 name = "arbitrary"
@@ -1913,7 +1923,7 @@ dependencies = [
 name = "poentaro"
 version = "0.1.0"
 dependencies = [
- "anyfix-expr",
+ "anyx",
  "ariadne",
  "base64",
  "clap",
@@ -1924,6 +1934,7 @@ dependencies = [
  "nonempty",
  "oxisynth",
  "pdf-writer",
+ "poentaro-grammar",
  "quickcheck",
  "rusty_mp3",
  "serde",
@@ -1932,6 +1943,14 @@ dependencies = [
  "tokio",
  "ttf-parser 0.25.1",
  "zip",
+]
+
+[[package]]
+name = "poentaro-grammar"
+version = "0.1.0"
+dependencies = [
+ "anyx",
+ "anyx-generator",
 ]
 
 [[package]]

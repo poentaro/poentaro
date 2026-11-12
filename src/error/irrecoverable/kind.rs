@@ -66,9 +66,9 @@ pub enum IrrecoverableErrorKind {
         span: Span,
         detail: String,
     },
-    /// An `.anyfix` document that can't be read.
+    /// An `.anyx` document that can't be read.
     /// `report` lists every problem, one `path:line:column: message` per line.
-    AnyfixSourceInvalid {
+    AnyxSourceInvalid {
         span: Span,
         report: String,
     },

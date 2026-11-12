@@ -27,7 +27,7 @@ fn export_span(kind: &IrrecoverableErrorKind) -> Option<&Span> {
         | IrrecoverableErrorKind::IoReadFailed { span, .. }
         | IrrecoverableErrorKind::IoWriteFailed { span, .. }
         | IrrecoverableErrorKind::InternalInvariant { span, .. }
-        | IrrecoverableErrorKind::AnyfixSourceInvalid { span, .. }
+        | IrrecoverableErrorKind::AnyxSourceInvalid { span, .. }
         | IrrecoverableErrorKind::UnknownPreset { span, .. } => Some(span),
     }
 }

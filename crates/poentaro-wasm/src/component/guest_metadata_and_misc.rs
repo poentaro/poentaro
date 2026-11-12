@@ -213,7 +213,7 @@ fn offsets_to_wit(offsets: &[usize]) -> Vec<u32> {
 }
 
 pub(super) fn format_score(source: String) -> String {
-    poentaro::format_anyfix::format_anyfix(&source)
+    poentaro::format_anyx::format_anyx(&source)
 }
 
 // Same underlying `crate::part_declarations::list_part_declarations_response`/

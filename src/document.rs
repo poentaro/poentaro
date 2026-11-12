@@ -4,9 +4,9 @@ use crate::error::{Diagnostic, RecoverableError, RecoverableErrorKind};
 use crate::parser::parts_parser::InstrumentInfo;
 use crate::parser::read_document;
 
-/// What in `text` doesn't fit the shape of an anyfix document, so part of it
+/// What in `text` doesn't fit the shape of an anyx document, so part of it
 /// can't be read: anything that writes a file from it must stop here.
-pub fn anyfix_errors(text: &str, instruments: &[InstrumentInfo]) -> Vec<RecoverableError> {
+pub fn anyx_errors(text: &str, instruments: &[InstrumentInfo]) -> Vec<RecoverableError> {
     let read = read_document(text, instruments);
     read.section_structure_errors
         .into_iter()
@@ -22,7 +22,7 @@ pub fn anyfix_errors(text: &str, instruments: &[InstrumentInfo]) -> Vec<Recovera
                     Diagnostic::Warning(_) => None,
                 }),
         )
-        .filter(|error| matches!(error.kind, RecoverableErrorKind::AnyfixInvalid { .. }))
+        .filter(|error| matches!(error.kind, RecoverableErrorKind::AnyxInvalid { .. }))
         .collect()
 }
 

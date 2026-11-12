@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use super::anyfix_errors;
+use super::anyx_errors;
 use crate::ast::parsed::{MetadataTextKey, Notation};
 use crate::part_stream::{apply_part_stream, extract_part_stream};
 use crate::source_edit::{
@@ -41,7 +41,7 @@ score """
 "##;
 
 fn assert_reads(text: &str) {
-    let errors = anyfix_errors(text, &[]);
+    let errors = anyx_errors(text, &[]);
     assert!(errors.is_empty(), "{errors:?}\n{text}");
 }
 
@@ -49,10 +49,10 @@ fn assert_reads(text: &str) {
 fn text_in_the_old_section_syntax_opens_with_syntax_errors() {
     let text =
         "# metadata\ntitle = \"Song\"\n\n# parts\nMelody = notes\n\n# score\n[Melody] 1 2 3 4\n";
-    assert!(!anyfix_errors(text, &[]).is_empty());
+    assert!(!anyx_errors(text, &[]).is_empty());
     let score = crate::compile(text, "test.poentaro", &[]).unwrap();
     assert!(!score.document_diagnostics.is_empty());
-    assert_eq!(crate::format_anyfix::format_anyfix(text), text);
+    assert_eq!(crate::format_anyx::format_anyx(text), text);
 }
 
 #[test]
@@ -77,7 +77,7 @@ fn every_demo_reads() {
     for entry in std::fs::read_dir(root).unwrap() {
         let path = entry.unwrap().path();
         let source = std::fs::read_to_string(&path).unwrap();
-        let errors = anyfix_errors(&source, &[]);
+        let errors = anyx_errors(&source, &[]);
         assert!(errors.is_empty(), "{path:?}: {errors:?}");
     }
 }

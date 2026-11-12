@@ -23,7 +23,7 @@ enum Commands {
     Check {
         input: PathBuf,
     },
-    /// Format each file in place: anyfix-expr's layout first, then the score.
+    /// Format each file in place: anyx's layout first, then the score.
     Format {
         paths: Vec<PathBuf>,
     },

@@ -15,7 +15,7 @@ Feature: Text style metadata object syntax
   lyric_click_target_padding_pt, notes_horizontal_padding_pt, etc.) are
   retired outright — no backward compatibility is preserved. Those keys
   now fail as unknown metadata fields (regression coverage for that lives
-  in src/parser/anyfix/read/metadata_tests.rs, not here).
+  in src/parser/anyx/read/metadata_tests.rs, not here).
 
   Scenario Outline: A single component parses into the kind's TextStyle
     Given "metadata" sets "<kind>" to "{ <field>: <value> }"

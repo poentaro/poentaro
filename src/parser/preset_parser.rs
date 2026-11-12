@@ -7,8 +7,9 @@ use crate::ast::parsed::{
     AbbreviationReference, Notation, ParsedMetadata, ParsedPreset, PartDecl, DEFAULT_PRESET_NAME,
 };
 use crate::error::{Diagnostic, RecoverableError, Span, Spanned, Warning};
-use crate::parser::anyfix::tree::{span_of, value_text, Field};
+use crate::parser::anyx::decoded::{span, FieldName, ValueText};
 use crate::parser::section::PresetName;
+use poentaro_grammar::Field;
 
 pub struct ParsedPresets {
     /// The valid presets, in file order.
@@ -66,8 +67,10 @@ pub(crate) fn parse_notation(
     field: &Field,
     errors: &mut Vec<RecoverableError>,
 ) -> Option<Spanned<Notation>> {
-    let span = span_of(field.value);
-    let text = value_text(field.value)
+    let span = span(field.arguments.span());
+    let text = field
+        .arguments
+        .text()
         .map_err(|error| errors.push(error))
         .ok()?;
     let notation = Notation::from_source_value(&text);

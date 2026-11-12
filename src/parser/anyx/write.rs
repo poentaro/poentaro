@@ -1,4 +1,4 @@
-//! Writes fields and part kinds in anyfix, for the editor's forms.
+//! Writes fields and part kinds in anyx, for the editor's forms.
 
 use itertools::Itertools;
 

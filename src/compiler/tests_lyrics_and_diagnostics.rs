@@ -119,9 +119,9 @@ score """
     assert!(
         matches!(
             doc.parts_parse_errors[0].kind,
-            RecoverableErrorKind::AnyfixInvalid { .. }
+            RecoverableErrorKind::AnyxInvalid { .. }
         ),
-        "expected AnyfixInvalid error, got: {:?}",
+        "expected AnyxInvalid error, got: {:?}",
         doc.parts_parse_errors[0].kind
     );
     let doc_error = doc.parts_parse_errors[0].message();

@@ -104,7 +104,7 @@ pub fn list_part_declarations_from_source(
 ) -> Result<Vec<SourcePartDeclaration>, IrrecoverableError> {
     let mut errors = Vec::new();
     let raw_declarations =
-        crate::parser::anyfix::source_part_declarations(source, &mut errors, instruments);
+        crate::parser::anyx::source_part_declarations(source, &mut errors, instruments);
 
     // Lyric parts have no sound, volume or octave to edit.
     Ok(raw_declarations

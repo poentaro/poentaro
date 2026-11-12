@@ -5,7 +5,7 @@
 
 use crate::ast::parsed::ParsedDocument;
 use crate::error::Span;
-use crate::parser::anyfix;
+use crate::parser::anyx;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SymbolKind {
@@ -190,7 +190,7 @@ pub fn rename_edits(
 }
 
 /// [`rename_edits`] for `text`, the document's own text: outside its score an
-/// anyfix document spells a name by where it sits, quoted or bare.
+/// anyx document spells a name by where it sits, quoted or bare.
 pub fn rename_edits_in_text(
     text: &str,
     document: &ParsedDocument,
@@ -212,11 +212,11 @@ pub fn rename_edits_in_text(
                 .is_some_and(|before| before.ends_with('"'));
             let replacement = match (is_in_quotes, kind) {
                 (true, _) => {
-                    let quoted = anyfix::quoted(new_name);
+                    let quoted = anyx::quoted(new_name);
                     quoted.trim_matches('"').to_string()
                 }
-                (false, SymbolKind::Abbreviation) => anyfix::abbreviation(new_name),
-                (false, SymbolKind::SectionLabel) => anyfix::label(new_name),
+                (false, SymbolKind::Abbreviation) => anyx::abbreviation(new_name),
+                (false, SymbolKind::SectionLabel) => anyx::label(new_name),
             };
             TextEdit {
                 span: edit.span,

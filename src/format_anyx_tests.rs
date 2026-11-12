@@ -1,4 +1,4 @@
-use super::format_anyfix;
+use super::format_anyx;
 
 const PARTS: &str =
     r#"parts [ "Soprano" [S] : notes, "Alto" [A] : notes, "Words" [Sv1] : lyrics [S] ],"#;
@@ -17,7 +17,7 @@ fn lays_out_the_document_then_formats_score_strings() {
     ]
     .join("\n");
     assert_eq!(
-        format_anyfix(&source),
+        format_anyx(&source),
         r#"metadata { title "Song" },
 parts ["Soprano" [S]: notes, "Alto" [A]: notes, "Words" [Sv1]: lyrics [S]],
 score """
@@ -32,21 +32,21 @@ score """
 #[test]
 fn formatting_twice_changes_nothing() {
     let source = format!("{PARTS}\nscore \"\"\"\n  [A] 5 6 7 1\n  [S] 1 2 3 4\n  \"\"\"");
-    let once = format_anyfix(&source);
-    assert_eq!(format_anyfix(&once), once);
+    let once = format_anyx(&source);
+    assert_eq!(format_anyx(&once), once);
 }
 
 #[test]
 fn a_score_string_with_a_comment_keeps_its_measures() {
     let source =
         format!("{PARTS}\nscore \"\"\"\n  [A] 5   6 7 1 // alto first\n  [S] 1 2 3 4\n  \"\"\"");
-    assert!(format_anyfix(&source).contains("[A] 5   6 7 1 // alto first\n"));
+    assert!(format_anyx(&source).contains("[A] 5   6 7 1 // alto first\n"));
 }
 
 #[test]
 fn a_document_that_does_not_parse_comes_back_unchanged() {
     assert_eq!(
-        format_anyfix("parts [ \"S\" : notes"),
+        format_anyx("parts [ \"S\" : notes"),
         "parts [ \"S\" : notes"
     );
 }

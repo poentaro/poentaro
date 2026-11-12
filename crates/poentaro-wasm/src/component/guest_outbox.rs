@@ -119,7 +119,7 @@ pub(super) fn outbox_history_rows(
 
 pub(super) fn merge_three_way(base: String, mine: String, theirs: String) -> MergeOutcome {
     merge::merge_three_way(&base, &mine, &theirs, |text| {
-        poentaro::document::anyfix_errors(text, &[]).is_empty()
+        poentaro::document::anyx_errors(text, &[]).is_empty()
             && poentaro::parser::parse(text, "merge.poentaro", &[]).is_ok()
     })
     .into()
