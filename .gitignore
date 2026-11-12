@@ -5,6 +5,7 @@ package-lock.json
 /web/package-lock.json
 /web/dist
 /crates/poentaro-wasm/pkg-component
+/crates/poentaro-singer-wasm/pkg-component
 /crates/poentaro-wasm/src/bindings.rs
 
 # OpenAPI spec + typed client generated from crates/live-share-worker (see web's build:worker-types).

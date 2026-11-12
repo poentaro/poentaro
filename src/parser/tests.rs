@@ -182,9 +182,7 @@ score """
 }
 
 #[test]
-fn too_many_lines_recoverable_error_span_points_to_absolute_file_position() {
-    // One notes part but two data lines in a group → recoverable error.
-    // The error span must point to the extra line's position in the *full* input.
+fn a_second_line_for_a_part_is_its_alternative_line_not_an_error() {
     let input = r#"metadata { title "t", author "a" },
 
 parts ["Melody": notes],
@@ -194,38 +192,14 @@ score """
     [Melody] 5 6 7 1
     """,
 "#;
-    let expected_offset = input.rfind("5 6 7 1").unwrap();
-    let doc = parse(input, "test.poentaro", &[]).expect("too-many-lines must not abort parsing");
-    let error = doc.per_measure_parse_errors[0]
-        .as_ref()
-        .expect("recoverable error must be recorded for the measure");
+    let doc = parse(input, "test.poentaro", &[]).expect("parses");
+    assert!(doc.per_measure_parse_errors.iter().all(Option::is_none));
     assert_eq!(
-        error.span().start,
-        expected_offset,
-        "recoverable error span should point to the absolute file position of the extra line"
-    );
-}
-
-#[test]
-fn too_many_lines_recoverable_error_lists_declared_parts() {
-    // One notes part but two data lines → recoverable error should name the declared part.
-    let input = r#"metadata { title "t", author "a" },
-
-parts ["Melody": notes],
-
-score """
-    [Melody] 1 2 3 4
-    [Melody] 5 6 7 1
-    """,
-"#;
-    let doc = parse(input, "test.poentaro", &[]).expect("too-many-lines must not abort parsing");
-    let error = doc.per_measure_parse_errors[0]
-        .as_ref()
-        .expect("recoverable error must be recorded for the measure");
-    assert!(
-        error.message().contains("Melody"),
-        "recoverable error message should list the declared part 'Melody', got: {}",
-        error.message()
+        doc.declarations
+            .iter()
+            .map(|declaration| declaration.abbreviation.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Melody", "Melody.2"]
     );
 }
 

@@ -7,12 +7,14 @@ mod pitch;
 mod pitch_range;
 mod preset;
 mod range_instrument;
+mod singing_voice;
 pub use events::*;
 pub use metadata_keys::*;
 pub use pitch::*;
 pub use pitch_range::*;
 pub use preset::*;
 pub use range_instrument::*;
+pub use singing_voice::*;
 
 #[derive(Debug)]
 pub enum ParsedMeasureSlot {
@@ -62,6 +64,46 @@ pub struct PartDecl {
     /// checked against in place of its instrument's. A follow part inherits
     /// its target's unless it writes its own or names its own instrument.
     pub written_range: Option<PitchRange>,
+    /// The voice a `notes` part sings in instead of playing `soundfont`
+    /// (`sound: chimera soprano`, or a choral instrument's default). `None`
+    /// on every other part.
+    pub singing_voice: Option<SingingVoice>,
+    /// Every part a lyric part's syllables are sung on (`lyrics [S, A, T, B]`),
+    /// as indices into the declaration list, in written order. Empty on other
+    /// parts. `PartKind::Lyrics::target_part_index` is the bottommost of them.
+    pub lyric_targets: Vec<usize>,
+    /// Set on a part's 2nd, 3rd, … line: the extra row a measure group gets
+    /// when it writes a part's `[Key]` line more than once (see `syntax.md`,
+    /// "Alternative lines"). `None` on every declared part.
+    pub alternative_line: Option<AlternativeLine>,
+}
+
+/// Which line of which declared part an alternative-line part holds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlternativeLine {
+    /// The declared part's abbreviation.
+    pub base: String,
+    /// The line's 1-based number among the part's lines; always 2 or more.
+    pub number: u32,
+}
+
+impl AlternativeLine {
+    /// The alternative line's own abbreviation, `S.2`: `.` can't appear in
+    /// a written abbreviation, so it never clashes with a declared part.
+    pub fn abbreviation(&self) -> String {
+        format!("{}.{}", self.base, self.number)
+    }
+
+    /// The alternative line an abbreviation like `S.2` names; `None` for a
+    /// declared part's.
+    pub fn of(abbreviation: &str) -> Option<Self> {
+        let (base, number) = abbreviation.rsplit_once('.')?;
+        let number = number.parse::<u32>().ok().filter(|number| *number >= 2)?;
+        Some(Self {
+            base: base.to_string(),
+            number,
+        })
+    }
 }
 
 /// What a part's notes are checked against: its written range, or else its
@@ -97,7 +139,8 @@ pub enum PartKind {
     Percussion,
     /// A `lyrics[X]` part: one verse of lyrics sung along to the notes of the
     /// part at `target_part_index` (an index into the declaration list, always
-    /// before this part). It has no notes of its own.
+    /// before this part; the bottommost when it names several, see
+    /// `PartDecl::lyric_targets`). It has no notes of its own.
     Lyrics {
         target_part_index: usize,
     },
@@ -166,6 +209,9 @@ pub struct ParsedTimedTrack {
     pub volume: u8,
     pub octave_offset: i8,
     pub range_instrument: Option<RangeInstrument>,
+    pub singing_voice: Option<SingingVoice>,
+    /// A lyric part's `PartDecl::lyric_targets`; empty on other parts.
+    pub lyric_targets: Vec<usize>,
     pub measure_slots: Vec<ParsedMeasureSlot>,
     pub lyrics: Option<ParsedLyrics>,
     /// Per-measure beat-overflow error (None = no overflow for that measure).

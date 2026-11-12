@@ -114,7 +114,7 @@ struct LyricRowPosition<'a> {
 /// to keep that function under the max-function-length lint.
 fn push_lyric_click_targets_for_row(
     pos: &LyricRowPosition<'_>,
-    note_max_cols: &HashMap<usize, u32>,
+    note_max_cols: &HashMap<u32, u32>,
     page_idx: usize,
     results: &mut Vec<(usize, LyricClickTarget)>,
 ) {
@@ -156,7 +156,7 @@ fn push_lyric_click_targets_for_row(
         // flush right (`bar_line_col + 1.0`) for the system's last measure,
         // otherwise centered on the bar line (`bar_line_col + 0.5`) like an
         // inter-measure one is drawn.
-        let column_end = match note_max_cols.get(note_id) {
+        let column_end = match note_max_cols.get(&el.column) {
             Some(&max_col) if pos.has_bar_line && Some(max_col) == row_max_col => {
                 let bar_line_col = (pos.col_offset + pos.col_w - 1) as f32;
                 if pos.block_idx == pos.last_block_idx {
@@ -224,17 +224,20 @@ pub(crate) fn compute_all_lyric_click_targets(
                     let Some(part_row) = block.rows.get(part_idx) else {
                         continue;
                     };
-                    // The paired note row's own `(note_id -> max_col)` map,
-                    // used to widen each syllable's `column_end` to its
-                    // note's full written span rather than the single column
-                    // the syllable text itself sits in.
+                    // The paired note row's own `(start column -> max_col)`
+                    // map, used to widen each syllable's `column_end` to the
+                    // full written span of the note starting under it rather
+                    // than the single column the syllable text itself sits
+                    // in. Keyed by column, not note id: a lyric part sung on
+                    // several parts may pair with one other than the row it
+                    // is drawn under, whose note ids then differ.
                     //
                     // Not for a chord-targeting lyric row: the lyric line
                     // carries its own timing there, so a bracketed syllable
                     // widened to its chord's whole span would overlap the
                     // unbracketed syllables spread inside that span. Every
                     // syllable keeps its own single-column box instead.
-                    let note_max_cols: HashMap<usize, u32> = owner_note_row_indices
+                    let note_max_cols: HashMap<u32, u32> = owner_note_row_indices
                         .get(part_idx)
                         .copied()
                         .flatten()
@@ -243,7 +246,7 @@ pub(crate) fn compute_all_lyric_click_targets(
                         .map(|note_row| {
                             group_elements_by_note_id(&note_row.elements)
                                 .into_iter()
-                                .map(|(note_id, _min_col, max_col)| (note_id, max_col))
+                                .map(|(_note_id, min_col, max_col)| (min_col, max_col))
                                 .collect()
                         })
                         .unwrap_or_default();

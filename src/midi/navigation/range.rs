@@ -1,7 +1,7 @@
 use crate::ast::grouped::Score;
 use crate::error::IrrecoverableError;
 
-use super::{build_expanded, expand_navigation_with_origins};
+use super::{build_expanded, expand_navigation_with_origins, playback_measures};
 
 /// Smallest position `>= min_pos` in `origins` whose value equals
 /// `written_index`, i.e. the earliest playback position (at or after
@@ -44,12 +44,7 @@ fn expand_for_sequence_entry_range(
     entry_range: std::ops::RangeInclusive<usize>,
 ) -> (Score, usize, usize) {
     let (entry_start, entry_end) = (*entry_range.start(), *entry_range.end());
-    let idx: Vec<(usize, &[String])> = score
-        .sequence
-        .iter()
-        .flatten()
-        .flat_map(|span| (span.start..=span.end).map(move |i| (i, span.omit_parts.as_slice())))
-        .collect();
+    let playback = playback_measures(score.sequence.as_deref().unwrap_or_default());
     let mut position = 0usize;
     let mut start_pos = 0usize;
     let mut end_pos = 0usize;
@@ -63,7 +58,7 @@ fn expand_for_sequence_entry_range(
         }
         position += len;
     }
-    let (expanded, _origins) = build_expanded(score, &idx);
+    let (expanded, _origins) = build_expanded(score, &playback);
     (expanded, start_pos, end_pos)
 }
 

@@ -120,10 +120,15 @@ pub struct Notes {
 /// columns even when the target itself is filtered out.
 #[derive(Clone)]
 pub struct LyricsSlice {
-    /// Abbreviation of the part whose notes these lyrics sing along to.
+    /// Abbreviation of the part whose notes these lyrics sing along to this
+    /// measure: of the parts they are sung on, the bottommost with a note
+    /// here (see `lyric_paired_target`).
     pub target_name: String,
     /// The target's events this measure, which fix where syllables sit.
     pub target_events: Vec<NoteEvent>,
+    /// The target's last note before this measure is tied into it, so its
+    /// first note takes no syllable.
+    pub entering_tied: bool,
     /// The target is a `chords` part: syllables are then placed by
     /// `chord_lyric_placement` instead of one per note slot.
     pub targets_chords: bool,
@@ -133,6 +138,12 @@ pub struct LyricsSlice {
     /// whole, in order, bracketed ones (`Syllable::bracketed`) tallied 1:1 with
     /// the target's `lyric_slots::chord_attacks` by the grouper.
     pub syllables: Vec<Syllable>,
+    /// Abbreviations of every part these syllables are sung on
+    /// (`lyrics [S, A, T, B]`), in written order; `target_name` is one of them.
+    pub sung_on: Vec<String>,
+    /// Abbreviation of the bottommost of `sung_on`, whose row the lyric row
+    /// is drawn under.
+    pub drawn_under: String,
 }
 
 #[derive(Clone)]
@@ -145,6 +156,9 @@ pub struct PartSlice {
     /// The instrument the part's `parts` line names, if any (see
     /// `RangeInstrument`).
     pub range_instrument: Option<crate::ast::parsed::RangeInstrument>,
+    /// The voice this part sings its lyric part's syllables in, in place of
+    /// playing `soundfont` (see `PartDecl::singing_voice`).
+    pub singing_voice: Option<crate::ast::parsed::SingingVoice>,
     pub notes: Notes,
     /// Set exactly for a lyric part (`kind` is `PartKind::Lyrics`), whose own
     /// `notes` are empty.
@@ -200,6 +214,14 @@ pub enum PartRow {
 }
 
 impl PartSlice {
+    /// See [`PartRow::is_alternative_line`].
+    pub fn is_alternative_line(&self) -> bool {
+        self.name
+            .as_deref()
+            .and_then(crate::ast::parsed::AlternativeLine::of)
+            .is_some()
+    }
+
     /// The events that fix this slice's timing: its own notes, or for a lyric
     /// part (which has none) its target's.
     pub fn timing_events(&self) -> &[NoteEvent] {
@@ -214,6 +236,12 @@ impl PartSlice {
 impl PartRow {
     pub fn name(&self) -> Option<&String> {
         self.slice().name.as_ref()
+    }
+
+    /// Whether this row is a part's alternative line (`S.2`), which plays
+    /// only where a `sequence` entry swaps it in (see `ChosenLine`).
+    pub fn is_alternative_line(&self) -> bool {
+        self.slice().is_alternative_line()
     }
 
     pub fn slice(&self) -> &PartSlice {
@@ -257,34 +285,6 @@ pub struct Score {
     /// valid: each span is a labeled section's inclusive measure-index range
     /// in `measures`, in the order they should play.
     pub sequence: Option<Vec<SequenceSpan>>,
-}
-
-/// A labeled section's resolved measure range, in written-score order: from
-/// the labeled measure up to (but not including) the next labeled measure,
-/// or the end of the score.
-#[derive(Clone)]
-pub struct SequenceSpan {
-    pub label: String,
-    /// Inclusive index into `Score.measures`.
-    pub start: usize,
-    /// Inclusive index into `Score.measures`.
-    pub end: usize,
-    /// Individual part abbreviations to omit from this occurrence's MIDI/WAV
-    /// playback (from a `sequence` entry's `(-abbrev ...)` omit suffix, or
-    /// the complement of an `(abbrev ...)` only suffix against `parts`).
-    pub omit_parts: Vec<String>,
-    /// The entry's `(-abbrev ...)` / `(abbrev ...)` suffix's abbreviations as
-    /// written, plus whether it's an omit or only suffix, for display on the
-    /// SVG/PDF "Sequence: ..." summary line. `None` when the entry has no
-    /// suffix.
-    pub part_filter_display: Option<PartFilterDisplay>,
-}
-
-/// A `sequence` entry's `(...)` suffix, as written, for display purposes.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PartFilterDisplay {
-    pub kind: crate::parser::sequence_parser::PartFilterKind,
-    pub parts: Vec<String>,
 }
 
 // ── Intermediate grouper types (not part of the public API) ─────────────────
@@ -344,10 +344,16 @@ pub(crate) struct GroupedPart {
     pub(crate) volume: u8,
     pub(crate) octave_offset: i8,
     pub(crate) range_instrument: Option<crate::ast::parsed::RangeInstrument>,
+    pub(crate) singing_voice: Option<crate::ast::parsed::SingingVoice>,
+    pub(crate) lyric_targets: Vec<usize>,
     pub(crate) measures: Vec<GroupedMeasure>,
 }
 
 // ── Shared note types ─────────────────────────────────────────────────────────
+
+#[path = "grouped_sequence.rs"]
+mod grouped_sequence;
+pub use grouped_sequence::{ChosenLine, PartFilterDisplay, SequenceSpan};
 
 #[path = "grouped_notes.rs"]
 mod grouped_notes;

@@ -45,8 +45,8 @@ pub fn split_track_filename(base_name: &str, label: &str, extension: &str) -> St
     )
 }
 
-/// `track` followed by the lyric parts that sing along to it, so a split
-/// export of one track keeps its lyrics.
+/// `track` followed by the lyric parts sung on it, so a split export of one
+/// track keeps its lyrics.
 pub fn track_with_its_lyric_parts(score: &Score, track: &str) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     let lyric_names = score
@@ -57,7 +57,7 @@ pub fn track_with_its_lyric_parts(score: &Score, track: &str) -> Vec<String> {
             part.slice()
                 .lyrics
                 .as_ref()
-                .is_some_and(|lyrics| lyrics.target_name == track)
+                .is_some_and(|lyrics| lyrics.sung_on.iter().any(|name| name == track))
         })
         .filter_map(|part| part.name().cloned())
         .filter(|name| seen.insert(name.clone()));
@@ -285,64 +285,6 @@ pub fn write_split_midis_from_source(
             track_name: track.clone(),
             filename: split_track_filename(&base_name, &label, "mid"),
             bytes: midi,
-        });
-    }
-    Ok(entries)
-}
-
-/// Parse once, synthesize one WAV file per track.
-#[cfg(feature = "wav")]
-pub fn write_split_wavs_from_source(
-    source: &str,
-    filename: &str,
-    base_name: &str,
-    selection: SplitSelection,
-    sf2_bytes: &[u8],
-) -> Result<Vec<SplitFileEntry>, IrrecoverableError> {
-    let score = crate::compile_with_preset(source, filename, &[], selection.preset_name)?;
-    let track_names = split_track_names(source, filename, &score, selection)?;
-    let base_name = selection.file_base_name(base_name);
-    let display_names = part_display_name_map(source, filename)?;
-    let mut entries = Vec::with_capacity(track_names.len());
-    for track in track_names {
-        let mut score_clone = score.clone();
-        filter_tracks(&mut score_clone, std::slice::from_ref(&track));
-        let midi_bytes = crate::midi::write_midi(&score_clone)?;
-        let wav = crate::wav::write_wav(&midi_bytes, sf2_bytes, None)?;
-        let label = split_track_label(&display_names, &track);
-        entries.push(SplitFileEntry {
-            track_name: track.clone(),
-            filename: split_track_filename(&base_name, &label, "wav"),
-            bytes: wav,
-        });
-    }
-    Ok(entries)
-}
-
-/// Parse once, synthesize one MP3 file per track.
-#[cfg(feature = "mp3")]
-pub fn write_split_mp3s_from_source(
-    source: &str,
-    filename: &str,
-    base_name: &str,
-    selection: SplitSelection,
-    sf2_bytes: &[u8],
-) -> Result<Vec<SplitFileEntry>, IrrecoverableError> {
-    let score = crate::compile_with_preset(source, filename, &[], selection.preset_name)?;
-    let track_names = split_track_names(source, filename, &score, selection)?;
-    let base_name = selection.file_base_name(base_name);
-    let display_names = part_display_name_map(source, filename)?;
-    let mut entries = Vec::with_capacity(track_names.len());
-    for track in track_names {
-        let mut score_clone = score.clone();
-        filter_tracks(&mut score_clone, std::slice::from_ref(&track));
-        let midi_bytes = crate::midi::write_midi(&score_clone)?;
-        let mp3 = crate::wav::write_mp3(&midi_bytes, sf2_bytes, None)?;
-        let label = split_track_label(&display_names, &track);
-        entries.push(SplitFileEntry {
-            track_name: track.clone(),
-            filename: split_track_filename(&base_name, &label, "mp3"),
-            bytes: mp3,
         });
     }
     Ok(entries)

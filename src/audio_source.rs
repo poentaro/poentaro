@@ -1,45 +1,104 @@
+use crate::ast::grouped::Score;
 use crate::error::IrrecoverableError;
 use crate::parser::parts_parser::InstrumentInfo;
 use crate::{apply_track_filter, compile};
 
-/// Parse, group, optionally filter tracks, and synthesize WAV bytes.
-///
-/// When `enabled_tracks` is `None`, all parts are included.
-/// When `Some(tracks)` is empty, no parts are included.
-/// When `metronome` is `true`, a click sounds on every beat.
-#[cfg(feature = "wav")]
-pub fn write_wav_from_source_filtered(
+/// The score as it plays: parsed, grouped, filtered to `enabled_tracks`
+/// (all parts when `None`, none when empty) and expanded to playback order.
+#[cfg(feature = "midi")]
+fn playback_score(
     source: &str,
     filename: &str,
     enabled_tracks: Option<&[String]>,
-    sf2_bytes: &[u8],
     instruments: &[InstrumentInfo],
-    metronome: bool,
-) -> Result<Vec<u8>, IrrecoverableError> {
-    let mut score = compile(source, filename, instruments)?;
-    apply_track_filter(&mut score, enabled_tracks);
-    let score = crate::midi::expand_navigation(&score)?;
-    let midi_bytes = crate::midi::write_midi_with_metronome(&score, metronome)?;
-    crate::wav::write_wav(&midi_bytes, sf2_bytes, None)
+) -> Result<Score, IrrecoverableError> {
+    playback_score_keeping(source, filename, instruments, |_| {
+        enabled_tracks.map(<[String]>::to_vec)
+    })
 }
 
-/// Parse, group, optionally filter tracks, and synthesize MP3 bytes.
-///
-/// When `enabled_tracks` is `None`, all parts are included.
-/// When `Some(tracks)` is empty, no parts are included.
-#[cfg(feature = "mp3")]
-pub fn write_mp3_from_source_filtered(
+/// [`playback_score`] keeping the parts `kept` chooses from the compiled,
+/// unfiltered score.
+#[cfg(feature = "midi")]
+fn playback_score_keeping(
+    source: &str,
+    filename: &str,
+    instruments: &[InstrumentInfo],
+    kept: impl FnOnce(&Score) -> Option<Vec<String>>,
+) -> Result<Score, IrrecoverableError> {
+    let mut score = compile(source, filename, instruments)?;
+    let tracks = kept(&score);
+    apply_track_filter(&mut score, tracks.as_deref());
+    crate::midi::expand_navigation(&score)
+}
+
+/// What the exported audio of the same arguments sings (see
+/// [`crate::sing::singing_plan`]); no parts when nothing sings. Sing it with
+/// `poentaro_singer::sing` and pass the samples back as `vocals`.
+#[cfg(feature = "wav")]
+pub fn singing_plan_from_source_filtered(
     source: &str,
     filename: &str,
     enabled_tracks: Option<&[String]>,
-    sf2_bytes: &[u8],
     instruments: &[InstrumentInfo],
+) -> Result<crate::sing::SingingPlan, IrrecoverableError> {
+    // What plays is what is visible here, so a lyric part never brings in a
+    // singer that doesn't play.
+    let score = playback_score_keeping(source, filename, instruments, |score| {
+        crate::sing::singing_tracks(score, enabled_tracks, enabled_tracks)
+    })?;
+    crate::sing::singing_plan(&score, crate::wav::SAMPLE_RATE)
+}
+
+/// `score` as the synth plays it: the singing parts are sung instead (see
+/// [`crate::sing::silence_singing_parts`]).
+#[cfg(feature = "wav")]
+pub(crate) fn instruments_only(mut score: Score) -> Score {
+    crate::sing::silence_singing_parts(&mut score);
+    score
+}
+
+/// One whole-score audio export: the source, filtered to `enabled_tracks`
+/// (all parts when `None`, none when empty), with `vocals` mixed in.
+#[cfg(feature = "wav")]
+pub struct AudioExport<'a> {
+    pub source: &'a str,
+    pub filename: &'a str,
+    pub enabled_tracks: Option<&'a [String]>,
+    pub sf2_bytes: &'a [u8],
+    pub instruments: &'a [InstrumentInfo],
+    /// Mono samples from `poentaro_singer::sing`; empty when nothing sings.
+    pub vocals: &'a [f32],
+}
+
+/// Synthesize `export` as WAV bytes, with a click on every beat when
+/// `metronome` is `true`.
+#[cfg(feature = "wav")]
+pub fn write_wav_from_source_filtered(
+    export: &AudioExport,
+    metronome: bool,
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    let mut score = compile(source, filename, instruments)?;
-    apply_track_filter(&mut score, enabled_tracks);
-    let score = crate::midi::expand_navigation(&score)?;
-    let midi_bytes = crate::midi::write_midi(&score)?;
-    crate::wav::write_mp3(&midi_bytes, sf2_bytes, None)
+    let score = playback_score(
+        export.source,
+        export.filename,
+        export.enabled_tracks,
+        export.instruments,
+    )?;
+    let midi_bytes = crate::midi::write_midi_with_metronome(&instruments_only(score), metronome)?;
+    crate::wav::write_wav(&midi_bytes, export.sf2_bytes, None, export.vocals)
+}
+
+/// Synthesize `export` as MP3 bytes.
+#[cfg(feature = "mp3")]
+pub fn write_mp3_from_source_filtered(export: &AudioExport) -> Result<Vec<u8>, IrrecoverableError> {
+    let score = playback_score(
+        export.source,
+        export.filename,
+        export.enabled_tracks,
+        export.instruments,
+    )?;
+    let midi_bytes = crate::midi::write_midi(&instruments_only(score))?;
+    crate::wav::write_mp3(&midi_bytes, export.sf2_bytes, None, export.vocals)
 }
 
 /// A measure range to synthesize, plus how its end measure should be
@@ -93,6 +152,76 @@ pub struct MeasureRangeAudioOptions<'a> {
     /// way, since that's needed for correct tempo/key context and to leave
     /// room for the trimmed clip's own release tail.
     pub trim: Option<crate::wav::TrimWindow>,
+    /// Mono samples from `poentaro_singer::sing` of
+    /// [`singing_plan_for_measure_range_from_source`]; empty when nothing sings.
+    pub vocals: &'a [f32],
+}
+
+/// The measures `selection` plays, as their own score starting at time zero
+/// (see [`crate::midi::build_measure_range_score`]), keeping the parts
+/// `kept` chooses from the compiled, unfiltered score; `None` for no
+/// measures.
+#[cfg(feature = "wav")]
+fn measure_range_score(
+    source: &str,
+    filename: &str,
+    selection: &MeasureRangeSelection,
+    instruments: &[InstrumentInfo],
+    kept: impl FnOnce(&Score) -> Option<Vec<String>>,
+) -> Result<Option<Score>, IrrecoverableError> {
+    let mut score = compile(source, filename, instruments)?;
+    let tracks = kept(&score);
+    apply_track_filter(&mut score, tracks.as_deref());
+    let (score, start, end) = crate::midi::expand_for_measure_range(
+        &score,
+        *selection.range.start(),
+        *selection.range.end(),
+        selection.extend_to_last_occurrence,
+        selection.respect_sequence,
+        selection.sequence_entry_range.clone(),
+    )?;
+    Ok(crate::midi::build_measure_range_score(&score, start, end))
+}
+
+/// What the measure-range audio of the same arguments sings, like
+/// [`singing_plan_from_source_filtered`] for the whole score. Its singing
+/// parts sing whenever their notes or their lyrics are enabled (see
+/// [`crate::sing::singing_tracks`]); a lyric part only brings in
+/// `visible_tracks` (every part when `None`).
+#[cfg(feature = "wav")]
+pub fn singing_plan_for_measure_range_from_source(
+    source: &str,
+    filename: &str,
+    selection: &MeasureRangeSelection,
+    enabled_tracks: Option<&[String]>,
+    visible_tracks: Option<&[String]>,
+    instruments: &[InstrumentInfo],
+) -> Result<crate::sing::SingingPlan, IrrecoverableError> {
+    let kept = |score: &Score| crate::sing::singing_tracks(score, enabled_tracks, visible_tracks);
+    match measure_range_score(source, filename, selection, instruments, kept)? {
+        Some(score) => crate::sing::singing_plan(&score, crate::wav::SAMPLE_RATE),
+        None => Ok(crate::sing::SingingPlan {
+            sample_rate: crate::wav::SAMPLE_RATE,
+            parts: Vec::new(),
+        }),
+    }
+}
+
+#[cfg(feature = "wav")]
+fn measure_range_midi(
+    source: &str,
+    filename: &str,
+    selection: &MeasureRangeSelection,
+    options: &MeasureRangeAudioOptions,
+    instruments: &[InstrumentInfo],
+) -> Result<Vec<u8>, IrrecoverableError> {
+    let kept = |_: &Score| options.enabled_tracks.map(<[String]>::to_vec);
+    match measure_range_score(source, filename, selection, instruments, kept)? {
+        Some(score) => {
+            crate::midi::write_midi_with_metronome(&instruments_only(score), options.metronome)
+        }
+        None => Ok(Vec::new()),
+    }
 }
 
 /// Parse, group, optionally filter tracks, and synthesize WAV for a consecutive measure range.
@@ -107,23 +236,8 @@ pub fn write_wav_for_measure_range_from_source(
     sf2_bytes: &[u8],
     instruments: &[InstrumentInfo],
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    let mut score = compile(source, filename, instruments)?;
-    apply_track_filter(&mut score, options.enabled_tracks);
-    let (score, start, end) = crate::midi::expand_for_measure_range(
-        &score,
-        *selection.range.start(),
-        *selection.range.end(),
-        selection.extend_to_last_occurrence,
-        selection.respect_sequence,
-        selection.sequence_entry_range.clone(),
-    )?;
-    let midi_bytes = crate::midi::write_midi_for_measure_range_with_metronome(
-        &score,
-        start,
-        end,
-        options.metronome,
-    )?;
-    crate::wav::write_wav(&midi_bytes, sf2_bytes, options.trim)
+    let midi_bytes = measure_range_midi(source, filename, selection, options, instruments)?;
+    crate::wav::write_wav(&midi_bytes, sf2_bytes, options.trim, options.vocals)
 }
 
 /// Parse, group, optionally filter tracks, and synthesize MP3 for a consecutive measure range.
@@ -138,18 +252,8 @@ pub fn write_mp3_for_measure_range_from_source(
     sf2_bytes: &[u8],
     instruments: &[InstrumentInfo],
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    let mut score = compile(source, filename, instruments)?;
-    apply_track_filter(&mut score, options.enabled_tracks);
-    let (score, start, end) = crate::midi::expand_for_measure_range(
-        &score,
-        *selection.range.start(),
-        *selection.range.end(),
-        selection.extend_to_last_occurrence,
-        selection.respect_sequence,
-        selection.sequence_entry_range.clone(),
-    )?;
-    let midi_bytes = crate::midi::write_midi_for_measure_range(&score, start, end)?;
-    crate::wav::write_mp3(&midi_bytes, sf2_bytes, options.trim)
+    let midi_bytes = measure_range_midi(source, filename, selection, options, instruments)?;
+    crate::wav::write_mp3(&midi_bytes, sf2_bytes, options.trim, options.vocals)
 }
 
 /// Parse, group, optionally filter tracks, and compute the elapsed-seconds

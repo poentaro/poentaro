@@ -122,14 +122,6 @@ fn lyrics_targeting_another_lyrics_part_is_an_error() {
 }
 
 #[test]
-fn lyrics_part_rejects_settings() {
-    let content = "parts [\"A\" : notes, \"l\" : lyrics [A] { volume : 50% }],\n";
-    let (decls, errors) = parse_parts(content, &[]);
-    assert_eq!(abbreviations(&decls), ["A"]);
-    assert_eq!(errors.len(), 1);
-}
-
-#[test]
 fn lyrics_abbreviation_cannot_duplicate_a_part_abbreviation() {
     let content = "parts [\"A\" : notes, \"A\" : lyrics [A]],\n";
     let (decls, errors) = parse_parts(content, &[]);

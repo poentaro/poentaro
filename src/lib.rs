@@ -37,8 +37,10 @@ pub mod grouper;
 pub mod grouping;
 pub mod highlight;
 pub mod layout;
+mod lyric_paired_target;
 mod lyric_slots;
 pub mod lyric_spans;
+mod lyric_targets_rhythm;
 pub mod measure_spans;
 pub mod mei_export;
 pub mod note_spans;
@@ -54,6 +56,8 @@ mod sounding_pitch;
 pub mod source_edit;
 pub mod source_embed;
 pub mod span_selection;
+#[cfg(feature = "wav")]
+mod split_audio;
 pub mod split_track;
 pub mod staff_export;
 pub mod symbols;
@@ -65,6 +69,8 @@ mod visibility_render;
 pub mod midi;
 #[cfg(feature = "pdf")]
 pub mod pdf;
+#[cfg(feature = "midi")]
+pub mod sing;
 #[cfg(feature = "wav")]
 pub mod wav;
 
@@ -85,6 +91,8 @@ pub use part_info::{
     SourcePartDeclaration,
 };
 pub use span_selection::*;
+#[cfg(feature = "wav")]
+pub use split_audio::*;
 pub use split_track::*;
 pub use visibility_render::*;
 
@@ -206,6 +214,7 @@ fn build_header(score: &Score, parts: &[PartInfo]) -> grid_layout::types::Header
                         parts: display.parts.clone(),
                     }
                 }),
+                lines: span.line_choices_display.clone(),
             })
             .collect()
     });

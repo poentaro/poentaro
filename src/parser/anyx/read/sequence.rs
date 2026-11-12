@@ -3,9 +3,14 @@
 use itertools::Itertools;
 
 use crate::error::RecoverableError;
+use crate::parser::anyx::decoded::invalid;
 use crate::parser::anyx::decoded::{content_span, decode_error, span, AbbreviationText, WordsText};
-use crate::parser::sequence_parser::{PartFilter, PartFilterKind, SequenceEntry, SequenceSection};
-use poentaro_grammar::{self as shape, Abbreviation, DecodeError, EntryList, Label, Spanned};
+use crate::parser::sequence_parser::{
+    LineChoice, PartFilter, PartFilterKind, SequenceEntry, SequenceSection,
+};
+use poentaro_grammar::{
+    self as shape, Abbreviation, DecodeError, EntryList, Label, LineChoices, Spanned,
+};
 
 pub(super) fn read_sequence(
     entries: &EntryList,
@@ -21,16 +26,38 @@ pub(super) fn read_sequence(
     (Some(SequenceSection { entries }), errors)
 }
 
-/// A label, optionally followed by `WITHOUT [parts]` or `ONLY [parts]`.
+/// A label, optionally followed by `WITH (lines)`, and then by
+/// `WITHOUT [parts]` or `ONLY [parts]`.
 fn read_entry(entry: &shape::SequenceEntry) -> Result<SequenceEntry, RecoverableError> {
-    let (label, part_filter) = match entry {
+    let (label, lines, part_filter) = match entry {
+        shape::SequenceEntry::WithWithout {
+            label,
+            lines,
+            parts,
+            ..
+        } => (
+            label,
+            Some(lines),
+            part_filter(parts, PartFilterKind::Omit)?,
+        ),
+        shape::SequenceEntry::WithOnly {
+            label,
+            lines,
+            parts,
+            ..
+        } => (
+            label,
+            Some(lines),
+            part_filter(parts, PartFilterKind::Only)?,
+        ),
+        shape::SequenceEntry::With { label, lines, .. } => (label, Some(lines), None),
         shape::SequenceEntry::Without { label, parts, .. } => {
-            (label, part_filter(parts, PartFilterKind::Omit)?)
+            (label, None, part_filter(parts, PartFilterKind::Omit)?)
         }
         shape::SequenceEntry::Only { label, parts, .. } => {
-            (label, part_filter(parts, PartFilterKind::Only)?)
+            (label, None, part_filter(parts, PartFilterKind::Only)?)
         }
-        shape::SequenceEntry::Label(label) => (label, None),
+        shape::SequenceEntry::Label(label) => (label, None, None),
     };
     let (label, label_span) = match label {
         Label::Text(text) => (text.value.value.clone(), content_span(text)),
@@ -39,6 +66,7 @@ fn read_entry(entry: &shape::SequenceEntry) -> Result<SequenceEntry, Recoverable
     Ok(SequenceEntry {
         label,
         label_span,
+        line_choices: lines.map(line_choices).transpose()?.unwrap_or_default(),
         part_filter,
         span: span(entry.span()),
     })
@@ -61,4 +89,35 @@ fn part_filter(
         parts: parts.iter().map(|part| part.text()).try_collect()?,
         part_spans: parts.iter().map(|part| part.text_span()).collect(),
     }))
+}
+
+/// `([w] 2, [a] 1)`, or a lone `[w] 2`.
+fn line_choices(lines: &LineChoices) -> Result<Vec<LineChoice>, RecoverableError> {
+    match lines {
+        LineChoices::Many(choices) => choices
+            .value
+            .iter()
+            .map(|choice| choice.as_ref().map_err(decode_error).and_then(line_choice))
+            .try_collect(),
+        LineChoices::One(choice) => Ok(vec![line_choice(choice)?]),
+    }
+}
+
+/// `[w] 2`: a part and the number of the line it plays.
+fn line_choice(choice: &shape::LineChoice) -> Result<LineChoice, RecoverableError> {
+    let line = u32::try_from(choice.line.value)
+        .ok()
+        .filter(|line| *line >= 1)
+        .ok_or_else(|| {
+            invalid(
+                choice.line.span,
+                "a line number counts from 1, like `[w] 2`",
+            )
+        })?;
+    Ok(LineChoice {
+        part: choice.part.text()?,
+        part_span: choice.part.text_span(),
+        line,
+        span: span(choice.span),
+    })
 }

@@ -183,12 +183,12 @@ pub fn note_timings_seconds(
 
 /// Same as [`note_timings_seconds`], but scoped to a measure range and
 /// relative to the start of that range, matching the audio clip returned by
-/// [`super::write_midi_for_measure_range`].
+/// [`super::write_midi_for_measure_range_with_metronome`].
 ///
 /// `start_pos`/`end_pos` are *playback positions* — i.e. already resolved
 /// against `sequence`/D.C.-al-Coda-Fine navigation, exactly like
 /// [`super::expand_for_measure_range`] resolves them for
-/// [`super::write_midi_for_measure_range`]'s caller — not raw written
+/// [`super::write_midi_for_measure_range_with_metronome`]'s caller — not raw written
 /// measure indices. Unlike that caller, `score` here must still be the
 /// *original, unexpanded* written score: this function re-derives the
 /// expanded (playback-order) timeline itself via

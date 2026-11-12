@@ -4,22 +4,27 @@ use crate::chord_lyric_placement::chord_lyric_tally_error;
 use crate::error::{RecoverableError, Span, Warning};
 use crate::lyric_slots::{chord_attacks, measure_lyric_slots};
 
+/// The target measure one lyric measure pairs with: its paired part's (see
+/// `lyric_paired_target`), and whether that part's previous measure ties into it.
+pub(in crate::grouper) struct PairedMeasure<'a> {
+    pub(in crate::grouper) measure: &'a GroupedMeasure,
+    pub(in crate::grouper) entering_tied: bool,
+    /// The paired part is a `chords` part.
+    pub(in crate::grouper) chords: bool,
+}
+
 /// Builds a lyric part's grouped measures by pairing each measure's raw
-/// syllables to the lyric slots of its target's notes (tie-aware). Underflow is
-/// recovered by padding empty syllables and recording a warning. Tie state
-/// depends only on the target's own notes, never on the lyrics, and advances
-/// through *every* measure — including one with no lyrics — so a tie already
-/// resolved by an intervening lyric-less measure's notes doesn't leak forward
-/// into the next lyric-bearing one.
+/// syllables to the lyric slots of its paired target measure's notes
+/// (tie-aware). Underflow is recovered by padding empty syllables and
+/// recording a warning. Tie state depends only on the paired part's own
+/// notes, never on the lyrics.
 pub(super) fn pair_lyrics_measures(
-    target_measures: &[GroupedMeasure],
+    paired_measures: &[PairedMeasure],
     lyrics: ParsedLyrics,
     lyric_errors: &[Option<RecoverableError>],
     part_name: &str,
-    targets_chords: bool,
 ) -> Vec<GroupedMeasure> {
     let lyric_line_count = lyrics.measure_syllables.len();
-    let mut prev_tie_to_next = false;
     lyrics
         .measure_syllables
         .into_iter()
@@ -27,10 +32,11 @@ pub(super) fn pair_lyrics_measures(
         .enumerate()
         .map(|(index, (raw_syllables, (start, end)))| {
             let lyrics_span = Span::new(start, end);
-            let target = target_measures.get(index);
+            let paired = paired_measures.get(index);
+            let target = paired.map(|paired| paired.measure);
             let events = target.map_or(&[][..], |measure| measure.notes.events.as_slice());
             let line_error = lyric_errors.get(index).cloned().flatten();
-            let (paired, warning, tally_error, next_tie_to_next) = if targets_chords {
+            let (paired, warning, tally_error) = if paired.is_some_and(|paired| paired.chords) {
                 // Chords hold no ties, and a line with a bracket mistake is
                 // already an error: tallying it would only repeat the problem.
                 let tally_error = if line_error.is_some() {
@@ -38,24 +44,23 @@ pub(super) fn pair_lyrics_measures(
                 } else {
                     tally_chord_lyrics(events, &raw_syllables, lyrics_span)
                 };
-                (raw_syllables, None, tally_error, false)
+                (raw_syllables, None, tally_error)
             } else {
-                let (paired, warning, tied) = pair_lyrics_to_notes(
+                let (paired_syllables, warning) = pair_lyrics_to_notes(
                     events,
                     &raw_syllables,
                     &lyrics_span,
-                    prev_tie_to_next,
+                    paired.is_some_and(|paired| paired.entering_tied),
                     part_name,
                 );
-                (paired, warning, None, tied)
+                (paired_syllables, warning, None)
             };
-            prev_tie_to_next = next_tie_to_next;
             let count_mismatch = target.is_none().then(|| {
                 Warning::new(
                     Span::new(0, 0),
                     format!(
                         "[{part_name}] internal invariant: {lyric_line_count} lyric lines but {} target measures",
-                        target_measures.len()
+                        paired_measures.len()
                     ),
                 )
             });
@@ -83,7 +88,7 @@ fn pair_lyrics_to_notes(
     source_span: &Span,
     entering_tied: bool,
     part_name: &str,
-) -> (Vec<Syllable>, Option<Warning>, bool) {
+) -> (Vec<Syllable>, Option<Warning>) {
     let no_lyrics = raw_syllables.is_empty();
     let lyric_slots = measure_lyric_slots(events, entering_tied);
     let mut syllable_idx = 0;
@@ -104,8 +109,6 @@ fn pair_lyrics_to_notes(
             underflow_detected = true;
         }
     }
-    let prev_tie_to_next = lyric_slots.exits_tied;
-
     let overflow_count = raw_syllables.len().saturating_sub(syllable_idx);
     let error = if underflow_detected {
         Some(Warning::new(
@@ -126,7 +129,7 @@ fn pair_lyrics_to_notes(
         None
     };
 
-    (paired, error, prev_tie_to_next)
+    (paired, error)
 }
 
 /// Under a chord part the line's syllables are kept whole (bracketed and

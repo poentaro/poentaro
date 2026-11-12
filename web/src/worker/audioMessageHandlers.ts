@@ -4,6 +4,7 @@ import {
   singleErrorDiagnostic,
 } from './exportMessageHandlers'
 import type { WorkerRequest, WorkerResponse } from './poentaro.worker'
+import { sing, vocalsFor } from './singer'
 
 function noteTimingsFromSource(
   source: string,
@@ -43,11 +44,18 @@ function noteTimingsForRangeFromSource(
   return result.tag === 'ok' ? result.val.timings : []
 }
 
-export function handleGenerateAudio(
+export async function handleGenerateAudio(
   msg: Extract<WorkerRequest, { type: 'generateAudio' }>,
   loadedSoundfont: Uint8Array | null,
-): void {
+): Promise<void> {
   if (!loadedSoundfont) {
+    postMessage({ type: 'audioErr', id: msg.id } satisfies WorkerResponse)
+    return
+  }
+  let vocals: Float32Array
+  try {
+    vocals = await vocalsFor(msg.source, msg.enabledTracks)
+  } catch {
     postMessage({ type: 'audioErr', id: msg.id } satisfies WorkerResponse)
     return
   }
@@ -56,6 +64,7 @@ export function handleGenerateAudio(
     msg.enabledTracks,
     false,
     loadedSoundfont,
+    vocals,
   )
   if (wavResult.tag === 'ok') {
     const wavBuffer = binaryBufferFromResult(wavResult.val.wav)
@@ -101,10 +110,10 @@ function shiftNoteTimings(
   }))
 }
 
-export function handleGenerateMeasureRangeAudio(
+export async function handleGenerateMeasureRangeAudio(
   msg: Extract<WorkerRequest, { type: 'generateMeasureRangeAudio' }>,
   loadedSoundfont: Uint8Array | null,
-): void {
+): Promise<void> {
   if (!loadedSoundfont) {
     postMessage({
       type: 'measureRangeAudioErr',
@@ -141,6 +150,28 @@ export function handleGenerateMeasureRangeAudio(
         fullRangeNoteTimings,
       )
     : undefined
+  let vocals: Float32Array
+  try {
+    vocals = await sing(
+      poentaroWasm().singingPlanForMeasureRange(
+        msg.source,
+        msg.startMeasureIndex,
+        msg.endMeasureIndex,
+        msg.extendToLastOccurrence,
+        msg.respectSequence,
+        msg.sequenceEntryStartIndex,
+        msg.sequenceEntryEndIndex,
+        msg.enabledTracks,
+        msg.visibleTracks,
+      ),
+    )
+  } catch {
+    postMessage({
+      type: 'measureRangeAudioErr',
+      id: msg.id,
+    } satisfies WorkerResponse)
+    return
+  }
   const wavResult = poentaroWasm().generateWavForMeasureRange(
     msg.source,
     msg.startMeasureIndex,
@@ -155,6 +186,7 @@ export function handleGenerateMeasureRangeAudio(
     trim?.endS,
     trim?.nextNoteStartS,
     loadedSoundfont,
+    vocals,
   )
   if (wavResult.tag === 'ok') {
     const wavBuffer = binaryBufferFromResult(wavResult.val.wav)
@@ -184,10 +216,10 @@ export function handleGenerateMeasureRangeAudio(
  * source alone (see `noteTimingsFromSource`), independent of the audio
  * codec, so this reuses it exactly as the WAV path does.
  */
-export function handleGenerateMp3(
+export async function handleGenerateMp3(
   msg: Extract<WorkerRequest, { type: 'generateMp3' }>,
   loadedSoundfont: Uint8Array | null,
-): void {
+): Promise<void> {
   if (!loadedSoundfont) {
     postMessage({
       type: 'mp3Err',
@@ -196,10 +228,22 @@ export function handleGenerateMp3(
     } satisfies WorkerResponse)
     return
   }
+  let vocals: Float32Array
+  try {
+    vocals = await vocalsFor(msg.source, msg.enabledTracks)
+  } catch (error) {
+    postMessage({
+      type: 'mp3Err',
+      id: msg.id,
+      diagnostics: singleErrorDiagnostic(`Could not sing the lyrics: ${error}`),
+    } satisfies WorkerResponse)
+    return
+  }
   const result = poentaroWasm().generateMp3(
     msg.source,
     msg.enabledTracks,
     loadedSoundfont,
+    vocals,
   )
   if (result.tag === 'ok') {
     const mp3Buffer = binaryBufferFromResult(result.val.mp3)

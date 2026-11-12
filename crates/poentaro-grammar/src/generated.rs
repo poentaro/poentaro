@@ -154,7 +154,8 @@ pub enum PartKind {
     },
     Lyrics {
         keyword: Span,
-        target: Spanned<Abbreviation>,
+        targets: Spanned<Vec<Result<Abbreviation, DecodeError>>>,
+        options: Option<Options>,
         span: Span,
     },
 }
@@ -179,7 +180,7 @@ pub enum PartOption {
     },
     Sound {
         keyword: Span,
-        program: Spanned<i64>,
+        value: Sound,
         span: Span,
     },
     Volume {
@@ -192,6 +193,12 @@ pub enum PartOption {
         signed_integer: SignedInteger,
         span: Span,
     },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Sound {
+    Program(Spanned<i64>),
+    Voice(Words),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -213,6 +220,23 @@ pub struct EntryList {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SequenceEntry {
+    WithWithout {
+        label: Label,
+        lines: LineChoices,
+        parts: Spanned<Vec<Result<Abbreviation, DecodeError>>>,
+        span: Span,
+    },
+    WithOnly {
+        label: Label,
+        lines: LineChoices,
+        parts: Spanned<Vec<Result<Abbreviation, DecodeError>>>,
+        span: Span,
+    },
+    With {
+        label: Label,
+        lines: LineChoices,
+        span: Span,
+    },
     Without {
         label: Label,
         parts: Spanned<Vec<Result<Abbreviation, DecodeError>>>,
@@ -230,6 +254,19 @@ pub enum SequenceEntry {
 pub enum Label {
     Text(Spanned<StringLiteral>),
     Words(Words),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LineChoices {
+    Many(Spanned<Vec<Result<LineChoice, DecodeError>>>),
+    One(LineChoice),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LineChoice {
+    pub part: Spanned<Abbreviation>,
+    pub line: Spanned<i64>,
+    pub span: Span,
 }
 
 impl Value {
@@ -279,6 +316,15 @@ impl PartOption {
     }
 }
 
+impl Sound {
+    pub fn span(&self) -> Span {
+        match self {
+            Sound::Program(value) => value.span,
+            Sound::Voice(value) => value.span,
+        }
+    }
+}
+
 impl Abbreviation {
     pub fn span(&self) -> Span {
         match self {
@@ -292,7 +338,11 @@ impl Abbreviation {
 impl SequenceEntry {
     pub fn span(&self) -> Span {
         match self {
-            SequenceEntry::Without { span, .. } | SequenceEntry::Only { span, .. } => *span,
+            SequenceEntry::WithWithout { span, .. }
+            | SequenceEntry::WithOnly { span, .. }
+            | SequenceEntry::With { span, .. }
+            | SequenceEntry::Without { span, .. }
+            | SequenceEntry::Only { span, .. } => *span,
             SequenceEntry::Label(value) => value.span(),
         }
     }
@@ -303,6 +353,15 @@ impl Label {
         match self {
             Label::Text(value) => value.span,
             Label::Words(value) => value.span,
+        }
+    }
+}
+
+impl LineChoices {
+    pub fn span(&self) -> Span {
+        match self {
+            LineChoices::Many(value) => value.span,
+            LineChoices::One(value) => value.span,
         }
     }
 }
@@ -666,19 +725,22 @@ fn decode_part_kind_follow_target(node: &Node) -> Result<Spanned<Abbreviation>, 
 }
 
 fn decode_part_kind_lyrics(node: &Node) -> Result<PartKind, DecodeError> {
-    let mut parts = support::call(node, "the call `lyrics _`")?;
+    let mut parts = support::call(node, "the call `lyrics _ _?`")?;
     let decoded = PartKind::Lyrics {
         keyword: parts.word_span("lyrics")?,
-        target: parts.one(decode_part_kind_lyrics_target, "`[...]`")?,
+        targets: parts.one(decode_part_kind_lyrics_targets, "`[...]`")?,
+        options: parts.optional(decode_options),
         span: node.span,
     };
     parts.finish()?;
     Ok(decoded)
 }
 
-fn decode_part_kind_lyrics_target(node: &Node) -> Result<Spanned<Abbreviation>, DecodeError> {
+fn decode_part_kind_lyrics_targets(
+    node: &Node,
+) -> Result<Spanned<Vec<Result<Abbreviation, DecodeError>>>, DecodeError> {
     let mut elements = support::square_bracket(node)?;
-    let value = elements.one(decode_abbreviation, "an abbreviation")?;
+    let value = elements.each(decode_abbreviation);
     elements.finish()?;
     Ok(Spanned {
         value,
@@ -730,18 +792,7 @@ fn decode_part_option_sound(node: &Node) -> Result<PartOption, DecodeError> {
     let mut parts = support::call(node, "the call `sound _`")?;
     let decoded = PartOption::Sound {
         keyword: parts.word_span("sound")?,
-        program: parts.one(
-            |node| {
-                support::integer::<i64>(
-                    node,
-                    i128::from(i64::MIN),
-                    i128::from(i64::MAX),
-                    false,
-                    "an integer",
-                )
-            },
-            "an integer",
-        )?,
+        value: parts.one(decode_sound, "a sound")?,
         span: node.span,
     };
     parts.finish()?;
@@ -768,6 +819,18 @@ fn decode_part_option_octave(node: &Node) -> Result<PartOption, DecodeError> {
     };
     parts.finish()?;
     Ok(decoded)
+}
+
+pub fn decode_sound(node: &Node) -> Result<Sound, DecodeError> {
+    support::integer::<i64>(
+        node,
+        i128::from(i64::MIN),
+        i128::from(i64::MAX),
+        false,
+        "an integer",
+    )
+    .map(Sound::Program)
+    .or_else(|error| error.or(decode_words(node).map(Sound::Voice)))
 }
 
 pub fn decode_abbreviation(node: &Node) -> Result<Abbreviation, DecodeError> {
@@ -802,9 +865,81 @@ pub fn decode_entry_list(node: &Node) -> Result<EntryList, DecodeError> {
 }
 
 pub fn decode_sequence_entry(node: &Node) -> Result<SequenceEntry, DecodeError> {
-    decode_sequence_entry_without(node)
+    decode_sequence_entry_with_without(node)
+        .or_else(|error| error.or(decode_sequence_entry_with_only(node)))
+        .or_else(|error| error.or(decode_sequence_entry_with(node)))
+        .or_else(|error| error.or(decode_sequence_entry_without(node)))
         .or_else(|error| error.or(decode_sequence_entry_only(node)))
         .or_else(|error| error.or(decode_label(node).map(SequenceEntry::Label)))
+}
+
+fn decode_sequence_entry_with_without(node: &Node) -> Result<SequenceEntry, DecodeError> {
+    let mut parts = support::call(node, "the call `_ WITH _ WITHOUT _`")?;
+    let decoded = SequenceEntry::WithWithout {
+        label: parts.one(decode_label, "a label")?,
+        lines: parts
+            .word("WITH")?
+            .one(decode_line_choices, "line choices")?,
+        parts: parts
+            .word("WITHOUT")?
+            .one(decode_sequence_entry_with_without_parts, "`[...]`")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_sequence_entry_with_without_parts(
+    node: &Node,
+) -> Result<Spanned<Vec<Result<Abbreviation, DecodeError>>>, DecodeError> {
+    let mut elements = support::square_bracket(node)?;
+    let value = elements.each(decode_abbreviation);
+    elements.finish()?;
+    Ok(Spanned {
+        value,
+        span: node.span,
+    })
+}
+
+fn decode_sequence_entry_with_only(node: &Node) -> Result<SequenceEntry, DecodeError> {
+    let mut parts = support::call(node, "the call `_ WITH _ ONLY _`")?;
+    let decoded = SequenceEntry::WithOnly {
+        label: parts.one(decode_label, "a label")?,
+        lines: parts
+            .word("WITH")?
+            .one(decode_line_choices, "line choices")?,
+        parts: parts
+            .word("ONLY")?
+            .one(decode_sequence_entry_with_only_parts, "`[...]`")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_sequence_entry_with_only_parts(
+    node: &Node,
+) -> Result<Spanned<Vec<Result<Abbreviation, DecodeError>>>, DecodeError> {
+    let mut elements = support::square_bracket(node)?;
+    let value = elements.each(decode_abbreviation);
+    elements.finish()?;
+    Ok(Spanned {
+        value,
+        span: node.span,
+    })
+}
+
+fn decode_sequence_entry_with(node: &Node) -> Result<SequenceEntry, DecodeError> {
+    let mut parts = support::call(node, "the call `_ WITH _`")?;
+    let decoded = SequenceEntry::With {
+        label: parts.one(decode_label, "a label")?,
+        lines: parts
+            .word("WITH")?
+            .one(decode_line_choices, "line choices")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
 }
 
 fn decode_sequence_entry_without(node: &Node) -> Result<SequenceEntry, DecodeError> {
@@ -861,6 +996,56 @@ pub fn decode_label(node: &Node) -> Result<Label, DecodeError> {
     support::string(node, |_| true, "a string")
         .map(Label::Text)
         .or_else(|error| error.or(decode_words(node).map(Label::Words)))
+}
+
+pub fn decode_line_choices(node: &Node) -> Result<LineChoices, DecodeError> {
+    decode_line_choices_many(node)
+        .map(LineChoices::Many)
+        .or_else(|error| error.or(decode_line_choice(node).map(LineChoices::One)))
+}
+
+fn decode_line_choices_many(
+    node: &Node,
+) -> Result<Spanned<Vec<Result<LineChoice, DecodeError>>>, DecodeError> {
+    let mut elements = support::parenthesis(node)?;
+    let value = elements.each(decode_line_choice);
+    elements.finish()?;
+    Ok(Spanned {
+        value,
+        span: node.span,
+    })
+}
+
+pub fn decode_line_choice(node: &Node) -> Result<LineChoice, DecodeError> {
+    let mut parts = support::call(node, "the call `_ _`")?;
+    let decoded = LineChoice {
+        part: parts.one(decode_line_choice_part, "`[...]`")?,
+        line: parts.one(
+            |node| {
+                support::integer::<i64>(
+                    node,
+                    i128::from(i64::MIN),
+                    i128::from(i64::MAX),
+                    false,
+                    "an integer",
+                )
+            },
+            "an integer",
+        )?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_line_choice_part(node: &Node) -> Result<Spanned<Abbreviation>, DecodeError> {
+    let mut elements = support::square_bracket(node)?;
+    let value = elements.one(decode_abbreviation, "an abbreviation")?;
+    elements.finish()?;
+    Ok(Spanned {
+        value,
+        span: node.span,
+    })
 }
 
 /// Parses `source` with anyx and decodes its document.

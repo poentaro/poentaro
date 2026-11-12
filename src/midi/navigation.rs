@@ -56,11 +56,7 @@ pub fn expand_navigation_with_note_positions(
     }
 
     if let Some(spans) = &score.sequence {
-        let idx: Vec<(usize, &[String])> = spans
-            .iter()
-            .flat_map(|span| (span.start..=span.end).map(move |i| (i, span.omit_parts.as_slice())))
-            .collect();
-        return Ok(build_expanded(score, &idx));
+        return Ok(build_expanded(score, &playback_measures(spans)));
     }
 
     let origins = score
@@ -106,20 +102,22 @@ fn accumulated_context_before(score: &Score) -> (Vec<Option<u32>>, Vec<Option<Ke
     (bpm_before, key_before)
 }
 
-/// Clones `score.measures` at each `(index, omit_parts)` pair (playback
-/// order) into a new `Score`, dropping any part whose abbreviation appears
-/// in that occurrence's `omit_parts`, alongside origin info for each
-/// resulting measure (its written index, and the written index of each
-/// surviving part).
+/// Clones `score.measures` at each playback measure into a new `Score`,
+/// playing its entry's chosen lines (see [`chosen_lines`]) and dropping any
+/// part whose abbreviation appears in the entry's `omit_parts`, alongside
+/// origin info for each resulting measure (its written index, and the
+/// written index of each surviving part).
 fn build_expanded(
     score: &Score,
-    idx: &[(usize, &[String])],
+    playback: &[PlaybackMeasure],
 ) -> (Score, Vec<ExpandedMeasureOrigin>) {
     let (bpm_before, key_before) = accumulated_context_before(score);
-    let mut origins = Vec::with_capacity(idx.len());
-    let measures = idx
+    let mut origins = Vec::with_capacity(playback.len());
+    let measures = playback
         .iter()
-        .filter_map(|&(i, omit_parts)| {
+        .filter_map(|playback_measure| {
+            let i = playback_measure.written_index;
+            let omit_parts = &playback_measure.span.omit_parts;
             let mut measure = score.measures.get(i).cloned()?;
             if measure.bpm.is_none() {
                 measure.bpm = bpm_before.get(i).copied().flatten();
@@ -127,15 +125,21 @@ fn build_expanded(
             if measure.key.is_none() {
                 measure.key = key_before.get(i).cloned().flatten();
             }
+            let mut written_indices: Vec<usize> = (0..measure.parts.len()).collect();
+            play_chosen_lines(
+                &mut measure,
+                &playback_measure.span.chosen_lines,
+                &mut written_indices,
+            );
             let mut part_written_indices = Vec::with_capacity(measure.parts.len());
-            let mut written_idx = 0usize;
+            let mut written_indices = written_indices.into_iter();
             measure.parts.retain(|part| {
+                let written_idx = written_indices.next().unwrap_or_default();
                 let omitted = !omit_parts.is_empty()
                     && part.name().is_some_and(|name| omit_parts.contains(name));
                 if !omitted {
                     part_written_indices.push(written_idx);
                 }
-                written_idx += 1;
                 !omitted
             });
             origins.push(ExpandedMeasureOrigin {
@@ -197,8 +201,15 @@ pub(super) fn filter_expanded_tracks(
     }
 }
 
+mod chosen_lines;
 mod range;
+
+use chosen_lines::{play_chosen_lines, playback_measures, PlaybackMeasure};
 pub use range::{earliest_playback_position, expand_for_measure_range};
 
 #[cfg(test)]
 mod tests_sequence_omission;
+
+#[cfg(test)]
+#[path = "navigation/tests_chosen_lines.rs"]
+mod tests_chosen_lines;

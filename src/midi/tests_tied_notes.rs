@@ -35,6 +35,7 @@ fn tied_note_part(tied: bool) -> PartRow {
         volume: 100,
         octave_offset: 0,
         range_instrument: None,
+        singing_voice: None,
         notes: Notes {
             events: vec![tied_note_event(tied)],
         },

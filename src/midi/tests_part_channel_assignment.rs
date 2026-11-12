@@ -1,4 +1,4 @@
-use super::write_midi_for_measure_range;
+use super::write_midi_for_measure_range_with_metronome;
 use crate::audio_source::MeasureRangeSelection;
 use midly::{MidiMessage, Smf, TrackEventKind};
 
@@ -74,7 +74,8 @@ fn write_midi_for_sequence_entry_range(source: &str, start: usize, end: usize) -
         selection.sequence_entry_range,
     )
     .unwrap();
-    write_midi_for_measure_range(&score, resolved_start, resolved_end).unwrap()
+    write_midi_for_measure_range_with_metronome(&score, resolved_start, resolved_end, false)
+        .unwrap()
 }
 
 #[test]

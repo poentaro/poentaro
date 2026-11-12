@@ -82,6 +82,8 @@ pub(super) fn build_parse_result(
                 volume: decl.volume,
                 octave_offset: decl.octave_offset,
                 range_instrument: decl.range_instrument,
+                singing_voice: decl.singing_voice,
+                lyric_targets: decl.lyric_targets.clone(),
                 measure_slots,
                 lyrics: syllables.map(|measure_syllables| ParsedLyrics {
                     measure_syllables,

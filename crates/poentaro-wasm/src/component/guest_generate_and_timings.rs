@@ -43,12 +43,14 @@ pub(super) fn generate_wav(
     enabled_tracks: Option<Vec<String>>,
     metronome: bool,
     soundfont: Vec<u8>,
+    vocals: Vec<f32>,
 ) -> GenerateWavResponse {
     generate_wav_response_to_wit(crate::responses::generate_wav_response(
         &source,
         enabled_tracks.as_deref(),
         metronome,
         soundfont,
+        vocals,
     ))
 }
 
@@ -57,12 +59,14 @@ pub(super) fn generate_split_wavs(
     base_name: String,
     preset_name: Option<String>,
     soundfont: Vec<u8>,
+    vocals: Vec<TrackVocals>,
 ) -> GenerateSplitWavsResponse {
     generate_split_wavs_response_to_wit(crate::responses::generate_split_wavs_response(
         &source,
         &base_name,
         preset_name.as_deref(),
         soundfont,
+        &track_vocals_from_wit(vocals),
     ))
 }
 
@@ -70,12 +74,69 @@ pub(super) fn generate_mp3(
     source: String,
     enabled_tracks: Option<Vec<String>>,
     soundfont: Vec<u8>,
+    vocals: Vec<f32>,
 ) -> GenerateMp3Response {
     generate_mp3_response_to_wit(crate::responses::generate_mp3_response(
         &source,
         enabled_tracks.as_deref(),
         soundfont,
+        vocals,
     ))
+}
+
+pub(super) fn singing_plan(source: String, enabled_tracks: Option<Vec<String>>) -> Option<Vec<u8>> {
+    crate::responses::singing_plan_response(&source, enabled_tracks.as_deref())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn singing_plan_for_measure_range(
+    source: String,
+    start_index: u32,
+    end_index: u32,
+    extend_to_last_occurrence: bool,
+    respect_sequence: bool,
+    sequence_entry_start_index: Option<u32>,
+    sequence_entry_end_index: Option<u32>,
+    enabled_tracks: Option<Vec<String>>,
+    visible_tracks: Option<Vec<String>>,
+) -> Option<Vec<u8>> {
+    crate::responses::singing_plan_for_measure_range_response(
+        &source,
+        &poentaro::MeasureRangeSelection {
+            range: start_index as usize..=end_index as usize,
+            extend_to_last_occurrence,
+            respect_sequence,
+            sequence_entry_range: crate::sequence_entry_range(
+                sequence_entry_start_index.map(|v| v as usize),
+                sequence_entry_end_index.map(|v| v as usize),
+            ),
+        },
+        enabled_tracks.as_deref(),
+        visible_tracks.as_deref(),
+    )
+}
+
+pub(super) fn split_singing_plans(
+    source: String,
+    preset_name: Option<String>,
+) -> Vec<TrackSingingPlan> {
+    crate::responses::split_singing_plans_response(&source, preset_name.as_deref())
+        .into_iter()
+        .map(|plan| TrackSingingPlan {
+            track_name: plan.track_name,
+            plan: plan.plan.to_bytes(),
+        })
+        .collect()
+}
+
+fn track_vocals_from_wit(vocals: Vec<TrackVocals>) -> Vec<poentaro::TrackVocals> {
+    vocals
+        .into_iter()
+        .map(|vocals| poentaro::TrackVocals {
+            track_name: vocals.track_name,
+            samples: vocals.samples,
+        })
+        .collect()
 }
 
 pub(super) fn generate_split_mp3s(
@@ -83,12 +144,14 @@ pub(super) fn generate_split_mp3s(
     base_name: String,
     preset_name: Option<String>,
     soundfont: Vec<u8>,
+    vocals: Vec<TrackVocals>,
 ) -> GenerateSplitMp3sResponse {
     generate_split_mp3s_response_to_wit(crate::responses::generate_split_mp3s_response(
         &source,
         &base_name,
         preset_name.as_deref(),
         soundfont,
+        &track_vocals_from_wit(vocals),
     ))
 }
 
@@ -180,6 +243,7 @@ pub(super) fn generate_wav_for_measure_range(
     trim_end_s: Option<f64>,
     trim_next_note_start_s: Option<f64>,
     soundfont: Vec<u8>,
+    vocals: Vec<f32>,
 ) -> GenerateWavResponse {
     generate_wav_response_to_wit(crate::responses::generate_wav_for_measure_range_response(
         &source,
@@ -195,6 +259,7 @@ pub(super) fn generate_wav_for_measure_range(
         metronome,
         crate::trim_window(trim_start_s, trim_end_s, trim_next_note_start_s),
         soundfont,
+        vocals,
     ))
 }
 
@@ -211,6 +276,7 @@ pub(super) fn generate_mp3_for_measure_range(
     trim_end_s: Option<f64>,
     trim_next_note_start_s: Option<f64>,
     soundfont: Vec<u8>,
+    vocals: Vec<f32>,
 ) -> GenerateMp3Response {
     generate_mp3_response_to_wit(crate::responses::generate_mp3_for_measure_range_response(
         &source,
@@ -225,6 +291,7 @@ pub(super) fn generate_mp3_for_measure_range(
         enabled_tracks.as_deref(),
         crate::trim_window(trim_start_s, trim_end_s, trim_next_note_start_s),
         soundfont,
+        vocals,
     ))
 }
 

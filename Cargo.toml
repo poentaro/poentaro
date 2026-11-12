@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/cloud-outbox", "crates/poentaro-grammar", "crates/poentaro-wasm", "crates/live-share-worker", "tools/dead-pub-check"]
+members = [".", "crates/cloud-outbox", "crates/poentaro-grammar", "crates/poentaro-wasm", "crates/poentaro-singer", "crates/poentaro-singer-wasm", "crates/live-share-worker", "tools/dead-pub-check"]
 resolver = "2"
 
 [patch.crates-io]
@@ -75,11 +75,12 @@ required-features = ["cli"]
 
 [features]
 default = ["cli"]
-cli = ["dep:clap", "pdf", "midi", "wav", "mp3"]
+cli = ["dep:clap", "pdf", "midi", "wav", "mp3", "sing"]
 pdf = ["dep:svg2pdf", "dep:pdf-writer", "dep:zip"]
 midi = ["dep:midly", "dep:zip"]
 wav = ["midi", "dep:oxisynth", "dep:hound"]
 mp3 = ["wav", "dep:rusty_mp3"]
+sing = ["mp3", "poentaro-singer/render"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -99,6 +100,7 @@ ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] 
 base64 = "0.22"
 anyx = { git = "https://github.com/wongjiahau/anyx", rev = "913846cc3b7c3f3fdd8d3be737b9c8acce6bfb1e" }
 poentaro-grammar = { path = "crates/poentaro-grammar" }
+poentaro-singer = { path = "crates/poentaro-singer" }
 
 [build-dependencies]
 serde = { version = "1", features = ["derive"] }

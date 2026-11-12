@@ -75,7 +75,12 @@ part kind: ONE OF [
     target: SQUARE BRACKET: abbreviation,
     OPTIONAL: options,
   ],
-  lyrics: ANYFIX CALL [keyword: WORD "lyrics", target: SQUARE BRACKET: abbreviation],
+  # Options are read only so Rust can say a lyric part takes none.
+  lyrics: ANYFIX CALL [
+    keyword: WORD "lyrics",
+    targets: SQUARE BRACKET: EACH: abbreviation,
+    OPTIONAL: options,
+  ],
 ],
 
 options: CURLY BRACE: EACH: part option,
@@ -85,10 +90,13 @@ part option: ONE OF [
   # `C3 to G4`, whose capitalised words split anyx's word runs, so Rust
   # reads it from the node.
   range: ANYFIX CALL [keyword: WORD "range", value: ANY NODE],
-  sound: ANYFIX CALL [keyword: WORD "sound", program: NUMBER [INTEGER]],
+  sound: ANYFIX CALL [keyword: WORD "sound", value: sound],
   volume: ANYFIX CALL [keyword: WORD "volume", percentage],
   octave: ANYFIX CALL [keyword: WORD "octave", signed integer],
 ],
+
+# `41`, a General MIDI program, or `chimera soprano`, a singing voice.
+sound: ONE OF [program: NUMBER [INTEGER], voice: words],
 
 # A part's abbreviation: a string, or words, numbers and symbols that are
 # joined without spaces (`A1 & T` is the call `A1 _ T` of the word `&`).
@@ -103,6 +111,21 @@ abbreviation: ONE OF [
 entry list: SQUARE BRACKET: EACH: sequence entry,
 
 sequence entry: ONE OF [
+  with without: ANYFIX CALL [
+    label,
+    WORD "WITH",
+    lines: line choices,
+    WORD "WITHOUT",
+    parts: SQUARE BRACKET: EACH: abbreviation,
+  ],
+  with only: ANYFIX CALL [
+    label,
+    WORD "WITH",
+    lines: line choices,
+    WORD "ONLY",
+    parts: SQUARE BRACKET: EACH: abbreviation,
+  ],
+  with: ANYFIX CALL [label, WORD "WITH", lines: line choices],
   without: ANYFIX CALL [label, WORD "WITHOUT", parts: SQUARE BRACKET: EACH: abbreviation],
   only: ANYFIX CALL [label, WORD "ONLY", parts: SQUARE BRACKET: EACH: abbreviation],
   label,
@@ -110,3 +133,9 @@ sequence entry: ONE OF [
 
 # `Verse`, `Verse two` or `"Last chorus"`.
 label: ONE OF [text: STRING, words],
+
+# `([w] 2, [a] 1)`, or a lone `[w] 2`.
+line choices: ONE OF [many: PARENTHESIS: EACH: line choice, one: line choice],
+
+# `[w] 2`: a part and the number of the line it plays.
+line choice: ANYFIX CALL [part: SQUARE BRACKET: abbreviation, line: NUMBER [INTEGER]],

@@ -2,11 +2,11 @@ use poentaro::note_timings_for_range_from_source;
 use poentaro::note_timings_from_source;
 use poentaro::wav;
 use poentaro::write_split_wavs_from_source;
-use poentaro::write_wav_from_source_filtered;
 use poentaro::zip_split_entries;
 use poentaro::{
     write_wav_for_measure_range_from_source, MeasureRangeAudioOptions, MeasureRangeSelection,
 };
+use poentaro::{write_wav_from_source_filtered, AudioExport};
 
 use super::diagnostic_from_error;
 use crate::opened_document::open_checked;
@@ -20,19 +20,21 @@ pub(crate) fn generate_wav_response(
     enabled_tracks: Option<&[String]>,
     metronome: bool,
     soundfont: Vec<u8>,
+    vocals: Vec<f32>,
 ) -> GenerateWavResponse {
     if let Err(diagnostics) = open_checked(source, &[]) {
         return GenerateWavResponse::Err { diagnostics };
     }
 
-    match write_wav_from_source_filtered(
+    let export = AudioExport {
         source,
-        "input.poentaro",
+        filename: "input.poentaro",
         enabled_tracks,
-        &soundfont,
-        &[],
-        metronome,
-    ) {
+        sf2_bytes: &soundfont,
+        instruments: &[],
+        vocals: &vocals,
+    };
+    match write_wav_from_source_filtered(&export, metronome) {
         Ok(wav) => GenerateWavResponse::Ok { wav },
         Err(e) => GenerateWavResponse::Err {
             diagnostics: vec![diagnostic_from_error(&e)],
@@ -52,6 +54,7 @@ pub(crate) fn generate_wav_for_measure_range_response(
     metronome: bool,
     trim: Option<wav::TrimWindow>,
     soundfont: Vec<u8>,
+    vocals: Vec<f32>,
 ) -> GenerateWavResponse {
     if let Err(diagnostics) = open_checked(source, &[]) {
         return GenerateWavResponse::Err { diagnostics };
@@ -70,6 +73,7 @@ pub(crate) fn generate_wav_for_measure_range_response(
             enabled_tracks,
             metronome,
             trim,
+            vocals: &vocals,
         },
         &soundfont,
         &[],
@@ -191,6 +195,7 @@ pub(crate) fn generate_split_wavs_response(
     base_name: &str,
     preset_name: Option<&str>,
     soundfont: Vec<u8>,
+    vocals: &[poentaro::TrackVocals],
 ) -> GenerateSplitWavsResponse {
     if let Err(diagnostics) = open_checked(source, &[]) {
         return GenerateSplitWavsResponse::Err { diagnostics };
@@ -205,6 +210,7 @@ pub(crate) fn generate_split_wavs_response(
             preset_name,
         },
         &soundfont,
+        vocals,
     ) {
         Ok(entries) => match zip_split_entries(&entries) {
             Ok(zip) => GenerateSplitWavsResponse::Ok { zip },

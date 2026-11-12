@@ -87,6 +87,7 @@ fn triplet_measure_produces_same_total_ticks_as_equivalent_non_tuplet_measure() 
         volume: 100,
         octave_offset: 0,
         range_instrument: None,
+        singing_voice: None,
         notes: Notes {
             events: vec![
                 triplet_eighth_note_event(),
@@ -108,6 +109,7 @@ fn triplet_measure_produces_same_total_ticks_as_equivalent_non_tuplet_measure() 
         volume: 100,
         octave_offset: 0,
         range_instrument: None,
+        singing_voice: None,
         notes: Notes {
             events: vec![plain_quarter_note_event()],
         },

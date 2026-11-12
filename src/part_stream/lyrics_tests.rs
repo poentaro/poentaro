@@ -277,3 +277,23 @@ fn a_lyric_tally_mismatch_makes_the_part_ineligible_except_for_underscore() {
         "a b c d\n_"
     );
 }
+
+#[test]
+fn a_lyric_part_on_several_parts_is_split_by_the_part_singing_while_the_bottommost_rests() {
+    let source = r#"parts ["S" [S]: notes, "A" [A]: notes, "Words" [W]: lyrics [S, A]],
+
+score """
+    [S] 1 2 3 4
+    [A] 5 6 7 1
+    [W] a b c d
+
+    [S] 1_2_ 3 4 5
+    [A] 0 0 0 0
+    [W] e f g h i
+    """,
+"#;
+    let result = apply_part_stream(source, "W", "一二三四五六七八九");
+    let source = applied(result);
+    assert!(source.contains("[W] 一二三四\n"), "{source}");
+    assert!(source.contains("[W] 五六七八九\n"), "{source}");
+}

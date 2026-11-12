@@ -183,13 +183,13 @@ parts [
 | `notes` | Notes | 1 |
 | `percussion` | Unpitched GM drum hits | 1 |
 | `follow [X]` | Inherit column layout from the part with abbreviation `X` | same as target |
-| `lyrics [X]` | A lyric part: one verse of lyrics for the `notes`/`chords`/`follow` part with abbreviation `X` (see [Lyric parts](#lyric-parts)) | 1 per measure that writes it |
+| `lyrics [X]` | A lyric part: one verse of lyrics for the `notes`/`chords`/`follow` part with abbreviation `X`, or for several parts that share a rhythm, `lyrics [S, A, T, B]` (see [Lyric parts](#lyric-parts)) | 1 per measure that writes it |
 
 ### Options
 
 Every kind but `lyrics` takes options in braces: `notes { instrument: violin, range: G3 to E6, sound 41, volume: 80 %, octave -1 }`.
 
-`sound` selects the MIDI timbre, as a General MIDI program number (0–127). For example: `notes { sound 52 }` for Choir Aahs, or `follow [A] { sound 1 }`. If omitted on a `chords` or `notes` part, the default is the sound of the part's [instrument](#instrument-range), or program 0 (Acoustic Grand Piano) when it names none. On a `follow [X]` part, the sound is inherited from the target when omitted, unless the follow part names its own instrument.
+`sound` selects the MIDI timbre, as a General MIDI program number (0–127). For example: `notes { sound 52 }` for Choir Aahs, or `follow [A] { sound 1 }`. It may instead be a sung voice, `sound: chimera soprano` (or `alto`, `tenor`, `bass`), which sings the part's lyrics (see [Singing](#singing)). If omitted on a `chords` or `notes` part, the default is the sound of the part's [instrument](#instrument-range), or program 0 (Acoustic Grand Piano) when it names none; the `soprano`, `alto`, `tenor` and `bass` instruments default to their Chimera voice. On a `follow [X]` part, the sound is inherited from the target when omitted, unless the follow part names its own instrument.
 
 For `percussion` parts, the number is instead a **GM percussion key** (e.g. `38` = Acoustic Snare, `36` = Bass Drum 1), not a GM program number: all percussion parts share MIDI channel 9 (the GM drum channel) and a single fixed GM Standard Kit program change; the number selects which drum sample within that kit each hit plays. If omitted, the default is key 38 (Acoustic Snare). The number is not checked against the melodic instrument catalog.
 
@@ -210,10 +210,10 @@ For `percussion` parts, the number is instead a **GM percussion key** (e.g. `38`
 | `guzheng` | 古箏 | D2–D6 | `107: Koto` |
 | `harmonica` | 12-hole chromatic harmonica | C4–C♯7 | `22: Harmonica` |
 | `harmonica16` | 16-hole chromatic harmonica | C3–C♯7 | `22: Harmonica` |
-| `bass` | Bass voice | F2–D4 | `52: Choir Aahs` |
-| `tenor` | Tenor voice | C3–G4 | `52: Choir Aahs` |
-| `alto` | Alto voice | G3–D5 | `52: Choir Aahs` |
-| `soprano` | Soprano voice | C4–G5 | `52: Choir Aahs` |
+| `bass` | Bass voice | F2–D4 | `chimera bass` (`52: Choir Aahs` in a MIDI file) |
+| `tenor` | Tenor voice | C3–G4 | `chimera tenor` (`52: Choir Aahs` in a MIDI file) |
+| `alto` | Alto voice | G3–D5 | `chimera alto` (`52: Choir Aahs` in a MIDI file) |
+| `soprano` | Soprano voice | C4–G5 | `chimera soprano` (`52: Choir Aahs` in a MIDI file) |
 
 General MIDI has no liuqin or guzheng, so they default to the closest plucked lute and zither. A set `sound` always wins over the default sound.
 
@@ -282,17 +282,20 @@ part       : display [ "[" abbreviation "]" ] ":" kind,
 display    : string,                        # the abbreviation, too, when no [ ] follows
 kind       : ( "notes" | "chords" | "percussion" ) [ options ]
            | "follow" "[" abbreviation "]" [ options ]
-           | "lyrics" "[" abbreviation "]",
+           | "lyrics" "[" { abbreviation "," } "]",   # no options
 options    : "{" { option "," } "}",
 option     : "instrument" ":" word          # violin, soprano, …
            | "sound" ":" number             # GM program, or GM drum key on percussion
+           | "sound" ":" "chimera" word     # soprano, alto, tenor, bass: a sung voice
            | "volume" ":" number "%"
            | "octave" ( "-" number | ":" sign number ),  # `octave -1`, `octave: + 1`
 abbreviation : string | ? words, numbers and symbols, joined without spaces ?,
 
 # ── sequence ────────────────────────────────────────────────────────────
 sequence   : "sequence" "[" { entry "," } "]",
-entry      : label [ ( "WITHOUT" | "ONLY" ) "[" { abbreviation "," } "]" ],
+entry      : label [ "WITH" lines ] [ ( "WITHOUT" | "ONLY" ) "[" { abbreviation "," } "]" ],
+lines      : line | "(" { line "," } ")",
+line       : "[" abbreviation "]" number,   # the part's Nth line, from 1
 label      : string | word,                 # a word that is not all caps
 
 # ── presets ─────────────────────────────────────────────────────────────
@@ -337,7 +340,7 @@ Every data line must begin with `[Abbrev]` to route it to a specific part by abb
 [A2] 5 6 7 0
 ```
 
-- Exactly one `[Key]` line may appear for a given part in a measure group (its single notes/chords slot); a second `[Key]` line for the same part is a `part [Key] has N lines but only 1 slot(s)` error. Lyrics go on their own lyric part's `[Key]` line (see [Lyric parts](#lyric-parts)).
+- A second `[Key]` line for the same part in a measure group is that part's line 2, a third its line 3, and so on (see [Alternative lines](#alternative-lines)). Lyrics go on their own lyric part's `[Key]` line (see [Lyric parts](#lyric-parts)).
 - An unrecognised abbreviation is an error; the line is dropped.
 - Parts not covered by any `[Key]` line use their `follow [X]` target's content when declared as such, or are filled with implicit rests/no-lyrics otherwise.
 - A data line with no `[Abbrev]` prefix is a `score_line_missing_key_prefix` error; the line is dropped. Lyrics are no longer attached positionally — write them on a lyric part's `[Key]` line.
@@ -491,6 +494,46 @@ sequence [Chorus, Verse, Chorus ONLY [S]],
 
 - Here the third `Chorus` plays only Soprano; every other declared part is silent for that occurrence. Naming every declared part is equivalent to no filter at all.
 - Otherwise `ONLY` follows the same rules as `WITHOUT`: an unknown abbreviation is an error and is dropped; the written-out section always renders every part; the summary line shows the parts in brackets, e.g. `Sequence: Chorus › Verse › Chorus (S)`.
+
+An entry may pick which line each part plays with `WITH`, before any `WITHOUT` or `ONLY` (see [Alternative lines](#alternative-lines)):
+
+```text
+sequence [Verse, Verse WITH ([w] 2, [A] 2) WITHOUT [S], Verse WITH [w] 3],
+```
+
+- `[w] 2` plays part `w`'s line 2 in that occurrence. Lines count from 1, and a part not named plays its line 1.
+- In a measure that doesn't write the chosen line, the part plays its line 1 there.
+- A line the part writes in no measure at all is a warning, and the part plays its line 1. An unknown part is an error and is dropped.
+- The summary line shows the choices after the label: `Sequence: Verse › Verse (w 2, A 2) (-S)`.
+
+### Alternative lines
+
+A measure group may write a part's `[Key]` line more than once. The first is the part's line 1, the next its line 2, and so on, for verses that share a passage or a part that changes on a repeat:
+
+```poentaro
+parts [
+    "Melody" [M]: notes,
+    "Words" [w]: lyrics [M],
+],
+
+sequence [Verse, Verse WITH ([w] 2, [M] 2)],
+
+score """
+    time=4/4 key=C4 bpm=100 label="Verse"
+    [M] 1 2 3 1
+    [w] 两 只 老 虎
+    [w] 两 只 小 鸟
+
+    [M] 3 4 5 -
+    [M] 5 4 3 -
+    [w] 跑 得 快
+    """,
+```
+
+- Each extra line renders as its own row under the part's line 1, labelled with the part and line number (`w.2`). A notes line 2 missing from a measure is filled with rests.
+- A lyric part's line 2 sings on the same parts as its line 1.
+- Only line 1 plays, unless a `sequence` entry picks another with `WITH`. Without a `sequence`, every part plays its line 1.
+- Hiding or soloing a part does the same to its other lines; they aren't listed as parts of their own.
 
 ---
 
@@ -821,15 +864,43 @@ score """
     """,
 ```
 
-- A lyric part's line is written with its own `[Abbrev]` key, anywhere in the measure group; it is not tied to the line above it. A lyric part takes no sound, volume or octave settings.
+- A lyric part's line is written with its own `[Abbrev]` key, anywhere in the measure group; it is not tied to the line above it. A lyric part takes no options.
+- A lyric part may name several parts, `lyrics [S, A, T, B]`, when they sing the same words to the same rhythm. Its row is drawn under the bottommost of them. In each measure its syllables are paired with the notes of the bottommost of them that has a note there, so while the bottom part rests the words go to a part above it (`lyrics [Vo, A2]` pairs with `[Vo]` in a measure where `[A2]` rests). Every other part must start a note at each syllable's time and nowhere else, except that a note slurred into from the note before it carries that syllable on (`[S] 3 3 (2_1_)` sings three syllables, like `[A] 6, 6, 5,`), and a part may hold its note through a held `-` syllable. A part resting for the whole measure doesn't sing it. Any other mismatch is an error.
 - Lyric parts have their own abbreviation and display name, and share the abbreviation namespace with every other part (a duplicate abbreviation is an error).
 - Each lyric part renders as its own row directly under its target's notes row, in declaration order, and is tallied and tie-paired against the notes row independently — a lyric part can have its own `-` held syllables and `_` no-lyrics marker.
 - Each verse row's left-margin label shows that lyric part's own abbreviation (e.g. `v1`, `v2`); clicking it, or including it in a click-and-click range selection, selects every syllable that verse sings across the system.
 - A lyric part not written in a measure group gets no row for that measure. If a later lyric part is written but an earlier one isn't, the earlier one is filled with `_` for that measure (a blank row). A measure with no lyric line at all has zero lyric rows for that part, not blank placeholders.
 - A lyric line written without its target's notes line in that measure group still works: the target part is filled with rests (or follows its target).
-- A second line for the same lyric part in one measure group is a `part [Key] has N lines but only 1 slot(s)` error.
+- A second line for the same lyric part in one measure group is its next verse (see [Alternative lines](#alternative-lines)).
 - `lyrics [X]` where `X` is unknown, declared later, a `percussion` part or another lyric part is a `parts_lyrics_invalid_target` error; the lyric part is dropped.
 - A `follow [X]` part never copies lyrics from `X`; give it its own `lyrics [...]` part.
+
+#### Singing
+
+A part whose sound is a Chimera voice sings the lyrics of the lyric part written for it, in place of an instrument, in playback, measure-range playback and every audio export:
+
+```poentaro
+parts [
+    "Soprano" [S]: notes { instrument: soprano },
+    "Alto" [A]: notes { instrument: violin, sound: chimera alto, volume: 80 % },
+    "Words" [w]: lyrics [S, A],
+],
+
+score """
+    time=4/4 key=C4 bpm=90
+    [S] 1 2 3 4
+    [A] 5, 7, 1 2
+    [w] 记 得 我 们
+    """,
+```
+
+- The voices are `chimera soprano`, `chimera alto`, `chimera tenor` and `chimera bass`. Soprano and alto sing with a female voice, tenor and bass with a male one. The `soprano`, `alto`, `tenor` and `bass` instruments sing by default; any part can take any voice.
+- The part's `volume` sets the voice's peak relative to the instruments' peak.
+- A singing part with no lyric part naming it, or with more than one, is an error.
+- Each syllable is sung on its note's pitch and for its note's length. A tie lengthens the note, and a held `-`, or a slur onto a note no syllable starts on, carries the vowel on into the next note. A `_` measure sings nothing.
+- Chinese, English and Korean lyrics are read for pronunciation; Chinese is sung on the melody, not on each character's spoken tone.
+- A MIDI file export plays the part's General MIDI choir sound instead, since a voice can't be written there.
+- Playback may wait a moment while the voices are sung. Hidden parts don't sing.
 
 #### Lyrics under a chord part (`lyrics [X]` where `X` is a `chords` part)
 

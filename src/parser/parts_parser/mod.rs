@@ -3,8 +3,10 @@ mod instrument_matching;
 mod lyrics_declaration;
 mod setting_limits;
 
-use crate::ast::parsed::{PartDecl, PartKind, PitchRange, RangeInstrument, Soundfont};
-use crate::error::{RecoverableError, Span};
+use crate::ast::parsed::{
+    PartDecl, PartKind, PitchRange, RangeInstrument, SingingVoice, Soundfont,
+};
+use crate::error::{RecoverableError, Span, Spanned};
 
 pub use instrument_matching::InstrumentInfo;
 pub use setting_limits::{
@@ -25,6 +27,8 @@ mod lyrics_part_tests;
 mod percussion_tests;
 #[cfg(test)]
 mod setting_limits_tests;
+#[cfg(test)]
+mod singing_part_tests;
 #[cfg(test)]
 mod source_level_tests;
 #[cfg(test)]
@@ -76,12 +80,20 @@ pub(crate) struct RawDecl {
     pub(crate) volume: Option<u8>,
     /// `None` when omitted on the declaration line (follow parts inherit from target).
     pub(crate) octave_offset: Option<i8>,
+    /// `sound: chimera <voice>` on a `notes` or `follow` part.
+    pub(crate) singing_voice: Option<Spanned<SingingVoice>>,
+}
+
+/// One part a lyric part is sung on, as `lyrics [S, A]` writes it.
+pub(crate) struct LyricTarget {
+    pub(crate) abbreviation: String,
+    pub(crate) span: Span,
 }
 
 pub(crate) enum RawKind {
     Concrete(PartKind),
     Follow { target: String, target_span: Span },
-    Lyrics { target: String, target_span: Span },
+    Lyrics { targets: Vec<LyricTarget> },
 }
 
 fn byte_offset_to_line_number(source: &str, byte_offset: usize) -> u32 {
@@ -102,7 +114,16 @@ fn raw_kind_to_source_mode(kind: &RawKind) -> (SourcePartMode, Option<String>) {
         // A lyric part is only ever built as `RawKind::Lyrics`.
         RawKind::Concrete(PartKind::Lyrics { .. }) => (SourcePartMode::Lyrics, None),
         RawKind::Follow { target, .. } => (SourcePartMode::Follow, Some(target.clone())),
-        RawKind::Lyrics { target, .. } => (SourcePartMode::Lyrics, Some(target.clone())),
+        RawKind::Lyrics { targets } => (
+            SourcePartMode::Lyrics,
+            Some(
+                targets
+                    .iter()
+                    .map(|target| target.abbreviation.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ),
+        ),
     }
 }
 
@@ -146,83 +167,144 @@ pub(crate) fn resolve_declarations(
 ) -> Vec<PartDecl> {
     let mut declarations = Vec::new();
     for (index, raw_decl) in raw.into_iter().enumerate() {
-        let RawDecl {
-            display_name,
-            abbreviation,
-            abbreviation_span,
-            span,
-            kind,
-            range_instrument,
-            written_range,
-            soundfont,
-            volume,
-            octave_offset,
-        } = raw_decl;
-        let soundfont = soundfont.or(range_instrument.map(RangeInstrument::default_soundfont));
-        match kind {
-            RawKind::Follow {
-                target,
-                target_span,
-            } => {
-                if index == 0 {
-                    errors.push(RecoverableError::parts_first_part_cannot_follow(span));
-                    continue;
-                }
-                let Some(target_decl) = declarations
-                    .iter()
-                    .find(|declaration: &&PartDecl| declaration.abbreviation == target)
-                else {
-                    errors.push(RecoverableError::parts_follow_unknown_target(
-                        target_span,
-                        &target,
-                    ));
-                    continue;
-                };
-                declarations.push(PartDecl {
-                    abbreviation,
-                    abbreviation_span,
-                    display_name,
-                    kind: target_decl.kind,
-                    follow_target: Some(target),
-                    range_instrument: range_instrument.or(target_decl.range_instrument),
-                    written_range: follow_range(written_range, range_instrument, target_decl),
-                    soundfont: soundfont.unwrap_or(target_decl.soundfont),
-                    volume: volume.unwrap_or(target_decl.volume),
-                    octave_offset: octave_offset.unwrap_or(target_decl.octave_offset),
-                });
+        let declaration = resolve_declaration(&declarations, index, raw_decl, errors);
+        declarations.extend(declaration);
+    }
+    errors.extend(singing_parts_errors(&declarations));
+    lyric_parts_after_their_targets(declarations)
+}
+
+/// Every part that sings needs exactly one lyric part sung on it, to know
+/// what to sing.
+fn singing_parts_errors(declarations: &[PartDecl]) -> Vec<RecoverableError> {
+    declarations
+        .iter()
+        .enumerate()
+        .filter(|(_, declaration)| declaration.singing_voice.is_some())
+        .filter_map(|(index, singer)| {
+            let lyric_parts = declarations
+                .iter()
+                .filter(|declaration| declaration.lyric_targets.contains(&index))
+                .map(|declaration| declaration.abbreviation.clone())
+                .collect::<Vec<_>>();
+            match lyric_parts.len() {
+                0 => Some(RecoverableError::parts_singing_part_without_lyrics(
+                    singer.abbreviation_span,
+                    &singer.abbreviation,
+                )),
+                1 => None,
+                _ => Some(RecoverableError::parts_singing_part_with_several_lyrics(
+                    singer.abbreviation_span,
+                    &singer.abbreviation,
+                    lyric_parts,
+                )),
             }
-            RawKind::Concrete(kind) => declarations.push(PartDecl {
+        })
+        .collect()
+}
+
+/// One declaration resolved against the ones before it; `None` when it is
+/// dropped for an error.
+fn resolve_declaration(
+    declarations: &[PartDecl],
+    index: usize,
+    raw_decl: RawDecl,
+    errors: &mut Vec<RecoverableError>,
+) -> Option<PartDecl> {
+    let RawDecl {
+        display_name,
+        abbreviation,
+        abbreviation_span,
+        span,
+        kind,
+        range_instrument,
+        written_range,
+        soundfont: written_soundfont,
+        volume,
+        octave_offset,
+        singing_voice,
+    } = raw_decl;
+    let soundfont = written_soundfont.or(range_instrument.map(RangeInstrument::default_soundfont));
+    match kind {
+        RawKind::Follow {
+            target,
+            target_span,
+        } => {
+            if index == 0 {
+                errors.push(RecoverableError::parts_first_part_cannot_follow(span));
+                return None;
+            }
+            let Some(target_decl) = declarations
+                .iter()
+                .find(|declaration: &&PartDecl| declaration.abbreviation == target)
+            else {
+                errors.push(RecoverableError::parts_follow_unknown_target(
+                    target_span,
+                    &target,
+                ));
+                return None;
+            };
+            let singing_voice = match (&singing_voice, range_instrument) {
+                (None, None) if written_soundfont.is_none() => target_decl.singing_voice,
+                _ => own_singing_voice(singing_voice, written_soundfont, range_instrument),
+            };
+            Some(PartDecl {
                 abbreviation,
                 abbreviation_span,
                 display_name,
-                kind,
-                follow_target: None,
-                range_instrument,
-                written_range,
-                soundfont: soundfont.unwrap_or(kind.default_soundfont()),
-                volume: volume.unwrap_or(DEFAULT_PART_VOLUME),
-                octave_offset: octave_offset.unwrap_or(DEFAULT_PART_OCTAVE_OFFSET),
-            }),
-            RawKind::Lyrics {
-                target,
-                target_span,
-            } => {
-                let declaration = resolve_lyrics_declaration(
-                    &declarations,
-                    LyricsDeclarationHeader {
-                        abbreviation,
-                        abbreviation_span,
-                        display_name,
-                    },
-                    &target,
-                    target_span,
-                    errors,
-                );
-                declarations.extend(declaration);
-            }
+                kind: target_decl.kind,
+                follow_target: Some(target),
+                range_instrument: range_instrument.or(target_decl.range_instrument),
+                written_range: follow_range(written_range, range_instrument, target_decl),
+                soundfont: soundfont.unwrap_or(target_decl.soundfont),
+                volume: volume.unwrap_or(target_decl.volume),
+                octave_offset: octave_offset.unwrap_or(target_decl.octave_offset),
+                singing_voice: singing_voice.filter(|_| target_decl.kind == PartKind::Notes),
+                lyric_targets: Vec::new(),
+                alternative_line: None,
+            })
         }
+        RawKind::Concrete(kind) => Some(PartDecl {
+            abbreviation,
+            abbreviation_span,
+            display_name,
+            kind,
+            follow_target: None,
+            range_instrument,
+            written_range,
+            singing_voice: own_singing_voice(singing_voice, written_soundfont, range_instrument)
+                .filter(|_| kind == PartKind::Notes),
+            soundfont: soundfont.unwrap_or(kind.default_soundfont()),
+            volume: volume.unwrap_or(DEFAULT_PART_VOLUME),
+            octave_offset: octave_offset.unwrap_or(DEFAULT_PART_OCTAVE_OFFSET),
+            lyric_targets: Vec::new(),
+            alternative_line: None,
+        }),
+        RawKind::Lyrics { targets } => resolve_lyrics_declaration(
+            declarations,
+            LyricsDeclarationHeader {
+                abbreviation,
+                abbreviation_span,
+                display_name,
+            },
+            &targets,
+            errors,
+        ),
     }
-    lyric_parts_after_their_targets(declarations)
+}
+
+/// The voice a part sings in from its own line: the Chimera voice its
+/// `sound` names, else its instrument's default voice when it names no sound.
+fn own_singing_voice(
+    singing_voice: Option<Spanned<SingingVoice>>,
+    soundfont: Option<Soundfont>,
+    range_instrument: Option<RangeInstrument>,
+) -> Option<SingingVoice> {
+    match (singing_voice, soundfont) {
+        (Some(voice), _) => Some(voice.value),
+        (None, Some(_)) => None,
+        (None, None) => range_instrument.and_then(SingingVoice::default_for),
+    }
 }
 
 /// Reorders `declarations` so each lyric part sits directly after its target
@@ -263,6 +345,11 @@ fn lyric_parts_after_their_targets(declarations: Vec<PartDecl>) -> Vec<PartDecl>
             if let PartKind::Lyrics { target_part_index } = &mut declaration.kind {
                 *target_part_index = new_index_of(*target_part_index);
             }
+            declaration.lyric_targets = declaration
+                .lyric_targets
+                .iter()
+                .map(|&target| new_index_of(target))
+                .collect();
             declaration
         })
         .collect()

@@ -5,7 +5,7 @@ use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use oxisynth::{MidiEvent, SoundFont, Synth, SynthDescriptor};
 use std::io::Cursor;
 
-const SAMPLE_RATE: u32 = 44100;
+pub(crate) const SAMPLE_RATE: u32 = 44100;
 /// Target peak level before encoding (0.95 ≈ −0.4 dBFS), matching typical mastered music.
 const TARGET_PEAK: f32 = 0.95;
 
@@ -25,6 +25,10 @@ use wav_trim::trim_and_fade;
 pub use wav_trim::TrimWindow;
 
 #[cfg(feature = "mp3")]
+#[path = "wav_vocals.rs"]
+mod wav_vocals;
+use wav_vocals::mix_vocals;
+
 #[path = "wav_mp3.rs"]
 mod wav_mp3;
 #[cfg(feature = "mp3")]
@@ -134,6 +138,7 @@ fn render_score_to_samples(
     midi_bytes: &[u8],
     sf2_bytes: &[u8],
     trim: Option<TrimWindow>,
+    vocals: &[f32],
 ) -> Result<(Vec<f32>, Vec<f32>), IrrecoverableError> {
     let smf = Smf::parse(midi_bytes).map_err(|_| {
         IrrecoverableError::new(IrrecoverableErrorKind::WavInvalidMidiBytes {
@@ -160,6 +165,8 @@ fn render_score_to_samples(
     // Render 1 second of tail so reverb fully decays
     render_samples(&mut synth, SAMPLE_RATE as usize, &mut all_l, &mut all_r);
 
+    mix_vocals(&mut all_l, &mut all_r, vocals);
+
     if let Some(trim) = trim {
         trim_and_fade(&mut all_l, &mut all_r, trim);
     }
@@ -168,12 +175,16 @@ fn render_score_to_samples(
     Ok((all_l, all_r))
 }
 
+/// Synthesize a score to WAV bytes. `vocals` is a mono track at
+/// [`SAMPLE_RATE`] mixed in the centre (see `mix_vocals`); empty when
+/// nothing sings.
 pub fn write_wav(
     midi_bytes: &[u8],
     sf2_bytes: &[u8],
     trim: Option<TrimWindow>,
+    vocals: &[f32],
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    let (all_l, all_r) = render_score_to_samples(midi_bytes, sf2_bytes, trim)?;
+    let (all_l, all_r) = render_score_to_samples(midi_bytes, sf2_bytes, trim, vocals)?;
     encode_wav(&all_l, &all_r)
 }
 
@@ -188,8 +199,9 @@ pub fn write_mp3(
     midi_bytes: &[u8],
     sf2_bytes: &[u8],
     trim: Option<TrimWindow>,
+    vocals: &[f32],
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    let (all_l, all_r) = render_score_to_samples(midi_bytes, sf2_bytes, trim)?;
+    let (all_l, all_r) = render_score_to_samples(midi_bytes, sf2_bytes, trim, vocals)?;
     encode_mp3(&all_l, &all_r)
 }
 

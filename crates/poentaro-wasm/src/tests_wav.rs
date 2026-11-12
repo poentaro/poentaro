@@ -14,7 +14,17 @@ score """
 "#;
     let soundfont = include_bytes!("../../../fonts/GeneralUser_GS.sf2").to_vec();
     let resp = generate_wav_for_measure_range_response(
-        source, 0, 0, false, true, None, None, false, None, soundfont,
+        source,
+        0,
+        0,
+        false,
+        true,
+        None,
+        None,
+        false,
+        None,
+        soundfont,
+        Vec::new(),
     );
     match resp {
         GenerateWavResponse::Ok { wav } => {
@@ -32,7 +42,7 @@ fn reference_poentaro_generates_wav() {
     let soundfont = include_bytes!("../../../fonts/GeneralUser_GS.sf2").to_vec();
     for path in super::demo_file_paths() {
         let source = super::read_demo_file(&path);
-        let resp = generate_wav_response(&source, None, false, soundfont.clone());
+        let resp = generate_wav_response(&source, None, false, soundfont.clone(), Vec::new());
         match resp {
             GenerateWavResponse::Ok { wav } => {
                 assert!(wav.len() > 4);
@@ -60,12 +70,17 @@ score """
     """,
 "#;
     let soundfont = include_bytes!("../../../fonts/GeneralUser_GS.sf2").to_vec();
-    let wav_of =
-        |metronome: bool| match generate_wav_response(source, None, metronome, soundfont.clone()) {
-            GenerateWavResponse::Ok { wav } => wav,
-            GenerateWavResponse::Err { diagnostics } => {
-                panic!("expected Ok: {}", diagnostics[0].message);
-            }
-        };
+    let wav_of = |metronome: bool| match generate_wav_response(
+        source,
+        None,
+        metronome,
+        soundfont.clone(),
+        Vec::new(),
+    ) {
+        GenerateWavResponse::Ok { wav } => wav,
+        GenerateWavResponse::Err { diagnostics } => {
+            panic!("expected Ok: {}", diagnostics[0].message);
+        }
+    };
     assert_ne!(wav_of(true), wav_of(false));
 }

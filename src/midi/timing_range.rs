@@ -1,7 +1,9 @@
 use crate::ast::grouped::{Score, TimeSignature};
 use crate::ast::parsed::KeyChange;
+#[cfg(test)]
 use crate::error::IrrecoverableError;
 
+#[cfg(test)]
 use super::write_midi_with_metronome;
 
 pub fn build_measure_range_score(
@@ -59,16 +61,12 @@ pub fn build_measure_range_score(
     })
 }
 
-pub fn write_midi_for_measure_range(
-    score: &Score,
-    start_index: usize,
-    end_index: usize,
-) -> Result<Vec<u8>, IrrecoverableError> {
-    write_midi_for_measure_range_with_metronome(score, start_index, end_index, false)
-}
-
-/// Like [`write_midi_for_measure_range`], with the metronome of [`write_midi_with_metronome`].
-pub fn write_midi_for_measure_range_with_metronome(
+/// The MIDI of written measures `start_index..=end_index`, with the
+/// metronome of [`write_midi_with_metronome`] when `metronome` is set.
+/// Only tests write a range's MIDI on its own; playback builds it with its
+/// vocals in `audio_source`.
+#[cfg(test)]
+pub(crate) fn write_midi_for_measure_range_with_metronome(
     score: &Score,
     start_index: usize,
     end_index: usize,

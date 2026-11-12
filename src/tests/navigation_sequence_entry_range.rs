@@ -36,7 +36,8 @@ fn play_selected_sequence_entry_range_respects_part_omission() {
 
     let (expanded, start, end) =
         midi::expand_for_measure_range(&score, 1, 1, false, true, Some(1..=1)).unwrap();
-    let midi = midi::write_midi_for_measure_range(&expanded, start, end).unwrap();
+    let midi =
+        midi::write_midi_for_measure_range_with_metronome(&expanded, start, end, false).unwrap();
 
     assert_eq!(
         count_note_on_events(&midi),
@@ -61,7 +62,8 @@ fn play_selected_sequence_entry_range_disambiguates_repeated_label() {
 
     let (expanded, start, end) =
         midi::expand_for_measure_range(&score, 1, 1, false, true, Some(2..=2)).unwrap();
-    let midi = midi::write_midi_for_measure_range(&expanded, start, end).unwrap();
+    let midi =
+        midi::write_midi_for_measure_range_with_metronome(&expanded, start, end, false).unwrap();
 
     assert_eq!(
         count_note_on_events(&midi),
