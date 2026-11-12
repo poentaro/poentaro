@@ -5,15 +5,14 @@ use std::collections::HashSet;
 use crate::ast::parsed::{PartDecl, PartKind, PitchRange, RangeInstrument, Soundfont};
 use crate::error::{RecoverableError, Span, Spanned};
 use crate::parser::anyfix::decoded::{
-    content_span, decode_error, invalid, span, unconverted_error, AbbreviationText, PartList,
-    Signed, WordsText,
+    content_span, decode_error, invalid, span, unconverted_error, AbbreviationText, WordsText,
 };
 use crate::parser::parts_parser::{
     checked_octave_offset, checked_range_instrument, checked_volume, checked_written_range,
     resolve_declarations, validate_soundfont, InstrumentInfo, RawDecl, RawKind,
 };
 use crate::sound_label::sound_label;
-use poentaro_grammar::{self as shape, Options, Part, PartOption};
+use poentaro_grammar::{self as shape, Options, Part, PartList, PartOption};
 
 use super::written_range::written_range;
 
@@ -41,7 +40,7 @@ pub(super) fn raw_parts(
 ) -> Vec<RawDecl> {
     let mut seen = HashSet::new();
     let mut raw_parts = Vec::new();
-    for element in &parts.value {
+    for element in &parts.part {
         let raw = element
             .as_ref()
             .map_err(decode_error)
@@ -203,12 +202,12 @@ fn part_options(
                 read.volume = Some(checked_volume(written, span(percentage.span), errors));
             }
             PartOption::Octave { signed_integer, .. } => {
-                let value = signed_integer.value();
+                let value = signed_integer.value;
                 let written =
                     i16::try_from(value).unwrap_or(if value < 0 { i16::MIN } else { i16::MAX });
                 read.octave_offset = Some(checked_octave_offset(
                     written,
-                    span(signed_integer.span()),
+                    span(signed_integer.span),
                     errors,
                 ));
             }

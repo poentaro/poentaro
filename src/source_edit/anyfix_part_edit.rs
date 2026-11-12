@@ -10,7 +10,7 @@ use crate::parser::parts_parser::{
 };
 use poentaro_grammar::Part;
 
-use super::anyfix_edit::{formatted_section, replace_span, sections_of, text_of};
+use super::anyfix_edit::{formatted_section, replace_span, text_of};
 use super::{PartMode, PartSettings};
 
 pub(super) fn update_part_declaration(
@@ -18,12 +18,10 @@ pub(super) fn update_part_declaration(
     abbreviation: &str,
     settings: &PartSettings,
 ) -> Option<String> {
-    let decoded = decode(source);
-    let sections = sections_of(source, &decoded);
-    let parts = sections.parts?;
+    let parts = decode(source).document.parts?;
     let kind = parts
-        .body
-        .value
+        .parts
+        .part
         .iter()
         .find_map(|part| match part.as_ref().ok()? {
             Part::Abbreviated {
@@ -36,7 +34,7 @@ pub(super) fn update_part_declaration(
             }
             Part::Unconverted(_) => None,
         })?;
-    let whole = span(parts.whole);
+    let whole = span(parts.span);
     let kind = span(kind.span());
     let edited = replace_span(
         text_of(source, whole),

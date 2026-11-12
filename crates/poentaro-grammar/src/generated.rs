@@ -3,38 +3,49 @@
 #![allow(dead_code)]
 
 use anyfix_expr::{Node, Span, StringLiteral};
-pub use support::{DecodeError, Spanned};
+pub use support::{CallName, DecodeError, Spanned};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Document {
-    pub section: Vec<Result<Section, DecodeError>>,
+    pub unconverted: Vec<Unconverted>,
+    pub metadata: Option<DocumentMetadata>,
+    pub parts: Option<DocumentParts>,
+    pub sequence: Option<DocumentSequence>,
+    pub preset: Vec<DocumentPreset>,
+    pub score: Option<DocumentScore>,
+    pub errors: Vec<DecodeError>,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Section {
-    Unconverted(Unconverted),
-    Metadata {
-        fields: Record,
-        span: Span,
-    },
-    Parts {
-        parts: Spanned<Vec<Result<Part, DecodeError>>>,
-        span: Span,
-    },
-    Sequence {
-        entries: Spanned<Vec<Result<SequenceEntry, DecodeError>>>,
-        span: Span,
-    },
-    Preset {
-        name: Spanned<StringLiteral>,
-        fields: Record,
-        span: Span,
-    },
-    Score {
-        text: Spanned<StringLiteral>,
-        span: Span,
-    },
+pub struct DocumentMetadata {
+    pub fields: Record,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DocumentParts {
+    pub parts: PartList,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DocumentSequence {
+    pub entries: EntryList,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DocumentPreset {
+    pub name: Spanned<StringLiteral>,
+    pub fields: Record,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DocumentScore {
+    pub text: Spanned<StringLiteral>,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -51,7 +62,7 @@ pub struct Record {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Field {
-    pub name: Spanned<String>,
+    pub name: CallName,
     pub arguments: Value,
     pub span: Span,
 }
@@ -70,18 +81,13 @@ pub enum Value {
     List(Spanned<Vec<Result<Abbreviation, DecodeError>>>),
     Words(Words),
     Written {
-        name: Spanned<String>,
+        name: CallName,
         arguments: Vec<Node>,
         span: Span,
     },
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum SignedInteger {
-    Number(Spanned<i64>),
-    Plus { number: Spanned<i64>, span: Span },
-    Minus { number: Spanned<i64>, span: Span },
-}
+pub type SignedInteger = Spanned<i64>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Percentage {
@@ -91,8 +97,14 @@ pub struct Percentage {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Words {
-    pub name: Spanned<String>,
+    pub name: CallName,
     pub arguments: Vec<Node>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PartList {
+    pub part: Vec<Result<Part, DecodeError>>,
     pub span: Span,
 }
 
@@ -172,10 +184,16 @@ pub enum Abbreviation {
     Text(Spanned<StringLiteral>),
     Number(Spanned<f64>),
     Written {
-        name: Spanned<String>,
+        name: CallName,
         arguments: Vec<Node>,
         span: Span,
     },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct EntryList {
+    pub sequence_entry: Vec<Result<SequenceEntry, DecodeError>>,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -199,38 +217,16 @@ pub enum Label {
     Words(Words),
 }
 
-impl Section {
-    pub fn span(&self) -> Span {
-        match self {
-            Section::Metadata { span, .. }
-            | Section::Parts { span, .. }
-            | Section::Sequence { span, .. }
-            | Section::Preset { span, .. }
-            | Section::Score { span, .. } => *span,
-            Section::Unconverted(value) => value.span,
-        }
-    }
-}
-
 impl Value {
     pub fn span(&self) -> Span {
         match self {
             Value::Pair { span, .. } | Value::Written { span, .. } => *span,
-            Value::Integer(value) => value.span(),
+            Value::Integer(value) => value.span,
             Value::Text(value) => value.span,
             Value::Percentage(value) => value.span,
             Value::Record(value) => value.span,
             Value::List(value) => value.span,
             Value::Words(value) => value.span,
-        }
-    }
-}
-
-impl SignedInteger {
-    pub fn span(&self) -> Span {
-        match self {
-            SignedInteger::Plus { span, .. } | SignedInteger::Minus { span, .. } => *span,
-            SignedInteger::Number(value) => value.span,
         }
     }
 }
@@ -298,27 +294,56 @@ impl Label {
 
 pub fn decode_document(nodes: &[Node]) -> Result<Document, DecodeError> {
     let mut elements = support::document(nodes);
-    let decoded = Document {
-        section: elements.each(decode_section),
+    let mut errors = Vec::new();
+    let mut found_unconverted = Vec::new();
+    let mut found_metadata = None;
+    let mut found_parts = None;
+    let mut found_sequence = None;
+    let mut found_preset = Vec::new();
+    let mut found_score = None;
+    for node in elements.rest() {
+        let mut attempts = support::Attempts::new(node);
+        if let Some(value) = attempts.attempt(decode_unconverted) {
+            found_unconverted.push(value);
+            continue;
+        }
+        if let Some(value) = attempts.attempt(decode_document_metadata) {
+            errors.extend(support::once(&mut found_metadata, value, node, "metadata"));
+            continue;
+        }
+        if let Some(value) = attempts.attempt(decode_document_parts) {
+            errors.extend(support::once(&mut found_parts, value, node, "parts"));
+            continue;
+        }
+        if let Some(value) = attempts.attempt(decode_document_sequence) {
+            errors.extend(support::once(&mut found_sequence, value, node, "sequence"));
+            continue;
+        }
+        if let Some(value) = attempts.attempt(decode_document_preset) {
+            found_preset.push(value);
+            continue;
+        }
+        if let Some(value) = attempts.attempt(decode_document_score) {
+            errors.extend(support::once(&mut found_score, value, node, "score"));
+            continue;
+        }
+        errors.push(attempts.error());
+    }
+    Ok(Document {
+        unconverted: found_unconverted,
+        metadata: found_metadata,
+        parts: found_parts,
+        sequence: found_sequence,
+        preset: found_preset,
+        score: found_score,
+        errors,
         span: support::document_span(nodes),
-    };
-    elements.finish()?;
-    Ok(decoded)
+    })
 }
 
-pub fn decode_section(node: &Node) -> Result<Section, DecodeError> {
-    decode_unconverted(node)
-        .map(Section::Unconverted)
-        .or_else(|error| error.or(decode_section_metadata(node)))
-        .or_else(|error| error.or(decode_section_parts(node)))
-        .or_else(|error| error.or(decode_section_sequence(node)))
-        .or_else(|error| error.or(decode_section_preset(node)))
-        .or_else(|error| error.or(decode_section_score(node)))
-}
-
-fn decode_section_metadata(node: &Node) -> Result<Section, DecodeError> {
+fn decode_document_metadata(node: &Node) -> Result<DocumentMetadata, DecodeError> {
     let mut parts = support::call(node, "the call `metadata _`")?;
-    let decoded = Section::Metadata {
+    let decoded = DocumentMetadata {
         fields: parts.word("metadata")?.one(decode_record, "a record")?,
         span: node.span,
     };
@@ -326,57 +351,31 @@ fn decode_section_metadata(node: &Node) -> Result<Section, DecodeError> {
     Ok(decoded)
 }
 
-fn decode_section_parts(node: &Node) -> Result<Section, DecodeError> {
+fn decode_document_parts(node: &Node) -> Result<DocumentParts, DecodeError> {
     let mut parts = support::call(node, "the call `parts _`")?;
-    let decoded = Section::Parts {
-        parts: parts
-            .word("parts")?
-            .one(decode_section_parts_parts, "`[...]`")?,
+    let decoded = DocumentParts {
+        parts: parts.word("parts")?.one(decode_part_list, "a part list")?,
         span: node.span,
     };
     parts.finish()?;
     Ok(decoded)
 }
 
-fn decode_section_parts_parts(
-    node: &Node,
-) -> Result<Spanned<Vec<Result<Part, DecodeError>>>, DecodeError> {
-    let mut elements = support::square_bracket(node)?;
-    let value = elements.each(decode_part);
-    elements.finish()?;
-    Ok(Spanned {
-        value,
-        span: node.span,
-    })
-}
-
-fn decode_section_sequence(node: &Node) -> Result<Section, DecodeError> {
+fn decode_document_sequence(node: &Node) -> Result<DocumentSequence, DecodeError> {
     let mut parts = support::call(node, "the call `sequence _`")?;
-    let decoded = Section::Sequence {
+    let decoded = DocumentSequence {
         entries: parts
             .word("sequence")?
-            .one(decode_section_sequence_entries, "`[...]`")?,
+            .one(decode_entry_list, "an entry list")?,
         span: node.span,
     };
     parts.finish()?;
     Ok(decoded)
 }
 
-fn decode_section_sequence_entries(
-    node: &Node,
-) -> Result<Spanned<Vec<Result<SequenceEntry, DecodeError>>>, DecodeError> {
-    let mut elements = support::square_bracket(node)?;
-    let value = elements.each(decode_sequence_entry);
-    elements.finish()?;
-    Ok(Spanned {
-        value,
-        span: node.span,
-    })
-}
-
-fn decode_section_preset(node: &Node) -> Result<Section, DecodeError> {
+fn decode_document_preset(node: &Node) -> Result<DocumentPreset, DecodeError> {
     let mut parts = support::call(node, "the call `preset _ _`")?;
-    let decoded = Section::Preset {
+    let decoded = DocumentPreset {
         name: parts.word("preset")?.one(
             |node| support::string(node, |_| true, "a string"),
             "a string",
@@ -388,9 +387,9 @@ fn decode_section_preset(node: &Node) -> Result<Section, DecodeError> {
     Ok(decoded)
 }
 
-fn decode_section_score(node: &Node) -> Result<Section, DecodeError> {
+fn decode_document_score(node: &Node) -> Result<DocumentScore, DecodeError> {
     let mut parts = support::call(node, "the call `score _`")?;
-    let decoded = Section::Score {
+    let decoded = DocumentScore {
         text: parts.word("score")?.one(
             |node| support::string(node, |_| true, "a string"),
             "a string",
@@ -489,51 +488,9 @@ pub fn decode_signed_integer(node: &Node) -> Result<SignedInteger, DecodeError> 
         node,
         i128::from(i64::MIN),
         i128::from(i64::MAX),
+        true,
         "an integer",
     )
-    .map(SignedInteger::Number)
-    .or_else(|error| error.or(decode_signed_integer_plus(node)))
-    .or_else(|error| error.or(decode_signed_integer_minus(node)))
-}
-
-fn decode_signed_integer_plus(node: &Node) -> Result<SignedInteger, DecodeError> {
-    let mut parts = support::call(node, "the call `+ _`")?;
-    let decoded = SignedInteger::Plus {
-        number: parts.word("+")?.one(
-            |node| {
-                support::integer::<i64>(
-                    node,
-                    i128::from(i64::MIN),
-                    i128::from(i64::MAX),
-                    "an integer",
-                )
-            },
-            "an integer",
-        )?,
-        span: node.span,
-    };
-    parts.finish()?;
-    Ok(decoded)
-}
-
-fn decode_signed_integer_minus(node: &Node) -> Result<SignedInteger, DecodeError> {
-    let mut parts = support::call(node, "the call `- _`")?;
-    let decoded = SignedInteger::Minus {
-        number: parts.word("-")?.one(
-            |node| {
-                support::integer::<i64>(
-                    node,
-                    i128::from(i64::MIN),
-                    i128::from(i64::MAX),
-                    "an integer",
-                )
-            },
-            "an integer",
-        )?,
-        span: node.span,
-    };
-    parts.finish()?;
-    Ok(decoded)
 }
 
 pub fn decode_percentage(node: &Node) -> Result<Percentage, DecodeError> {
@@ -545,6 +502,7 @@ pub fn decode_percentage(node: &Node) -> Result<Percentage, DecodeError> {
                     node,
                     i128::from(i64::MIN),
                     i128::from(i64::MAX),
+                    false,
                     "an integer",
                 )
             },
@@ -568,6 +526,16 @@ pub fn decode_words(node: &Node) -> Result<Words, DecodeError> {
         arguments: arguments.to_vec(),
         span: node.span,
     })
+}
+
+pub fn decode_part_list(node: &Node) -> Result<PartList, DecodeError> {
+    let mut elements = support::square_bracket(node)?;
+    let decoded = PartList {
+        part: elements.each(decode_part),
+        span: node.span,
+    };
+    elements.finish()?;
+    Ok(decoded)
 }
 
 pub fn decode_part(node: &Node) -> Result<Part, DecodeError> {
@@ -746,6 +714,7 @@ fn decode_part_option_sound(node: &Node) -> Result<PartOption, DecodeError> {
                     node,
                     i128::from(i64::MIN),
                     i128::from(i64::MAX),
+                    false,
                     "an integer",
                 )
             },
@@ -786,7 +755,7 @@ pub fn decode_abbreviation(node: &Node) -> Result<Abbreviation, DecodeError> {
         .map(Abbreviation::Text)
         .or_else(|error| {
             error.or(
-                support::float(node, f64::NEG_INFINITY, f64::INFINITY, "a number")
+                support::float(node, f64::NEG_INFINITY, f64::INFINITY, false, "a number")
                     .map(Abbreviation::Number),
             )
         })
@@ -800,6 +769,16 @@ fn decode_abbreviation_written(node: &Node) -> Result<Abbreviation, DecodeError>
         arguments: arguments.to_vec(),
         span: node.span,
     })
+}
+
+pub fn decode_entry_list(node: &Node) -> Result<EntryList, DecodeError> {
+    let mut elements = support::square_bracket(node)?;
+    let decoded = EntryList {
+        sequence_entry: elements.each(decode_sequence_entry),
+        span: node.span,
+    };
+    elements.finish()?;
+    Ok(decoded)
 }
 
 pub fn decode_sequence_entry(node: &Node) -> Result<SequenceEntry, DecodeError> {
@@ -864,13 +843,20 @@ pub fn decode_label(node: &Node) -> Result<Label, DecodeError> {
         .or_else(|error| error.or(decode_words(node).map(Label::Words)))
 }
 
+/// Parses `source` with anyfix and decodes its document.
+pub fn parse_document(source: &str) -> support::Parsed<Document> {
+    support::parse(source, decode_document)
+}
+
 pub mod support {
     //! What every generated decoder needs: spans, errors, and matching a
     //! sequence of nodes. The generator copies this file into its output, so a
     //! generated parser depends only on `anyfix_expr` (and on `regex`, when its
     //! grammar uses `MATCHING REGEX`).
 
-    use anyfix_expr::{LineColumn, NamePart, Node, NodeKind, Span, StringLiteral, line_column};
+    use anyfix_expr::{
+        FlatWord, LineColumn, NamePart, Node, NodeKind, Span, StringLiteral, line_column,
+    };
 
     /// A value and where it was written.
     #[derive(Clone, Debug, PartialEq)]
@@ -884,6 +870,34 @@ pub mod support {
 
         fn deref(&self) -> &T {
             &self.value
+        }
+    }
+
+    /// The name of a call matched by `ANYFIX CALL`: its text, such as
+    /// `max size _`, its words and slots, and where its words are.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CallName {
+        /// The words with `_` for each slot, joined by spaces.
+        pub text: String,
+        pub parts: Vec<NamePart>,
+        /// From the first word to the last.
+        pub span: Span,
+    }
+
+    impl CallName {
+        /// The words alone, without the slots: `max size _` is `max` and `size`.
+        pub fn words(&self) -> impl Iterator<Item = &str> {
+            self.parts.iter().filter_map(|part| match part {
+                NamePart::Word { text, .. } => Some(text.as_str()),
+                NamePart::Slot => None,
+            })
+        }
+
+        /// The words with the call's `arguments` written out flat in their
+        /// slots (see [`Node::flat_words`]), or the first argument that is not
+        /// words, numbers and strings.
+        pub fn flat_words<'a>(&self, arguments: &'a [Node]) -> Result<Vec<FlatWord>, &'a Node> {
+            anyfix_expr::flat_words(&self.parts, arguments)
         }
     }
 
@@ -1041,6 +1055,26 @@ pub mod support {
         Node(&'a Node),
     }
 
+    /// A source parsed by anyfix and decoded: the syntax errors anyfix found and
+    /// recovered from, and the document, or why it does not match.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Parsed<T> {
+        pub syntax_errors: Vec<anyfix_expr::Error>,
+        pub document: Result<T, DecodeError>,
+    }
+
+    /// Parses `source` with anyfix, then decodes its nodes with `decode`.
+    pub fn parse<T>(
+        source: &str,
+        decode: impl FnOnce(&[Node]) -> Result<T, DecodeError>,
+    ) -> Parsed<T> {
+        let parsed = anyfix_expr::parse(source);
+        Parsed {
+            document: decode(&parsed.syntax.nodes()),
+            syntax_errors: parsed.errors,
+        }
+    }
+
     /// The sequence of top-level elements of a document.
     pub fn document(nodes: &[Node]) -> Sequence<'_> {
         let end = nodes.last().map_or(0, |last| last.span.end);
@@ -1102,18 +1136,18 @@ pub mod support {
         Ok(sequence)
     }
 
-    /// Any call: its name text, such as `list file in _`, and its arguments.
-    /// The name must pass `condition`.
+    /// Any call: its name, such as `list file in _`, and its arguments. The
+    /// name's text must pass `condition`.
     pub fn any_call<'a>(
         node: &'a Node,
         condition: impl Fn(&str) -> bool,
         expected: &str,
-    ) -> Result<(Spanned<String>, &'a [Node]), DecodeError> {
+    ) -> Result<(CallName, &'a [Node]), DecodeError> {
         let NodeKind::Call(call) = &node.kind else {
             return Err(mismatch(node, expected));
         };
-        let name = call.name_text();
-        if !condition(&name) {
+        let text = call.name_text();
+        if !condition(&text) {
             return Err(mismatch(node, expected));
         }
         let mut words = call.name.iter().filter_map(|part| match part {
@@ -1125,7 +1159,12 @@ pub mod support {
             (Some(only), None) => only,
             _ => node.span,
         };
-        Ok((Spanned { value: name, span }, &call.arguments))
+        let name = CallName {
+            text,
+            parts: call.name.clone(),
+            span,
+        };
+        Ok((name, &call.arguments))
     }
 
     /// The arguments of the call `node`, as a sequence.
@@ -1284,6 +1323,36 @@ pub mod support {
             Ok(values)
         }
 
+        /// Every node left, for an `ANY ORDER` to sort. A word stops it, as
+        /// with [`Sequence::each`].
+        pub fn rest(&mut self) -> Vec<&'a Node> {
+            let mut nodes = Vec::new();
+            while let Some(Item::Node(node)) = self.items.get(self.index) {
+                nodes.push(*node);
+                self.index += 1;
+            }
+            nodes
+        }
+
+        /// The value of an `ANY ORDER` element that must be there, or the error
+        /// saying it is missing, at the end of the sequence.
+        pub fn required<T>(&self, found: Option<T>, expected: &str) -> Result<T, DecodeError> {
+            found.ok_or_else(|| DecodeError::new(self.end.1, self.end.0, expected))
+        }
+
+        /// The values of a `ONE OR MORE` element of an `ANY ORDER`, or the
+        /// error saying there are none.
+        pub fn at_least_one<T>(
+            &self,
+            found: Vec<T>,
+            expected: &str,
+        ) -> Result<Vec<T>, DecodeError> {
+            match found.is_empty() {
+                true => Err(DecodeError::new(self.end.1, self.end.0, expected)),
+                false => Ok(found),
+            }
+        }
+
         /// Checks that nothing is left.
         pub fn finish(&mut self) -> Result<(), DecodeError> {
             if self.index == self.items.len() {
@@ -1292,6 +1361,62 @@ pub mod support {
             let end = self.end.0;
             Err(self.unexpected(end))
         }
+    }
+
+    /// One node of an `ANY ORDER`, tried against each element in turn.
+    pub struct Attempts<'a> {
+        node: &'a Node,
+        /// Why the elements tried so far did not fit, merged.
+        error: Option<DecodeError>,
+    }
+
+    impl<'a> Attempts<'a> {
+        pub fn new(node: &'a Node) -> Self {
+            Attempts { node, error: None }
+        }
+
+        /// The node decoded by `decode`, if it fits.
+        pub fn attempt<T>(
+            &mut self,
+            decode: impl FnOnce(&'a Node) -> Result<T, DecodeError>,
+        ) -> Option<T> {
+            match decode(self.node) {
+                Ok(value) => Some(value),
+                Err(error) => {
+                    self.error = Some(match self.error.take() {
+                        Some(earlier) => earlier.merge(error),
+                        None => error,
+                    });
+                    None
+                }
+            }
+        }
+
+        /// Why the node fits no element.
+        pub fn error(self) -> DecodeError {
+            let node = self.node;
+            self.error
+                .unwrap_or_else(|| DecodeError::new(node.span, describe(node), "nothing"))
+        }
+    }
+
+    /// Keeps `value` as the one `label` of an `ANY ORDER`, or gives the error
+    /// for a second one, keeping the first.
+    pub fn once<T>(
+        slot: &mut Option<T>,
+        value: T,
+        node: &Node,
+        label: &str,
+    ) -> Option<DecodeError> {
+        if slot.is_some() {
+            return Some(DecodeError::new(
+                node.span,
+                format!("a second `{label}`"),
+                format!("one `{label}` at most"),
+            ));
+        }
+        *slot = Some(value);
+        None
     }
 
     fn is_word(node: &Node, expected: &str) -> bool {
@@ -1408,20 +1533,41 @@ pub mod support {
         }
     }
 
-    /// An integer from `minimum` to `maximum`.
+    /// The value of a number node, or when `signed` also of `+ n` and `- n`.
+    fn number_of(node: &Node, signed: bool) -> Option<NumberValue> {
+        match &node.kind {
+            NodeKind::Number(text) => Some(number_value(text)),
+            NodeKind::Call(call) if signed => match (&call.name[..], &call.arguments[..]) {
+                ([NamePart::Word { text, .. }, NamePart::Slot], [number]) => {
+                    let NodeKind::Number(digits) = &number.kind else {
+                        return None;
+                    };
+                    match (text.as_str(), number_value(digits)) {
+                        ("+", value) => Some(value),
+                        ("-", NumberValue::Integer(value)) => Some(NumberValue::Integer(-value)),
+                        ("-", NumberValue::Float(value)) => Some(NumberValue::Float(-value)),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// An integer from `minimum` to `maximum`. When `signed`, a sign written
+    /// apart from the number, as in `+ 4` or `- 4`, is taken too.
     pub fn integer<T: TryFrom<i128>>(
         node: &Node,
         minimum: i128,
         maximum: i128,
+        signed: bool,
         expected: &str,
     ) -> Result<Spanned<T>, DecodeError> {
-        let value = match &node.kind {
-            NodeKind::Number(text) => match number_value(text) {
-                NumberValue::Integer(value) if (minimum..=maximum).contains(&value) => {
-                    T::try_from(value).ok()
-                }
-                _ => None,
-            },
+        let value = match number_of(node, signed) {
+            Some(NumberValue::Integer(value)) if (minimum..=maximum).contains(&value) => {
+                T::try_from(value).ok()
+            }
             _ => None,
         };
         match value {
@@ -1433,15 +1579,17 @@ pub mod support {
         }
     }
 
-    /// A number from `minimum` to `maximum`.
+    /// A number from `minimum` to `maximum`, taking `+ n` and `- n` when
+    /// `signed`.
     pub fn float(
         node: &Node,
         minimum: f64,
         maximum: f64,
+        signed: bool,
         expected: &str,
     ) -> Result<Spanned<f64>, DecodeError> {
-        if let NodeKind::Number(text) = &node.kind {
-            let value = number_value(text).as_float();
+        if let Some(value) = number_of(node, signed) {
+            let value = value.as_float();
             if minimum <= value && value <= maximum {
                 return Ok(Spanned {
                     value,

@@ -8,20 +8,14 @@ use crate::ast::parsed::{
     ParsedMetadata, PresetKey, DEFAULT_PRESET_NAME, DIRECTIVE_ROW_OFFSET_KEY,
 };
 use crate::error::Span;
-use crate::parser::anyfix::decoded::{
-    decode, span, AbbreviationText, Decoded, FieldName, PresetSection, Sections, ValueText,
-};
+use crate::parser::anyfix::decoded::{decode, span, AbbreviationText, FieldName, ValueText};
 use crate::parser::anyfix::quoted;
 use crate::parser::anyfix::{field_text, read_metadata_field};
-use poentaro_grammar::{DecodeError, Field, Record, Value};
+use poentaro_grammar::{DecodeError, Document, DocumentPreset, Field, Record, Value};
 
 use super::metadata_edit::{canonical_fields, MetadataEdit, MetadataFields};
 use super::preset_edit::{NewPreset, PresetEdit, PresetSummary};
 use crate::ast::parsed::Notation;
-
-pub(super) fn sections_of<'d>(source: &str, decoded: &'d Decoded) -> Sections<'d> {
-    Sections::of(&decoded.document, Span::new(0, source.len()))
-}
 
 pub(super) fn text_of(source: &str, span: Span) -> &str {
     source.get(span.start..span.end).unwrap_or_default()
@@ -50,11 +44,9 @@ pub(super) fn formatted_section(text: &str) -> String {
     )
 }
 
-fn find_preset<'p, 'd>(
-    presets: &'p [PresetSection<'d>],
-    name: &str,
-) -> Option<&'p PresetSection<'d>> {
-    presets
+fn find_preset<'d>(document: &'d Document, name: &str) -> Option<&'d DocumentPreset> {
+    document
+        .preset
         .iter()
         .find(|preset| preset.name.value.value == name)
 }
@@ -81,20 +73,20 @@ struct EditedSection<'d> {
 }
 
 fn edited_section<'d>(
-    sections: &Sections<'d>,
+    document: &'d Document,
     preset_name: Option<&str>,
 ) -> Option<EditedSection<'d>> {
     let preset = preset_name
-        .and_then(|name| find_preset(&sections.presets, name))
+        .and_then(|name| find_preset(document, name))
         .map(|preset| EditedSection {
-            whole: preset.whole,
-            body: preset.fields,
+            whole: preset.span,
+            body: &preset.fields,
             is_preset: true,
         });
     preset.or_else(|| {
-        sections.metadata.map(|section| EditedSection {
-            whole: section.whole,
-            body: section.body,
+        document.metadata.as_ref().map(|section| EditedSection {
+            whole: section.span,
+            body: &section.fields,
             is_preset: false,
         })
     })
@@ -115,12 +107,12 @@ fn metadata_of(body: &Record) -> ParsedMetadata {
     metadata
 }
 
-fn fields_of(section: &EditedSection, sections: &Sections) -> MetadataFields {
+fn fields_of(section: &EditedSection, document: &Document) -> MetadataFields {
     let directive_row_offset = last_field(section.body, DIRECTIVE_ROW_OFFSET_KEY)
         // As the form's text input shows it: `0 -4`.
         .and_then(|field| field.arguments.text().ok());
-    let inherited = match sections.metadata {
-        Some(metadata) if section.is_preset => metadata_of(metadata.body),
+    let inherited = match &document.metadata {
+        Some(metadata) if section.is_preset => metadata_of(&metadata.fields),
         _ => ParsedMetadata::default(),
     };
     MetadataFields {
@@ -131,10 +123,9 @@ fn fields_of(section: &EditedSection, sections: &Sections) -> MetadataFields {
 }
 
 pub(super) fn parse_metadata_fields(source: &str, preset_name: Option<&str>) -> MetadataFields {
-    let decoded = decode(source);
-    let sections = sections_of(source, &decoded);
-    edited_section(&sections, preset_name)
-        .map(|section| fields_of(&section, &sections))
+    let document = decode(source).document;
+    edited_section(&document, preset_name)
+        .map(|section| fields_of(&section, &document))
         .unwrap_or_default()
 }
 
@@ -154,12 +145,11 @@ pub(super) fn update_metadata_field(
     preset_name: Option<&str>,
     edit: MetadataEdit,
 ) -> String {
-    let decoded = decode(source);
-    let sections = sections_of(source, &decoded);
-    let Some(section) = edited_section(&sections, preset_name) else {
+    let document = decode(source).document;
+    let Some(section) = edited_section(&document, preset_name) else {
         return source.to_owned();
     };
-    let mut fields = fields_of(&section, &sections);
+    let mut fields = fields_of(&section, &document);
     edit.apply(&mut fields);
     let elements = kept_fields(source, section.body)
         .into_iter()
@@ -178,9 +168,9 @@ pub(super) fn update_metadata_field(
 // ── presets ──────────────────────────────────────────────────────────────
 
 pub(super) fn list_presets(source: &str) -> Vec<PresetSummary> {
-    let decoded = decode(source);
-    sections_of(source, &decoded)
-        .presets
+    decode(source)
+        .document
+        .preset
         .iter()
         .filter_map(|preset| {
             let name = preset.name.value.value.trim();
@@ -194,8 +184,8 @@ pub(super) fn list_presets(source: &str) -> Vec<PresetSummary> {
         .collect()
 }
 
-fn notation_of(preset: &PresetSection) -> Option<Notation> {
-    fields(preset.fields)
+fn notation_of(preset: &DocumentPreset) -> Option<Notation> {
+    fields(&preset.fields)
         .filter(|field| field.key() == PresetKey::Notation.keyword())
         .filter_map(|field| Notation::from_source_value(&field.arguments.text().ok()?))
         .next_back()
@@ -204,10 +194,9 @@ fn notation_of(preset: &PresetSection) -> Option<Notation> {
 /// The preset's part list under `key` as written, `None` when it sets none or
 /// there is no such preset.
 pub(super) fn part_list_of(source: &str, name: &str, key: PresetKey) -> Option<Vec<String>> {
-    let decoded = decode(source);
-    let sections = sections_of(source, &decoded);
-    let preset = find_preset(&sections.presets, name)?;
-    let field = last_field(preset.fields, key.keyword())?;
+    let document = decode(source).document;
+    let preset = find_preset(&document, name)?;
+    let field = last_field(&preset.fields, key.keyword())?;
     let Value::List(elements) = &field.arguments else {
         return Some(Vec::new());
     };
@@ -221,8 +210,7 @@ pub(super) fn part_list_of(source: &str, name: &str, key: PresetKey) -> Option<V
 }
 
 pub(super) fn has_preset(source: &str, name: &str) -> bool {
-    let decoded = decode(source);
-    find_preset(&sections_of(source, &decoded).presets, name).is_some()
+    find_preset(&decode(source).document, name).is_some()
 }
 
 /// Where a list element that ends at `end` ends with the comma after it.
@@ -237,17 +225,16 @@ fn past_comma(source: &str, end: usize) -> usize {
 }
 
 pub(super) fn update_preset_field(source: &str, name: &str, edit: &PresetEdit) -> String {
-    let decoded = decode(source);
-    let sections = sections_of(source, &decoded);
-    let Some(preset) = find_preset(&sections.presets, name) else {
+    let document = decode(source).document;
+    let Some(preset) = find_preset(&document, name) else {
         return source.to_owned();
     };
     let keyword = edit.key().keyword();
-    let matching = fields(preset.fields)
+    let matching = fields(&preset.fields)
         .filter(|field| field.key() == keyword)
         .map(|field| span(field.span))
         .collect_vec();
-    let whole = span(preset.whole);
+    let whole = span(preset.span);
     let text = text_of(source, whole);
     let relative = |span: Span| Span::new(span.start - whole.start, span.end - whole.start);
     let edited = if edit.removes_line() {
@@ -303,18 +290,18 @@ pub(super) fn add_preset_section(source: &str, preset: NewPreset) -> String {
     .join(", ");
     let section = formatted_section(&format!("preset {} {{ {fields} }}", quoted(&preset.name)));
 
-    let decoded = decode(source);
-    let sections = sections_of(source, &decoded);
+    let document = decode(source).document;
     let before_music = [
-        sections.sequence.map(|section| section.whole),
-        sections.score.map(|section| section.whole),
+        document.sequence.as_ref().map(|section| section.span),
+        document.score.as_ref().map(|section| section.span),
     ]
     .into_iter()
     .flatten()
     .map(|whole| whole.start)
     .min();
-    let last_preset = sections.presets.last().map(|preset| preset.whole.end);
-    let last_node = (!decoded.document.section.is_empty()).then_some(decoded.document.span.end);
+    let last_preset = document.preset.last().map(|preset| preset.span.end);
+    // An empty document's span is empty at 0; any node ends after that.
+    let last_node = (document.span.end > 0).then_some(document.span.end);
     match (last_preset, before_music) {
         (None, Some(start)) => {
             let start = above_comments(source, start);

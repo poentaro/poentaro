@@ -4,19 +4,19 @@ use itertools::Itertools;
 
 use crate::error::RecoverableError;
 use crate::parser::anyfix::decoded::{
-    content_span, decode_error, span, AbbreviationText, EntryList,
+    content_span, decode_error, span, AbbreviationText, WordsText,
 };
 use crate::parser::sequence_parser::{PartFilter, PartFilterKind, SequenceEntry, SequenceSection};
-use poentaro_grammar::{self as shape, Abbreviation, DecodeError, Label, Spanned};
+use poentaro_grammar::{self as shape, Abbreviation, DecodeError, EntryList, Label, Spanned};
 
 pub(super) fn read_sequence(
     entries: &EntryList,
 ) -> (Option<SequenceSection>, Vec<RecoverableError>) {
-    if entries.value.is_empty() {
+    if entries.sequence_entry.is_empty() {
         return (None, Vec::new());
     }
     let (entries, errors): (Vec<_>, Vec<_>) = entries
-        .value
+        .sequence_entry
         .iter()
         .map(|entry| entry.as_ref().map_err(decode_error).and_then(read_entry))
         .partition_result();
@@ -36,7 +36,7 @@ fn read_entry(entry: &shape::SequenceEntry) -> Result<SequenceEntry, Recoverable
     };
     let (label, label_span) = match label {
         Label::Text(text) => (text.value.value.clone(), content_span(text)),
-        Label::Words(words) => (words.name.value.clone(), span(words.span)),
+        Label::Words(words) => (words.text(" "), span(words.span)),
     };
     Ok(SequenceEntry {
         label,

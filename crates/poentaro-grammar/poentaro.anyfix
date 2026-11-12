@@ -7,15 +7,15 @@
 # Rust. Lists people edit by hand use `EACH`, so that one mistake does not
 # hide the rest.
 
-ENTRY [EACH: section],
-
-section: ONE OF [
-  unconverted,
-  metadata: SPECIFIC ANYFIX CALL [WORD "metadata", fields: record],
-  parts: SPECIFIC ANYFIX CALL [WORD "parts", parts: SQUARE BRACKET: EACH: part],
-  sequence: SPECIFIC ANYFIX CALL [WORD "sequence", entries: SQUARE BRACKET: EACH: sequence entry],
-  preset: SPECIFIC ANYFIX CALL [WORD "preset", name: STRING, fields: record],
-  score: SPECIFIC ANYFIX CALL [WORD "score", text: STRING],
+# Sections may come in any order. A second metadata, parts, sequence or
+# score section is kept as an error, and the first one is read.
+ENTRY: ANY ORDER [
+  unconverted: ZERO OR MORE: unconverted,
+  metadata: OPTIONAL: SPECIFIC ANYFIX CALL [WORD "metadata", fields: record],
+  parts: OPTIONAL: SPECIFIC ANYFIX CALL [WORD "parts", parts: part list],
+  sequence: OPTIONAL: SPECIFIC ANYFIX CALL [WORD "sequence", entries: entry list],
+  preset: ZERO OR MORE: SPECIFIC ANYFIX CALL [WORD "preset", name: STRING, fields: record],
+  score: OPTIONAL: SPECIFIC ANYFIX CALL [WORD "score", text: STRING],
 ],
 
 # Text the converter from the old syntax kept because it could not read it.
@@ -43,11 +43,7 @@ value: ONE OF [
 ],
 
 # `4`, `-4`, `+ 4` or `- 4`.
-signed integer: ONE OF [
-  number: NUMBER [INTEGER],
-  plus: SPECIFIC ANYFIX CALL [WORD "+", number: NUMBER [INTEGER]],
-  minus: SPECIFIC ANYFIX CALL [WORD "-", number: NUMBER [INTEGER]],
-],
+signed integer: NUMBER [INTEGER, SIGNED],
 
 # `80 %`.
 percentage: SPECIFIC ANYFIX CALL [number: NUMBER [INTEGER], WORD "%"],
@@ -56,6 +52,8 @@ percentage: SPECIFIC ANYFIX CALL [number: NUMBER [INTEGER], WORD "%"],
 words: ANYFIX CALL [NO ARGUMENTS],
 
 # ── parts ───────────────────────────────────────────────────────────────
+
+part list: SQUARE BRACKET: EACH: part,
 
 part: ONE OF [
   unconverted,
@@ -100,6 +98,8 @@ abbreviation: ONE OF [
 ],
 
 # ── sequence ────────────────────────────────────────────────────────────
+
+entry list: SQUARE BRACKET: EACH: sequence entry,
 
 sequence entry: ONE OF [
   without: SPECIFIC ANYFIX CALL [label, WORD "WITHOUT", parts: SQUARE BRACKET: EACH: abbreviation],

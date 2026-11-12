@@ -5,17 +5,15 @@ use itertools::Itertools;
 use super::read_metadata_field;
 use crate::ast::parsed::{AbbreviationReference, PartDecl, PresetKey};
 use crate::error::{RecoverableError, Span};
-use crate::parser::anyfix::decoded::{
-    decode_error, invalid, span, AbbreviationText, FieldName, PresetSection,
-};
+use crate::parser::anyfix::decoded::{decode_error, invalid, span, AbbreviationText, FieldName};
 use crate::parser::preset_parser::{
     collect_presets, finish_preset, known_parts, parse_notation, ParsedPresetSection,
     ParsedPresets, PresetFields,
 };
 use crate::parser::section::PresetName;
-use poentaro_grammar::{Field, Value};
+use poentaro_grammar::{DocumentPreset, Field, Value};
 
-pub(super) fn read_presets(presets: &[PresetSection], declarations: &[PartDecl]) -> ParsedPresets {
+pub(super) fn read_presets(presets: &[DocumentPreset], declarations: &[PartDecl]) -> ParsedPresets {
     let named = presets
         .iter()
         .map(|preset| NamedPreset {
@@ -33,9 +31,9 @@ pub(super) fn read_presets(presets: &[PresetSection], declarations: &[PartDecl])
     )
 }
 
-struct NamedPreset<'p, 'd> {
+struct NamedPreset<'p> {
     name: PresetName,
-    preset: &'p PresetSection<'d>,
+    preset: &'p DocumentPreset,
 }
 
 fn read_preset(named: NamedPreset, declarations: &[PartDecl]) -> ParsedPresetSection {
@@ -50,7 +48,7 @@ fn read_preset(named: NamedPreset, declarations: &[PartDecl]) -> ParsedPresetSec
             _ => read_metadata_field(&mut fields.overrides, field, &mut errors),
         }
     }
-    let header_span = Span::new(preset.whole.start, preset.name.span.end);
+    let header_span = Span::new(preset.span.start, preset.name.span.end);
     finish_preset(name, header_span, fields, errors)
 }
 

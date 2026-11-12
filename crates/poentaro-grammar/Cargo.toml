@@ -9,7 +9,7 @@ description = "The shapes a .poentaro document is made of, as an anyfix grammar,
 # workspace lints are for code people write.
 
 [dependencies]
-anyfix-expr = { git = "https://github.com/wongjiahau/anyfix-expr", rev = "e6450be4732ab4c24eb2b14c07767241b5d371de" }
+anyfix-expr = { git = "https://github.com/wongjiahau/anyfix-expr", rev = "2f6c4dc55057beaecac030b9342b98fdc7deb46d" }
 
 [dev-dependencies]
-anyfix-generator = { git = "https://github.com/wongjiahau/anyfix-expr", rev = "e6450be4732ab4c24eb2b14c07767241b5d371de" }
+anyfix-generator = { git = "https://github.com/wongjiahau/anyfix-expr", rev = "2f6c4dc55057beaecac030b9342b98fdc7deb46d" }

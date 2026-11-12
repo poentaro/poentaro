@@ -47,13 +47,6 @@ impl RecoverableError {
         }
     }
 
-    pub fn section_duplicate(span: Span, section: DocumentSection) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::SectionDuplicate { section },
-        }
-    }
-
     pub fn section_missing(span: Span, section: DocumentSection) -> Self {
         Self {
             span,

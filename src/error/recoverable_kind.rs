@@ -61,8 +61,6 @@ pub enum RecoverableErrorKind {
     PartsEmptyTrackName,
     /// The RHS of a parts declaration is not a recognized column spec — the declaration is skipped.
     PartsInvalidColumns { rhs: String },
-    /// A section appears more than once — the duplicate is skipped, first occurrence is used.
-    SectionDuplicate { section: DocumentSection },
     /// A required section is absent — an empty default is used.
     SectionMissing { section: DocumentSection },
     /// Two `preset` sections share a name — the later one is skipped.
@@ -186,7 +184,6 @@ impl RecoverableErrorKind {
             Self::PartsInvalidColumns { rhs } => format!(
                 "invalid track columns '{rhs}': expected 'chords', 'notes', or 'follow[X]'"
             ),
-            Self::SectionDuplicate { section } => format!("duplicate {}", section.header()),
             Self::SectionMissing { section } => format!("missing {}", section.header()),
             Self::PresetDuplicateName { name } => format!("duplicate preset \"{name}\""),
             Self::PresetReservedName { name } => format!("\"{name}\" is reserved for the song without a preset; choose another name"),

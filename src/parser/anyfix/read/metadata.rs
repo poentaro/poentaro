@@ -8,7 +8,7 @@ use crate::ast::parsed::{
     DIRECTIVE_ROW_OFFSET_KEY,
 };
 use crate::error::RecoverableError;
-use crate::parser::anyfix::decoded::{decode_error, invalid, span, FieldName, Signed, ValueText};
+use crate::parser::anyfix::decoded::{decode_error, invalid, span, FieldName, ValueText};
 use poentaro_grammar::{DecodeError, Field, Record, Value};
 
 /// A recognized `metadata` key, classified by the value it takes.
@@ -97,7 +97,7 @@ fn read_plain_field(metadata: &mut ParsedMetadata, field: &Field) -> Result<(), 
 
 fn read_non_negative(name: &str, value: &Value) -> Result<u32, RecoverableError> {
     let number = match value {
-        Value::Integer(integer) => u32::try_from(integer.value()).ok(),
+        Value::Integer(integer) => u32::try_from(integer.value).ok(),
         _ => None,
     };
     number.ok_or_else(|| {
@@ -135,7 +135,7 @@ fn read_offset(name: &str, value: &Value) -> Result<Offset, RecoverableError> {
 
 fn offset_component(value: &Value) -> Option<i32> {
     match value {
-        Value::Integer(integer) => i32::try_from(integer.value()).ok(),
+        Value::Integer(integer) => i32::try_from(integer.value).ok(),
         _ => None,
     }
 }

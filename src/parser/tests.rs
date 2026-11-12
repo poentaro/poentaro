@@ -88,10 +88,13 @@ score """
 "#;
     let doc =
         parse(input, "test.poentaro", &[]).expect("duplicate score section must not abort parsing");
-    assert!(doc
+    let second_score = input.rfind("score").unwrap();
+    let duplicate = doc
         .section_structure_errors
         .iter()
-        .any(|e| matches!(&e.kind, crate::error::RecoverableErrorKind::SectionDuplicate { section } if *section == DocumentSection::Score)));
+        .find(|e| e.message() == "found a second `score`; expected one `score` at most")
+        .expect("the second score section is reported");
+    assert_eq!(duplicate.span.start, second_score);
 }
 
 #[test]
@@ -111,7 +114,7 @@ parts ["Melody": notes],
         !doc.section_structure_errors.iter().any(|e| matches!(
             &e.kind,
             crate::error::RecoverableErrorKind::SectionMissing { .. }
-                | crate::error::RecoverableErrorKind::SectionDuplicate { .. }
+                | crate::error::RecoverableErrorKind::AnyfixInvalid { .. }
         )),
         "out-of-order sections must not produce a structure error: {:?}",
         doc.section_structure_errors
