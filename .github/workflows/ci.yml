@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: check-max-file-lines
-        run: git ls-files '*.rs' '*.ts' '*.tsx' '*.js' '*.jsx' '*.py' '*.css' '*.html' | grep -v -e '^crates/poentaro-wasm/pkg/' -e '^target/' -e '^vendor/' | xargs python3 scripts/check-max-file-lines.py
+        run: git ls-files '*.rs' '*.ts' '*.tsx' '*.js' '*.jsx' '*.py' '*.css' '*.html' | grep -v -e '^crates/poentaro-grammar/src/generated.rs$' -e '^crates/poentaro-wasm/pkg/' -e '^target/' -e '^vendor/' | xargs python3 scripts/check-max-file-lines.py
 
       - name: syntax-md-examples
         run: python3 scripts/check-syntax-md-examples.py
