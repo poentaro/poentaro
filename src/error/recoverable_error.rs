@@ -13,10 +13,10 @@ impl RecoverableError {
         self.kind.message()
     }
 
-    pub fn anyfix_invalid(span: Span, message: impl Into<String>) -> Self {
+    pub fn anyx_invalid(span: Span, message: impl Into<String>) -> Self {
         Self {
             span,
-            kind: RecoverableErrorKind::AnyfixInvalid {
+            kind: RecoverableErrorKind::AnyxInvalid {
                 message: message.into(),
             },
         }

@@ -1,12 +1,11 @@
 import MonacoEditor, { type Monaco, type OnMount } from '@monaco-editor/react'
-import type { editor, IDisposable, ISelection } from 'monaco-editor'
+import type { editor, IDisposable } from 'monaco-editor'
 import {
   forwardRef,
   type ReactNode,
   useCallback,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useRef,
 } from 'react'
 import {
@@ -35,6 +34,7 @@ import {
   measureViewZoneLineNumber,
 } from './editorMeasureViewZones'
 import { definePoentaroEditorTheme, EDITOR_THEME } from './editorTheme'
+import { useEditorValueSync } from './useEditorValueSync'
 
 export interface EditorProps {
   /** Unique per-file ID; gives each file its own Monaco model and undo stack. */
@@ -108,8 +108,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   const onForceSaveRef = useRef(onForceSave)
   const onEditPartsClickRef = useRef(onEditPartsClick)
   const onEditMetadataClickRef = useRef(onEditMetadataClick)
-  const savedSelectionsRef = useRef<ISelection[] | null>(null)
   const codeLensProviderRef = useRef<IDisposable | null>(null)
+  const syncModel = useEditorValueSync(editorRef, value)
   useEffect(() => {
     onSelectionChangeRef.current = onSelectionChange
     onSelectionOffsetChangeRef.current = onSelectionOffsetChange
@@ -208,6 +208,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     applyDiagnostics()
     applyMeasureViewZones()
     applyDiagnosticViewZones()
+    ed.onDidChangeModel(syncModel)
 
     ed.addCommand(monacoApi.KeyMod.CtrlCmd | monacoApi.KeyCode.Enter, () =>
       onPlayMeasureRef.current?.(),
@@ -283,50 +284,6 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     applyDiagnosticViewZones()
   }, [applyDiagnosticViewZones])
 
-  // @monaco-editor/react calls model.executeEdits() (via useEffect) whenever
-  // the value prop doesn't match the model's current text, which relocates
-  // the cursor to the end of the document (forceMoveMarkers: true). The fix
-  // has two parts:
-  //
-  // 1. useLayoutEffect runs BEFORE the child's useEffect, so we snapshot
-  //    every selection here (a multicursor drag-select can push more than
-  //    one) before executeEdits has a chance to move them.
-  // 2. useEffect runs AFTER the child's useEffect (executeEdits + move), so
-  //    we restore the snapshotted selections here.
-  //
-  // This runs unconditionally, even for edits that originated from the
-  // user's own typing (echoed back down as this `value`): by the time this
-  // effect pair runs, the model's text already matches `value` (Monaco
-  // applied the keystroke synchronously before `onChange` fired), so
-  // @monaco-editor/react's `value !== model.getValue()` check skips
-  // executeEdits — but `setSelections` below still runs regardless, and is
-  // NOT a no-op: it must actively re-apply every snapshotted selection, or
-  // Monaco's own post-keystroke state (which already collapsed a
-  // multicursor edit down to N empty carets, one per edited range) would be
-  // left standing. An earlier version restored only the *primary* selection
-  // here (`getSelection()`/`setSelection()`, both singular), which for a
-  // single caret was an effective no-op but for a multicursor selection
-  // silently discarded every cursor but the first on every keystroke. An
-  // even earlier version gated the snapshot/restore behind a same-origin
-  // flag, but the flag was a single ref not scoped to a particular `value`
-  // transition — an external update (e.g. formatScore, part-declaration
-  // edits) landing while the flag was still set from a recent keystroke
-  // would skip the restore it actually needed, letting the cursor jump to
-  // the end and stick.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: value is the trigger; refs don't need to be listed
-  useLayoutEffect(() => {
-    savedSelectionsRef.current = editorRef.current?.getSelections() ?? null
-  }, [value])
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: value is the trigger; refs don't need to be listed
-  useEffect(() => {
-    const ed = editorRef.current
-    const saved = savedSelectionsRef.current
-    if (ed && saved && saved.length > 0) {
-      ed.setSelections(saved)
-    }
-  }, [value])
-
   return (
     <div className="editor">
       {toolbar ? <div className="editor-toolbar">{toolbar}</div> : null}
@@ -336,7 +293,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           language={POENTARO_LANGUAGE_ID}
           theme={EDITOR_THEME}
           path={path}
-          value={value}
+          defaultValue={value}
           onChange={(next) => onChange(next ?? '')}
           beforeMount={(monacoApi) => {
             registerPoentaroLanguage(monacoApi)

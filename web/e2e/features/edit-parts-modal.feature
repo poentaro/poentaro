@@ -37,7 +37,7 @@ Feature: Edit Parts modal
     When I change the octave select for part "M" to "-1"
     Then the octave select for part "M" shows "-1"
     When I close the edit parts modal with Escape
-    Then the editor source and stored source both contain "\"Melody\" [M]: notes { octave: - 1 }", as seen in edit parts modal
+    Then the editor source and stored source both contain "\"Melody\" [M]: notes { octave -1 }", as seen in edit parts modal
 
   Scenario: Volume slider changes the MIDI volume for a part
     Given the edit-parts-modal test fixture is loaded

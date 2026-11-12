@@ -93,7 +93,7 @@ impl PitchRange {
     }
 
     /// The range as a `range` option writes it: `C3 to G4`, a sharp quoted
-    /// (`"F#3"`) since `#` starts an anyfix comment.
+    /// (`"F#3"`) since `#` starts an anyx comment.
     pub fn source_text(self) -> String {
         let pitch = |midi| {
             let name = midi_note_name(midi);

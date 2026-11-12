@@ -8,7 +8,7 @@ fn source_level_follow_explicit_volume_and_octave() {
     let content = r#"parts ["Melody" [M]: notes, "Chords" [C]: follow [M] { volume: 60 %, octave: + 1 }]
 "#;
     let mut errors = Vec::new();
-    let decls = crate::parser::anyfix::source_part_declarations(content, &mut errors, &[]);
+    let decls = crate::parser::anyx::source_part_declarations(content, &mut errors, &[]);
     assert!(errors.is_empty());
     assert_eq!(decls[1].mode, SourcePartMode::Follow);
     assert_eq!(decls[1].volume, Some(60));

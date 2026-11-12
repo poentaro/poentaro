@@ -14,9 +14,9 @@ pub enum RecoverableErrorKind {
     TimedPartMeasureMissing,
     /// Generic recoverable error with a free-form message.
     General { message: String },
-    /// Text that doesn't read as an anyfix document: a syntax error, or an
+    /// Text that doesn't read as an anyx document: a syntax error, or an
     /// expression of the wrong shape. That expression is left out.
-    AnyfixInvalid { message: String },
+    AnyxInvalid { message: String },
     /// A note has both octave-up (`'`) and octave-down (`,`) markers — octave shift is zeroed.
     DurationMixedOctaveMarkers,
     /// An unexpected character was encountered while lexing a notes line — the line is dropped.
@@ -61,8 +61,6 @@ pub enum RecoverableErrorKind {
     PartsEmptyTrackName,
     /// The RHS of a parts declaration is not a recognized column spec — the declaration is skipped.
     PartsInvalidColumns { rhs: String },
-    /// A section appears more than once — the duplicate is skipped, first occurrence is used.
-    SectionDuplicate { section: DocumentSection },
     /// A required section is absent — an empty default is used.
     SectionMissing { section: DocumentSection },
     /// Two `preset` sections share a name — the later one is skipped.
@@ -176,7 +174,7 @@ impl RecoverableErrorKind {
             Self::MeasureDirectivesMissing => "internal invariant: measure_directives shorter than measure count".to_string(),
             Self::SourceSpanMissing { index } => format!("internal invariant: source_span missing for measure {index}"),
             Self::TimedPartMeasureMissing => "internal invariant: timed part measure missing".to_string(),
-            Self::General { message } | Self::AnyfixInvalid { message } => message.clone(),
+            Self::General { message } | Self::AnyxInvalid { message } => message.clone(),
             Self::LexUnexpectedChar { ch } => format!("unexpected character: {ch}"),
             Self::MeasureNoDataLines => "measure has no data lines; treating all parts as empty".to_string(),
             Self::DottedEighthNeedsSixteenth => "dotted eighth must be followed by a sixteenth note or rest".to_string(),
@@ -198,7 +196,6 @@ impl RecoverableErrorKind {
             Self::PartsInvalidColumns { rhs } => format!(
                 "invalid track columns '{rhs}': expected 'chords', 'notes', or 'follow[X]'"
             ),
-            Self::SectionDuplicate { section } => format!("duplicate {}", section.header()),
             Self::SectionMissing { section } => format!("missing {}", section.header()),
             Self::PresetDuplicateName { name } => format!("duplicate preset \"{name}\""),
             Self::PresetReservedName { name } => format!("\"{name}\" is reserved for the song without a preset; choose another name"),

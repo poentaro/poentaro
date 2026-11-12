@@ -1,0 +1,15 @@
+[package]
+name = "poentaro-grammar"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "The shapes a .poentaro document is made of, as an anyx grammar, and the decoder generated from it"
+
+# No `[lints] workspace = true`: the code here is generated, and the
+# workspace lints are for code people write.
+
+[dependencies]
+anyx = { git = "https://github.com/wongjiahau/anyx", rev = "913846cc3b7c3f3fdd8d3be737b9c8acce6bfb1e" }
+
+[dev-dependencies]
+anyx-generator = { git = "https://github.com/wongjiahau/anyx", rev = "913846cc3b7c3f3fdd8d3be737b9c8acce6bfb1e" }

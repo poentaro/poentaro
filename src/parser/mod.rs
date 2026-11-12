@@ -2,7 +2,7 @@ use crate::ast::parsed::{ParsedDocument, ParsedMetadata, PartDecl};
 use crate::error::{IrrecoverableError, RecoverableError};
 
 mod alternative_lines;
-pub mod anyfix;
+pub mod anyx;
 pub mod lyrics;
 pub mod parts_parser;
 pub mod preset_parser;
@@ -30,7 +30,7 @@ pub(crate) struct ReadDocument {
     pub sequence_parse_errors: Vec<RecoverableError>,
 }
 
-pub(crate) use anyfix::read as read_document;
+pub(crate) use anyx::read as read_document;
 
 pub fn parse(
     input: &str,

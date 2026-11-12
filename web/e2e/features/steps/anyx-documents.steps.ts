@@ -40,7 +40,7 @@ function diagnosticLines(page: Page) {
   })
 }
 
-Given('the anyfix document fixture is loaded', async ({ page }) => {
+Given('the anyx document fixture is loaded', async ({ page }) => {
   await page.addInitScript((source) => {
     localStorage.setItem(
       'poentaro:files:v1',
@@ -60,7 +60,7 @@ Given('the anyfix document fixture is loaded', async ({ page }) => {
 })
 
 Then(
-  "the preview shows the anyfix document's {int} measures",
+  "the preview shows the anyx document's {int} measures",
   async ({ page }, count: number) => {
     await expect(page.locator(tagSelector('measure')).first()).toBeVisible()
     await expect(
@@ -72,13 +72,13 @@ Then(
   },
 )
 
-Then('the editor has no anyfix diagnostics', async ({ page }) => {
+Then('the editor has no anyx diagnostics', async ({ page }) => {
   await page.waitForTimeout(1_000)
   expect(await diagnosticLines(page)).toEqual([])
 })
 
 When(
-  'I select the whole of line {int} in the anyfix document',
+  'I select the whole of line {int} in the anyx document',
   async ({ page }, line: number) => {
     await page.evaluate((lineNumber) => {
       const editor = window.monaco?.editor.getEditors()[0]
@@ -95,7 +95,7 @@ When(
 )
 
 Then(
-  '{int} notes are range-selected in the anyfix document',
+  '{int} notes are range-selected in the anyx document',
   async ({ page }, count: number) => {
     await expect(
       page.locator(`${tagSelector('note')}[data-note-range-selected]`),
@@ -104,7 +104,7 @@ Then(
 )
 
 When(
-  'I Cmd\\/Ctrl-click measure {int} in the anyfix document',
+  'I Cmd\\/Ctrl-click measure {int} in the anyx document',
   async ({ page }, measure: number) => {
     const box = await stableBoundingBox(
       page.locator(tagSelector('measure', { index: measure })).first(),
@@ -117,7 +117,7 @@ When(
 )
 
 Then(
-  'the editor selects {string} in the anyfix document',
+  'the editor selects {string} in the anyx document',
   async ({ page }, text: string) => {
     await expect
       .poll(() =>
@@ -134,18 +134,18 @@ Then(
   },
 )
 
-Then('the anyfix document still has its comments', async ({ page }) => {
+Then('the anyx document still has its comments', async ({ page }) => {
   const source = await editorValue(page)
   for (const comment of COMMENTS) expect(source).toContain(comment)
 })
 
-When("I close the anyfix document's edit parts modal", async ({ page }) => {
+When("I close the anyx document's edit parts modal", async ({ page }) => {
   await page.keyboard.press('Escape')
   await page.getByTestId('edit-parts-modal').waitFor({ state: 'hidden' })
 })
 
 When(
-  'I replace {string} with {string} in the anyfix document',
+  'I replace {string} with {string} in the anyx document',
   async ({ page }, before: string, after: string) => {
     await page.evaluate(
       ({ before, after }) => {
@@ -158,14 +158,14 @@ When(
 )
 
 Then(
-  'the editor has an anyfix diagnostic on line {int}',
+  'the editor has an anyx diagnostic on line {int}',
   async ({ page }, line: number) => {
     await expect.poll(() => diagnosticLines(page)).toContain(line)
   },
 )
 
 Then(
-  'the preview still shows a page for the anyfix document',
+  'the preview still shows a page for the anyx document',
   async ({ page }) => {
     await expect(page.locator('.preview-page').first()).toBeVisible()
   },

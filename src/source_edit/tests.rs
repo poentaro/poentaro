@@ -113,7 +113,7 @@ fn test_set_octave_on_notes() {
     let source = source_with_parts(r#""Melody" [M] : notes"#);
     let result =
         update_part_declaration(&source, "M", &settings(PartMode::Notes, None, 100, -1)).unwrap();
-    assert_contains(&result, r#""Melody" [M]: notes { octave: - 1 }"#);
+    assert_contains(&result, r#""Melody" [M]: notes { octave -1 }"#);
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn test_out_of_range_volume_and_octave_are_written_clamped() {
     let source = source_with_parts(r#""Melody" [M] : notes"#);
     let result =
         update_part_declaration(&source, "M", &settings(PartMode::Notes, None, 150, -7)).unwrap();
-    assert_contains(&result, r#""Melody" [M]: notes { octave: - 4 }"#);
+    assert_contains(&result, r#""Melody" [M]: notes { octave -4 }"#);
 }
 
 #[test]

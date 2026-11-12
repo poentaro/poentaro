@@ -1,0 +1,141 @@
+# A `.poentaro` document, as an anyx grammar (see anyx's
+# crates/anyx-generator/README.md). `just generate-parser` writes
+# `generated.rs` from it.
+#
+# The grammar says which shapes are allowed. What the shapes mean, such as
+# which metadata keys exist or which instrument a word names, is checked in
+# Rust. Lists people edit by hand use `EACH`, so that one mistake does not
+# hide the rest.
+
+# Sections may come in any order. A section's `keyword` and a part's or
+# option's are where the highlighter colors them. A second metadata, parts, sequence or
+# score section is kept as an error, and the first one is read.
+ENTRY: ANY ORDER [
+  unconverted: ZERO OR MORE: unconverted,
+  metadata: OPTIONAL: ANYFIX CALL [keyword: WORD "metadata", fields: record],
+  parts: OPTIONAL: ANYFIX CALL [keyword: WORD "parts", parts: part list],
+  sequence: OPTIONAL: ANYFIX CALL [keyword: WORD "sequence", entries: entry list],
+  preset: ZERO OR MORE: ANYFIX CALL [keyword: WORD "preset", name: STRING, fields: record],
+  score: OPTIONAL: ANYFIX CALL [keyword: WORD "score", text: STRING],
+],
+
+# Text the converter from the old syntax kept because it could not read it.
+unconverted: ANYFIX CALL [WORD "could", WORD "not", WORD "convert", text: STRING],
+
+# ── fields ──────────────────────────────────────────────────────────────
+
+record: CURLY BRACE: EACH: field,
+
+# `max measures per system: 6` is the call `max measures per system _`.
+# Unconverted text in a record is the field `could not convert _`.
+field: ANYFIX CALL [NAME [ENDS WITH " _"], ARGUMENTS: value],
+
+value: ONE OF [
+  integer: signed integer,
+  text: STRING,
+  percentage,
+  pair: PARENTHESIS [x: value, y: value],
+  record,
+  list: SQUARE BRACKET: EACH: abbreviation,
+  words,
+  # Anything else, such as `20k`, which Rust reports as the wrong value for
+  # its field.
+  written: ANYFIX CALL,
+],
+
+# `4`, `-4`, `+ 4` or `- 4`.
+signed integer: NUMBER [INTEGER, SIGNED],
+
+# `80 %`.
+percentage: ANYFIX CALL [number: NUMBER [INTEGER], WORD "%"],
+
+# Words and nothing else: `yes`, `sans serif`, `Verse two`.
+words: ANYFIX CALL [NO ARGUMENTS],
+
+# ── parts ───────────────────────────────────────────────────────────────
+
+part list: SQUARE BRACKET: EACH: part,
+
+part: ONE OF [
+  unconverted,
+  abbreviated: ANYFIX CALL [
+    display: STRING,
+    abbreviation: SQUARE BRACKET: abbreviation,
+    kind: part kind,
+  ],
+  named: ANYFIX CALL [display: STRING, kind: part kind],
+],
+
+part kind: ONE OF [
+  notes: ANYFIX CALL [keyword: WORD "notes", OPTIONAL: options],
+  chords: ANYFIX CALL [keyword: WORD "chords", OPTIONAL: options],
+  percussion: ANYFIX CALL [keyword: WORD "percussion", OPTIONAL: options],
+  follow: ANYFIX CALL [
+    keyword: WORD "follow",
+    target: SQUARE BRACKET: abbreviation,
+    OPTIONAL: options,
+  ],
+  # Options are read only so Rust can say a lyric part takes none.
+  lyrics: ANYFIX CALL [
+    keyword: WORD "lyrics",
+    targets: SQUARE BRACKET: EACH: abbreviation,
+    OPTIONAL: options,
+  ],
+],
+
+options: CURLY BRACE: EACH: part option,
+
+part option: ONE OF [
+  instrument: ANYFIX CALL [keyword: WORD "instrument", name: words],
+  # `C3 to G4`, whose capitalised words split anyx's word runs, so Rust
+  # reads it from the node.
+  range: ANYFIX CALL [keyword: WORD "range", value: ANY NODE],
+  sound: ANYFIX CALL [keyword: WORD "sound", value: sound],
+  volume: ANYFIX CALL [keyword: WORD "volume", percentage],
+  octave: ANYFIX CALL [keyword: WORD "octave", signed integer],
+],
+
+# `41`, a General MIDI program, or `chimera soprano`, a singing voice.
+sound: ONE OF [program: NUMBER [INTEGER], voice: words],
+
+# A part's abbreviation: a string, or words, numbers and symbols that are
+# joined without spaces (`A1 & T` is the call `A1 _ T` of the word `&`).
+abbreviation: ONE OF [
+  text: STRING,
+  number: NUMBER,
+  written: ANYFIX CALL,
+],
+
+# ── sequence ────────────────────────────────────────────────────────────
+
+entry list: SQUARE BRACKET: EACH: sequence entry,
+
+sequence entry: ONE OF [
+  with without: ANYFIX CALL [
+    label,
+    WORD "WITH",
+    lines: line choices,
+    WORD "WITHOUT",
+    parts: SQUARE BRACKET: EACH: abbreviation,
+  ],
+  with only: ANYFIX CALL [
+    label,
+    WORD "WITH",
+    lines: line choices,
+    WORD "ONLY",
+    parts: SQUARE BRACKET: EACH: abbreviation,
+  ],
+  with: ANYFIX CALL [label, WORD "WITH", lines: line choices],
+  without: ANYFIX CALL [label, WORD "WITHOUT", parts: SQUARE BRACKET: EACH: abbreviation],
+  only: ANYFIX CALL [label, WORD "ONLY", parts: SQUARE BRACKET: EACH: abbreviation],
+  label,
+],
+
+# `Verse`, `Verse two` or `"Last chorus"`.
+label: ONE OF [text: STRING, words],
+
+# `([w] 2, [a] 1)`, or a lone `[w] 2`.
+line choices: ONE OF [many: PARENTHESIS: EACH: line choice, one: line choice],
+
+# `[w] 2`: a part and the number of the line it plays.
+line choice: ANYFIX CALL [part: SQUARE BRACKET: abbreviation, line: NUMBER [INTEGER]],
