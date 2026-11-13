@@ -45,27 +45,18 @@ PUBLIC RECORD diagnostic {
 # never stop a save, but each is worth a look.
 RECORD saved { revision: INTEGER, warnings: LIST diagnostic },
 
-# The owner moved this file to the trash. Ask them to restore it.
-PUBLIC ERROR trashed,
+PUBLIC ERRORS file errors [
+    # The owner moved this file to the trash. Ask them to restore it.
+    trashed,
+    # No file has this path. It may have been renamed: run `files/list` to
+    # see the exact paths.
+    missing,
+],
 
-# No file has this path. It may have been renamed: run `files/list` to see
-# the exact paths.
-PUBLIC ERROR missing,
-
-# Someone saved first. Apply your change to `content`, then write at
-# `revision`.
-ERROR conflict at revision (revision: INTEGER) content (content: TEXT),
-
-# The score has errors, so nothing was saved. Fix them and send it again.
-ERROR rejected (diagnostics: LIST diagnostic),
-
-# A file already has this path. Read it, or create under another path.
-ERROR already exists at revision (revision: INTEGER),
-
-# The path isn't valid, such as an empty folder name or a `..`.
-ERROR invalid path (message: TEXT),
-
-PUBLIC ERRORS file errors [trashed, missing],
+ERRORS score errors [
+    # The score has errors, so nothing was saved. Fix them and send it again.
+    rejected (diagnostics: LIST diagnostic),
+],
 
 # Every file this account owns.
 METHOD list RETURNS files: LIST file summary,
@@ -75,31 +66,38 @@ METHOD read (path: TEXT) RETURNS (file: file) ERRORS file errors,
 # Saves the score, if the file is still at `revision`.
 METHOD write (path: TEXT) at revision (revision: INTEGER) content (content: TEXT)
     RETURNS (saved: saved)
-    ERRORS [conflict at revision content, rejected, file errors],
+    ERRORS [
+        # Someone saved first. Apply your change to `content`, then write at
+        # `revision`.
+        conflict at revision (revision: INTEGER) content (content: TEXT),
+    ] + score errors + file errors,
 
 # Makes a new file, and its folders if they don't exist.
 METHOD create (path: TEXT) content (content: TEXT)
     RETURNS (saved: saved)
-    ERRORS [already exists at revision, invalid path, rejected],
+    ERRORS [
+        # A file already has this path. Read it, or create under another path.
+        already exists at revision (revision: INTEGER),
+        # The path isn't valid, such as an empty folder name or a `..`.
+        invalid path (message: TEXT),
+    ] + score errors,
 "#,
     },
     anyx_protocol::SchemaFile {
         path: "files/export.anyx",
-        source: r#"# The score has errors, so it can't be exported. Fix them, then write the
-# score again.
-ERROR unreadable (diagnostics: LIST files/diagnostic),
+        source: r#"ERRORS export errors [
+    # The score has errors, so it can't be exported. Fix them, then write
+    # the score again.
+    unreadable (diagnostics: LIST files/diagnostic),
+] + files/file errors,
 
 # The score as numbered notation: one SVG document per page. Text widths
 # are estimated, so a system may break slightly differently than in the app.
-METHOD svg (path: TEXT)
-    RETURNS (pages: LIST: TEXT)
-    ERRORS [unreadable, files/file errors],
+METHOD svg (path: TEXT) RETURNS (pages: LIST: TEXT) ERRORS export errors,
 
 # The score as a Standard MIDI File, to hear or inspect what it plays.
 # Decode the base64 to get the `.mid` file.
-METHOD midi (path: TEXT)
-    RETURNS (midi: BYTES)
-    ERRORS [unreadable, files/file errors],
+METHOD midi (path: TEXT) RETURNS (midi: BYTES) ERRORS export errors,
 "#,
     },
     anyx_protocol::SchemaFile {
@@ -377,8 +375,8 @@ pub mod files {
     pub enum ReadError {
         /// The owner moved this file to the trash. Ask them to restore it.
         Trashed,
-        /// No file has this path. It may have been renamed: run `files/list` to see
-        /// the exact paths.
+        /// No file has this path. It may have been renamed: run `files/list` to
+        /// see the exact paths.
         Missing,
     }
 
@@ -421,8 +419,8 @@ pub mod files {
         Rejected { diagnostics: Vec<Diagnostic> },
         /// The owner moved this file to the trash. Ask them to restore it.
         Trashed,
-        /// No file has this path. It may have been renamed: run `files/list` to see
-        /// the exact paths.
+        /// No file has this path. It may have been renamed: run `files/list` to
+        /// see the exact paths.
         Missing,
     }
 
@@ -634,15 +632,15 @@ pub mod files {
         /// The errors of `files/export/svg _`.
         #[derive(Clone, Debug, PartialEq)]
         pub enum SvgError {
-            /// The score has errors, so it can't be exported. Fix them, then write the
-            /// score again.
+            /// The score has errors, so it can't be exported. Fix them, then write
+            /// the score again.
             Unreadable {
                 diagnostics: Vec<super::super::files::Diagnostic>,
             },
             /// The owner moved this file to the trash. Ask them to restore it.
             Trashed,
-            /// No file has this path. It may have been renamed: run `files/list` to see
-            /// the exact paths.
+            /// No file has this path. It may have been renamed: run `files/list` to
+            /// see the exact paths.
             Missing,
         }
 
@@ -685,15 +683,15 @@ pub mod files {
         /// The errors of `files/export/midi _`.
         #[derive(Clone, Debug, PartialEq)]
         pub enum MidiError {
-            /// The score has errors, so it can't be exported. Fix them, then write the
-            /// score again.
+            /// The score has errors, so it can't be exported. Fix them, then write
+            /// the score again.
             Unreadable {
                 diagnostics: Vec<super::super::files::Diagnostic>,
             },
             /// The owner moved this file to the trash. Ask them to restore it.
             Trashed,
-            /// No file has this path. It may have been renamed: run `files/list` to see
-            /// the exact paths.
+            /// No file has this path. It may have been renamed: run `files/list` to
+            /// see the exact paths.
             Missing,
         }
 

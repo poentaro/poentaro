@@ -746,12 +746,15 @@ text, and the methods are declared in a schema.
   `files/read _`, `files/write _ at revision _ content _`,
   `files/create _ content _`, `files/export/svg _`,
   `files/export/midi _` and `score/syntax`. `files` declares the records (`file summary`,
-  `file`, `diagnostic`, `saved`) and errors (`trashed`, `missing`,
-  `conflict at revision _ content _`, `rejected _`,
-  `already exists at revision _`, `invalid path _`); `files/export`
-  declares `unreadable _`. A type or error is private to its scope unless
-  `PUBLIC`, and another scope names it by full path (`files/diagnostic`,
-  `files/file errors`). `src/generated.rs` is what anyx's
+  `file`, `diagnostic`, `saved`) and two error groups, `file errors`
+  (`trashed`, `missing`) and `score errors` (`rejected _`); `files/export`
+  declares `export errors` (`unreadable _` plus `files/file errors`). An
+  error is written in full where it is used: in its method's `ERRORS [ … ]`
+  when only that method answers it (`conflict at revision _ content _`,
+  `already exists at revision _`, `invalid path _`), or in a group that
+  methods join with `+`. A type or error group is private to its scope
+  unless `PUBLIC`, and another scope names it by full path
+  (`files/diagnostic`, `files/file errors`). `src/generated.rs` is what anyx's
   `anyx-protocol-generate` writes from it, a module per scope
   (`poentaro_protocol::files::export`): the record structs, a
   `{Method}Error` enum per method, a `Server` trait per scope (the root one
