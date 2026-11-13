@@ -10,39 +10,19 @@ mod generated;
 
 pub use generated::*;
 
-use anyx::Span;
+use anyx::{Span, StringLiteral};
 
-/// A `key value` field, whichever choice decoded it: a key the grammar lists,
-/// such as `max measures per system 6`, or the fallback `field` of any other
-/// key, which Rust reports.
+/// A `key value` field of a record: metadata, preset or text style. Its value
+/// is read from its choice, whose type the grammar gives.
 pub trait Keyed {
     /// The key's words, as written: `max measures per system`.
     fn key_words(&self) -> String;
     fn key_words_span(&self) -> Span;
-    fn value(&self) -> &Value;
     /// The whole field.
     fn span(&self) -> Span;
 }
 
-impl Keyed for Field {
-    fn key_words(&self) -> String {
-        self.name.words().collect::<Vec<_>>().join(" ")
-    }
-
-    fn key_words_span(&self) -> Span {
-        self.name.span
-    }
-
-    fn value(&self) -> &Value {
-        &self.arguments
-    }
-
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
-/// The words a listed key's choice is named after: `MaxMeasuresPerSystem` is
+/// The words a key's choice is named after: `MaxMeasuresPerSystem` is
 /// `max measures per system`.
 fn words_of(choice: &str) -> String {
     let mut words = String::new();
@@ -55,88 +35,159 @@ fn words_of(choice: &str) -> String {
     words
 }
 
-/// [`Keyed`] for a `ONE OF` of listed keys, each `ANYFIX CALL [key: WORDS
-/// "…", value]`, and a last choice that is keyed itself. Rust's match is
-/// exhaustive, so a key added to the grammar must be added here.
+/// [`Keyed`] for a `ONE OF` whose `listed` choices are each
+/// `ANYFIX CALL [key: WORDS "…", …]`, named after their words, and whose
+/// `nested` choices are themselves keyed. Rust's match is exhaustive, so a
+/// choice added to the grammar must be added here.
 macro_rules! keyed {
-    ($type:ident { $($listed:ident),+ $(,)? } else $fallback:ident) => {
+    ($type:ident { $($listed:ident),* $(,)? } $(nested { $($nested:ident),+ $(,)? })?) => {
         impl Keyed for $type {
             fn key_words(&self) -> String {
                 match self {
-                    $(Self::$listed { .. } => words_of(stringify!($listed)),)+
-                    Self::$fallback(field) => field.key_words(),
+                    $(Self::$listed { .. } => words_of(stringify!($listed)),)*
+                    $($(Self::$nested(field) => field.key_words(),)+)?
                 }
             }
 
             fn key_words_span(&self) -> Span {
                 match self {
-                    $(Self::$listed { key, .. } => *key,)+
-                    Self::$fallback(field) => field.key_words_span(),
-                }
-            }
-
-            fn value(&self) -> &Value {
-                match self {
-                    $(Self::$listed { value, .. } => value,)+
-                    Self::$fallback(field) => field.value(),
+                    $(Self::$listed { key, .. } => *key,)*
+                    $($(Self::$nested(field) => field.key_words_span(),)+)?
                 }
             }
 
             fn span(&self) -> Span {
                 match self {
-                    $(Self::$listed { span, .. } => *span,)+
-                    Self::$fallback(field) => field.span(),
+                    $(Self::$listed { span, .. } => *span,)*
+                    $($(Self::$nested(field) => field.span(),)+)?
                 }
             }
         }
     };
 }
 
-keyed!(MetadataField {
-    Title, Subtitle, Author,
+keyed!(MetadataField { DirectiveRowOffset, CouldNotConvert } nested { Text, Style, Number, Flag });
+keyed!(TextField {
+    Title,
+    Subtitle,
+    Author
+});
+keyed!(TextStyle {
+    TitleStyle,
+    SubtitleStyle,
+    AuthorStyle,
+    SequenceStyle,
+    PartLegendStyle,
+    MeasureNumberStyle,
+    SectionLabelStyle,
+    PartLabelStyle,
+    PageNumberStyle,
+    RunningTitleStyle,
+    LyricsStyle,
+    NotesStyle,
+    ChordsStyle,
+    NoteDashStyle,
+});
+keyed!(NumberField {
+    RowHeight,
+    MaxMeasuresPerSystem,
+    NoteNumberWidth,
+    PartsListColumns,
+    PartLabelWidthPt,
+    PageMarginPt,
+});
+keyed!(FlagField {
+    MergeDuplicateMeasuresAcrossParts,
+    HideRestingParts,
+    HideSystemDividers
+});
+keyed!(PresetField { VisibleParts, SoloedParts, Notation } nested { Metadata });
+keyed!(StyleField {
+    FontSize,
+    HorizontalPaddingPt,
+    VerticalPaddingPt,
+    Bold,
+    Italic,
+    Underline,
+    FontFamily,
+});
+
+/// The value every choice of a `ONE OF` keeps under the same name.
+macro_rules! value {
+    ($type:ident { $($choice:ident),+ $(,)? } . $field:ident: $value:ty) => {
+        impl $type {
+            pub fn $field(&self) -> &$value {
+                match self {
+                    $(Self::$choice { $field, .. } => $field,)+
+                }
+            }
+        }
+    };
+}
+
+value!(TextField { Title, Subtitle, Author } . text: Spanned<StringLiteral>);
+value!(TextStyle {
     TitleStyle, SubtitleStyle, AuthorStyle, SequenceStyle, PartLegendStyle,
     MeasureNumberStyle, SectionLabelStyle, PartLabelStyle, PageNumberStyle,
     RunningTitleStyle, LyricsStyle, NotesStyle, ChordsStyle, NoteDashStyle,
+} . style: StyleRecord);
+value!(NumberField {
     RowHeight, MaxMeasuresPerSystem, NoteNumberWidth, PartsListColumns,
     PartLabelWidthPt, PageMarginPt,
-    MergeDuplicateMeasuresAcrossParts, HideRestingParts, HideSystemDividers,
-    DirectiveRowOffset, CouldNotConvert,
-} else Unknown);
+} . number: Positive);
+value!(FlagField { MergeDuplicateMeasuresAcrossParts, HideRestingParts, HideSystemDividers } . flag: Flag);
 
-keyed!(PresetField { VisibleParts, SoloedParts, Notation } else Metadata);
-
-keyed!(StyleField {
-    FontSize, HorizontalPaddingPt, VerticalPaddingPt, Bold, Italic, Underline, FontFamily,
-} else Unknown);
+impl Flag {
+    pub fn is_yes(&self) -> bool {
+        matches!(self, Flag::Yes(_))
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn a_listed_key_is_its_choice_in_words() {
-        let source = "metadata { max measures per system 4, colour 3 }";
-        let parsed = parse_document(source);
-        let document = parsed.document.unwrap();
+    fn keys(source: &str) -> Vec<(String, String)> {
+        let document = parse_document(source).document.unwrap();
         let fields = &document.metadata.as_ref().unwrap().fields.metadata_field;
-        let keys: Vec<_> = fields
+        fields
             .iter()
-            .map(|field| {
-                let field = field.as_ref().unwrap();
-                let key = field.key_words_span();
-                (field.key_words(), &source[key.start..key.end])
+            .map(|field| match field {
+                Ok(field) => {
+                    let key = field.key_words_span();
+                    (field.key_words(), source[key.start..key.end].to_owned())
+                }
+                Err(error) => ("error".to_owned(), error.message()),
             })
-            .collect();
+            .collect()
+    }
+
+    #[test]
+    fn a_key_is_its_choice_in_words() {
         assert_eq!(
-            keys,
+            keys(
+                "metadata { max measures per system 4, lyrics style {}, hide resting parts : yes }"
+            ),
             [
                 (
                     "max measures per system".to_owned(),
-                    "max measures per system"
+                    "max measures per system".to_owned()
                 ),
-                ("colour".to_owned(), "colour"),
+                ("lyrics style".to_owned(), "lyrics style".to_owned()),
+                (
+                    "hide resting parts".to_owned(),
+                    "hide resting parts".to_owned()
+                ),
             ]
         );
-        assert!(matches!(fields[1], Ok(MetadataField::Unknown(_))));
+    }
+
+    #[test]
+    fn a_wrong_value_is_the_grammars_error() {
+        let [(kind, message)] = &keys("metadata { max measures per system 0 }")[..] else {
+            panic!()
+        };
+        assert_eq!(kind, "error");
+        assert!(message.contains("0"), "{message}");
     }
 }

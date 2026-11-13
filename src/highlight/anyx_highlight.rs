@@ -5,13 +5,13 @@
 use itertools::Itertools;
 
 use super::{HighlightKind, HighlightToken, SectionHeader};
-use crate::error::{Diagnostic, RecoverableErrorKind, Span};
+use crate::error::Span;
 use crate::parser::anyx::decoded::{decode, span};
 use crate::parser::score::interleaved_parser::directive_keyword_spans;
 use crate::parser::section::SectionKind;
 use crate::parser::{read_document, ReadDocument};
 use crate::utils::{is_han_char, pinyin_override_at};
-use poentaro_grammar::{DecodeError, Document, Keyed, Part, PartKind, PartOption, Value};
+use poentaro_grammar::{Document, Keyed, MetadataField, Part, PartKind, PartOption, PresetField};
 
 fn token(kind: HighlightKind, at: anyx::Span) -> HighlightToken {
     HighlightToken {
@@ -56,21 +56,34 @@ fn headers(document: &Document) -> Vec<SectionHeader> {
     .collect()
 }
 
-/// Field keys in a `{ … }` record, a text style's included.
-fn field_keys<F: Keyed>(source: &str, fields: &[Result<F, DecodeError>]) -> Vec<HighlightToken> {
-    fields
-        .iter()
-        .flatten()
-        .flat_map(|field| {
-            let words = key_words(source, field.key_words_span())
-                .map(|word| token(HighlightKind::MetadataKey, word));
-            let nested = match field.value() {
-                Value::Record(record) => field_keys(source, &record.style_field),
-                _ => Vec::new(),
-            };
-            words.chain(nested).collect_vec()
-        })
+/// A field's key, word by word.
+fn key_tokens<F: Keyed>(source: &str, field: &F) -> Vec<HighlightToken> {
+    key_words(source, field.key_words_span())
+        .map(|word| token(HighlightKind::MetadataKey, word))
         .collect()
+}
+
+/// A metadata field's key, and a text style's keys.
+fn metadata_keys(source: &str, field: &MetadataField) -> Vec<HighlightToken> {
+    let style = match field {
+        MetadataField::Style(style) => style.style().style_field.iter().flatten().collect(),
+        _ => Vec::new(),
+    };
+    key_tokens(source, field)
+        .into_iter()
+        .chain(
+            style
+                .into_iter()
+                .flat_map(|field| key_tokens(source, field)),
+        )
+        .collect()
+}
+
+fn preset_keys(source: &str, field: &PresetField) -> Vec<HighlightToken> {
+    match field {
+        PresetField::Metadata(field) => metadata_keys(source, field),
+        field => key_tokens(source, field),
+    }
 }
 
 /// Each word of a key, so that the spaces between them stay uncolored.
@@ -147,33 +160,9 @@ fn lyric_reading_tokens(read: &ReadDocument) -> Vec<HighlightToken> {
         .collect()
 }
 
-/// The keys the reader doesn't recognize, which stay uncolored.
-fn unknown_field_spans(read: &ReadDocument) -> Vec<Span> {
-    read.metadata_parse_errors
-        .iter()
-        .chain(
-            read.presets
-                .diagnostics
-                .iter()
-                .filter_map(|diagnostic| match diagnostic {
-                    Diagnostic::Error(error) => Some(error),
-                    Diagnostic::Warning(_) => None,
-                }),
-        )
-        .filter(|error| {
-            matches!(
-                error.kind,
-                RecoverableErrorKind::MetadataUnknownField { .. }
-            )
-        })
-        .map(|error| error.span)
-        .collect()
-}
-
 pub(super) fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
     let document = decode(source).document;
     let read = read_document(source, &[]);
-    let unknown_fields = unknown_field_spans(&read);
     let headers = headers(&document).into_iter().map(|header| HighlightToken {
         kind: HighlightKind::SectionHeader,
         span: header.span,
@@ -181,12 +170,14 @@ pub(super) fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
     let records = document
         .metadata
         .iter()
-        .flat_map(|section| field_keys(source, &section.fields.metadata_field))
+        .flat_map(|section| section.fields.metadata_field.iter().flatten())
+        .flat_map(|field| metadata_keys(source, field))
         .chain(
             document
                 .preset
                 .iter()
-                .flat_map(|section| field_keys(source, &section.fields.preset_field)),
+                .flat_map(|section| section.fields.preset_field.iter().flatten())
+                .flat_map(|field| preset_keys(source, field)),
         );
     let parts = document
         .parts
@@ -196,11 +187,6 @@ pub(super) fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
     headers
         .chain(records)
         .chain(parts)
-        .filter(|token| {
-            !unknown_fields
-                .iter()
-                .any(|unknown| unknown.start <= token.span.start && token.span.end <= unknown.end)
-        })
         .chain(directive_tokens(&read))
         .chain(lyric_reading_tokens(&read))
         .sorted_by_key(|token| token.span.start)

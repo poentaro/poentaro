@@ -182,7 +182,10 @@ fn an_unknown_metadata_field_is_reported_as_written() {
     .map(crate::error::RecoverableError::message)
     .collect::<Vec<_>>();
     assert_eq!(messages.len(), 1, "{messages:?}");
-    assert!(messages[0].contains("notes font size"), "{messages:?}");
+    assert!(
+        messages[0].contains("found the word `font`; expected the word `notes style`"),
+        "{messages:?}"
+    );
 }
 
 #[test]

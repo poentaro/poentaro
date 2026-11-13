@@ -16,6 +16,7 @@ use crate::parser::{ReadDocument, ScoreText};
 use poentaro_grammar::Spanned;
 
 pub(crate) use metadata::read_metadata_field;
+pub(crate) use preset::notation_of;
 
 /// Reads `source`'s tree. `instruments` names the sound a `sound : N` option picks.
 pub(crate) fn read(source: &str, instruments: &[InstrumentInfo]) -> ReadDocument {

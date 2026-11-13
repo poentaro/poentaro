@@ -115,7 +115,7 @@ fn collects_error_for_invalid_font_family_value() {
     assert_eq!(meta.lyrics_style.font_family, None);
     assert!(errors
         .iter()
-        .any(|e| e.message().contains("lyrics style font family")));
+        .any(|e| e.message().contains("found the word `comic`")));
 }
 
 #[test]

@@ -27,13 +27,4 @@ impl RecoverableError {
             },
         }
     }
-
-    pub fn preset_only_field(span: Span, field: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::PresetOnlyField {
-                field: field.to_string(),
-            },
-        }
-    }
 }

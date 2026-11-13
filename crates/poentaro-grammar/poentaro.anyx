@@ -2,11 +2,13 @@
 ## crates/anyx-generator/README.md). `just generate-parser` writes
 ## `generated.rs` from it.
 ##
-## The grammar says which shapes are allowed, and lists the metadata, style
-## and preset keys, so a mistyped key's error (and an editor's completion)
-## names every key there is. What the values mean, such as which instrument
-## a word names, is checked in Rust. Lists people edit by hand use `EACH`, so that one mistake does not
-## hide the rest.
+## The grammar says which shapes are allowed. It lists every metadata, style
+## and preset key with the value that key takes (a string, a positive
+## integer, `yes` or `no`, a notation, a font family), so a mistyped key or
+## value is the grammar's error, and an editor completes both. What other
+## values mean, such as which instrument a word names, is checked in Rust.
+## Lists people edit by hand use `EACH`, so that one mistake does not hide
+## the rest.
 
 ## Sections may come in any order. A section's `keyword` and a part's or
 ## option's are where the highlighter colors them. A second metadata, parts, sequence or
@@ -25,89 +27,108 @@ unconverted: ANYFIX CALL [WORDS "could not convert", text: STRING],
 
 ## ── fields ──────────────────────────────────────────────────────────────
 
-## Every listed key takes any `value`, so a wrong value is reported by Rust,
-## which knows what each key means. A field whose key is not listed is
-## `unknown`, the fallback, so that Rust can say a key is unknown, or that it
-## belongs only in a preset.
+## The keys a metadata section takes, each with the value it takes. A preset
+## takes them too, besides its own.
 metadata record: CURLY BRACE: EACH: metadata field,
 
 metadata field: ONE OF [
-  title: ANYFIX CALL [key: WORDS "title", value],
-  subtitle: ANYFIX CALL [key: WORDS "subtitle", value],
-  author: ANYFIX CALL [key: WORDS "author", value],
-  ## A text style: `lyrics style { font size 14 }`.
-  title style: ANYFIX CALL [key: WORDS "title style", value],
-  subtitle style: ANYFIX CALL [key: WORDS "subtitle style", value],
-  author style: ANYFIX CALL [key: WORDS "author style", value],
-  sequence style: ANYFIX CALL [key: WORDS "sequence style", value],
-  part legend style: ANYFIX CALL [key: WORDS "part legend style", value],
-  measure number style: ANYFIX CALL [key: WORDS "measure number style", value],
-  section label style: ANYFIX CALL [key: WORDS "section label style", value],
-  part label style: ANYFIX CALL [key: WORDS "part label style", value],
-  page number style: ANYFIX CALL [key: WORDS "page number style", value],
-  running title style: ANYFIX CALL [key: WORDS "running title style", value],
-  lyrics style: ANYFIX CALL [key: WORDS "lyrics style", value],
-  notes style: ANYFIX CALL [key: WORDS "notes style", value],
-  chords style: ANYFIX CALL [key: WORDS "chords style", value],
-  note dash style: ANYFIX CALL [key: WORDS "note dash style", value],
-  row height: ANYFIX CALL [key: WORDS "row height", value],
-  max measures per system: ANYFIX CALL [key: WORDS "max measures per system", value],
-  note number width: ANYFIX CALL [key: WORDS "note number width", value],
-  parts list columns: ANYFIX CALL [key: WORDS "parts list columns", value],
-  part label width pt: ANYFIX CALL [key: WORDS "part label width pt", value],
-  page margin pt: ANYFIX CALL [key: WORDS "page margin pt", value],
-  merge duplicate measures across parts: ANYFIX CALL [key: WORDS "merge duplicate measures across parts", value],
-  hide resting parts: ANYFIX CALL [key: WORDS "hide resting parts", value],
-  hide system dividers: ANYFIX CALL [key: WORDS "hide system dividers", value],
-  ## `(0, -4)`.
-  directive row offset: ANYFIX CALL [key: WORDS "directive row offset", value],
+  text: text field,
+  style: text style,
+  number: number field,
+  flag: flag field,
+  ## `(0, -4)`: how far the directives above a row move, in points.
+  directive row offset: ANYFIX CALL [
+    key: WORDS "directive row offset",
+    offset: PARENTHESIS [x: signed integer, y: signed integer],
+  ],
   ## Text the converter from the old syntax kept because it could not read it.
-  could not convert: ANYFIX CALL [key: WORDS "could not convert", value],
-  unknown: field,
+  could not convert: ANYFIX CALL [key: WORDS "could not convert", text: STRING],
 ],
+
+## `title "Minuet in G"`.
+text field: ONE OF [
+  title: ANYFIX CALL [key: WORDS "title", text: STRING],
+  subtitle: ANYFIX CALL [key: WORDS "subtitle", text: STRING],
+  author: ANYFIX CALL [key: WORDS "author", text: STRING],
+],
+
+## `lyrics style { font size 14, bold : yes }`.
+text style: ONE OF [
+  title style: ANYFIX CALL [key: WORDS "title style", style: style record],
+  subtitle style: ANYFIX CALL [key: WORDS "subtitle style", style: style record],
+  author style: ANYFIX CALL [key: WORDS "author style", style: style record],
+  sequence style: ANYFIX CALL [key: WORDS "sequence style", style: style record],
+  part legend style: ANYFIX CALL [key: WORDS "part legend style", style: style record],
+  measure number style: ANYFIX CALL [key: WORDS "measure number style", style: style record],
+  section label style: ANYFIX CALL [key: WORDS "section label style", style: style record],
+  part label style: ANYFIX CALL [key: WORDS "part label style", style: style record],
+  page number style: ANYFIX CALL [key: WORDS "page number style", style: style record],
+  running title style: ANYFIX CALL [key: WORDS "running title style", style: style record],
+  lyrics style: ANYFIX CALL [key: WORDS "lyrics style", style: style record],
+  notes style: ANYFIX CALL [key: WORDS "notes style", style: style record],
+  chords style: ANYFIX CALL [key: WORDS "chords style", style: style record],
+  note dash style: ANYFIX CALL [key: WORDS "note dash style", style: style record],
+],
+
+## `max measures per system 4`.
+number field: ONE OF [
+  row height: ANYFIX CALL [key: WORDS "row height", number: positive],
+  max measures per system: ANYFIX CALL [key: WORDS "max measures per system", number: positive],
+  note number width: ANYFIX CALL [key: WORDS "note number width", number: positive],
+  parts list columns: ANYFIX CALL [key: WORDS "parts list columns", number: positive],
+  part label width pt: ANYFIX CALL [key: WORDS "part label width pt", number: positive],
+  page margin pt: ANYFIX CALL [key: WORDS "page margin pt", number: positive],
+],
+
+## `hide resting parts : yes`.
+flag field: ONE OF [
+  merge duplicate measures across parts: ANYFIX CALL [key: WORDS "merge duplicate measures across parts", flag],
+  hide resting parts: ANYFIX CALL [key: WORDS "hide resting parts", flag],
+  hide system dividers: ANYFIX CALL [key: WORDS "hide system dividers", flag],
+],
+
+positive: NUMBER [INTEGER, AT LEAST 1],
+
+flag: ONE OF [WORDS "yes", WORDS "no"],
 
 ## A preset's own keys, and the metadata it overrides.
 preset record: CURLY BRACE: EACH: preset field,
 
 preset field: ONE OF [
   ## `[S, A1]`.
-  visible parts: ANYFIX CALL [key: WORDS "visible parts", value],
-  soloed parts: ANYFIX CALL [key: WORDS "soloed parts", value],
-  notation: ANYFIX CALL [key: WORDS "notation", value],
+  visible parts: ANYFIX CALL [key: WORDS "visible parts", parts: part references],
+  soloed parts: ANYFIX CALL [key: WORDS "soloed parts", parts: part references],
+  notation: ANYFIX CALL [key: WORDS "notation", notation],
   metadata: metadata field,
+],
+
+part references: SQUARE BRACKET: EACH: abbreviation,
+
+notation: ONE OF [
+  WORDS "numbered",
+  WORDS "violin",
+  WORDS "cello",
+  WORDS "abc",
+  WORDS "guitar",
+  WORDS "harmonica",
+  ## What `numbered` was called before; still read, never written.
+  WORDS "jianpu",
 ],
 
 ## A text style's `{ … }`.
 style record: CURLY BRACE: EACH: style field,
 
 style field: ONE OF [
-  font size: ANYFIX CALL [key: WORDS "font size", value],
-  horizontal padding pt: ANYFIX CALL [key: WORDS "horizontal padding pt", value],
-  vertical padding pt: ANYFIX CALL [key: WORDS "vertical padding pt", value],
-  bold: ANYFIX CALL [key: WORDS "bold", value],
-  italic: ANYFIX CALL [key: WORDS "italic", value],
-  underline: ANYFIX CALL [key: WORDS "underline", value],
-  font family: ANYFIX CALL [key: WORDS "font family", value],
-  unknown: field,
+  font size: ANYFIX CALL [key: WORDS "font size", size: positive],
+  horizontal padding pt: ANYFIX CALL [key: WORDS "horizontal padding pt", points: NUMBER [INTEGER, AT LEAST 0]],
+  vertical padding pt: ANYFIX CALL [key: WORDS "vertical padding pt", points: NUMBER [INTEGER, AT LEAST 0]],
+  bold: ANYFIX CALL [key: WORDS "bold", flag],
+  italic: ANYFIX CALL [key: WORDS "italic", flag],
+  underline: ANYFIX CALL [key: WORDS "underline", flag],
+  font family: ANYFIX CALL [key: WORDS "font family", family: font family],
 ],
 
-## Any `name value` field: `max measures per system 6` is the call
-## `max measures per system _`.
-field: ANYFIX CALL [NAME [ENDS WITH " _"], ARGUMENTS: value],
-
-value: ONE OF [
-  integer: signed integer,
-  text: STRING,
-  percentage,
-  pair: PARENTHESIS [x: value, y: value],
-  ## Only a text style takes a record.
-  record: style record,
-  list: SQUARE BRACKET: EACH: abbreviation,
-  words,
-  ## Anything else, such as `20k`, which Rust reports as the wrong value for
-  ## its field.
-  written: ANYFIX CALL,
-],
+font family: ONE OF [WORDS "serif", WORDS "sans serif", WORDS "monospace"],
 
 ## `4`, `-4`, `+ 4` or `- 4`.
 signed integer: NUMBER [INTEGER, SIGNED],

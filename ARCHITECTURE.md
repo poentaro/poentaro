@@ -987,8 +987,9 @@ What still says `jianpu`, on purpose:
   - Embedded source: exports carry `<metadata id="poentaro-source">` (SVG) and
     `/PoentaroSource` (PDF); `source_embed` also reads the legacy
     `jianpu-source` and `/JianpuSource`, so old exports still import.
-  - Preset notation: `Notation::from_source_value` (`src/ast/parsed/preset.rs`)
-    reads a preset's legacy `notation: jianpu` as `Notation::Numbered`.
+  - Preset notation: the grammar lists `jianpu` among the notations, and
+    `notation_of` (`src/parser/anyx/read/preset.rs`) reads it as
+    `Notation::Numbered`.
   - The bridge collects the legacy names (see "Origin migration").
 
 ### App log (observability)

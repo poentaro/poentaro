@@ -43,7 +43,7 @@ fn part_label_width_pt_is_not_a_text_style_object_field() {
     let (_meta, errors) = parse_metadata(content);
     assert!(errors.iter().any(|e| e
         .message()
-        .contains("unknown metadata field: part label style width pt")));
+        .contains("found the word `width`; expected the word `font size`")));
 }
 
 #[test]
@@ -88,7 +88,7 @@ fn collects_error_for_parts_field_in_metadata() {
     let (_meta, errors) = parse_metadata(content);
     assert!(errors
         .iter()
-        .any(|e| e.message().contains("unknown metadata field: parts")));
+        .any(|e| e.message().contains("found the string \"notes: lyrics:\"")));
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn old_flat_lyrics_font_size_key_is_rejected() {
     let (_meta, errors) = parse_metadata(content);
     assert!(errors.iter().any(|e| e
         .message()
-        .contains("unknown metadata field: lyrics font size")));
+        .contains("found the word `font`; expected the word `lyrics style`")));
 }
 
 #[test]
@@ -260,7 +260,7 @@ fn old_flat_lyric_click_target_padding_pt_key_is_rejected() {
     let (_meta, errors) = parse_metadata(content);
     assert!(errors.iter().any(|e| e
         .message()
-        .contains("unknown metadata field: lyric click target padding pt")));
+        .contains("found the word `lyric`; expected the word `title`")));
 }
 
 #[test]
@@ -270,7 +270,7 @@ fn old_flat_notes_horizontal_padding_pt_key_is_rejected() {
     let (_meta, errors) = parse_metadata(content);
     assert!(errors.iter().any(|e| e
         .message()
-        .contains("unknown metadata field: notes horizontal padding pt")));
+        .contains("found the word `horizontal`; expected the word `notes style`")));
 }
 
 #[test]

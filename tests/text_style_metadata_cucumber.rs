@@ -136,11 +136,11 @@ fn then_default_font_size(
     );
 }
 
-#[then(expr = "compiling reports an unknown metadata field {string}")]
-fn then_unknown_field(world: &mut TextStyleWorld, field: String) {
+#[then(expr = "compiling reports an error containing {string}")]
+fn then_error_containing(world: &mut TextStyleWorld, text: String) {
     assert!(
-        world.errors.iter().any(|e| e.contains(&field)),
-        "expected an \"unknown metadata field\" error mentioning {field:?}, got: {:?}",
+        world.errors.iter().any(|e| e.contains(&text)),
+        "expected an error containing {text:?}, got: {:?}",
         world.errors
     );
 }
