@@ -55,3 +55,47 @@ pub struct PartFilterDisplay {
     pub kind: crate::parser::sequence_parser::PartFilterKind,
     pub parts: Vec<String>,
 }
+
+/// A `sequence` entry's `WITHOUT` / `ONLY` parts as written in its
+/// display suffix: `-S`, `-A2` for `WITHOUT`; `S`, `A2` for `ONLY`.
+pub fn part_filter_items(
+    kind: crate::parser::sequence_parser::PartFilterKind,
+    parts: &[String],
+) -> Vec<String> {
+    use crate::parser::sequence_parser::PartFilterKind;
+    let prefix = match kind {
+        PartFilterKind::Omit => "-",
+        PartFilterKind::Only => "",
+    };
+    parts.iter().map(|part| format!("{prefix}{part}")).collect()
+}
+
+/// A `sequence` entry's modifiers as one bracket after its label: its `WITH`
+/// choices, then its `WITHOUT` / `ONLY` parts (from [`part_filter_items`]),
+/// e.g. ` (w 2, -S, -A2)`. `None` when the entry has none. Shared by the
+/// SVG/PDF "Sequence: ..." line and the web app's sequence buttons.
+pub fn sequence_entry_suffix(
+    lines: &[ChosenLine],
+    part_filter_items: Vec<String>,
+) -> Option<String> {
+    let items = lines
+        .iter()
+        .map(|line| format!("{} {}", line.part, line.line))
+        .chain(part_filter_items)
+        .collect::<Vec<_>>();
+    (!items.is_empty()).then(|| format!(" ({})", items.join(", ")))
+}
+
+impl SequenceSpan {
+    /// The entry as one line of text, e.g. `Verse (w 2, -S)`: its label
+    /// followed by the same suffix the "Sequence: ..." line shows.
+    pub fn display_label(&self) -> String {
+        let filter = self
+            .part_filter_display
+            .as_ref()
+            .map(|display| part_filter_items(display.kind, &display.parts))
+            .unwrap_or_default();
+        let suffix = sequence_entry_suffix(&self.line_choices_display, filter).unwrap_or_default();
+        format!("{}{suffix}", self.label)
+    }
+}

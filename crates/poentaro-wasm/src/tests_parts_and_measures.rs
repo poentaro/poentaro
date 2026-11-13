@@ -166,9 +166,9 @@ score """
 
 #[test]
 fn list_measure_spans_sequence_entry_label_includes_part_omission_suffix() {
-    // `Y(-b)` omits part "b" from that one occurrence's playback; the entry's
+    // `Y WITHOUT [b]` omits part "b" from that one occurrence's playback; the entry's
     // label must carry that suffix so the sequence jump toolbar can show
-    // "Y(-b)" distinctly from the plain "Y" entries that follow it.
+    // "Y (-b)" distinctly from the plain "Y" entries that follow it.
     let input = r#"metadata { title "t", author "a" },
 
 parts ["a": notes, "b": notes],
@@ -190,7 +190,7 @@ score """
             sequence_entries, ..
         } => {
             let labels: Vec<&str> = sequence_entries.iter().map(|e| e.label.as_str()).collect();
-            assert_eq!(labels, vec!["X", "Y(-b)", "Y", "X"]);
+            assert_eq!(labels, vec!["X", "Y (-b)", "Y", "X"]);
         }
         ListMeasureSpansResponse::Err => panic!("expected ok"),
     }
@@ -198,9 +198,9 @@ score """
 
 #[test]
 fn list_measure_spans_sequence_entry_label_includes_part_only_suffix() {
-    // `Y(a)` plays only part "a" on that one occurrence; the entry's label
+    // `Y ONLY [a]` plays only part "a" on that one occurrence; the entry's label
     // must carry that suffix, written without a leading dash so it reads
-    // distinctly from an omit suffix like `Y(-b)`.
+    // distinctly from an omit suffix like `Y (-b)`.
     let input = r#"metadata { title "t", author "a" },
 
 parts ["a": notes, "b": notes],
@@ -222,7 +222,7 @@ score """
             sequence_entries, ..
         } => {
             let labels: Vec<&str> = sequence_entries.iter().map(|e| e.label.as_str()).collect();
-            assert_eq!(labels, vec!["X", "Y(a)", "Y", "X"]);
+            assert_eq!(labels, vec!["X", "Y (a)", "Y", "X"]);
         }
         ListMeasureSpansResponse::Err => panic!("expected ok"),
     }
@@ -243,6 +243,34 @@ score """
         ListMeasureSpansResponse::Ok {
             sequence_entries, ..
         } => assert!(sequence_entries.is_empty()),
+        ListMeasureSpansResponse::Err => panic!("expected ok"),
+    }
+}
+
+#[test]
+fn list_measure_spans_sequence_entry_label_includes_with_line_choice() {
+    // `Verse WITH [w] 2` sings the second lyric line; its button must say
+    // so, the same way the "Sequence: ..." summary line does.
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody" [M]: notes, "Words" [w]: lyrics [M]],
+
+sequence [Verse, Verse WITH [w] 2, Verse WITH [w] 2 WITHOUT [M]],
+
+score """
+    time=4/4 key=C4 bpm=120 label="Verse"
+    [M] 1 2 3 4
+    [w] 一 二 三 四
+    [w] 五 六 七 八
+    """,
+"#;
+    match list_measure_spans_response(input) {
+        ListMeasureSpansResponse::Ok {
+            sequence_entries, ..
+        } => {
+            let labels: Vec<&str> = sequence_entries.iter().map(|e| e.label.as_str()).collect();
+            assert_eq!(labels, vec!["Verse", "Verse (w 2)", "Verse (w 2, -M)"]);
+        }
         ListMeasureSpansResponse::Err => panic!("expected ok"),
     }
 }

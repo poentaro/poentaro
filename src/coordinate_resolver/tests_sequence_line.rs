@@ -99,7 +99,7 @@ fn sequence_line_renders_label_and_omit_parts_spans() {
     let texts: Vec<&str> = spans.iter().map(|s| s.content.as_str()).collect();
     assert_eq!(
         texts,
-        vec!["Sequence: ", "Verse", " \u{203a} ", "Chorus", " (-S -A2)"]
+        vec!["Sequence: ", "Verse", " \u{203a} ", "Chorus", " (-S, -A2)"]
     );
     // Verse's suffix span is absent (no part filter); Chorus's isn't
     // bold/italic like the label span, since it's plain annotation text.
