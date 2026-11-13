@@ -739,10 +739,11 @@ text, and the methods are declared in a schema.
 
 - Schema and generated code: `crates/poentaro-protocol`.
   `poentaro.protocol.anyx` declares `list files`, `read _`,
-  `write _ at revision _ content _` and `create _ content _`, their records
-  (`file summary`, `file`, `diagnostic`) and errors (`trashed`, `missing`,
+  `write _ at revision _ content _`, `create _ content _`, `export svg _`
+  and `export midi _`, their records (`file summary`, `file`, `diagnostic`,
+  `saved`) and errors (`trashed`, `missing`,
   `conflict at revision _ content _`, `rejected _`,
-  `already exists at revision _`, `invalid path _`). `src/generated.rs` is
+  `already exists at revision _`, `invalid path _`, `unreadable _`). `src/generated.rs` is
   what anyx's `anyx-protocol-generate` writes from it: the record structs, a
   `{Method}Error` enum per method, the `Server` trait, `handle(server,
   request, on_internal_error) -> String`, a `Client`, and `SCHEMA`/`schema()`.
@@ -769,6 +770,12 @@ text, and the methods are declared in a schema.
   `create` wants a valid path ending in `.poentaro`
   (`agent::new_file_path_problem`) that is not also a folder, and gives the
   file a version 4 UUID (`agent::file_id`), the id form the web app uses.
+  `export svg` and `export midi` (`agent::export_svg`/`export_midi`) answer
+  a live file's SVG pages and Standard MIDI File (a `BYTES` value, base64
+  on the wire), or `unreadable` with the same errors that would stop a
+  save, since the renderer recovers from most errors and would draw a
+  blank page. The worker has no fonts, so text widths are estimated; it
+  builds `poentaro` with only the `midi` feature.
 - API keys (`src/api_keys.rs`, D1-free and tested in `tests/api_keys.rs`;
   queries in `db::api_keys`; table `api_keys`, migration
   `0012_api_keys.sql`): a key is `poe_` and 32 random bytes, base64url,

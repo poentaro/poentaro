@@ -61,6 +61,10 @@ ERROR already exists at revision (revision: INTEGER),
 # The path isn't valid, such as an empty folder name or a `..`.
 ERROR invalid path (message: TEXT),
 
+# The score has errors, so it can't be exported. Fix them, then write the
+# score again.
+ERROR unreadable (diagnostics: LIST diagnostic),
+
 ERRORS file errors [trashed, missing],
 
 # Every file this account owns.
@@ -77,6 +81,18 @@ METHOD write (path: TEXT) at revision (revision: INTEGER) content (content: TEXT
 METHOD create (path: TEXT) content (content: TEXT)
     RETURNS (saved: saved)
     ERRORS [already exists at revision, invalid path, rejected],
+
+# The score as numbered notation: one SVG document per page. Text widths
+# are estimated, so a system may break slightly differently than in the app.
+METHOD export svg (path: TEXT)
+    RETURNS (pages: LIST: TEXT)
+    ERRORS [unreadable, file errors],
+
+# The score as a Standard MIDI File, to hear or inspect what it plays.
+# Decode the base64 to get the `.mid` file.
+METHOD export midi (path: TEXT)
+    RETURNS (midi: BYTES)
+    ERRORS [unreadable, file errors],
 "#;
 
 /// The schema, read once.
@@ -374,6 +390,104 @@ impl FromValue for CreateContentError {
     }
 }
 
+/// The errors of `export svg _`.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExportSvgError {
+    /// The score has errors, so it can't be exported. Fix them, then write the
+    /// score again.
+    Unreadable { diagnostics: Vec<Diagnostic> },
+    /// The owner moved this file to the trash. Ask them to restore it.
+    Trashed,
+    /// No file has this path. It may have been renamed: run `list files` to see
+    /// the exact paths.
+    Missing,
+}
+
+impl IntoValue for ExportSvgError {
+    fn into_value(self) -> Value {
+        match self {
+            ExportSvgError::Unreadable { diagnostics } => Value::Variant {
+                shape: "unreadable _".to_string(),
+                arguments: vec![diagnostics.into_value()],
+            },
+            ExportSvgError::Trashed => Value::Variant {
+                shape: "trashed".to_string(),
+                arguments: vec![],
+            },
+            ExportSvgError::Missing => Value::Variant {
+                shape: "missing".to_string(),
+                arguments: vec![],
+            },
+        }
+    }
+}
+
+impl FromValue for ExportSvgError {
+    fn from_value(value: Value) -> Option<Self> {
+        let Value::Variant { shape, arguments } = value else {
+            return None;
+        };
+        let mut arguments = arguments.into_iter();
+        Some(match shape.as_str() {
+            "unreadable _" => ExportSvgError::Unreadable {
+                diagnostics: FromValue::from_value(arguments.next()?)?,
+            },
+            "trashed" => ExportSvgError::Trashed,
+            "missing" => ExportSvgError::Missing,
+            _ => return None,
+        })
+    }
+}
+
+/// The errors of `export midi _`.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExportMidiError {
+    /// The score has errors, so it can't be exported. Fix them, then write the
+    /// score again.
+    Unreadable { diagnostics: Vec<Diagnostic> },
+    /// The owner moved this file to the trash. Ask them to restore it.
+    Trashed,
+    /// No file has this path. It may have been renamed: run `list files` to see
+    /// the exact paths.
+    Missing,
+}
+
+impl IntoValue for ExportMidiError {
+    fn into_value(self) -> Value {
+        match self {
+            ExportMidiError::Unreadable { diagnostics } => Value::Variant {
+                shape: "unreadable _".to_string(),
+                arguments: vec![diagnostics.into_value()],
+            },
+            ExportMidiError::Trashed => Value::Variant {
+                shape: "trashed".to_string(),
+                arguments: vec![],
+            },
+            ExportMidiError::Missing => Value::Variant {
+                shape: "missing".to_string(),
+                arguments: vec![],
+            },
+        }
+    }
+}
+
+impl FromValue for ExportMidiError {
+    fn from_value(value: Value) -> Option<Self> {
+        let Value::Variant { shape, arguments } = value else {
+            return None;
+        };
+        let mut arguments = arguments.into_iter();
+        Some(match shape.as_str() {
+            "unreadable _" => ExportMidiError::Unreadable {
+                diagnostics: FromValue::from_value(arguments.next()?)?,
+            },
+            "trashed" => ExportMidiError::Trashed,
+            "missing" => ExportMidiError::Missing,
+            _ => return None,
+        })
+    }
+}
+
 /// The methods of the schema, for a server to implement. An `Err` is the
 /// server's own failure: the caller gets `INTERNAL ERROR`, and the calls
 /// after it don't run.
@@ -407,6 +521,24 @@ pub trait Server {
         path: String,
         content: String,
     ) -> Result<Result<Saved, CreateContentError>, Self::Error>;
+
+    /// The score as numbered notation: one SVG document per page. Text widths
+    /// are estimated, so a system may break slightly differently than in the app.
+    ///
+    /// `export svg _`, returning `pages`.
+    async fn export_svg(
+        &self,
+        path: String,
+    ) -> Result<Result<Vec<String>, ExportSvgError>, Self::Error>;
+
+    /// The score as a Standard MIDI File, to hear or inspect what it plays.
+    /// Decode the base64 to get the `.mid` file.
+    ///
+    /// `export midi _`, returning `midi`.
+    async fn export_midi(
+        &self,
+        path: String,
+    ) -> Result<Result<Vec<u8>, ExportMidiError>, Self::Error>;
 }
 
 /// Runs `request` against `implementation` and writes the response. Every
@@ -449,6 +581,16 @@ pub async fn handle<S: Server>(
                         server::argument(&mut arguments),
                         server::argument(&mut arguments),
                     )
+                    .await,
+            ),
+            4 => server::result(
+                implementation
+                    .export_svg(server::argument(&mut arguments))
+                    .await,
+            ),
+            5 => server::result(
+                implementation
+                    .export_midi(server::argument(&mut arguments))
                     .await,
             ),
             _ => unreachable!("the codec read a method of the schema"),
@@ -524,5 +666,27 @@ impl<T: Transport> Client<T> {
             vec![path.into_value(), content.into_value()],
         )
         .await
+    }
+
+    /// The score as numbered notation: one SVG document per page. Text widths
+    /// are estimated, so a system may break slightly differently than in the app.
+    ///
+    /// `export svg _`, returning `pages`.
+    pub async fn export_svg(
+        &self,
+        path: String,
+    ) -> Result<Vec<String>, CallError<ExportSvgError, T::Error>> {
+        anyx_protocol::client::call(&self.transport, schema(), 4, vec![path.into_value()]).await
+    }
+
+    /// The score as a Standard MIDI File, to hear or inspect what it plays.
+    /// Decode the base64 to get the `.mid` file.
+    ///
+    /// `export midi _`, returning `midi`.
+    pub async fn export_midi(
+        &self,
+        path: String,
+    ) -> Result<Vec<u8>, CallError<ExportMidiError, T::Error>> {
+        anyx_protocol::client::call(&self.transport, schema(), 5, vec![path.into_value()]).await
     }
 }

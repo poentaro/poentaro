@@ -45,7 +45,7 @@ utoipa = "6"
 # (no empty segments, no `.`/`..`, at most 1024 UTF-8 bytes for the whole
 # path). Default features off keeps the CLI/PDF/MIDI dependencies out of
 # the Worker build (same as `crates/poentaro-wasm`).
-poentaro = { path = "../..", default-features = false }
+poentaro = { path = "../..", default-features = false, features = ["midi"] }
 # Pure Rust, creates and applies the unified diffs a file's version history
 # stores (`src/file_history.rs`). Bumping it must keep
 # `tests/fixtures/file_history/` passing: stored patches outlive a release.

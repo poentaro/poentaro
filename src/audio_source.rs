@@ -367,8 +367,10 @@ pub fn write_midi_from_source_filtered(
     enabled_tracks: Option<&[String]>,
     instruments: &[InstrumentInfo],
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    let mut score = compile(source, filename, instruments)?;
-    apply_track_filter(&mut score, enabled_tracks);
-    let score = crate::midi::expand_navigation(&score)?;
-    crate::midi::write_midi(&score)
+    crate::midi::write_midi(&playback_score(
+        source,
+        filename,
+        enabled_tracks,
+        instruments,
+    )?)
 }

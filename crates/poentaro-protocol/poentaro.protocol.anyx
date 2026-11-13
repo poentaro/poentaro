@@ -52,6 +52,10 @@ ERROR already exists at revision (revision: INTEGER),
 # The path isn't valid, such as an empty folder name or a `..`.
 ERROR invalid path (message: TEXT),
 
+# The score has errors, so it can't be exported. Fix them, then write the
+# score again.
+ERROR unreadable (diagnostics: LIST diagnostic),
+
 ERRORS file errors [trashed, missing],
 
 # Every file this account owns.
@@ -68,3 +72,15 @@ METHOD write (path: TEXT) at revision (revision: INTEGER) content (content: TEXT
 METHOD create (path: TEXT) content (content: TEXT)
     RETURNS (saved: saved)
     ERRORS [already exists at revision, invalid path, rejected],
+
+# The score as numbered notation: one SVG document per page. Text widths
+# are estimated, so a system may break slightly differently than in the app.
+METHOD export svg (path: TEXT)
+    RETURNS (pages: LIST: TEXT)
+    ERRORS [unreadable, file errors],
+
+# The score as a Standard MIDI File, to hear or inspect what it plays.
+# Decode the base64 to get the `.mid` file.
+METHOD export midi (path: TEXT)
+    RETURNS (midi: BYTES)
+    ERRORS [unreadable, file errors],

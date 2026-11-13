@@ -27,6 +27,16 @@ Feature: An AI agent edits the owner's scores with an API key
     And the agent's last result contains "at least 2 notes"
     And the cloud file "agent-warned.poentaro" contains "1 2 (3) 4"
 
+  Scenario: The agent exports a score as SVG and MIDI to inspect it
+    Given a cloud file named "agent-export.poentaro" is seeded for the signed-in account
+    And the signed-in account has an API key
+    And the agent writes "agent-export.poentaro" at the revision it first saw with the last line "1 2 3 4"
+    When the agent sends "export svg \"agent-export.poentaro\""
+    Then the agent's last result is not an error
+    And the agent's last result contains "<svg"
+    When the agent sends "export midi \"agent-export.poentaro\""
+    Then the agent's last result starts with "\"TVRoZA"
+
   Scenario: A write at an old revision is a conflict and changes nothing
     Given a cloud file named "agent-conflict.poentaro" is seeded for the signed-in account
     And the signed-in account has an API key

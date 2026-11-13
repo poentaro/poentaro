@@ -1,6 +1,7 @@
 //! What `POST /agent` decides without D1: which errors stop a score from
-//! being saved and which warnings come back with it, whether a path can
-//! name a new file, and the id a new file gets. The methods themselves are `handlers::agent`, an implementation of
+//! being saved and which warnings come back with it, a score's SVG and MIDI
+//! exports, whether a path can name a new file, and the id a new file gets.
+//! The methods themselves are `handlers::agent`, an implementation of
 //! the `Server` that `poentaro-protocol` generates from
 //! `poentaro.protocol.anyx`.
 //!
@@ -8,7 +9,7 @@
 
 use itertools::{Either, Itertools};
 use poentaro::document::anyx_errors;
-use poentaro::error::Diagnostic as ScoreDiagnostic;
+use poentaro::error::{Diagnostic as ScoreDiagnostic, IrrecoverableError};
 use poentaro::file_tree::{TreePath, FILE_EXTENSION};
 use poentaro_protocol::Diagnostic;
 
@@ -60,6 +61,44 @@ pub fn score_diagnostics(content: &str) -> ScoreDiagnostics {
         errors: located(content, shape_errors.chain(compile_errors).collect()),
         warnings: located(content, warnings),
     }
+}
+
+/// `content` as SVG pages, unless it has errors: the renderer recovers from
+/// most of them, so a broken score would otherwise export as a blank page.
+/// The worker has no fonts, so text widths are estimated
+/// (`poentaro::set_layout_font_bytes` is never called).
+pub fn export_svg(content: &str) -> Result<Vec<String>, Vec<Diagnostic>> {
+    exported(content, |content| {
+        poentaro::render_svgs_from_source(content, SCORE_FILE_NAME, &[]).map(|output| output.svgs)
+    })
+}
+
+/// `content` as a Standard MIDI File, unless it has errors.
+pub fn export_midi(content: &str) -> Result<Vec<u8>, Vec<Diagnostic>> {
+    exported(content, |content| {
+        poentaro::write_midi_from_source_filtered(content, SCORE_FILE_NAME, None, &[])
+    })
+}
+
+/// What `export` makes of `content`, or the errors that stop it, the same
+/// errors that would stop a save.
+fn exported<T>(
+    content: &str,
+    export: impl FnOnce(&str) -> Result<T, IrrecoverableError>,
+) -> Result<T, Vec<Diagnostic>> {
+    let errors = score_diagnostics(content).errors;
+    if !errors.is_empty() {
+        return Err(errors);
+    }
+    export(content).map_err(|error| {
+        located(
+            content,
+            vec![ByteError {
+                start: error.span().map_or(0, |span| span.start),
+                message: error.message(),
+            }],
+        )
+    })
 }
 
 /// `found` sorted, without repeats, with each start as a line and column.

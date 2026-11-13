@@ -9,7 +9,7 @@ description = "The methods an AI agent calls on Poentaro, as an anyx-protocol sc
 # workspace lints are for code people write.
 
 [dependencies]
-anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "c29274a745a8c95df1aa5ba8115441585310b7f3" }
+anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "85189ba8b2a825c8909dfe93c9677bf6bd430d90" }
 
 [dev-dependencies]
-anyx-protocol-generate = { git = "https://github.com/wongjiahau/anyx", rev = "c29274a745a8c95df1aa5ba8115441585310b7f3" }
+anyx-protocol-generate = { git = "https://github.com/wongjiahau/anyx", rev = "85189ba8b2a825c8909dfe93c9677bf6bd430d90" }

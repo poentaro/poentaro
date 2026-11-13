@@ -6,12 +6,12 @@
 use std::cell::RefCell;
 
 use poentaro_protocol::{
-    CreateContentError, File, FileSummary, IntoValue, ReadError, Saved, Server, Value,
-    WriteAtRevisionContentError,
+    CreateContentError, ExportMidiError, ExportSvgError, File, FileSummary, IntoValue, ReadError,
+    Saved, Server, Value, WriteAtRevisionContentError,
 };
 use worker::D1Database;
 
-use crate::agent::{file_id, new_file_path_problem, score_diagnostics};
+use crate::agent::{export_midi, export_svg, file_id, new_file_path_problem, score_diagnostics};
 use crate::db;
 use crate::files::{self, ContentWriteAttempt, StoredFile};
 use crate::handlers::files::{proposed_name, record_version};
@@ -53,6 +53,11 @@ impl AgentFiles<'_> {
                 content: file.content,
             }),
         })
+    }
+
+    /// The content of the live file at `path`, for an export.
+    async fn content_to_export(&self, path: &str) -> worker::Result<Result<String, ReadError>> {
+        Ok(self.read_file(path).await?.map(|file| file.content))
     }
 
     async fn write_file(
@@ -231,6 +236,34 @@ impl Server for AgentFiles<'_> {
     ) -> Outcome<Saved, CreateContentError> {
         let outcome = self.create_file(path, content).await;
         self.note("create _ content _", &outcome);
+        outcome
+    }
+
+    async fn export_svg(&self, path: String) -> Outcome<Vec<String>, ExportSvgError> {
+        let outcome = self
+            .content_to_export(&path)
+            .await
+            .map(|content| match content {
+                Err(ReadError::Missing) => Err(ExportSvgError::Missing),
+                Err(ReadError::Trashed) => Err(ExportSvgError::Trashed),
+                Ok(content) => export_svg(&content)
+                    .map_err(|diagnostics| ExportSvgError::Unreadable { diagnostics }),
+            });
+        self.note("export svg _", &outcome);
+        outcome
+    }
+
+    async fn export_midi(&self, path: String) -> Outcome<Vec<u8>, ExportMidiError> {
+        let outcome = self
+            .content_to_export(&path)
+            .await
+            .map(|content| match content {
+                Err(ReadError::Missing) => Err(ExportMidiError::Missing),
+                Err(ReadError::Trashed) => Err(ExportMidiError::Trashed),
+                Ok(content) => export_midi(&content)
+                    .map_err(|diagnostics| ExportMidiError::Unreadable { diagnostics }),
+            });
+        self.note("export midi _", &outcome);
         outcome
     }
 }
