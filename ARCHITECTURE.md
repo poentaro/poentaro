@@ -762,8 +762,10 @@ text, and the methods are declared in a schema.
   binned file and `missing` for none. `write` is the same compare-and-swap
   as `POST /files/{id}/content` and records version history the same way
   (`handlers::files::record_version`). `write` and `create` refuse a score
-  with errors as `rejected` (`agent::score_errors`: `anyx_errors` plus the
-  compiler's error diagnostics, with line and column in characters).
+  with errors as `rejected` (`agent::score_diagnostics`: `anyx_errors` plus
+  the compiler's error diagnostics, with line and column in characters). A
+  save answers `saved`: the new revision and the compiler's warnings, which
+  never stop it.
   `create` wants a valid path ending in `.poentaro`
   (`agent::new_file_path_problem`) that is not also a folder, and gives the
   file a version 4 UUID (`agent::file_id`), the id form the web app uses.

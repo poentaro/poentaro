@@ -19,6 +19,14 @@ Feature: An AI agent edits the owner's scores with an API key
     Then the agent's last result is not an error
     And the editor now shows the remote content "5 6 7 1"
 
+  Scenario: A save comes back with the score's warnings
+    Given a cloud file named "agent-warned.poentaro" is seeded for the signed-in account
+    And the signed-in account has an API key
+    When the agent writes "agent-warned.poentaro" at the revision it first saw with the last line "1 2 (3) 4"
+    Then the agent's last result is not an error
+    And the agent's last result contains "at least 2 notes"
+    And the cloud file "agent-warned.poentaro" contains "1 2 (3) 4"
+
   Scenario: A write at an old revision is a conflict and changes nothing
     Given a cloud file named "agent-conflict.poentaro" is seeded for the signed-in account
     And the signed-in account has an API key

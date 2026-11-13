@@ -37,6 +37,10 @@ RECORD diagnostic {
     message: TEXT,
 },
 
+# A score that was saved, and what may still be wrong with it. Warnings
+# never stop a save, but each is worth a look.
+RECORD saved { revision: INTEGER, warnings: LIST diagnostic },
+
 # The owner moved this file to the trash. Ask them to restore it.
 ERROR trashed,
 
@@ -66,12 +70,12 @@ METHOD read (path: TEXT) RETURNS (file: file) ERRORS file errors,
 
 # Saves the score, if the file is still at `revision`.
 METHOD write (path: TEXT) at revision (revision: INTEGER) content (content: TEXT)
-    RETURNS (new revision: INTEGER)
+    RETURNS (saved: saved)
     ERRORS [conflict at revision content, rejected, file errors],
 
 # Makes a new file, and its folders if they don't exist.
 METHOD create (path: TEXT) content (content: TEXT)
-    RETURNS (revision: INTEGER)
+    RETURNS (saved: saved)
     ERRORS [already exists at revision, invalid path, rejected],
 "#;
 
@@ -181,6 +185,38 @@ impl FromValue for Diagnostic {
             line: fields.field("line")?,
             column: fields.field("column")?,
             message: fields.field("message")?,
+        })
+    }
+}
+
+/// A score that was saved, and what may still be wrong with it. Warnings
+/// never stop a save, but each is worth a look.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Saved {
+    pub revision: i64,
+    pub warnings: Vec<Diagnostic>,
+}
+
+impl IntoValue for Saved {
+    fn into_value(self) -> Value {
+        Value::Record(
+            FieldsBuilder::new()
+                .field("revision", self.revision)
+                .field("warnings", self.warnings)
+                .build(),
+        )
+    }
+}
+
+impl FromValue for Saved {
+    fn from_value(value: Value) -> Option<Self> {
+        let Value::Record(fields) = value else {
+            return None;
+        };
+        let mut fields = FieldsReader::new(fields);
+        Some(Self {
+            revision: fields.field("revision")?,
+            warnings: fields.field("warnings")?,
         })
     }
 }
@@ -355,22 +391,22 @@ pub trait Server {
 
     /// Saves the score, if the file is still at `revision`.
     ///
-    /// `write _ at revision _ content _`, returning `new revision`.
+    /// `write _ at revision _ content _`, returning `saved`.
     async fn write_at_revision_content(
         &self,
         path: String,
         revision: i64,
         content: String,
-    ) -> Result<Result<i64, WriteAtRevisionContentError>, Self::Error>;
+    ) -> Result<Result<Saved, WriteAtRevisionContentError>, Self::Error>;
 
     /// Makes a new file, and its folders if they don't exist.
     ///
-    /// `create _ content _`, returning `revision`.
+    /// `create _ content _`, returning `saved`.
     async fn create_content(
         &self,
         path: String,
         content: String,
-    ) -> Result<Result<i64, CreateContentError>, Self::Error>;
+    ) -> Result<Result<Saved, CreateContentError>, Self::Error>;
 }
 
 /// Runs `request` against `implementation` and writes the response. Every
@@ -453,13 +489,13 @@ impl<T: Transport> Client<T> {
 
     /// Saves the score, if the file is still at `revision`.
     ///
-    /// `write _ at revision _ content _`, returning `new revision`.
+    /// `write _ at revision _ content _`, returning `saved`.
     pub async fn write_at_revision_content(
         &self,
         path: String,
         revision: i64,
         content: String,
-    ) -> Result<i64, CallError<WriteAtRevisionContentError, T::Error>> {
+    ) -> Result<Saved, CallError<WriteAtRevisionContentError, T::Error>> {
         anyx_protocol::client::call(
             &self.transport,
             schema(),
@@ -475,12 +511,12 @@ impl<T: Transport> Client<T> {
 
     /// Makes a new file, and its folders if they don't exist.
     ///
-    /// `create _ content _`, returning `revision`.
+    /// `create _ content _`, returning `saved`.
     pub async fn create_content(
         &self,
         path: String,
         content: String,
-    ) -> Result<i64, CallError<CreateContentError, T::Error>> {
+    ) -> Result<Saved, CallError<CreateContentError, T::Error>> {
         anyx_protocol::client::call(
             &self.transport,
             schema(),

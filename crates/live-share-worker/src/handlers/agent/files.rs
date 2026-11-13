@@ -6,12 +6,12 @@
 use std::cell::RefCell;
 
 use poentaro_protocol::{
-    CreateContentError, File, FileSummary, IntoValue, ReadError, Server, Value,
+    CreateContentError, File, FileSummary, IntoValue, ReadError, Saved, Server, Value,
     WriteAtRevisionContentError,
 };
 use worker::D1Database;
 
-use crate::agent::{file_id, new_file_path_problem, score_errors};
+use crate::agent::{file_id, new_file_path_problem, score_diagnostics};
 use crate::db;
 use crate::files::{self, ContentWriteAttempt, StoredFile};
 use crate::handlers::files::{proposed_name, record_version};
@@ -60,7 +60,7 @@ impl AgentFiles<'_> {
         path: &str,
         revision: i64,
         content: String,
-    ) -> Outcome<i64, WriteAtRevisionContentError> {
+    ) -> Outcome<Saved, WriteAtRevisionContentError> {
         let previous = match self.file_at(path).await? {
             None => return Ok(Err(WriteAtRevisionContentError::Missing)),
             Some(file) if file.trashed_at.is_some() => {
@@ -71,9 +71,11 @@ impl AgentFiles<'_> {
         if previous.revision != revision {
             return Ok(Err(conflict(previous)));
         }
-        let diagnostics = score_errors(&content);
-        if !diagnostics.is_empty() {
-            return Ok(Err(WriteAtRevisionContentError::Rejected { diagnostics }));
+        let diagnostics = score_diagnostics(&content);
+        if !diagnostics.errors.is_empty() {
+            return Ok(Err(WriteAtRevisionContentError::Rejected {
+                diagnostics: diagnostics.errors,
+            }));
         }
         let attempt = db::update_file_content(
             self.d1,
@@ -91,7 +93,10 @@ impl AgentFiles<'_> {
                 {
                     worker::console_error!("file_versions: failed to record: {error}");
                 }
-                Ok(Ok(new_revision))
+                Ok(Ok(Saved {
+                    revision: new_revision,
+                    warnings: diagnostics.warnings,
+                }))
             }
             // Someone saved, trashed or deleted it since it was read above.
             ContentWriteAttempt::RowsAffectedZero => Ok(Err(
@@ -104,7 +109,11 @@ impl AgentFiles<'_> {
         }
     }
 
-    async fn create_file(&self, path: String, content: String) -> Outcome<i64, CreateContentError> {
+    async fn create_file(
+        &self,
+        path: String,
+        content: String,
+    ) -> Outcome<Saved, CreateContentError> {
         if let Some(message) = new_file_path_problem(&path) {
             return Ok(Err(CreateContentError::InvalidPath { message }));
         }
@@ -117,9 +126,11 @@ impl AgentFiles<'_> {
             let message = format!("found `{clash}` as both a file and a folder; expected a path that is only one of them");
             return Ok(Err(CreateContentError::InvalidPath { message }));
         }
-        let diagnostics = score_errors(&content);
-        if !diagnostics.is_empty() {
-            return Ok(Err(CreateContentError::Rejected { diagnostics }));
+        let diagnostics = score_diagnostics(&content);
+        if !diagnostics.errors.is_empty() {
+            return Ok(Err(CreateContentError::Rejected {
+                diagnostics: diagnostics.errors,
+            }));
         }
         let now = now_millis();
         let created = StoredFile {
@@ -133,7 +144,10 @@ impl AgentFiles<'_> {
             updated_at: now,
         };
         match db::insert_file(self.d1, &created).await {
-            Ok(()) => Ok(Ok(created.revision)),
+            Ok(()) => Ok(Ok(Saved {
+                revision: created.revision,
+                warnings: diagnostics.warnings,
+            })),
             // Lost a race with another create of the same path.
             Err(error) if is_unique_constraint_violation(&error) => {
                 match self.file_at(&created.name).await? {
@@ -204,7 +218,7 @@ impl Server for AgentFiles<'_> {
         path: String,
         revision: i64,
         content: String,
-    ) -> Outcome<i64, WriteAtRevisionContentError> {
+    ) -> Outcome<Saved, WriteAtRevisionContentError> {
         let outcome = self.write_file(&path, revision, content).await;
         self.note("write _ at revision _ content _", &outcome);
         outcome
@@ -214,7 +228,7 @@ impl Server for AgentFiles<'_> {
         &self,
         path: String,
         content: String,
-    ) -> Outcome<i64, CreateContentError> {
+    ) -> Outcome<Saved, CreateContentError> {
         let outcome = self.create_file(path, content).await;
         self.note("create _ content _", &outcome);
         outcome

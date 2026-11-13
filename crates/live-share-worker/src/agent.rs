@@ -1,11 +1,12 @@
 //! What `POST /agent` decides without D1: which errors stop a score from
-//! being saved, whether a path can name a new file, and the id a new file
-//! gets. The methods themselves are `handlers::agent`, an implementation of
+//! being saved and which warnings come back with it, whether a path can
+//! name a new file, and the id a new file gets. The methods themselves are `handlers::agent`, an implementation of
 //! the `Server` that `poentaro-protocol` generates from
 //! `poentaro.protocol.anyx`.
 //!
 //! D1-free and `pub` so `tests/agent.rs` can test it.
 
+use itertools::{Either, Itertools};
 use poentaro::document::anyx_errors;
 use poentaro::error::Diagnostic as ScoreDiagnostic;
 use poentaro::file_tree::{TreePath, FILE_EXTENSION};
@@ -14,37 +15,58 @@ use poentaro_protocol::Diagnostic;
 /// The name a score is compiled under; it only appears in messages.
 const SCORE_FILE_NAME: &str = "score.poentaro";
 
-/// The errors that stop `content` from being saved, in the order they
-/// appear: what doesn't fit a document's shape, then what the score's
-/// compiler rejects. Warnings never stop a save. Nothing names instruments
-/// here, so a part's `sound` is never checked against a soundfont.
-pub fn score_errors(content: &str) -> Vec<Diagnostic> {
+/// What is wrong with a score, each list in the order it appears.
+#[derive(Debug, Default, PartialEq)]
+pub struct ScoreDiagnostics {
+    /// What stops it from being saved: what doesn't fit a document's shape,
+    /// then what the score's compiler rejects.
+    pub errors: Vec<Diagnostic>,
+    /// What the compiler warns about, which never stops a save.
+    pub warnings: Vec<Diagnostic>,
+}
+
+/// The errors and warnings in `content`. Nothing names instruments here,
+/// so a part's `sound` is never checked against a soundfont.
+pub fn score_diagnostics(content: &str) -> ScoreDiagnostics {
     let shape_errors = anyx_errors(content, &[])
         .into_iter()
         .map(|error| ByteError {
             start: error.span.start,
             message: error.message(),
         });
-    let compile_errors: Vec<ByteError> = match poentaro::compile(content, SCORE_FILE_NAME, &[]) {
-        Err(error) => vec![ByteError {
-            start: error.span().map_or(0, |span| span.start),
-            message: error.message(),
-        }],
-        Ok(score) => poentaro::collect_measure_diagnostics(&score)
-            .into_iter()
-            .filter_map(|diagnostic| match diagnostic {
-                ScoreDiagnostic::Error(error) => Some(ByteError {
-                    start: error.span.start,
+    let (compile_errors, warnings): (Vec<ByteError>, Vec<ByteError>) =
+        match poentaro::compile(content, SCORE_FILE_NAME, &[]) {
+            Err(error) => (
+                vec![ByteError {
+                    start: error.span().map_or(0, |span| span.start),
                     message: error.message(),
+                }],
+                vec![],
+            ),
+            Ok(score) => poentaro::collect_measure_diagnostics(&score)
+                .into_iter()
+                .partition_map(|diagnostic| {
+                    let found = ByteError {
+                        start: diagnostic.span().start,
+                        message: diagnostic.message(),
+                    };
+                    match diagnostic {
+                        ScoreDiagnostic::Error(_) => Either::Left(found),
+                        ScoreDiagnostic::Warning(_) => Either::Right(found),
+                    }
                 }),
-                ScoreDiagnostic::Warning(_) => None,
-            })
-            .collect(),
-    };
-    let mut errors: Vec<ByteError> = shape_errors.chain(compile_errors).collect();
-    errors.sort_by_key(|error| error.start);
-    errors.dedup();
-    errors
+        };
+    ScoreDiagnostics {
+        errors: located(content, shape_errors.chain(compile_errors).collect()),
+        warnings: located(content, warnings),
+    }
+}
+
+/// `found` sorted, without repeats, with each start as a line and column.
+fn located(content: &str, mut found: Vec<ByteError>) -> Vec<Diagnostic> {
+    found.sort_by_key(|error| error.start);
+    found.dedup();
+    found
         .into_iter()
         .map(|error| {
             let position = line_column(content, error.start);

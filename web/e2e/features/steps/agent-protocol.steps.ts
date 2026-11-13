@@ -152,6 +152,10 @@ Then(
   },
 )
 
+Then("the agent's last result contains {string}", async ({}, part: string) => {
+  expect(lastAnswer?.body).toContain(part)
+})
+
 Then('the agent is refused for its key', async () => {
   expect(lastAnswer?.status).toBe(401)
   expect(lastAnswer?.body).toContain('Bearer poe_')

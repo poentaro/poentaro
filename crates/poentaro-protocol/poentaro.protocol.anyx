@@ -28,6 +28,10 @@ RECORD diagnostic {
     message: TEXT,
 },
 
+# A score that was saved, and what may still be wrong with it. Warnings
+# never stop a save, but each is worth a look.
+RECORD saved { revision: INTEGER, warnings: LIST diagnostic },
+
 # The owner moved this file to the trash. Ask them to restore it.
 ERROR trashed,
 
@@ -57,10 +61,10 @@ METHOD read (path: TEXT) RETURNS (file: file) ERRORS file errors,
 
 # Saves the score, if the file is still at `revision`.
 METHOD write (path: TEXT) at revision (revision: INTEGER) content (content: TEXT)
-    RETURNS (new revision: INTEGER)
+    RETURNS (saved: saved)
     ERRORS [conflict at revision content, rejected, file errors],
 
 # Makes a new file, and its folders if they don't exist.
 METHOD create (path: TEXT) content (content: TEXT)
-    RETURNS (revision: INTEGER)
+    RETURNS (saved: saved)
     ERRORS [already exists at revision, invalid path, rejected],

@@ -1553,6 +1553,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "diffy",
+ "itertools 0.13.0",
  "poentaro",
  "poentaro-protocol",
  "proptest",

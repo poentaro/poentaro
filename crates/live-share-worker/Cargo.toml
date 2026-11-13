@@ -53,6 +53,7 @@ diffy = "0.4"
 # The methods an AI agent calls at `POST /agent`: the server trait and codec
 # generated from `poentaro.protocol.anyx` (see `src/handlers/agent.rs`).
 poentaro-protocol = { path = "../poentaro-protocol" }
+itertools = "0.13"
 
 # `sqlx` is deliberately NOT a normal `[dependencies]` entry here, even
 # though task breakdown item 2 calls for "worker + sqlx deps". Reasoning:
