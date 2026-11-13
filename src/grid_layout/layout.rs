@@ -56,8 +56,8 @@ pub(crate) use system_bands::{system_bands, SystemBands};
 #[path = "layout_systems.rs"]
 mod systems;
 pub(crate) use systems::{
-    compute_bar_height, pack_into_systems, system_has_any_decoration, system_lyric_height_pt,
-    system_musical_height_pt, LABEL_COLS, MUSIC_START_COL,
+    compute_bar_height, lyric_ruby_band_pt, pack_into_systems, system_has_any_decoration,
+    system_lyric_height_pt, system_musical_height_pt, LABEL_COLS, MUSIC_START_COL,
 };
 
 #[path = "layout_decoration.rs"]
@@ -85,7 +85,7 @@ fn system_total_height(
     };
     let musical =
         system_musical_height_pt(first, base, bands, lyric_sizing.notes_vertical_padding_pt);
-    let lyric = system_lyric_height_pt(first, base, lyric_sizing);
+    let lyric = system_lyric_height_pt(system, base, lyric_sizing);
     let deco = if system_has_any_decoration(system) {
         crate::font_metrics::directive_line_row_height()
     } else {

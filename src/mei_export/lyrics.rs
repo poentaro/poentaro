@@ -117,12 +117,21 @@ pub(super) fn verses_xml(verses: &[MeasureSyllables], event_index: usize) -> Str
         .iter()
         .enumerate()
         .filter_map(|(verse_index, verse)| {
-            let text = verse.by_event_index.get(&event_index)?.text.trim();
+            let syllable = verse.by_event_index.get(&event_index)?;
+            let text = syllable.text.trim();
+            // Staff notation has no ruby: a character's given reading
+            // follows it, `行(háng)`.
+            let reading = syllable
+                .pinyin
+                .as_ref()
+                .map(|pinyin| format!("({})", pinyin.marked()))
+                .unwrap_or_default();
             (!text.is_empty() && text != "-" && text != "_").then(|| {
                 format!(
-                    "<verse n=\"{}\"><syl>{}</syl></verse>",
+                    "<verse n=\"{}\"><syl>{}{}</syl></verse>",
                     verse_index + 1,
-                    escape(text)
+                    escape(text),
+                    escape(&reading)
                 )
             })
         })

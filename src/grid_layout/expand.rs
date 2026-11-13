@@ -222,7 +222,7 @@ pub(crate) fn expand_system_to_rows(
     let total_musical_cols: u32 = system.iter().map(block_column_width).sum();
     let column_count = MUSIC_START_COL + total_musical_cols;
     let bands = SystemBands::of(system, system_tuplet_brackets.keys().copied().collect());
-    let bar_height = compute_bar_height(first, base, &bands, lyric_sizing);
+    let bar_height = compute_bar_height(system, base, &bands, lyric_sizing);
     let mut all_rows: Vec<GridRow> = Vec::new();
     for (part_idx, part_template) in first.rows.iter().enumerate() {
         if is_lyric_row(part_template) {

@@ -42,7 +42,7 @@ fn sung(enabled: &[&str], visible: Option<&[&str]>) -> Result<Vec<Sung>, Irrecov
                 .notes
                 .iter()
                 .filter_map(|note| match &note.syllable {
-                    SungSyllable::Word(word) => Some(word.clone()),
+                    SungSyllable::Word(word) | SungSyllable::Pinyin(word) => Some(word.clone()),
                     SungSyllable::Held | SungSyllable::Silent => None,
                 })
                 .collect();

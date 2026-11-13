@@ -83,6 +83,8 @@ pub enum AbsoluteContent {
     /// itself (which only needs `text`).
     Lyric {
         text: String,
+        /// Pinyin drawn above `text`, centred on it in a smaller font.
+        ruby: Option<String>,
         source_part_index: usize,
         note_id: usize,
     },

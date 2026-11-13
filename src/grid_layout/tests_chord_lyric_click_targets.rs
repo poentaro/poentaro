@@ -18,6 +18,7 @@ fn chord_row_and_chord_lyric_row() -> Vec<MeasureRow> {
             column,
             ElementContent::Lyric {
                 text: text.to_string(),
+                ruby: None,
                 note_id,
             },
             None,

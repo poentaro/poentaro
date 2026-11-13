@@ -77,3 +77,14 @@ score "",
         .collect::<Vec<_>>();
     assert_eq!(keys, ["row", "height", "page", "margin", "pt"]);
 }
+
+#[test]
+fn a_lyric_reading_is_highlighted_from_its_parenthesis() {
+    let source = "parts [\"M\" [M] : notes, \"L\" [L] : lyrics [M]],\n\nscore \"\"\"\n  [M] 1 2 3 4\n  [L] 去银行(háng) 我(xyz)\n  \"\"\",\n";
+    let readings = highlight_tokens(source)
+        .into_iter()
+        .filter(|token| token.kind == HighlightKind::LyricReading)
+        .map(|token| &source[token.span.start..token.span.end])
+        .collect::<Vec<_>>();
+    assert_eq!(readings, ["(háng)"]);
+}

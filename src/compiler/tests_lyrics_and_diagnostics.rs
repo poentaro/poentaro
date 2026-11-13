@@ -189,7 +189,9 @@ fn tie_into_a_measure_without_lyrics_does_not_swallow_a_later_syllable() {
         .elements
         .iter()
         .filter_map(|e| match &e.content {
-            ElementContent::Lyric { text, note_id } => Some((e.column, text.as_str(), *note_id)),
+            ElementContent::Lyric { text, note_id, .. } => {
+                Some((e.column, text.as_str(), *note_id))
+            }
             _ => None,
         })
         .collect();

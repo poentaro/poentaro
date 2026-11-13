@@ -161,7 +161,7 @@ fn lyrics_of(row: &MeasureRow) -> Vec<CompiledLyric> {
     row.elements
         .iter()
         .filter_map(|element| match &element.content {
-            ElementContent::Lyric { text, note_id } => Some(CompiledLyric {
+            ElementContent::Lyric { text, note_id, .. } => Some(CompiledLyric {
                 column: element.column,
                 text: text.clone(),
                 note_id: *note_id,

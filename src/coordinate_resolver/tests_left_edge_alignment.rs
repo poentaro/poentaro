@@ -144,6 +144,8 @@ fn note_head_and_latin_lyric_syllable_have_the_same_ink_left_edge_in_one_column(
     });
     let lyric_anchor = resolve_anchor_x(GridContent::LyricSyllable {
         text: "la".to_string(),
+        ruby: None,
+        ruby_band_pt: 0.0,
         source_part_index: 0,
         note_id: 0,
     });
@@ -177,6 +179,8 @@ fn note_head_and_cjk_lyric_syllable_have_the_same_ink_left_edge_in_one_column() 
     });
     let lyric_anchor = resolve_anchor_x(GridContent::LyricSyllable {
         text: "春".to_string(),
+        ruby: None,
+        ruby_band_pt: 0.0,
         source_part_index: 0,
         note_id: 0,
     });
@@ -233,11 +237,15 @@ fn note_head_and_chord_symbol_have_the_same_ink_left_edge_in_one_column() {
 fn latin_and_cjk_lyric_syllables_have_the_same_ink_left_edge_in_one_column() {
     let latin_anchor = resolve_anchor_x(GridContent::LyricSyllable {
         text: "la".to_string(),
+        ruby: None,
+        ruby_band_pt: 0.0,
         source_part_index: 0,
         note_id: 0,
     });
     let cjk_anchor = resolve_anchor_x(GridContent::LyricSyllable {
         text: "春".to_string(),
+        ruby: None,
+        ruby_band_pt: 0.0,
         source_part_index: 0,
         note_id: 0,
     });

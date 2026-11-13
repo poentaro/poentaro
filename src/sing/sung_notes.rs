@@ -159,10 +159,11 @@ impl<'a> MeasureLyrics<'a> {
             .times
             .iter()
             .position(|syllable| syllable.same_as(time));
-        let text = index
-            .and_then(|index| self.syllables.get(index))
-            .map(|syllable| syllable.text.as_str());
-        match text {
+        let syllable = index.and_then(|index| self.syllables.get(index));
+        if let Some(pinyin) = syllable.and_then(|syllable| syllable.pinyin.as_ref()) {
+            return SungSyllable::Pinyin(pinyin.numbered());
+        }
+        match syllable.map(|syllable| syllable.text.as_str()) {
             Some("-") => SungSyllable::Held,
             Some(text) if !text.is_empty() => SungSyllable::Word(text.to_string()),
             _ if slurred_on => SungSyllable::Held,

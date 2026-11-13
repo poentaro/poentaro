@@ -120,6 +120,7 @@ fn lyric_verse_row() -> MeasureRow {
                 column: 0,
                 content: ElementContent::Lyric {
                     text: "Hoo".to_string(),
+                    ruby: None,
                     note_id: 0,
                 },
                 note_id: None,
@@ -128,6 +129,7 @@ fn lyric_verse_row() -> MeasureRow {
                 column: 2,
                 content: ElementContent::Lyric {
                     text: "ray".to_string(),
+                    ruby: None,
                     note_id: 1,
                 },
                 note_id: None,

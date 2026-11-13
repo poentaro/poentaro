@@ -1171,6 +1171,7 @@ world poentaro-wasm {
         metadata-key,
         part-kind,
         directive-key,
+        lyric-reading,
     }
 
     // One keyword's UTF-8 byte span; never spans a line break.

@@ -116,6 +116,7 @@ fn lyric_row(id: &str) -> MeasureRow {
             column: 0,
             content: ElementContent::Lyric {
                 text: "la".to_string(),
+                ruby: None,
                 note_id: 0,
             },
             note_id: None,

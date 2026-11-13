@@ -223,6 +223,12 @@ pub enum GridContent {
     /// see `renderer::new_types::Tag::Lyric`.
     LyricSyllable {
         text: String,
+        /// Pinyin printed above `text` (see `ElementContent::Lyric::ruby`).
+        ruby: Option<String>,
+        /// How much taller the row grew for pinyin above its syllables (`0`
+        /// when none has any): the syllable sits that much lower than the
+        /// row's middle, with the pinyin in the band above it.
+        ruby_band_pt: f32,
         source_part_index: usize,
         note_id: usize,
     },

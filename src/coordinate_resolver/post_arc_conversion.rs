@@ -77,10 +77,14 @@ fn to_post_arc_text_content(content: &GridContent) -> Option<PostArcGridContent>
         GridContent::RowLabel(s) => Some(PostArcGridContent::RowLabel(s.clone())),
         GridContent::LyricSyllable {
             text,
+            ruby,
+            ruby_band_pt,
             source_part_index,
             note_id,
         } => Some(PostArcGridContent::LyricSyllable {
             text: text.clone(),
+            ruby: ruby.clone(),
+            ruby_band_pt: *ruby_band_pt,
             source_part_index: *source_part_index,
             note_id: *note_id,
         }),

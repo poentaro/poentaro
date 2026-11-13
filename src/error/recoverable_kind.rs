@@ -77,6 +77,8 @@ pub enum RecoverableErrorKind {
     LyricsNoNotesTrack { abbrev: String },
     /// A bracketed lyric item holds zero or several syllables instead of exactly one.
     LyricsBracketNotOneSyllable { found: usize },
+    /// `字(…)` whose parentheses don't hold one pinyin syllable.
+    LyricsPinyinInvalid { text: String },
     /// A lyric bracket `(` / `（` has no closing bracket.
     LyricsBracketUnclosed,
     /// A closing lyric bracket `)` / `）` has no opening bracket.
@@ -204,6 +206,7 @@ impl RecoverableErrorKind {
             Self::LyricsLineEmpty => "lyrics line cannot be empty; use '_' for no lyrics".to_string(),
             Self::LyricsNoNotesTrack { abbrev } => format!("lyrics line for '{abbrev}' has no matching notes track"),
             Self::LyricsBracketNotOneSyllable { found } => format!("a lyric bracket must hold exactly one syllable, found {found}"),
+            Self::LyricsPinyinInvalid { text } => format!("`{text}` is not a pinyin syllable"),
             Self::LyricsTargetsDiffer { paired, other } => format!("[{other}] doesn't take its syllables at the same times as [{paired}] in this measure; the parts a lyric part is sung on must share their rhythm"),
             Self::LyricsBracketUnclosed => "lyric bracket is never closed".to_string(),
             Self::LyricsBracketUnmatched => "closing lyric bracket has no opening bracket".to_string(),

@@ -130,7 +130,7 @@ fn push_lyric_click_targets_for_row(
         .map(|e| e.column)
         .min();
     for el in &pos.part_row.elements {
-        let ElementContent::Lyric { text, note_id } = &el.content else {
+        let ElementContent::Lyric { text, note_id, .. } = &el.content else {
             continue;
         };
         // Can't gate on `ColumnElement::note_id` the way the note/rest case

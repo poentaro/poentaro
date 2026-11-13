@@ -10,6 +10,7 @@ use crate::parser::anyx::decoded::{decode, span};
 use crate::parser::score::interleaved_parser::directive_keyword_spans;
 use crate::parser::section::SectionKind;
 use crate::parser::{read_document, ReadDocument};
+use crate::utils::{is_han_char, pinyin_override_at};
 use anyx::NamePart;
 use poentaro_grammar::{Document, Part, PartKind, PartOption, Record, Value};
 
@@ -121,6 +122,23 @@ fn directive_tokens(read: &ReadDocument) -> Vec<HighlightToken> {
         .collect()
 }
 
+/// Every valid `(pinyin)` attached to a Chinese character in the score. Only
+/// lyric lines hold Chinese characters, so the whole score is searched.
+fn lyric_reading_tokens(read: &ReadDocument) -> Vec<HighlightToken> {
+    let text = read.score.text.as_str();
+    text.char_indices()
+        .filter(|(_, c)| is_han_char(*c))
+        .filter_map(|(at, c)| {
+            let open = at + c.len_utf8();
+            let reading = pinyin_override_at(text, open, read.score.offset)?;
+            reading.pinyin.is_ok().then(|| HighlightToken {
+                kind: HighlightKind::LyricReading,
+                span: Span::new(read.score.offset + open, read.score.offset + reading.end),
+            })
+        })
+        .collect()
+}
+
 /// The keys the reader doesn't recognize, which stay uncolored.
 fn unknown_field_spans(read: &ReadDocument) -> Vec<Span> {
     read.metadata_parse_errors
@@ -172,6 +190,7 @@ pub(super) fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
                 .any(|unknown| unknown.start <= token.span.start && token.span.end <= unknown.end)
         })
         .chain(directive_tokens(&read))
+        .chain(lyric_reading_tokens(&read))
         .sorted_by_key(|token| token.span.start)
         .collect()
 }

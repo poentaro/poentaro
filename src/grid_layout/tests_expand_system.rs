@@ -128,6 +128,7 @@ fn make_block_with_lyric_part(bar_col: u32) -> MeasureBlock {
                     column: 0,
                     content: ElementContent::Lyric {
                         text: "la".to_string(),
+                        ruby: None,
                         note_id: 0,
                     },
                     note_id: None,
@@ -162,7 +163,7 @@ fn bar_line_height_includes_lyric_rows() {
         base,
         &SystemBands::default(),
         lyric_sizing.notes_vertical_padding_pt,
-    ) + system_lyric_height_pt(first, base, lyric_sizing);
+    ) + system_lyric_height_pt(&system, base, lyric_sizing);
 
     let rows = expand_system_to_rows(
         &system,

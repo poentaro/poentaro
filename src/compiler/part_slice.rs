@@ -8,6 +8,7 @@ use crate::ast::grouped::{GroupedRest, LyricsSlice, NoteEvent, PartSlice};
 use crate::chord_lyric_placement::place_chord_syllables;
 use crate::compiler::types::{ArcKind, ColumnElement, ElementContent, SlurSpan, TupletSpan};
 use crate::lyric_slots::measure_lyric_slots;
+use crate::pinyin::PinyinSyllable;
 
 // ── Top-level entry point ─────────────────────────────────────────────────────
 
@@ -114,6 +115,7 @@ fn compile_lyrics_slice(lyrics: &LyricsSlice, input: &PartSliceInput) -> PartSli
                         } else {
                             syllable.text.clone()
                         },
+                        ruby: syllable.pinyin.as_ref().map(PinyinSyllable::marked),
                         note_id: placed.note_id(input.next_note_id),
                     },
                     note_id: None,
@@ -129,6 +131,7 @@ fn compile_lyrics_slice(lyrics: &LyricsSlice, input: &PartSliceInput) -> PartSli
                 column: slot.column,
                 content: ElementContent::Lyric {
                     text: syllable.text.clone(),
+                    ruby: syllable.pinyin.as_ref().map(PinyinSyllable::marked),
                     note_id: input.next_note_id + slot.event_index,
                 },
                 note_id: None,

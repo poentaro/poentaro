@@ -81,7 +81,7 @@ pub(super) fn chimera_notes(phrase: &[&SungNote]) -> Vec<ChimeraNote> {
 /// every other syllable, including a held `-`, stands alone.
 pub(super) fn phrase_text(phrase: &[&SungNote]) -> String {
     let words = phrase.iter().map(|note| match &note.syllable {
-        SungSyllable::Word(word) => word.as_str(),
+        SungSyllable::Word(word) | SungSyllable::Pinyin(word) => word.as_str(),
         SungSyllable::Held => "-",
         SungSyllable::Silent => "",
     });
@@ -116,7 +116,9 @@ fn read_note_by_note(phrase: &[&SungNote]) -> Vec<Syllable> {
         .iter()
         .scan(None::<Syllable>, |previous, note| {
             let syllable = match &note.syllable {
-                SungSyllable::Word(word) => read_text(word).into_iter().next(),
+                SungSyllable::Word(word) | SungSyllable::Pinyin(word) => {
+                    read_text(word).into_iter().next()
+                }
                 _ => None,
             }
             .or_else(|| previous.clone().map(held))

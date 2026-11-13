@@ -843,6 +843,27 @@ In each measure, the number of lyric syllables must match the number of notes th
 
 Mismatch is a non-fatal **warning** (rendering continues, with empty-string syllables inserted for underflow), e.g. `[Soprano] lyrics underflow: ran out of syllables at syllable 3 (fewer syllables than notes)` or `[Soprano] lyrics overflow: 1 extra syllable(s) after all notes are consumed`.
 
+### Pinyin for a polyphonic character (`字(pinyin)`)
+
+A pinyin syllable in parentheses right after a Chinese character, with no space between, says which reading of a polyphonic character (多音字) to use:
+
+```poentaro
+parts ["Melody" [M]: notes, "Verse 1" [v1]: lyrics [M], "Verse 2" [v2]: lyrics [M]],
+
+score """
+    [M] 1 2 3 5
+    [v1] 要去银行(háng)
+    [v2] 长(zhang3)大了 -
+    """,
+```
+
+- Tone marks (`háng`), a tone number (`hang2`) or no tone (`hang`, the neutral tone) are all accepted; `ü` may be written `v` (`lv4`). Full-width `（ ）` work too.
+- The character and its parentheses are **one syllable**, so the lyrics–notes tally is unchanged.
+- The pinyin is printed above the character in a smaller font, always with tone marks (`hang2` prints `háng`). A lyric row grows to fit it only in the systems where it has one. In staff notation, which has no room above the words, it follows the character: `行(háng)`.
+- A singing part sings the character with this reading instead of guessing from the words around it.
+- Text inside that isn't one pinyin syllable (`行(hello)`) is an error, and the reading is ignored.
+- Parentheses not attached to a Chinese character (`(la)`, `oh(hang)`, `行 (háng)`) stay ordinary lyric text. Under a chord part they are bracketed items as before, and so is an attached bracket that doesn't hold pinyin (`我(陪)`).
+
 ### Lyric parts
 
 Lyrics are declared as their own parts in `parts`, with `lyrics [X]` naming the `notes`, `chords` or `follow` part (declared earlier) whose notes they sing along to:

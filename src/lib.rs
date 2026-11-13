@@ -47,6 +47,7 @@ pub mod note_spans;
 pub mod parser;
 mod part_info;
 pub mod part_stream;
+pub mod pinyin;
 pub mod pitch_description;
 pub mod render_config;
 pub mod renderer;
