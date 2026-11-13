@@ -269,7 +269,7 @@ score """
             sequence_entries, ..
         } => {
             let labels: Vec<&str> = sequence_entries.iter().map(|e| e.label.as_str()).collect();
-            assert_eq!(labels, vec!["Verse", "Verse (w 2)", "Verse (w 2) (-M)"]);
+            assert_eq!(labels, vec!["Verse", "Verse (w 2)", "Verse (w 2, -M)"]);
         }
         ListMeasureSpansResponse::Err => panic!("expected ok"),
     }

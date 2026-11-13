@@ -484,7 +484,7 @@ sequence [Verse, Chorus WITHOUT [S, A2], Verse, Chorus WITHOUT [A2], Chorus],
 
 - It affects **only that occurrence**: here, the first `Chorus` omits Soprano and Alto 2, the second omits only Alto 2, and the third (unmarked) plays every part.
 - An abbreviation that matches no declared part is an error; that abbreviation is dropped and the rest of the entry (and sequence) still resolves.
-- The score's written-out `Chorus` section always renders with every part, once. However, the omissions **are** shown on the "Sequence: ..." summary line (SVG/PDF, first page), right after the label in plain (non-bold/non-italic) text: `Sequence: Verse › Chorus (-S -A2) › Verse › Chorus (-A2) › Chorus`. This is a reader-facing note only, telling a performer which voices tacet on which repeat. The underlying `Chorus` measures are not duplicated or altered.
+- The score's written-out `Chorus` section always renders with every part, once. However, the omissions **are** shown on the "Sequence: ..." summary line (SVG/PDF, first page), right after the label in plain (non-bold/non-italic) text: `Sequence: Verse › Chorus (-S, -A2) › Verse › Chorus (-A2) › Chorus`. This is a reader-facing note only, telling a performer which voices tacet on which repeat. The underlying `Chorus` measures are not duplicated or altered.
 
 An entry may instead carry `ONLY [...]`, naming the **only** parts to keep for that occurrence (every other declared part is omitted), for the opposite case: a chorus written once but soloed down to a subset of voices on a later repeat:
 
@@ -504,7 +504,7 @@ sequence [Verse, Verse WITH ([w] 2, [A] 2) WITHOUT [S], Verse WITH [w] 3],
 - `[w] 2` plays part `w`'s line 2 in that occurrence. Lines count from 1, and a part not named plays its line 1.
 - In a measure that doesn't write the chosen line, the part plays its line 1 there.
 - A line the part writes in no measure at all is a warning, and the part plays its line 1. An unknown part is an error and is dropped.
-- The summary line shows the choices after the label: `Sequence: Verse › Verse (w 2, A 2) (-S)`.
+- The summary line shows the choices after the label: `Sequence: Verse › Verse (w 2, A 2, -S)`, with any `WITHOUT` / `ONLY` parts in the same brackets.
 
 ### Alternative lines
 
