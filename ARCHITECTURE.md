@@ -38,7 +38,7 @@ source (&str)
 ### Parser
 - Module: `src/parser/`
 - Entry: `parser::parse(source: &str, filename: &str) -> Result<ParsedDocument, IrrecoverableError>`
-- Anyx surface syntax (see `syntax.md`): `parser::read_document(input: &str, instruments: &[InstrumentInfo]) -> ReadDocument` reads a document's text through `parser::anyx::read(source, instruments)` (`src/parser/anyx/read/`), which decodes `anyx`'s tree with the decoder that `crates/poentaro-grammar` generates from its grammar `poentaro.anyx` (anyx's `anyx-generator`; `just generate-parser` regenerates `src/generated.rs`, and a test fails when it is stale). The grammar only says which shapes are allowed; `parser::anyx::decoded` says what they mean (`decode(source) -> Decoded { document, errors }`, where the grammar's `ANY ORDER` entry gives the generated `Document` its sections as fields and keeps a repeated section or a stray node in its `errors`, and the extension traits `FieldName`, `ValueText`, `WordsText` and `AbbreviationText` on the generated types), and `parser::parse` builds on it. The generated crate is its own workspace member, outside the workspace lints, because generated code carries `#![allow(dead_code)]`. Text in any other form is read the same way and comes back with syntax errors, so it still opens. `ReadDocument { metadata, metadata_parse_errors, declarations, parts_parse_errors, section_structure_errors, score: ScoreText, presets, sequence, sequence_parse_errors }` is what it produces, and `ScoreText { text, offset }` is the score body the score parser reads, so every span is a span in the file. `document::anyx_errors(text, instruments) -> Vec<RecoverableError>` lists what doesn't fit a document's shape (`RecoverableErrorKind::AnyxInvalid`): anything that writes a file from it stops on them, while a render keeps going so a typo doesn't blank the preview. `format_anyx::format_anyx(source) -> String` formats a document, and returns it unchanged when `anyx_errors` finds anything. `source_edit`'s edits go through `source_edit/anyx_edit.rs`, which rewrites the node it changes and formats that section only, keeping other sections' comments and layout; `parser::anyx::write` spells the fields and part kinds they write. `symbols::rename_edits_in_text` spells a renamed symbol for where it sits. In the wasm crate, `crates/poentaro-wasm/src/opened_document.rs` has `open_checked`, which turns `anyx_errors` into diagnostics. See **Anyx document** in the glossary.
+- Anyx surface syntax (see `syntax.md`): `parser::read_document(input: &str, instruments: &[InstrumentInfo]) -> ReadDocument` reads a document's text through `parser::anyx::read(source, instruments)` (`src/parser/anyx/read/`), which decodes `anyx`'s tree with the decoder that `crates/poentaro-grammar` generates from its grammar `poentaro.anyx` (anyx's `anyx-generator`; `just generate-parser` regenerates `src/generated.rs`, and a test fails when it is stale). The grammar only says which shapes are allowed; `parser::anyx::decoded` says what they mean (`decode(source) -> Decoded { document, errors }`, where the grammar's `ANY ORDER` entry gives the generated `Document` its sections as fields and keeps a repeated section or a stray node in its `errors`, and the extension traits `FieldName`, `ValueText`, `WordsText` and `AbbreviationText` on the generated types), and `parser::parse` builds on it. The generated crate is its own workspace member, outside the workspace lints, because generated code carries `#![allow(dead_code)]`. Text in any other form is read the same way and comes back with syntax errors, so it still opens. `ReadDocument { metadata, metadata_parse_errors, declarations, parts_parse_errors, section_structure_errors, score: ScoreText, presets, sequence, sequence_parse_errors }` is what it produces, and `ScoreText { text, offset }` is the score body the score parser reads, so every span is a span in the file. `document::anyx_errors(text, instruments) -> Vec<RecoverableError>` lists what doesn't fit a document's shape (`RecoverableErrorKind::AnyxInvalid`): anything that writes a file from it stops on them, while a render keeps going so a typo doesn't blank the preview. `format_anyx::format_anyx(source) -> String` formats a document, and returns it unchanged when `anyx_errors` finds anything. `source_edit`'s edits go through `source_edit/anyx_edit.rs`, which rewrites the node it changes and formats that section only, keeping other sections' comments and layout; `parser::anyx::write` spells the fields and part kinds they write. `symbols::rename_edits_in_text` spells a renamed symbol for where it sits. In the wasm crate, `crates/poentaro-wasm/src/opened_document.rs` has `open_checked`, which turns `anyx_errors` into diagnostics. A comment starts with `##`; a single `#` starts an anyx line string, which a document doesn't take, so `decode` reports each `#` line as an error and reads the text as if those lines were blank. See **Anyx document** in the glossary.
 - Presets: `parser::preset_parser::collect_presets(sections, name_of, read) -> ParsedPresets`, called from the anyx reader with one `finish_preset` per section, fills `ParsedDocument::presets: Vec<ParsedPreset>` and `preset_diagnostics: Vec<Diagnostic>`. `ParsedPreset { name, name_span, header_span, overrides: ParsedMetadata, visible_parts: Option<Vec<AbbreviationReference>>, soloed_parts: Vec<AbbreviationReference>, notation: Option<Notation> }` (`src/ast/parsed/preset.rs`). `ParsedDocument::with_preset(name)` overlays `metadata` with that preset's overrides (`ParsedMetadata::overlaid_with`, field by field; an unknown name changes nothing); `compile_with_preset(source, filename, instruments, preset_name: Option<&str>)` is `compile` with that overlay. See **Preset** in the glossary.
 - Key types: `ParsedDocument` (also carries `sequence: Option<SequenceSection>` and `sequence_parse_errors: Vec<RecoverableError>` from the optional `sequence` section — see **Sequence resolution** in the glossary; also carries `abbreviation_references: Vec<AbbreviationReference>` — every `[Abbrev]` key-prefix reference found in `score`, in file order, each `{ abbreviation, span }` with `span` covering just the trimmed abbreviation text (excluding brackets/whitespace) — see **Rename-symbol support**), `ParsedTimedTrack` (also carries `slur_groups: Vec<ParsedSlurGroup>` — every closed `(…)` group on the track, recorded by `GroupStack::close` as each `)` is parsed), `ParsedSlurGroup` (`{ open_paren_span, close_paren_span }` — lets source edits locate a group's delimiters, see **Source editing**), `ParsedScore`, `ScoreEvent` (includes `PercussionHit(ParsedPercussionHit)`; `LabelChange(String)`'s `Spanned` wrapper carries a span narrowed to just the quoted label text, not the whole `label="..."` token), `ParsedNote` (carries `Accidental` for melody notes; tie intent via `tie_to_next_span: Option<Span>` with `tie_to_next()` accessor; also carries `tuplet: Option<TupletInfo>` — see **Tuplet** in the glossary), `ParsedRest` (carries `implicit_fill: bool` — true when this rest was synthesized by `desugar::implicit_fill` to stand in for a declaration absent from this measure group, rather than written by the composer as an explicit `0`; copied through `GroupedRest`/`ElementContent::Rest`/`GridContent::Rest`/`PostArcGridContent::Rest`/`AbsoluteContent::Rest` to `SvgVariant::OmittedPartRest`, which `render_omitted_part_rest` draws as a vector glyph — mirroring the conventional Western "whole rest": a thin horizontal cap line, wider than and sitting flush above, a short solid block — instead of `render_rest`'s ordinary `0` text — see **Omitted-part rest** in the glossary), `ParsedChordNote` (also carries `Accidental` and `tie_to_next_span`), `ParsedPercussionHit` (`ParsedNote` minus pitch/accidental — carries duration, dotted, group membership, tie/slur fields), `TupletInfo` (`{ num, den }` — see **Tuplet** in the glossary), `ParsedMetadata` (key-addressed via `style`/`style_mut`/`number`/`number_mut`/`flag`/`flag_mut`/`text`/`text_mut` — see **Metadata keyword enum** in the glossary), `NumberedPitch`, `Accidental` (`Sharp`/`Flat`/`Natural`; applies to both melody notes and chord notes), `Syllable`, `Soundfont` (vocal/piano/string; selects MIDI channel+program — on a `PartKind::Percussion` part, the number is instead a fixed GM percussion key rather than a GM program number, and is not validated against the melodic instrument catalog), `PartDecl` (carries `soundfont`, `volume`, `octave_offset`, `range_instrument: Option<RangeInstrument>` and `written_range: Option<PitchRange>` — see **Range instrument** in the glossary, `kind: PartKind`, `abbreviation_span: Span` — the abbreviation token's own byte span on its declaration line, used by rename-symbol — `PartKind::Percussion` reuses `&[ScoreLineRole::Notes]` for its score line roles), `SequenceSection` (decoded by `src/parser/anyx/read/sequence.rs` — a list of section-label references, each a `SequenceEntry { label, label_span, part_filter, span }` where `part_filter: Option<PartFilter>` comes from an optional `WITHOUT [...]` or `ONLY [...]` suffix; `PartFilter { kind, parts, part_spans }` with `kind: PartFilterKind` either `Omit` (a `(-abbrev -abbrev ...)` suffix naming part abbreviations to omit from that occurrence's playback, e.g. `Chorus(-S -A2)`) or `Only` (an `(abbrev abbrev ...)` suffix, no leading `-`, naming the only parts to keep for that occurrence — every other declared part is omitted — e.g. `Chorus(S A2)`); a suffix mixing `-abbrev` and `abbrev` tokens is a recoverable error, resolving to `part_filter: None`; `label_span`/`part_spans` are the byte spans of just the label text and each filtered abbreviation (used by rename-symbol) — see **Sequence resolution** in the glossary).
 
@@ -519,7 +519,11 @@ migrations (see "Storage" below), nothing else.
   `/auth/sign-in`, `/auth/sign-out` and `/auth/change-password`, see
   "Accounts (email + password)" below, and the anonymous origin-migration
   handoff `POST /origin-migrations` / `POST /origin-migrations/claim`, see
-  "Origin migration" below). Plus the test-only `POST /e2e/reset`
+  "Origin migration" below, and the API key routes `POST /api-keys`,
+  `/api-keys/list` and `/api-keys/{id}/revoke`, see "AI agents" below).
+  `POST /agent` answers plain text,
+  not JSON, so `fetch` serves them before the router
+  (`handlers::serves_agent`/`serve_agent`). Plus the test-only `POST /e2e/reset`
   (`handlers::e2e_reset`, config in `src/e2e_reset.rs`): registered via
   `Routes::post_if` only when the `SYNCED_SHARE_E2E_RESET_EMAILS`
   var is set — never in `cloudflare.config.ts`, only by `web/playwright.config.ts`'s
@@ -727,6 +731,100 @@ query that hands a former GitHub user's `users` row to a new email.
   live/stopped state and link; `startSync`/`stopSync` send only
   `identityToken`, never content.
 
+### AI agents (`/agent`, API keys)
+
+An account owner's AI agent reads and edits the owner's own scores over the
+**anyx protocol** (anyx's `anyx-protocol`): requests and responses are anyx
+text, and the methods are declared in a schema.
+
+- Schema and generated code: `crates/poentaro-protocol`. The schema is the
+  folder `schema/`, a file per **scope**: `protocol.anyx` holds only the
+  `PROTOCOL` header, `files.anyx` is the scope `files`,
+  `files/export.anyx` the scope `files/export` and `score.anyx` the scope
+  `score`. A method is called by its
+  full name, its scope's path then its shape: `files/list`,
+  `files/read _`, `files/write _ at revision _ content _`,
+  `files/create _ content _`, `files/export/svg _`,
+  `files/export/midi _` and `score/syntax`. `files` declares the records (`file summary`,
+  `file`, `diagnostic`, `saved`) and two error groups, `file errors`
+  (`trashed`, `missing`) and `score errors` (`rejected _`); `files/export`
+  declares `export errors` (`unreadable _` plus `files/file errors`). An
+  error is written in full where it is used: in its method's `ERRORS [ … ]`
+  when only that method answers it (`conflict at revision _ content _`,
+  `already exists at revision _`, `invalid path _`), or in a group that
+  methods join with `+`. A type or error group is private to its scope
+  unless `PUBLIC`, and another scope names it by full path
+  (`files/diagnostic`, `files/file errors`). `src/generated.rs` is what anyx's
+  `anyx-protocol-generate` writes from it, a module per scope
+  (`poentaro_protocol::files::export`): the record structs, a
+  `{Method}Error` enum per method, a `Server` trait per scope (the root one
+  holds `type Error`), `handle(server, request, on_internal_error) ->
+  String`, a `Client` (`client.files().export().svg(path)`), and
+  `SCHEMA_FILES`/`schema()`. `tests/generated.rs` lists the schema's files
+  and fails when one is missing from that list.
+  `just generate-protocol` rewrites it, and a test fails when it is stale.
+  Like `poentaro-grammar`, the crate is outside the workspace lints and its
+  `generated.rs` is exempt from the 400-line limit.
+- Route (`src/handlers/agent.rs`): `POST /agent` runs a request sent with
+  `Authorization: Bearer poe_…`; any other method is a `405`. Everything
+  the agent reads comes through it: anyx's built-in `SCHEMA` call answers
+  the guide (how to write a request and read a response, then the schema
+  with its docs), and `score/syntax` (`schema/score.anyx`) answers
+  `syntax.md`. A missing, unknown, revoked or
+  expired key is a plain-text `401`; the per-key `AGENT_RATE_LIMITER`
+  (`cloudflare.config.ts`, 60 requests a minute) a `429`.
+- Methods (`src/handlers/agent/files.rs`, `AgentFiles`, an implementation of
+  `Server`, `files::Server`, `files::export::Server` and `score::Server`
+  over D1): files are
+  addressed by path (`db::get_file_by_name`). `files/list` lists the live
+  files; `read`/`write` answer `trashed` for a
+  binned file and `missing` for none. `write` is the same compare-and-swap
+  as `POST /files/{id}/content` and records version history the same way
+  (`handlers::files::record_version`). `write` and `create` refuse a score
+  with errors as `rejected` (`agent::score_diagnostics`: `anyx_errors` plus
+  the compiler's error diagnostics, with line and column in characters). A
+  save answers `saved`: the new revision and the compiler's warnings, which
+  never stop it.
+  `create` wants a valid path ending in `.poentaro`
+  (`agent::new_file_path_problem`) that is not also a folder, and gives the
+  file a version 4 UUID (`agent::file_id`), the id form the web app uses.
+  `files/export/svg` and `files/export/midi`
+  (`agent::export_svg`/`export_midi`) answer
+  a live file's SVG pages and Standard MIDI File (a `BYTES` value, base64
+  on the wire), or `unreadable` with the same errors that would stop a
+  save, since the renderer recovers from most errors and would draw a
+  blank page. The worker has no fonts, so text widths are estimated; it
+  builds `poentaro` with only the `midi` feature.
+- API keys (`src/api_keys.rs`, D1-free and tested in `tests/api_keys.rs`;
+  queries in `db::api_keys`; table `api_keys`, migration
+  `0012_api_keys.sql`): a key is `poe_` and 32 random bytes, base64url,
+  and only its SHA-256 hash is stored, like a session token. Its first 12
+  characters (`prefix`) name it in the account menu and in `app_log`.
+  `last_used_at` is written at most once a minute (`should_touch`). Every
+  key works for `KEY_LIFETIME_MILLIS` (30 days) from `created_at`
+  (`expires_at`, `is_expired`); nothing extra is stored, and
+  `ApiKeySummary::at` adds `expiresAt` and `expired` for the dialog. The
+  account menu's **AI agents** dialog (`web/src/components/ApiKeysModal.tsx`)
+  creates, lists and revokes keys, asking first in `RevokeApiKeyDialog`; `POST /api-keys` answers the key inside
+  `CreatedApiKey.prompt` (`api_keys::agent_prompt`, the template
+  `src/agent_prompt.txt`), the text the owner pastes into the agent, which
+  is the only time the key is shown. It has the agent save the key to
+  `~/.config/poentaro/key` (mode 600) and install a global skill
+  `poentaro` at `~/.agents/skills/poentaro/SKILL.md` (linked into
+  `~/.claude/skills` for Claude Code). The skill holds only how to send a
+  request, reading the key from that file, and says to start each session
+  with `SCHEMA`, so the schema is never copied into it and goes stale.
+- Logging: `LogEvent::Agent(AgentEvent)`, flow `agent`: `key_created`,
+  `key_revoked`, `key_rejected`, `key_expired` and one `called` row per `POST /agent`
+  listing each call as its full method name and ending
+  (`files/read _: ok`,
+  `files/write _ at revision _ content _: conflict at revision _ content _`),
+  subject `key:<prefix>`.
+- Live edits: the web app checks the open cloud file's revision every
+  `REVISION_POLL_MILLIS` (5 s) while the tab is in view
+  (`useFocusRevisionCheck`), so an agent's save shows up; unsaved edits are
+  never replaced, and their save goes through the outbox's conflict flow.
+
 ### Version history
 
 `files.content` stays the head. Each accepted content save that changes the
@@ -910,7 +1008,8 @@ in `AGENTS.md` for the run command).
 - Key types (`src/app_log.rs`, pub and D1-free, tested in `tests/app_log.rs`):
   `app_log::LogEvent` (one row's event, adjacently tagged
   `{"flow", "event"}`; `LogEvent::Auth(AuthEvent)` or
-  `LogEvent::Request(RequestEvent)`) /
+  `LogEvent::Request(RequestEvent)` or `LogEvent::Agent(AgentEvent)`, see
+  "AI agents") /
   `app_log::RequestEvent` (`RequestFailed { route, status, code, message }`:
   one per non-2xx response) /
   `app_log::AuthEvent` (the account and session life cycle, adjacently
@@ -924,7 +1023,7 @@ in `AGENTS.md` for the run command).
   a call site) / `app_log::LogRow` (`LogEvent::to_row`'s split into the
   `flow`/`kind`/`outcome`/`subject`/`detail` columns; `LogEvent::try_from(&LogRow)`
   reassembles it) / `app_log::RequestMeta` (`Origin`/`User-Agent`, the
-  request's `trace_id`, and `resolved_user_id`, which the session lookup
+  request's `trace_id`, this worker's `worker_origin`, and `resolved_user_id`, which the session lookup
   fills in so a later `request_failed` row names the caller).
   Schema-evolution rule: rows must keep decoding for their 30 days, so only
   add fields, each with `#[serde(default)]`; a changed shape is a new variant.
@@ -1042,6 +1141,11 @@ away from the wasm build both times:
 | **owner_user_id** | A file's owner (`files.owner_user_id`, an internal `users.id`), and so also the owner of that file's share — `shares` has no owner column of its own. Replaced the old KV model's bearer `ownerToken`, which any first writer could claim. |
 | **Account** | An email + password (`password_credentials`) on a `users` row, signing in to **both** cloud file storage and Synced Share ownership. Held in the browser as `accountAuth.ts`'s `{ token, email }` under `poentaro:account-auth:v2`. See "Accounts (email + password)". |
 | **static folder link** | A `#share-folder=<payload>` link carrying a compressed `FolderSnapshot` of a folder at one moment; works for local and cloud folders, never updates, and is not offered above `MAX_STATIC_FOLDER_LINK_CHARS` (the dialog suggests a synced link instead). |
+| **API key** | A `poe_…` key an account owner creates in the account menu's **AI agents** dialog, for their AI agent to send to `POST /agent` as `Authorization: Bearer`. It acts as its owner on the owner's own files only, for 30 days; only its hash is stored, and its `prefix` names it. See "AI agents". |
+| **agent** | An AI agent (Claude Code, Codex, …) that the account owner sets up with the AI agents dialog's prompt: it saves the API key and installs the `poentaro` skill, then sends `SCHEMA` to `POST /agent` for the guide and the schema, and reads and edits the owner's scores through the same route. |
+| **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result repeats the call, with long arguments cut short with `…`, then says what came of it: `RETURNS <value>`, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro's schema is the folder `crates/poentaro-protocol/schema`, a file per scope. |
+| **`SCHEMA`** (anyx protocol) | The call every anyx-protocol server answers without declaring it: the guide to its schema (how to write a request and read a response, then the schema as written). Generated clients call it as `client.schema()`. |
+| **scope** (anyx protocol) | A file of an anyx-protocol schema folder other than `protocol.anyx`, named by its path without `.anyx` (`files/export`). Its methods are called by full name (`files/export/svg _`), and its types and errors are private to it unless `PUBLIC`. |
 | **share overview** | `file_tree::ShareOverview`, the owner's live file and folder links as `POST /shares/overview` reports them; everything the share UI shows (markers, "via X" tags, warnings) is derived from it in Rust. |
 | **selection unit** | `file_tree::SelectionUnit`: one thing a multi-select action applies to — a file, or a folder whose files are all ticked (moved and deleted as a folder, so its structure survives). Folders inside a ticked folder are not listed again. |
 | **shared via** | `file_tree::SharedVia`: the innermost shared folder strictly above a file or folder, shown as a "via <name>" tag and "Shared via <name>" menu item. |

@@ -64,6 +64,14 @@ function focusRevisionDependencies(
   }
 }
 
+/** How often a visible tab checks the open file for a save made elsewhere,
+ * such as by the owner's AI agent (`POST /agent`). */
+export const REVISION_POLL_MILLIS = 5000
+
+/** Loads saves made elsewhere into the open file: when the tab comes back
+ * into view or online, and every `REVISION_POLL_MILLIS` while it is in
+ * view. Unsaved edits are never replaced; their save meets the newer
+ * revision and goes through the outbox's conflict flow instead. */
 export function useFocusRevisionCheck(options: {
   backend: CloudBackend | undefined
   activeFileId: string | undefined
@@ -86,9 +94,11 @@ export function useFocusRevisionCheck(options: {
     }
     document.addEventListener('visibilitychange', check)
     window.addEventListener('online', check)
+    const poll = window.setInterval(check, REVISION_POLL_MILLIS)
     return () => {
       document.removeEventListener('visibilitychange', check)
       window.removeEventListener('online', check)
+      window.clearInterval(poll)
     }
   }, [backend, activeFileId, onServerContent])
 }

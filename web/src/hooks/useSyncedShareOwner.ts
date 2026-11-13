@@ -12,7 +12,7 @@ import { type FolderShares, useFolderShares } from './useFolderShares'
 import type { DisplaySaveStatus } from './useStorageBackend'
 
 /** Which account dialog is open, if any. */
-export type AccountDialog = 'sign-in' | 'change-password'
+export type AccountDialog = 'sign-in' | 'change-password' | 'api-keys'
 
 /** A file's share state as last reported by the worker. Tagged with the
  * `fileId` it belongs to, so a response for a file the owner has since
@@ -54,6 +54,8 @@ export interface UseSyncedShareOwnerResult {
    * starts a share -- the user clicks "Start Sync" again once signed in. */
   openSignIn: () => void
   openChangePassword: () => void
+  /** Opens the dialog that connects an AI agent with an API key. */
+  openApiKeys: () => void
   closeAccountDialog: () => void
   /** Ends this browser's session: stops the current file's live share
    * first (mirrors clicking "Stop Sync"), tells the worker to end the
@@ -252,6 +254,7 @@ export function useSyncedShareOwner(
     () => setAccountDialog('change-password'),
     [],
   )
+  const openApiKeys = useCallback(() => setAccountDialog('api-keys'), [])
   const closeAccountDialog = useCallback(() => setAccountDialog(null), [])
 
   const signOut = useCallback(() => {
@@ -284,6 +287,7 @@ export function useSyncedShareOwner(
     accountDialog,
     openSignIn,
     openChangePassword,
+    openApiKeys,
     closeAccountDialog,
     signOut,
     syncFailure,

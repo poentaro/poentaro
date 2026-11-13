@@ -1,0 +1,13 @@
+ERRORS export errors [
+    # The score has errors, so it can't be exported. Fix them, then write
+    # the score again.
+    unreadable (diagnostics: LIST files/diagnostic),
+] + files/file errors,
+
+# The score as numbered notation: one SVG document per page. Text widths
+# are estimated, so a system may break slightly differently than in the app.
+METHOD svg (path: TEXT) RETURNS (pages: LIST: TEXT) ERRORS export errors,
+
+# The score as a Standard MIDI File, to hear or inspect what it plays.
+# Decode the base64 to get the `.mid` file.
+METHOD midi (path: TEXT) RETURNS (midi: BYTES) ERRORS export errors,

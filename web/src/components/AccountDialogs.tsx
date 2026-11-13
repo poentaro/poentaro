@@ -1,5 +1,6 @@
 import type { AccountDialog } from '../hooks/useSyncedShareOwner'
 import { AccountAuthModal } from './AccountAuthModal'
+import { ApiKeysModal } from './ApiKeysModal'
 import { ChangePasswordModal } from './ChangePasswordModal'
 
 /** The account dialog `useSyncedShareOwner` has open, if any. */
@@ -23,6 +24,7 @@ export function AccountDialogs({
         open={open === 'change-password'}
         onOpenChange={closeWhenHidden}
       />
+      <ApiKeysModal open={open === 'api-keys'} onOpenChange={closeWhenHidden} />
     </>
   )
 }

@@ -1,0 +1,17 @@
+[package]
+name = "migrate-comments"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "migrate-comments"
+path = "src/main.rs"
+
+[dependencies]
+anyx = { git = "https://github.com/wongjiahau/anyx", rev = "97d5bbc25b9a121e068a4edb558bb2935abd79c4" }
+poentaro = { path = "../..", default-features = false }
+# Its `file_history` writes the reverse patch, so History can read it back.
+live-share-worker = { path = "../../crates/live-share-worker" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

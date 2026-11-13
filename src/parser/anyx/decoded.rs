@@ -1,7 +1,7 @@
 //! What a decoded `.poentaro` document means beyond its shape: the text a value
 //! or abbreviation stands for. The shapes come from the `poentaro_grammar` crate.
 
-use anyx::{Node, StringLiteral};
+use anyx::{Node, NodeKind, StringLiteral};
 use itertools::Itertools;
 
 use crate::error::{RecoverableError, Span};
@@ -31,11 +31,18 @@ pub(crate) struct Decoded {
 }
 
 pub(crate) fn decode(source: &str) -> Decoded {
-    let parsed = parse_document(source);
-    let mut errors = parsed
-        .syntax_errors
+    let line_strings = line_strings(source);
+    let blanked = blank(source, &line_strings);
+    let parsed = parse_document(&blanked);
+    let mut errors = line_strings
         .iter()
-        .map(|error| invalid(error.span, error.message.clone()))
+        .map(|at| invalid(*at, "found a `#` line; a comment starts with `##`"))
+        .chain(
+            parsed
+                .syntax_errors
+                .iter()
+                .map(|error| invalid(error.span, error.message.clone())),
+        )
         .collect_vec();
     // Every section is optional, so only a document of no nodes at all could
     // fail as a whole.
@@ -55,6 +62,46 @@ pub(crate) fn decode(source: &str) -> Decoded {
     errors.extend(document.errors.iter().map(decode_error));
     errors.extend(document.unconverted.iter().map(unconverted_error));
     Decoded { document, errors }
+}
+
+/// Where `source` has a `#` line string. anyx reads `#` as a line string and
+/// `##` as a comment; a document gives line strings no meaning, so each is a
+/// comment written with one `#` too few.
+fn line_strings(source: &str) -> Vec<anyx::Span> {
+    fn collect(source: &str, nodes: &[Node], found: &mut Vec<anyx::Span>) {
+        for node in nodes {
+            match &node.kind {
+                NodeKind::String(_) if source[node.span.start..].starts_with('#') => {
+                    found.push(node.span)
+                }
+                NodeKind::Call(call) => collect(source, &call.arguments, found),
+                NodeKind::Parens(nodes) | NodeKind::Brackets(nodes) | NodeKind::Braces(nodes) => {
+                    collect(source, nodes, found)
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut found = Vec::new();
+    collect(source, &anyx::parse(source).syntax.nodes(), &mut found);
+    found
+}
+
+/// `source` with the text at `spans` turned into spaces, keeping every byte
+/// offset and line break, so the rest of the document reads as if they were
+/// comments.
+fn blank(source: &str, spans: &[anyx::Span]) -> String {
+    spans.iter().rev().fold(source.to_owned(), |mut text, at| {
+        let spaces: String = text[at.start..at.end]
+            .chars()
+            .map(|char| match char {
+                '\n' => "\n".to_owned(),
+                other => " ".repeat(other.len_utf8()),
+            })
+            .collect();
+        text.replace_range(at.start..at.end, &spaces);
+        text
+    })
 }
 
 /// A string's text without its quotes.

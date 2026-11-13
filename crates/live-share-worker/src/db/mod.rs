@@ -24,6 +24,7 @@
 //! given the constraint above, not a silent downgrade.
 
 mod accounts;
+mod api_keys;
 mod app_log;
 mod e2e_reset;
 mod file_versions;
@@ -33,6 +34,7 @@ mod sessions;
 mod shares;
 
 pub(crate) use accounts::*;
+pub(crate) use api_keys::*;
 pub(crate) use app_log::*;
 pub(crate) use e2e_reset::*;
 pub(crate) use file_versions::*;

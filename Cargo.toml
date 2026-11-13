@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/cloud-outbox", "crates/poentaro-grammar", "crates/poentaro-wasm", "crates/poentaro-singer", "crates/poentaro-singer-wasm", "crates/live-share-worker", "tools/dead-pub-check"]
+members = [".", "crates/cloud-outbox", "crates/poentaro-grammar", "crates/poentaro-protocol", "crates/poentaro-wasm", "crates/poentaro-singer", "crates/poentaro-singer-wasm", "crates/live-share-worker", "tools/dead-pub-check", "tools/migrate-comments"]
 resolver = "2"
 
 [patch.crates-io]
@@ -98,7 +98,7 @@ rusty_mp3 = { version = "0.7", optional = true }
 zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 base64 = "0.22"
-anyx = { git = "https://github.com/wongjiahau/anyx", rev = "913846cc3b7c3f3fdd8d3be737b9c8acce6bfb1e" }
+anyx = { git = "https://github.com/wongjiahau/anyx", rev = "97d5bbc25b9a121e068a4edb558bb2935abd79c4" }
 poentaro-grammar = { path = "crates/poentaro-grammar" }
 poentaro-singer = { path = "crates/poentaro-singer" }
 

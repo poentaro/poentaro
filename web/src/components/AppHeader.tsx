@@ -59,6 +59,8 @@ export interface SyncedShareHeaderProps {
   onSignIn: () => void
   /** Opens the change password dialog. */
   onChangePassword: () => void
+  /** Opens the dialog that connects an AI agent with an API key. */
+  onOpenApiKeys: () => void
   /** Ends this browser's session, stopping any active sync first. */
   onSignOut: () => void
   /** Drives the full-screen error dialog (task 9) -- non-null while a
@@ -366,6 +368,7 @@ export function AppHeader({
           isSynced={syncedShare.isSynced}
           onSignIn={syncedShare.onSignIn}
           onChangePassword={syncedShare.onChangePassword}
+          onOpenApiKeys={syncedShare.onOpenApiKeys}
           onSignOut={onSignOut}
         />
       </div>

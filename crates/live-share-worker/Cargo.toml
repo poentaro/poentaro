@@ -45,11 +45,15 @@ utoipa = "6"
 # (no empty segments, no `.`/`..`, at most 1024 UTF-8 bytes for the whole
 # path). Default features off keeps the CLI/PDF/MIDI dependencies out of
 # the Worker build (same as `crates/poentaro-wasm`).
-poentaro = { path = "../..", default-features = false }
+poentaro = { path = "../..", default-features = false, features = ["midi"] }
 # Pure Rust, creates and applies the unified diffs a file's version history
 # stores (`src/file_history.rs`). Bumping it must keep
 # `tests/fixtures/file_history/` passing: stored patches outlive a release.
 diffy = "0.4"
+# The methods an AI agent calls at `POST /agent`: the server trait and codec
+# generated from `poentaro.protocol.anyx` (see `src/handlers/agent.rs`).
+poentaro-protocol = { path = "../poentaro-protocol" }
+itertools = "0.13"
 
 # `sqlx` is deliberately NOT a normal `[dependencies]` entry here, even
 # though task breakdown item 2 calls for "worker + sqlx deps". Reasoning:

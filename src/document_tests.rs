@@ -8,16 +8,16 @@ use crate::source_edit::{
 };
 use crate::symbols::{rename_edits_in_text, SymbolKind};
 
-const DOCUMENT: &str = r##"# A song
+const DOCUMENT: &str = r##"## A song
 metadata { title : "Hello" },
 
-# The voices
+## The voices
 parts [
   "Soprano" [S] : notes,
   "Alto" [A] : notes,
 ],
 
-# The tune
+## The tune
 score """
   label="Verse"
   [S] 1 2 3 4 // first line
@@ -30,10 +30,10 @@ score """
 
 const WITH_A_PRESET: &str = r##"parts [ "Soprano" [S] : notes, "Alto" [A] : notes ],
 
-# Just the top
+## Just the top
 preset "Choir" { visible parts : [S], notation : cello },
 
-# The tune
+## The tune
 score """
   [S] 1 2 3 4
   [A] 5 6 7 1
@@ -112,10 +112,10 @@ fn a_new_metadata_field_changes_only_its_section() {
             .as_deref(),
         Some("Me")
     );
-    for kept in ["# A song", "# The voices", "# The tune", "// first line"] {
+    for kept in ["## A song", "## The voices", "## The tune", "// first line"] {
         assert!(edited.contains(kept), "lost {kept:?}:\n{edited}");
     }
-    let parts_onward = |text: &str| text[text.find("# The voices").unwrap()..].to_owned();
+    let parts_onward = |text: &str| text[text.find("## The voices").unwrap()..].to_owned();
     assert_eq!(parts_onward(&edited), parts_onward(DOCUMENT));
 }
 
@@ -163,10 +163,10 @@ fn a_new_preset_goes_after_the_last_preset() {
         .collect::<Vec<_>>();
     assert_eq!(names, ["Choir", "Band"]);
     assert!(
-        edited.contains("# Just the top\npreset \"Choir\""),
+        edited.contains("## Just the top\npreset \"Choir\""),
         "{edited}"
     );
-    assert!(edited.contains("# The tune\nscore"), "{edited}");
+    assert!(edited.contains("## The tune\nscore"), "{edited}");
 }
 
 #[test]
@@ -181,8 +181,8 @@ fn a_first_preset_goes_above_the_comment_on_the_score() {
         },
     );
     assert_reads(&edited);
-    assert!(edited.contains("# The tune\nscore"), "{edited}");
-    assert!(edited.find("preset").unwrap() < edited.find("# The tune").unwrap());
+    assert!(edited.contains("## The tune\nscore"), "{edited}");
+    assert!(edited.find("preset").unwrap() < edited.find("## The tune").unwrap());
     assert_eq!(source_edit::list_presets(&edited).len(), 1);
 }
 
@@ -199,7 +199,7 @@ fn a_preset_field_is_replaced_in_place() {
         Some(Notation::Violin)
     );
     assert_eq!(edited.matches("notation").count(), 1, "{edited}");
-    assert!(edited.contains("# Just the top"), "{edited}");
+    assert!(edited.contains("## Just the top"), "{edited}");
 }
 
 #[test]
@@ -255,7 +255,7 @@ fn a_part_edit_rewrites_its_kind_and_keeps_the_score() {
     assert_eq!(alto.settings.mode, PartMode::Notes);
     assert_eq!(alto.settings.volume, 80);
     assert_eq!(alto.settings.octave_offset, -1);
-    assert!(edited.contains("# The tune"), "{edited}");
+    assert!(edited.contains("## The tune"), "{edited}");
     assert!(edited.contains("// first line"), "{edited}");
 }
 

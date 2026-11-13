@@ -31,6 +31,8 @@
 //! ancestor-visibility rule -- no `pub(crate)` needed. `D1_BINDING` is
 //! `pub(crate)` since `lib.rs`'s scheduled handler writes through it too.
 
+mod agent;
+mod api_keys;
 mod auth;
 mod e2e_reset;
 mod files;
@@ -44,6 +46,7 @@ use crate::api_error::{ApiError, ApiErrorBody};
 use crate::app_log::{LogEvent, RequestEvent, RequestFailed, RequestMeta};
 use crate::db;
 use crate::identity::resolve_verified_user_id;
+pub(crate) use agent::{serve as serve_agent, serves as serves_agent};
 pub(crate) use routes::{request_meta, TRACE_ID_HEADER};
 use routes::{HandlerResult, Routes};
 
@@ -79,6 +82,9 @@ pub(crate) fn routes(e2e_reset_enabled: bool) -> worker::Result<Routes> {
         .post("/folders/share/stop", shares::stop_folder_share)?
         .post("/folders/share/status", shares::folder_share_status)?
         .post("/shares/overview", shares::share_overview)?
+        .post("/api-keys/list", api_keys::list_api_keys)?
+        .post("/api-keys", api_keys::create_api_key)?
+        .post("/api-keys/{id}/revoke", api_keys::revoke_api_key)?
         .post("/origin-migrations", origin_migrations::upload)?
         .post("/origin-migrations/claim", origin_migrations::claim)?
         .post_if(e2e_reset_enabled, "/e2e/reset", e2e_reset::reset)

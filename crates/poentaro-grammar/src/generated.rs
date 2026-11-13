@@ -1053,6 +1053,16 @@ pub fn parse_document(source: &str) -> support::Parsed<Document> {
     support::parse(source, decode_document)
 }
 
+/// How [`format`] lays out calls, from the grammar's `FORMAT`s.
+pub const LAYOUT: &[support::LayoutRule] = &[];
+
+/// Formats `source` canonically, laying calls out as the grammar says.
+pub fn format(
+    source: &str,
+) -> std::result::Result<std::string::String, std::vec::Vec<anyx::Error>> {
+    support::format(source, LAYOUT)
+}
+
 pub mod support {
     //! What every generated decoder needs: spans, errors, and matching a
     //! sequence of nodes. The generator copies this file into its output, so a
@@ -1410,10 +1420,11 @@ pub mod support {
         }
 
         /// The error for a call whose words and arguments are not arranged as
-        /// expected.
+        /// expected. It replaces why an optional part before them did not fit,
+        /// since the call is another shape altogether.
         fn is_other_call(&mut self) -> DecodeError {
-            let error = self.other_call.clone().expect("the sequence of a call");
-            self.fail(error)
+            self.missed = None;
+            self.other_call.clone().expect("the sequence of a call")
         }
 
         fn fail(&mut self, error: DecodeError) -> DecodeError {
@@ -1443,6 +1454,47 @@ pub mod support {
             self.index += 1;
             self.other_call = None;
             Ok(span)
+        }
+
+        /// Matches every name word in a row, at least one, whose text, the
+        /// words joined by spaces, must pass `condition`.
+        pub fn words(
+            &mut self,
+            condition: impl Fn(&str) -> bool,
+            expected: &str,
+        ) -> Result<Spanned<String>, DecodeError> {
+            let words: Vec<(&str, Span)> = self.items[self.index..]
+                .iter()
+                .map_while(|item| match item {
+                    Item::Word(text, span) => Some((*text, *span)),
+                    Item::Node(_) => None,
+                })
+                .collect();
+            let (Some((_, first)), Some((_, last))) = (words.first(), words.last()) else {
+                if self.other_call.is_some() {
+                    return Err(self.is_other_call());
+                }
+                return Err(self.unexpected(expected));
+            };
+            let span = first.to(*last);
+            let text = words
+                .iter()
+                .map(|(text, _)| *text)
+                .collect::<Vec<_>>()
+                .join(" ");
+            if !condition(&text) {
+                let error = match self.other_call.is_some() {
+                    true => self.is_other_call(),
+                    false => {
+                        let error = DecodeError::new(span, format!("the words `{text}`"), expected);
+                        self.fail(error)
+                    }
+                };
+                return Err(error);
+            }
+            self.index += words.len();
+            self.other_call = None;
+            Ok(Spanned { value: text, span })
         }
 
         /// Matches one node. `expected` names it when nothing is there.
@@ -1801,5 +1853,63 @@ pub mod support {
             }
         }
         Err(mismatch(node, expected))
+    }
+
+    /// The `FORMAT` of one `ANYFIX CALL` in the grammar: a call whose name words
+    /// include `words`, in order, may break its line before each of
+    /// `break_before`.
+    #[derive(Clone, Copy, Debug)]
+    pub struct LayoutRule {
+        pub words: &'static [&'static str],
+        pub break_before: &'static [&'static str],
+    }
+
+    /// Formats `source` with anyx, laying out each call by the rule of `rules`
+    /// that names most of its words. A call that only looks like one of the
+    /// grammar's gets its layout too, which changes nothing but whitespace.
+    pub fn format(source: &str, rules: &[LayoutRule]) -> Result<String, Vec<anyx::Error>> {
+        let parsed = anyx::parse(source);
+        let mut layout = anyx::Layout::new();
+        if parsed.errors.is_empty() {
+            mark_breaks(&parsed.syntax.nodes(), rules, &mut layout);
+        }
+        anyx::format_with(source, &layout)
+    }
+
+    fn mark_breaks(nodes: &[Node], rules: &[LayoutRule], layout: &mut anyx::Layout) {
+        for node in nodes {
+            match &node.kind {
+                NodeKind::Call(call) => {
+                    let words: Vec<(&str, Span)> = call
+                        .name
+                        .iter()
+                        .filter_map(|part| match part {
+                            NamePart::Word { text, span } => Some((text.as_str(), *span)),
+                            NamePart::Slot => None,
+                        })
+                        .collect();
+                    let rule = rules
+                        .iter()
+                        .filter(|rule| {
+                            let mut remaining = words.iter();
+                            rule.words
+                                .iter()
+                                .all(|word| remaining.any(|(text, _)| text == word))
+                        })
+                        .max_by_key(|rule| rule.words.len());
+                    if let Some(rule) = rule {
+                        words
+                            .iter()
+                            .filter(|(text, _)| rule.break_before.contains(text))
+                            .for_each(|(_, span)| layout.break_before(span.start));
+                    }
+                    mark_breaks(&call.arguments, rules, layout);
+                }
+                NodeKind::Parens(nodes) | NodeKind::Brackets(nodes) | NodeKind::Braces(nodes) => {
+                    mark_breaks(nodes, rules, layout)
+                }
+                _ => {}
+            }
+        }
     }
 }

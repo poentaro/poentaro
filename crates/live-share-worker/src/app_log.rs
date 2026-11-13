@@ -13,8 +13,10 @@
 //! D1/JsValue-free and `pub` so `tests/app_log.rs` can unit-test it; the D1
 //! writes live in the crate-private `db::app_log`.
 
+mod agent;
 mod request;
 
+pub use agent::{AgentEvent, Called, KeyEvent, KeyRejected};
 pub use request::{RequestEvent, RequestFailed};
 
 use std::cell::RefCell;
@@ -63,6 +65,7 @@ pub fn prune_cutoff_millis(now_millis: i64) -> i64 {
 pub enum LogEvent {
     Auth(AuthEvent),
     Request(RequestEvent),
+    Agent(AgentEvent),
 }
 
 /// An account's life cycle: created, signed in (or refused), locked out,
@@ -256,6 +259,10 @@ pub struct RequestMeta {
     /// header (and a failure's body), and stored on every row the request
     /// writes.
     pub trace_id: Option<String>,
+    /// This worker's own origin, as the request reached it, such as
+    /// `https://….workers.dev`: where an agent sends `POST /agent`. Never
+    /// written to `app_log`.
+    pub worker_origin: Option<String>,
     /// The caller's `users.id` once its session token has resolved, so the
     /// row of a request that fails afterwards names who it was. Shared by
     /// every clone of this `RequestMeta`.
@@ -322,6 +329,7 @@ impl LogEvent {
         match self {
             LogEvent::Auth(event) => event.outcome(),
             LogEvent::Request(event) => event.outcome(),
+            LogEvent::Agent(event) => event.outcome(),
         }
     }
 
@@ -333,6 +341,7 @@ impl LogEvent {
         match self {
             LogEvent::Auth(event) => event.subject(),
             LogEvent::Request(_) => None,
+            LogEvent::Agent(event) => event.subject(),
         }
     }
 

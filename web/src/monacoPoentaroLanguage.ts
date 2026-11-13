@@ -15,7 +15,7 @@ export function registerPoentaroLanguage(monacoApi: Monaco) {
   monacoApi.languages.register({ id: POENTARO_LANGUAGE_ID })
 
   monacoApi.languages.setLanguageConfiguration(POENTARO_LANGUAGE_ID, {
-    comments: { lineComment: '#' },
+    comments: { lineComment: '##' },
     brackets: [
       ['(', ')'],
       ['[', ']'],
@@ -37,7 +37,9 @@ export function registerPoentaroLanguage(monacoApi: Monaco) {
         [/("{3,})\s*$/, { token: 'delimiter', next: '@score.$1' }],
         // Quoted strings first: a `#` inside a string is not a comment.
         [/"([^"\\]|\\.)*"/, 'string'],
-        [/#.*$/, 'comment'],
+        [/##.*$/, 'comment'],
+        // A line string, which a document gives no meaning.
+        [/#.*$/, 'string'],
         [/\/\/.*$/, 'comment'],
         // [Abbrev] part reference.
         [/\[[^\]\n]*\]/, 'tag'],

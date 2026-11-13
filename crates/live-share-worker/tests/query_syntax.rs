@@ -267,6 +267,34 @@ const QUERIES: &[(&str, &str)] = &[
         "upsert_sign_in_lockout.sql",
         include_str!("../queries/upsert_sign_in_lockout.sql"),
     ),
+    (
+        "insert_api_key.sql",
+        include_str!("../queries/insert_api_key.sql"),
+    ),
+    (
+        "list_api_keys.sql",
+        include_str!("../queries/list_api_keys.sql"),
+    ),
+    (
+        "delete_api_key.sql",
+        include_str!("../queries/delete_api_key.sql"),
+    ),
+    (
+        "get_api_key.sql",
+        include_str!("../queries/get_api_key.sql"),
+    ),
+    (
+        "touch_api_key.sql",
+        include_str!("../queries/touch_api_key.sql"),
+    ),
+    (
+        "delete_api_keys_of_users.sql",
+        include_str!("../queries/delete_api_keys_of_users.sql"),
+    ),
+    (
+        "get_file_by_name.sql",
+        include_str!("../queries/get_file_by_name.sql"),
+    ),
 ];
 
 #[tokio::test]

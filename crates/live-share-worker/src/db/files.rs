@@ -11,6 +11,7 @@ use crate::protocol::RenameBatchMove;
 const LIST_FILES_BY_OWNER: &str = include_str!("../../queries/list_files_by_owner.sql");
 const INSERT_FILE: &str = include_str!("../../queries/insert_file.sql");
 const GET_FILE_BY_ID: &str = include_str!("../../queries/get_file_by_id.sql");
+const GET_FILE_BY_NAME: &str = include_str!("../../queries/get_file_by_name.sql");
 const UPDATE_FILE_CONTENT: &str = include_str!("../../queries/update_file_content.sql");
 const RENAME_FILE: &str = include_str!("../../queries/rename_file.sql");
 const LIST_LIVE_FILE_NAMES: &str = include_str!("../../queries/list_live_file_names.sql");
@@ -103,6 +104,20 @@ pub(crate) async fn get_file_by_id(
     let row: Option<StoredFileRow> = db
         .prepare(GET_FILE_BY_ID)
         .bind(&[JsValue::from_str(id), JsValue::from_str(owner_user_id)])?
+        .first(None)
+        .await?;
+    Ok(row.map(StoredFile::from))
+}
+
+/// The owner's file at the path `name`, active or trashed.
+pub(crate) async fn get_file_by_name(
+    db: &D1Database,
+    owner_user_id: &str,
+    name: &str,
+) -> Result<Option<StoredFile>> {
+    let row: Option<StoredFileRow> = db
+        .prepare(GET_FILE_BY_NAME)
+        .bind(&[JsValue::from_str(owner_user_id), JsValue::from_str(name)])?
         .first(None)
         .await?;
     Ok(row.map(StoredFile::from))

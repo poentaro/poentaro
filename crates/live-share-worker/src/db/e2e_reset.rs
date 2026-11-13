@@ -9,6 +9,7 @@ const LIST_USER_IDS_BY_EMAILS: &str = include_str!("../../queries/list_user_ids_
 const DELETE_SHARES_OF_USERS: &str = include_str!("../../queries/delete_shares_of_users.sql");
 const DELETE_FILES_OF_USERS: &str = include_str!("../../queries/delete_files_of_users.sql");
 const DELETE_SESSIONS_OF_USERS: &str = include_str!("../../queries/delete_sessions_of_users.sql");
+const DELETE_API_KEYS_OF_USERS: &str = include_str!("../../queries/delete_api_keys_of_users.sql");
 const DELETE_PASSWORD_CREDENTIALS_OF_USERS: &str =
     include_str!("../../queries/delete_password_credentials_of_users.sql");
 const DELETE_USERS: &str = include_str!("../../queries/delete_users.sql");
@@ -32,7 +33,7 @@ fn to_json(values: &[String]) -> Result<String> {
 }
 
 /// Deletes the accounts of `emails` outright -- their shares, files,
-/// sessions, credentials and `users` rows -- and the emails' failed
+/// sessions, API keys, credentials and `users` rows -- and the emails' failed
 /// sign-ins. One D1 batch, so it's a single transaction, ordered so nothing
 /// is deleted while still referenced.
 pub(crate) async fn delete_accounts(db: &D1Database, emails: &[String]) -> Result<DeletedRows> {
@@ -52,6 +53,7 @@ pub(crate) async fn delete_accounts(db: &D1Database, emails: &[String]) -> Resul
             db.prepare(DELETE_SHARES_OF_USERS).bind(&user_ids_json)?,
             db.prepare(DELETE_FILES_OF_USERS).bind(&user_ids_json)?,
             db.prepare(DELETE_SESSIONS_OF_USERS).bind(&user_ids_json)?,
+            db.prepare(DELETE_API_KEYS_OF_USERS).bind(&user_ids_json)?,
             db.prepare(DELETE_PASSWORD_CREDENTIALS_OF_USERS)
                 .bind(&user_ids_json)?,
             db.prepare(DELETE_USERS).bind(&user_ids_json)?,
@@ -59,9 +61,10 @@ pub(crate) async fn delete_accounts(db: &D1Database, emails: &[String]) -> Resul
                 .bind(&[emails_json])?,
         ])
         .await?;
-    let [shares, files, _sessions, _credentials, users, _lockouts] = results.as_slice() else {
+    let [shares, files, _sessions, _api_keys, _credentials, users, _lockouts] = results.as_slice()
+    else {
         return Err(worker::Error::RustError(format!(
-            "expected 6 batch results, got {}",
+            "expected 7 batch results, got {}",
             results.len()
         )));
     };

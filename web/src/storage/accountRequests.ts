@@ -4,6 +4,7 @@ import {
   NetworkFailure,
   traceIdOf,
   WorkerRequestError,
+  type WorkerSchemas,
 } from '../syncedShare/workerClient'
 import type { StoredAccountAuth } from './accountAuth'
 
@@ -125,4 +126,45 @@ export function signOutSession(identityToken: string): void {
   void workerClient()
     .POST('/auth/sign-out', { body: { identityToken } })
     .catch(() => {})
+}
+
+export type ApiKeySummary = WorkerSchemas['ApiKeySummary']
+export type CreatedApiKey = WorkerSchemas['CreatedApiKey']
+
+/** The account's API keys, newest first. */
+export function listApiKeys(
+  identityToken: string,
+): Promise<AccountResult<ApiKeySummary[]>> {
+  return attempt(async () => {
+    const response = await callWorker(
+      workerClient().POST('/api-keys/list', { body: { identityToken } }),
+    )
+    return response.keys
+  })
+}
+
+/** A new API key, with the prompt that carries it: the only time either is
+ * shown. */
+export function createApiKey(
+  identityToken: string,
+): Promise<AccountResult<CreatedApiKey>> {
+  return attempt(() =>
+    callWorker(workerClient().POST('/api-keys', { body: { identityToken } })),
+  )
+}
+
+/** Stops the key `id` working at once. */
+export function revokeApiKey(
+  identityToken: string,
+  id: string,
+): Promise<AccountResult<null>> {
+  return attempt(async () => {
+    await callWorker(
+      workerClient().POST('/api-keys/{id}/revoke', {
+        params: { path: { id } },
+        body: { identityToken },
+      }),
+    )
+    return null
+  })
 }

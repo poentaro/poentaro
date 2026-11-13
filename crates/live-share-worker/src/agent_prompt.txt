@@ -1,0 +1,37 @@
+Set up Poentaro, where I keep my music scores, so you can read and edit them in any session.
+
+1. Save my API key where only I can read it:
+
+   mkdir -p ~/.config/poentaro && (umask 077 && printf '%s' '{key}' > ~/.config/poentaro/key)
+
+2. Save everything between the two 8< lines below as a global skill named "poentaro":
+   write it to ~/.agents/skills/poentaro/SKILL.md, where most agents (Codex,
+   Gemini CLI, Copilot, OpenCode) look. If ~/.claude exists, also link it for
+   Claude Code, which only reads ~/.claude/skills:
+
+   mkdir -p ~/.claude/skills && ln -sfn ~/.agents/skills/poentaro ~/.claude/skills/poentaro
+
+   If your agent keeps global skills somewhere else, put a copy there too.
+
+3. Use the skill to list my files.
+
+---8<---
+---
+name: poentaro
+description: Read, write and export the user's music scores (.poentaro files) on Poentaro.
+---
+
+Send each request as the body of a POST, and read the plain-text response:
+
+    curl -s {origin}/agent \
+      -H "Authorization: Bearer $(cat ~/.config/poentaro/key)" \
+      --data-binary '<request>'
+
+For a request with many lines, write it to a file and send `--data-binary @request.anyx`.
+
+Start each session by sending `SCHEMA`. It answers how to write a request and read a
+response, and the methods you can call. Follow it.
+
+If ~/.config/poentaro/key is missing or the server answers 401, ask the user to create
+a key under AI agents in Poentaro's account menu, then save it as in step 1.
+---8<---
