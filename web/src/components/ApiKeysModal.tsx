@@ -93,13 +93,18 @@ export function ApiKeysModal({ open, onOpenChange }: ApiKeysModalProps) {
     if (listed) setKeys(listed)
   }, [token, settle])
 
+  // Clears only on opening: `refresh` changes whenever the parent re-renders
+  // with a new `onOpenChange`, which would hide a just-created key's prompt.
   useEffect(() => {
     if (!open) return
     setPrompt(null)
     setCopied(false)
     setError(null)
     setTraceId(null)
-    void refresh()
+  }, [open])
+
+  useEffect(() => {
+    if (open) void refresh()
   }, [open, refresh])
 
   async function create() {
