@@ -8,8 +8,17 @@ Feature: An AI agent edits the owner's scores with an API key
     And I click the account chip
     And I click "AI agents" in the profile popover
     And I click "Create key" in the AI agents dialog
-    Then the AI agents dialog shows a prompt that fetches the agent guide with the new key
+    Then the AI agents dialog shows a prompt that saves the new key and installs the Poentaro skill
     And the AI agents dialog lists the new key
+
+  Scenario: The agent learns the protocol and the score syntax from its requests
+    Given the signed-in account has an API key
+    When the agent sends "SCHEMA"
+    Then the agent's last result contains "PROTOCOL poentaro VERSION 1"
+    And the agent's last result contains "METHOD syntax RETURNS"
+    When the agent sends "score/syntax"
+    Then the agent's last result is not an error
+    And the agent's last result contains "Syntax Reference"
 
   Scenario: An agent's save shows up in the open score
     Given a cloud file named "agent-live.poentaro" is seeded for the signed-in account

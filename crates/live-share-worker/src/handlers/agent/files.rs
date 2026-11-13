@@ -19,6 +19,9 @@ use crate::files::{self, ContentWriteAttempt, StoredFile};
 use crate::handlers::files::{proposed_name, record_version};
 use crate::handlers::{is_unique_constraint_violation, now_millis};
 
+/// The score syntax, which `score/syntax` answers.
+const SYNTAX: &str = include_str!("../../../../../syntax.md");
+
 type Outcome<T, E> = worker::Result<Result<T, E>>;
 
 pub(super) struct AgentFiles<'a> {
@@ -271,5 +274,12 @@ impl poentaro_protocol::files::export::Server for AgentFiles<'_> {
             });
         self.note("files/export/midi _", &outcome);
         outcome
+    }
+}
+
+impl poentaro_protocol::score::Server for AgentFiles<'_> {
+    async fn syntax(&self) -> worker::Result<String> {
+        self.calls.borrow_mut().push("score/syntax: ok".to_string());
+        Ok(SYNTAX.to_string())
     }
 }

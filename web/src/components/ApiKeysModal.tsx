@@ -32,7 +32,9 @@ const promptStyle: React.CSSProperties = {
   background: '#f8fafc',
   fontSize: '12px',
   whiteSpace: 'pre-wrap',
-  wordBreak: 'break-all',
+  overflowWrap: 'anywhere',
+  maxHeight: '40vh',
+  overflowY: 'auto',
 }
 
 const keyRowStyle: React.CSSProperties = {

@@ -58,13 +58,13 @@ pub fn should_touch(last_used_at: Option<i64>, now: i64) -> bool {
 }
 
 /// What the account owner pastes into their AI agent, with the key and
-/// this worker's `origin` filled in: it sends the agent to `GET /agent`.
+/// this worker's `origin` filled in (`agent_prompt.txt`): it has the agent
+/// save the key to a file only the owner can read and install a global
+/// skill that sends requests to `POST /agent`, starting with `SCHEMA`.
 pub fn agent_prompt(origin: &str, key: &str) -> String {
-    format!(
-        "Help me with my music scores on Poentaro. Before anything else, run\n\
-         curl -s {origin}/agent -H \"Authorization: Bearer {key}\"\n\
-         and follow what it says.\n"
-    )
+    include_str!("agent_prompt.txt")
+        .replace("{origin}", origin)
+        .replace("{key}", key)
 }
 
 /// A key in a response.

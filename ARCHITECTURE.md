@@ -521,7 +521,7 @@ migrations (see "Storage" below), nothing else.
   handoff `POST /origin-migrations` / `POST /origin-migrations/claim`, see
   "Origin migration" below, and the API key routes `POST /api-keys`,
   `/api-keys/list` and `/api-keys/{id}/revoke`, see "AI agents" below).
-  `GET /agent`, `GET /agent/syntax` and `POST /agent` answer plain text,
+  `POST /agent` answers plain text,
   not JSON, so `fetch` serves them before the router
   (`handlers::serves_agent`/`serve_agent`). Plus the test-only `POST /e2e/reset`
   (`handlers::e2e_reset`, config in `src/e2e_reset.rs`): registered via
@@ -739,12 +739,13 @@ text, and the methods are declared in a schema.
 
 - Schema and generated code: `crates/poentaro-protocol`. The schema is the
   folder `schema/`, a file per **scope**: `protocol.anyx` holds only the
-  `PROTOCOL` header, `files.anyx` is the scope `files` and
-  `files/export.anyx` the scope `files/export`. A method is called by its
+  `PROTOCOL` header, `files.anyx` is the scope `files`,
+  `files/export.anyx` the scope `files/export` and `score.anyx` the scope
+  `score`. A method is called by its
   full name, its scope's path then its shape: `files/list`,
   `files/read _`, `files/write _ at revision _ content _`,
-  `files/create _ content _`, `files/export/svg _` and
-  `files/export/midi _`. `files` declares the records (`file summary`,
+  `files/create _ content _`, `files/export/svg _`,
+  `files/export/midi _` and `score/syntax`. `files` declares the records (`file summary`,
   `file`, `diagnostic`, `saved`) and errors (`trashed`, `missing`,
   `conflict at revision _ content _`, `rejected _`,
   `already exists at revision _`, `invalid path _`); `files/export`
@@ -761,15 +762,17 @@ text, and the methods are declared in a schema.
   `just generate-protocol` rewrites it, and a test fails when it is stale.
   Like `poentaro-grammar`, the crate is outside the workspace lints and its
   `generated.rs` is exempt from the 400-line limit.
-- Routes (`src/handlers/agent.rs`): `GET /agent` answers the guide
-  (`poentaro_protocol::guide`: how to write a request and read a response,
-  with a `curl` line on this worker's own origin, then the schema with its
-  docs), `GET /agent/syntax` answers `syntax.md`, and `POST /agent` runs a
-  request sent with `Authorization: Bearer poe_…`. A missing, unknown or
+- Route (`src/handlers/agent.rs`): `POST /agent` runs a request sent with
+  `Authorization: Bearer poe_…`; any other method is a `405`. Everything
+  the agent reads comes through it: anyx's built-in `SCHEMA` call answers
+  the guide (how to write a request and read a response, then the schema
+  with its docs), and `score/syntax` (`schema/score.anyx`) answers
+  `syntax.md`. A missing, unknown or
   revoked key is a plain-text `401`; the per-key `AGENT_RATE_LIMITER`
   (`cloudflare.config.ts`, 60 requests a minute) a `429`.
 - Methods (`src/handlers/agent/files.rs`, `AgentFiles`, an implementation of
-  `Server`, `files::Server` and `files::export::Server` over D1): files are
+  `Server`, `files::Server`, `files::export::Server` and `score::Server`
+  over D1): files are
   addressed by path (`db::get_file_by_name`). `files/list` lists the live
   files; `read`/`write` answer `trashed` for a
   binned file and `missing` for none. `write` is the same compare-and-swap
@@ -797,8 +800,14 @@ text, and the methods are declared in a schema.
   `last_used_at` is written at most once a minute (`should_touch`). The
   account menu's **AI agents** dialog (`web/src/components/ApiKeysModal.tsx`)
   creates, lists and revokes keys; `POST /api-keys` answers the key inside
-  `CreatedApiKey.prompt` (`api_keys::agent_prompt`), the text the owner
-  pastes into the agent, which is the only time the key is shown.
+  `CreatedApiKey.prompt` (`api_keys::agent_prompt`, the template
+  `src/agent_prompt.txt`), the text the owner pastes into the agent, which
+  is the only time the key is shown. It has the agent save the key to
+  `~/.config/poentaro/key` (mode 600) and install a global skill
+  `poentaro` at `~/.agents/skills/poentaro/SKILL.md` (linked into
+  `~/.claude/skills` for Claude Code). The skill holds only how to send a
+  request, reading the key from that file, and says to start each session
+  with `SCHEMA`, so the schema is never copied into it and goes stale.
 - Logging: `LogEvent::Agent(AgentEvent)`, flow `agent`: `key_created`,
   `key_revoked`, `key_rejected` and one `called` row per `POST /agent`
   listing each call as its full method name and ending
@@ -1127,8 +1136,9 @@ away from the wasm build both times:
 | **Account** | An email + password (`password_credentials`) on a `users` row, signing in to **both** cloud file storage and Synced Share ownership. Held in the browser as `accountAuth.ts`'s `{ token, email }` under `poentaro:account-auth:v2`. See "Accounts (email + password)". |
 | **static folder link** | A `#share-folder=<payload>` link carrying a compressed `FolderSnapshot` of a folder at one moment; works for local and cloud folders, never updates, and is not offered above `MAX_STATIC_FOLDER_LINK_CHARS` (the dialog suggests a synced link instead). |
 | **API key** | A `poe_…` key an account owner creates in the account menu's **AI agents** dialog, for their AI agent to send to `POST /agent` as `Authorization: Bearer`. It acts as its owner on the owner's own files only; only its hash is stored, and its `prefix` names it. See "AI agents". |
-| **agent** | An AI agent (Claude Code, Codex, …) that the account owner points at `GET /agent` with an API key. It reads the guide and the schema there, then reads and edits the owner's scores through `POST /agent`. |
+| **agent** | An AI agent (Claude Code, Codex, …) that the account owner sets up with the AI agents dialog's prompt: it saves the API key and installs the `poentaro` skill, then sends `SCHEMA` to `POST /agent` for the guide and the schema, and reads and edits the owner's scores through the same route. |
 | **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result is a value, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro's schema is the folder `crates/poentaro-protocol/schema`, a file per scope. |
+| **`SCHEMA`** (anyx protocol) | The call every anyx-protocol server answers without declaring it: the guide to its schema (how to write a request and read a response, then the schema as written). Generated clients call it as `client.schema()`. |
 | **scope** (anyx protocol) | A file of an anyx-protocol schema folder other than `protocol.anyx`, named by its path without `.anyx` (`files/export`). Its methods are called by full name (`files/export/svg _`), and its types and errors are private to it unless `PUBLIC`. |
 | **share overview** | `file_tree::ShareOverview`, the owner's live file and folder links as `POST /shares/overview` reports them; everything the share UI shows (markers, "via X" tags, warnings) is derived from it in Rust. |
 | **selection unit** | `file_tree::SelectionUnit`: one thing a multi-select action applies to — a file, or a folder whose files are all ticked (moved and deleted as a folder, so its structure survives). Folders inside a ticked folder are not listed again. |

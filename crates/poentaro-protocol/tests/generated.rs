@@ -8,7 +8,12 @@ const SCHEMA_FOLDER: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/schema");
 const GENERATED_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/generated.rs");
 
 /// Each scope's file, by its path in `schema/`.
-const SCHEMA_PATHS: [&str; 3] = ["protocol.anyx", "files.anyx", "files/export.anyx"];
+const SCHEMA_PATHS: [&str; 4] = [
+    "protocol.anyx",
+    "files.anyx",
+    "files/export.anyx",
+    "score.anyx",
+];
 
 #[test]
 fn the_server_and_client_are_generated_from_the_schema() {

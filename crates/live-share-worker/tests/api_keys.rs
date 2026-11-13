@@ -34,11 +34,19 @@ fn a_use_is_written_down_at_most_once_a_minute() {
 }
 
 #[test]
-fn the_prompt_sends_the_agent_to_the_guide_with_its_key() {
-    assert_eq!(
-        agent_prompt("https://worker.example", "poe_abc"),
-        "Help me with my music scores on Poentaro. Before anything else, run\n\
-         curl -s https://worker.example/agent -H \"Authorization: Bearer poe_abc\"\n\
-         and follow what it says.\n"
+fn the_prompt_stores_the_key_and_installs_a_skill_that_starts_with_the_schema() {
+    let prompt = agent_prompt("https://worker.example", "poe_abc");
+    assert!(prompt.contains("(umask 077 && printf '%s' 'poe_abc' > ~/.config/poentaro/key)"));
+    assert!(prompt.contains("~/.agents/skills/poentaro/SKILL.md"));
+    assert!(prompt.contains("ln -sfn ~/.agents/skills/poentaro ~/.claude/skills/poentaro"));
+    assert!(prompt.contains("curl -s https://worker.example/agent \\\n"));
+    assert!(prompt.contains("Start each session by sending `SCHEMA`."));
+    assert!(!prompt.contains("{origin}") && !prompt.contains("{key}"));
+    let skill: Vec<&str> = prompt.split("---8<---\n").collect();
+    assert_eq!(skill.len(), 3, "the skill sits between two 8< lines");
+    assert!(skill[1].starts_with("---\nname: poentaro\n"));
+    assert!(
+        !skill[1].contains("poe_abc"),
+        "the skill reads the key from its file"
     );
 }

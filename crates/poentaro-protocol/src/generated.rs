@@ -13,8 +13,7 @@ pub const SCHEMA_FILES: &[anyx_protocol::SchemaFile<'static>] = &[
 # keeps the account owner's scores in the cloud. When you save, anyone who
 # has the score open sees the change.
 #
-# Before you write a score, read its syntax at `/agent/syntax` on this
-# server, with the same header.
+# Before you write a score, call `score/syntax` for how to write one.
 #
 # To edit a score: read it, change the text, then write it at the revision
 # you read. If the write comes back as a conflict, apply your change again
@@ -103,6 +102,12 @@ METHOD midi (path: TEXT)
     ERRORS [unreadable, files/file errors],
 "#,
     },
+    anyx_protocol::SchemaFile {
+        path: "score.anyx",
+        source: r#"# How to write a `.poentaro` score. Read it before you write one.
+METHOD syntax RETURNS (syntax: TEXT),
+"#,
+    },
 ];
 
 /// The schema, read once.
@@ -126,7 +131,7 @@ pub trait Server {
 /// Runs `request` against `implementation` and writes the response. Every
 /// call runs, in order, until one fails with an internal error, which
 /// `on_internal_error` hears; the calls after it don't run.
-pub async fn handle<S: Server + files::Server + files::export::Server>(
+pub async fn handle<S: Server + files::Server + files::export::Server + score::Server>(
     implementation: &S,
     request: &str,
     mut on_internal_error: impl FnMut(<S as Server>::Error),
@@ -185,6 +190,8 @@ pub async fn handle<S: Server + files::Server + files::export::Server>(
                 )
                 .await,
             ),
+            6 => anyx_protocol::server::value(<S as score::Server>::syntax(implementation).await),
+            7 => Ok::<_, <S as Server>::Error>(anyx_protocol::server::introspect(schema)),
             _ => unreachable!("the codec read a method of the schema"),
         };
         outcomes.push(outcome.unwrap_or_else(|error| {
@@ -207,9 +214,21 @@ impl<T: Transport> Client<T> {
         Self { transport }
     }
 
+    /// `SCHEMA`, returning the guide to the schema.
+    pub async fn schema(&self) -> Result<String, CallError<::std::convert::Infallible, T::Error>> {
+        anyx_protocol::client::call(&self.transport, schema(), 7, vec![]).await
+    }
+
     /// The methods of the scope `files`.
     pub fn files(&self) -> files::Client<'_, T> {
         files::Client {
+            transport: &self.transport,
+        }
+    }
+
+    /// The methods of the scope `score`.
+    pub fn score(&self) -> score::Client<'_, T> {
+        score::Client {
             transport: &self.transport,
         }
     }
@@ -772,6 +791,39 @@ pub mod files {
                 )
                 .await
             }
+        }
+    }
+}
+
+/// The scope `score`.
+pub mod score {
+    use anyx_protocol::client::{CallError, Transport};
+    use anyx_protocol::{FieldsBuilder, FieldsReader, FromValue, IntoValue, Value};
+
+    /// The methods of the scope `score`, for a server to implement. Its
+    /// `Error` is the root `Server`'s.
+    #[allow(async_fn_in_trait)]
+    pub trait Server: super::Server {
+        /// How to write a `.poentaro` score. Read it before you write one.
+        ///
+        /// `score/syntax`, returning `syntax`.
+        async fn syntax(&self) -> Result<String, Self::Error>;
+    }
+
+    /// Calls the methods of the scope `score` through the transport of the root
+    /// `Client`.
+    pub struct Client<'a, T> {
+        pub transport: &'a T,
+    }
+
+    impl<'a, T: Transport> Client<'a, T> {
+        /// How to write a `.poentaro` score. Read it before you write one.
+        ///
+        /// `score/syntax`, returning `syntax`.
+        pub async fn syntax(
+            &self,
+        ) -> Result<String, CallError<::std::convert::Infallible, T::Error>> {
+            anyx_protocol::client::call(self.transport, super::schema(), 6, vec![]).await
         }
     }
 }

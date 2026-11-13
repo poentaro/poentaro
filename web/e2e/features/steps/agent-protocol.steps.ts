@@ -34,9 +34,9 @@ BeforeScenario(() => {
   firstSeenRevisions.clear()
 })
 
-/** The key in a prompt the worker wrote: the agent's `Bearer` header. */
+/** The key in a prompt the worker wrote: what the agent saves to its key file. */
 function keyInPrompt(prompt: string): string {
-  const secret = /Bearer (poe_[^"\s]+)/.exec(prompt)?.[1]
+  const secret = /'(poe_[^'\s]+)'/.exec(prompt)?.[1]
   if (!secret) throw new Error(`found no key in the prompt ${prompt}`)
   return secret
 }
@@ -172,11 +172,13 @@ When(
 )
 
 Then(
-  'the AI agents dialog shows a prompt that fetches the agent guide with the new key',
+  'the AI agents dialog shows a prompt that saves the new key and installs the Poentaro skill',
   async ({ page }) => {
     const prompt = page.getByTestId('api-key-prompt')
-    await expect(prompt).toContainText(`${CLOUD_WORKER_ORIGIN}/agent`)
-    await expect(prompt).toContainText('Authorization: Bearer poe_')
+    await expect(prompt).toContainText("printf '%s' 'poe_")
+    await expect(prompt).toContainText('~/.agents/skills/poentaro/SKILL.md')
+    await expect(prompt).toContainText(`curl -s ${CLOUD_WORKER_ORIGIN}/agent`)
+    await expect(prompt).toContainText('Start each session by sending `SCHEMA`')
   },
 )
 

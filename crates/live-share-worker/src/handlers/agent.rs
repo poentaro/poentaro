@@ -1,11 +1,12 @@
 //! `/agent`: where an account owner's AI agent reads and edits the owner's
 //! scores, through the anyx protocol `crates/poentaro-protocol/schema` describes.
 //!
-//! - `GET /agent` is the guide: how to write a request, then the schema.
-//! - `GET /agent/syntax` is `syntax.md`, the score syntax.
-//! - `POST /agent` runs a request, sent with `Authorization: Bearer poe_…`.
+//! `POST /agent` runs a request, sent with `Authorization: Bearer poe_…`.
+//! Everything an agent reads comes through it: `SCHEMA` answers the guide
+//! (how to write a request, then the schema) and `score/syntax` answers
+//! `syntax.md`.
 //!
-//! These answer plain text, not `ApiErrorBody` JSON, since an agent reads
+//! It answers plain text, not `ApiErrorBody` JSON, since an agent reads
 //! them, so `lib.rs` serves them before the JSON router. Each `POST` writes
 //! one `app_log` row: the calls it ran, or the key it refused.
 
@@ -25,39 +26,23 @@ use files::AgentFiles;
 /// The per-key limit on `POST /agent`. Must match `cloudflare.config.ts`.
 const AGENT_RATE_LIMITER: &str = "AGENT_RATE_LIMITER";
 
-const SYNTAX: &str = include_str!("../../../../syntax.md");
-
 /// Whether `lib.rs` should hand a request for `path` to `serve`.
 pub(crate) fn serves(path: &str) -> bool {
-    path == "/agent" || path == "/agent/syntax"
+    path == "/agent"
 }
 
 pub(crate) async fn serve(mut req: Request, env: &Env) -> Result<Response> {
-    let origin = req.url()?.origin().ascii_serialization();
-    match (req.method(), req.path().as_str()) {
-        (Method::Get, "/agent") => markdown(guide(&origin)),
-        (Method::Get, "/agent/syntax") => markdown(SYNTAX.to_string()),
-        (Method::Post, "/agent") => {
-            let meta = request_meta(&req);
-            let key = req.headers().get("Authorization")?;
-            let request = req.text().await?;
-            let d1 = env.d1(D1_BINDING)?;
-            run(&d1, env, key.as_deref(), &request, &meta).await
-        }
-        _ => text("Send `GET /agent` for how to use this endpoint.\n", 405),
+    if req.method() != Method::Post {
+        return text(
+            "Send requests as the body of `POST /agent`; send `SCHEMA` for how to write one.\n",
+            405,
+        );
     }
-}
-
-fn guide(origin: &str) -> String {
-    let how_to_send = format!(
-        "Send a request as the body of `POST {origin}/agent`, with the header \
-         `Authorization: Bearer <key>`, the key you fetched this guide with. \
-         The response is plain text.\n\n    \
-         curl -s {origin}/agent -H \"Authorization: Bearer $KEY\" --data-binary 'files/list'\n\n\
-         For a request with many lines, write it to a file and send \
-         `--data-binary @request.anyx`."
-    );
-    poentaro_protocol::guide(&how_to_send)
+    let meta = request_meta(&req);
+    let key = req.headers().get("Authorization")?;
+    let request = req.text().await?;
+    let d1 = env.d1(D1_BINDING)?;
+    run(&d1, env, key.as_deref(), &request, &meta).await
 }
 
 async fn run(
@@ -137,14 +122,6 @@ async fn key_owner(d1: &D1Database, authorization: Option<&str>) -> Result<Optio
 
 async fn log(d1: &D1Database, event: AgentEvent, user_id: Option<&str>, meta: &RequestMeta) {
     db::record_app_log(d1, &LogEvent::Agent(event), user_id, meta).await;
-}
-
-fn markdown(body: String) -> Result<Response> {
-    let mut response = Response::ok(body)?;
-    response
-        .headers_mut()
-        .set("Content-Type", "text/markdown; charset=utf-8")?;
-    Ok(response)
 }
 
 fn text(body: &str, status: u16) -> Result<Response> {
