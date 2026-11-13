@@ -8,9 +8,6 @@ use poentaro::parser::section;
 
 fn highlight_kind_to_wit(kind: highlight::HighlightKind) -> HighlightKind {
     match kind {
-        highlight::HighlightKind::SectionHeader => HighlightKind::SectionHeader,
-        highlight::HighlightKind::MetadataKey => HighlightKind::MetadataKey,
-        highlight::HighlightKind::PartKind => HighlightKind::PartKind,
         highlight::HighlightKind::DirectiveKey => HighlightKind::DirectiveKey,
         highlight::HighlightKind::LyricReading => HighlightKind::LyricReading,
     }

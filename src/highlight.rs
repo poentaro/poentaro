@@ -7,12 +7,6 @@ use crate::parser::section::SectionKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HighlightKind {
-    /// A section's name.
-    SectionHeader,
-    /// A recognized metadata key.
-    MetadataKey,
-    /// A part-kind keyword (`notes`, `chords`, `percussion`, `follow`).
-    PartKind,
     /// A score directive keyword (`bpm`, `key`, …, `break`).
     DirectiveKey,
     /// The reading after a Chinese lyric character, `(háng)` in `行(háng)`.
@@ -31,8 +25,7 @@ pub fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
     anyx_highlight::highlight_tokens(source)
 }
 
-/// A known section: which one, and its header's span (the same span its
-/// `HighlightKind::SectionHeader` token has).
+/// A known section: which one, and its header keyword's span.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SectionHeader {
     pub kind: SectionKind,

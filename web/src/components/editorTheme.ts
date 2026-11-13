@@ -1,4 +1,6 @@
 import type { Monaco } from '@monaco-editor/react'
+import { anyxLightThemeRules } from '../anyx-monaco'
+import { SCORE_TOKEN } from '../monacoPoentaroLanguage'
 import type { HighlightKind } from '../poentaroWasm'
 
 export const EDITOR_THEME = 'poentaro'
@@ -10,12 +12,9 @@ interface TokenStyle {
   fontStyle?: string
 }
 
-/** Style of each keyword kind the semantic-tokens provider reports; its keys
- * are also that provider's legend. */
+/** Style of each score-string keyword kind the semantic-tokens provider
+ * reports; its keys are also that provider's legend. */
 export const highlightKindStyles: Record<HighlightKind, TokenStyle> = {
-  'section-header': { foreground: '0000ff', fontStyle: 'bold' },
-  'metadata-key': { foreground: '001080' },
-  'part-kind': { foreground: '267f99' },
   'directive-key': { foreground: '0000ff' },
   'lyric-reading': { foreground: '795e26', fontStyle: 'italic' },
 }
@@ -25,10 +24,11 @@ export function definePoentaroEditorTheme(monacoApi: Monaco) {
     base: 'vs',
     inherit: true,
     rules: [
-      { token: 'comment', foreground: '008000', fontStyle: 'italic' },
-      { token: 'string', foreground: 'a31515' },
-      { token: 'tag', foreground: '267f99', fontStyle: 'bold' },
-      { token: 'operator', foreground: '795e26' },
+      ...anyxLightThemeRules,
+      { token: SCORE_TOKEN.comment, foreground: '008000', fontStyle: 'italic' },
+      { token: SCORE_TOKEN.string, foreground: 'a31515' },
+      { token: SCORE_TOKEN.tag, foreground: '267f99', fontStyle: 'bold' },
+      { token: SCORE_TOKEN.operator, foreground: '795e26' },
       ...Object.entries(highlightKindStyles).map(([token, style]) => ({
         token,
         ...style,
