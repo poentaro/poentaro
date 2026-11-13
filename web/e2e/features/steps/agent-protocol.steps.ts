@@ -190,8 +190,30 @@ function rowOfTheAgentsKey(page: Page): Locator {
     .filter({ hasText: key.prefix })
 }
 
-When("I revoke the agent's key in the AI agents dialog", async ({ page }) => {
-  await rowOfTheAgentsKey(page).getByRole('button', { name: 'Revoke' }).click()
+When(
+  "I click Revoke on the agent's key in the AI agents dialog",
+  async ({ page }) => {
+    await rowOfTheAgentsKey(page)
+      .getByRole('button', { name: 'Revoke' })
+      .click()
+  },
+)
+
+When('I confirm revoking the key', async ({ page }) => {
+  await page
+    .getByTestId('revoke-api-key-dialog')
+    .getByRole('button', { name: 'Revoke' })
+    .click()
+})
+
+When('I cancel revoking the key', async ({ page }) => {
+  const dialog = page.getByTestId('revoke-api-key-dialog')
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog).toHaveCount(0)
+})
+
+Then("the AI agents dialog lists the agent's key", async ({ page }) => {
+  await expect(rowOfTheAgentsKey(page)).toHaveCount(1)
 })
 
 Then(
@@ -201,8 +223,15 @@ Then(
   },
 )
 
-Then('the AI agents dialog lists the new key', async ({ page }) => {
-  await expect(page.getByTestId('api-key-row').first()).toContainText(
-    'Never used',
-  )
-})
+Then(
+  'the AI agents dialog lists the new key, expiring in 30 days',
+  async ({ page }) => {
+    // Formatted in the page, in the browser's locale, as the dialog does.
+    const expires = await page.evaluate(() =>
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+    )
+    await expect(page.getByTestId('api-key-row').first()).toContainText(
+      `Never used · Expires ${expires}`,
+    )
+  },
+)

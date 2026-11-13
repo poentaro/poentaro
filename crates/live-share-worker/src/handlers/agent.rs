@@ -17,8 +17,8 @@ use std::cell::RefCell;
 use worker::{console_error, D1Database, Env, Method, Request, Response, Result};
 
 use super::{now_millis, request_meta, D1_BINDING, TRACE_ID_HEADER};
-use crate::api_keys::{bearer_key, should_touch, shown_prefix, ApiKeyOwner};
-use crate::app_log::{AgentEvent, Called, KeyRejected, LogEvent, RequestMeta};
+use crate::api_keys::{bearer_key, is_expired, should_touch, shown_prefix, ApiKeyOwner};
+use crate::app_log::{AgentEvent, Called, KeyEvent, KeyRejected, LogEvent, RequestMeta};
 use crate::auth::session::hash_token;
 use crate::db;
 use files::AgentFiles;
@@ -71,6 +71,18 @@ async fn run(
         );
     };
     *meta.resolved_user_id.borrow_mut() = Some(owner.user_id.clone());
+    let now = now_millis();
+    if is_expired(owner.created_at, now) {
+        let event = AgentEvent::KeyExpired(KeyEvent {
+            prefix: owner.prefix,
+        });
+        log(d1, event, Some(&owner.user_id), meta).await;
+        return text(
+            "This API key has expired: keys work for 30 days. Ask the account \
+             owner for a new one from the account menu in Poentaro.\n",
+            401,
+        );
+    }
     if !env
         .rate_limiter(AGENT_RATE_LIMITER)?
         .limit(owner.id.clone())
@@ -82,7 +94,6 @@ async fn run(
             429,
         );
     }
-    let now = now_millis();
     if should_touch(owner.last_used_at, now) {
         if let Err(error) = db::touch_api_key(d1, &owner.id, now).await {
             console_error!("api_keys: failed to touch: {error}");

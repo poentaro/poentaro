@@ -11,6 +11,8 @@ pub enum AgentEvent {
     KeyRevoked(KeyEvent),
     /// A request with no key, or one that names no key.
     KeyRejected(KeyRejected),
+    /// A request with a key past its lifetime (`api_keys::is_expired`).
+    KeyExpired(KeyEvent),
     /// A request with a valid key.
     Called(Called),
 }
@@ -44,7 +46,7 @@ impl AgentEvent {
     pub(super) fn outcome(&self) -> Outcome {
         match self {
             AgentEvent::KeyCreated(_) | AgentEvent::KeyRevoked(_) => Outcome::Ok,
-            AgentEvent::KeyRejected(_) => Outcome::Rejected,
+            AgentEvent::KeyRejected(_) | AgentEvent::KeyExpired(_) => Outcome::Rejected,
             AgentEvent::Called(event) if event.failed => Outcome::Error,
             AgentEvent::Called(_) => Outcome::Ok,
         }
@@ -53,7 +55,9 @@ impl AgentEvent {
     pub(super) fn subject(&self) -> Option<String> {
         let key = |prefix: &str| Some(format!("key:{prefix}"));
         match self {
-            AgentEvent::KeyCreated(event) | AgentEvent::KeyRevoked(event) => key(&event.prefix),
+            AgentEvent::KeyCreated(event)
+            | AgentEvent::KeyRevoked(event)
+            | AgentEvent::KeyExpired(event) => key(&event.prefix),
             AgentEvent::KeyRejected(event) => event.prefix.as_deref().and_then(key),
             AgentEvent::Called(event) => key(&event.prefix),
         }

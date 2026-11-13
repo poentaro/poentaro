@@ -29,8 +29,12 @@ pub(super) async fn list_api_keys(
     let d1 = ctx.d1(D1_BINDING)?;
     let user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
     let keys = db::list_api_keys(&d1, &user_id).await?;
+    let now = now_millis();
     Ok(Json(ListApiKeysResponse {
-        keys: keys.into_iter().map(ApiKeySummary::from).collect(),
+        keys: keys
+            .into_iter()
+            .map(|key| ApiKeySummary::at(key, now))
+            .collect(),
     }))
 }
 
@@ -45,10 +49,11 @@ pub(super) async fn create_api_key(
     let d1 = ctx.d1(D1_BINDING)?;
     let user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
     let secret = crypto::new_api_key()?;
+    let now = now_millis();
     let key = StoredApiKey {
         id: crypto::new_api_key_id()?,
         prefix: shown_prefix(&secret),
-        created_at: now_millis(),
+        created_at: now,
         last_used_at: None,
     };
     db::insert_api_key(&d1, &key, &user_id, &hash_token(&secret)).await?;
@@ -58,7 +63,7 @@ pub(super) async fn create_api_key(
     log(&d1, event, &user_id, &request_meta).await;
     let origin = request_meta.worker_origin.as_deref().unwrap_or_default();
     Ok(Json(CreatedApiKey {
-        key: key.into(),
+        key: ApiKeySummary::at(key, now),
         prompt: agent_prompt(origin, &secret),
     }))
 }

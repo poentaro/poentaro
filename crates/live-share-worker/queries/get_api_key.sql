@@ -2,6 +2,7 @@
 SELECT id,
        user_id,
        prefix,
+       created_at,
        last_used_at
 FROM api_keys
 WHERE token_hash = ?1;

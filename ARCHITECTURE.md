@@ -770,8 +770,8 @@ text, and the methods are declared in a schema.
   the agent reads comes through it: anyx's built-in `SCHEMA` call answers
   the guide (how to write a request and read a response, then the schema
   with its docs), and `score/syntax` (`schema/score.anyx`) answers
-  `syntax.md`. A missing, unknown or
-  revoked key is a plain-text `401`; the per-key `AGENT_RATE_LIMITER`
+  `syntax.md`. A missing, unknown, revoked or
+  expired key is a plain-text `401`; the per-key `AGENT_RATE_LIMITER`
   (`cloudflare.config.ts`, 60 requests a minute) a `429`.
 - Methods (`src/handlers/agent/files.rs`, `AgentFiles`, an implementation of
   `Server`, `files::Server`, `files::export::Server` and `score::Server`
@@ -800,9 +800,12 @@ text, and the methods are declared in a schema.
   `0012_api_keys.sql`): a key is `poe_` and 32 random bytes, base64url,
   and only its SHA-256 hash is stored, like a session token. Its first 12
   characters (`prefix`) name it in the account menu and in `app_log`.
-  `last_used_at` is written at most once a minute (`should_touch`). The
+  `last_used_at` is written at most once a minute (`should_touch`). Every
+  key works for `KEY_LIFETIME_MILLIS` (30 days) from `created_at`
+  (`expires_at`, `is_expired`); nothing extra is stored, and
+  `ApiKeySummary::at` adds `expiresAt` and `expired` for the dialog. The
   account menu's **AI agents** dialog (`web/src/components/ApiKeysModal.tsx`)
-  creates, lists and revokes keys; `POST /api-keys` answers the key inside
+  creates, lists and revokes keys, asking first in `RevokeApiKeyDialog`; `POST /api-keys` answers the key inside
   `CreatedApiKey.prompt` (`api_keys::agent_prompt`, the template
   `src/agent_prompt.txt`), the text the owner pastes into the agent, which
   is the only time the key is shown. It has the agent save the key to
@@ -812,7 +815,7 @@ text, and the methods are declared in a schema.
   request, reading the key from that file, and says to start each session
   with `SCHEMA`, so the schema is never copied into it and goes stale.
 - Logging: `LogEvent::Agent(AgentEvent)`, flow `agent`: `key_created`,
-  `key_revoked`, `key_rejected` and one `called` row per `POST /agent`
+  `key_revoked`, `key_rejected`, `key_expired` and one `called` row per `POST /agent`
   listing each call as its full method name and ending
   (`files/read _: ok`,
   `files/write _ at revision _ content _: conflict at revision _ content _`),
@@ -1138,7 +1141,7 @@ away from the wasm build both times:
 | **owner_user_id** | A file's owner (`files.owner_user_id`, an internal `users.id`), and so also the owner of that file's share — `shares` has no owner column of its own. Replaced the old KV model's bearer `ownerToken`, which any first writer could claim. |
 | **Account** | An email + password (`password_credentials`) on a `users` row, signing in to **both** cloud file storage and Synced Share ownership. Held in the browser as `accountAuth.ts`'s `{ token, email }` under `poentaro:account-auth:v2`. See "Accounts (email + password)". |
 | **static folder link** | A `#share-folder=<payload>` link carrying a compressed `FolderSnapshot` of a folder at one moment; works for local and cloud folders, never updates, and is not offered above `MAX_STATIC_FOLDER_LINK_CHARS` (the dialog suggests a synced link instead). |
-| **API key** | A `poe_…` key an account owner creates in the account menu's **AI agents** dialog, for their AI agent to send to `POST /agent` as `Authorization: Bearer`. It acts as its owner on the owner's own files only; only its hash is stored, and its `prefix` names it. See "AI agents". |
+| **API key** | A `poe_…` key an account owner creates in the account menu's **AI agents** dialog, for their AI agent to send to `POST /agent` as `Authorization: Bearer`. It acts as its owner on the owner's own files only, for 30 days; only its hash is stored, and its `prefix` names it. See "AI agents". |
 | **agent** | An AI agent (Claude Code, Codex, …) that the account owner sets up with the AI agents dialog's prompt: it saves the API key and installs the `poentaro` skill, then sends `SCHEMA` to `POST /agent` for the guide and the schema, and reads and edits the owner's scores through the same route. |
 | **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result repeats the call, with long arguments cut short with `…`, then says what came of it: `RETURNS <value>`, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro's schema is the folder `crates/poentaro-protocol/schema`, a file per scope. |
 | **`SCHEMA`** (anyx protocol) | The call every anyx-protocol server answers without declaring it: the guide to its schema (how to write a request and read a response, then the schema as written). Generated clients call it as `client.schema()`. |

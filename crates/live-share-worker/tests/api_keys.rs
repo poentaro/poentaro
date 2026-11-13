@@ -3,7 +3,8 @@
 #![allow(clippy::disallowed_macros)]
 
 use live_share_worker::api_keys::{
-    agent_prompt, bearer_key, should_touch, shown_prefix, TOUCH_EVERY_MILLIS,
+    agent_prompt, bearer_key, expires_at, is_expired, should_touch, shown_prefix, ApiKeySummary,
+    StoredApiKey, KEY_LIFETIME_MILLIS, TOUCH_EVERY_MILLIS,
 };
 
 #[test]
@@ -31,6 +32,28 @@ fn a_use_is_written_down_at_most_once_a_minute() {
     assert!(should_touch(None, 0));
     assert!(!should_touch(Some(1_000), 1_000 + TOUCH_EVERY_MILLIS - 1));
     assert!(should_touch(Some(1_000), 1_000 + TOUCH_EVERY_MILLIS));
+}
+
+#[test]
+fn a_key_works_for_thirty_days_after_it_is_created() {
+    assert_eq!(KEY_LIFETIME_MILLIS, 30 * 24 * 60 * 60 * 1000);
+    assert_eq!(expires_at(1_000), 1_000 + KEY_LIFETIME_MILLIS);
+    assert!(!is_expired(1_000, 1_000 + KEY_LIFETIME_MILLIS - 1));
+    assert!(is_expired(1_000, 1_000 + KEY_LIFETIME_MILLIS));
+}
+
+#[test]
+fn a_listed_key_says_when_it_expires_and_whether_it_has() {
+    let key = StoredApiKey {
+        id: "k".to_string(),
+        prefix: "poe_AbCd1234".to_string(),
+        created_at: 1_000,
+        last_used_at: None,
+    };
+    let fresh = ApiKeySummary::at(key.clone(), 2_000);
+    assert_eq!(fresh.expires_at, 1_000 + KEY_LIFETIME_MILLIS);
+    assert!(!fresh.expired);
+    assert!(ApiKeySummary::at(key, 1_000 + KEY_LIFETIME_MILLIS).expired);
 }
 
 #[test]

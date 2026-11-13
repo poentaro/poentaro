@@ -9,7 +9,7 @@ Feature: An AI agent edits the owner's scores with an API key
     And I click "AI agents" in the profile popover
     And I click "Create key" in the AI agents dialog
     Then the AI agents dialog shows a prompt that saves the new key and installs the Poentaro skill
-    And the AI agents dialog lists the new key
+    And the AI agents dialog lists the new key, expiring in 30 days
 
   Scenario: The agent learns the protocol and the score syntax from its requests
     Given the signed-in account has an API key
@@ -74,7 +74,19 @@ Feature: An AI agent edits the owner's scores with an API key
     When the app loads for the account chip flow
     And I click the account chip
     And I click "AI agents" in the profile popover
-    And I revoke the agent's key in the AI agents dialog
+    And I click Revoke on the agent's key in the AI agents dialog
+    And I confirm revoking the key
     Then the AI agents dialog no longer lists the agent's key
     When the agent sends "files/list"
     Then the agent is refused for its key
+
+  Scenario: Cancelling the revoke keeps the key working
+    Given the signed-in account has an API key
+    When the app loads for the account chip flow
+    And I click the account chip
+    And I click "AI agents" in the profile popover
+    And I click Revoke on the agent's key in the AI agents dialog
+    And I cancel revoking the key
+    Then the AI agents dialog lists the agent's key
+    When the agent sends "files/list"
+    Then the agent's last result starts with "files/list RETURNS"

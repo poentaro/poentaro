@@ -51,13 +51,27 @@ fn a_refused_key_is_rejected_and_named_only_when_it_looked_like_one(
 }
 
 #[test]
+fn an_expired_key_is_rejected_and_named() -> Result<(), serde_json::Error> {
+    let row = LogEvent::Agent(AgentEvent::KeyExpired(KeyEvent {
+        prefix: "poe_AbCd1234".to_string(),
+    }))
+    .to_row()?;
+
+    assert_eq!(row.kind, "key_expired");
+    assert_eq!(row.outcome, Outcome::Rejected);
+    assert_eq!(row.subject.as_deref(), Some("key:poe_AbCd1234"));
+    Ok(())
+}
+
+#[test]
 fn every_agent_event_decodes_back() -> Result<(), serde_json::Error> {
     let key = KeyEvent {
         prefix: "poe_AbCd1234".to_string(),
     };
     let events = [
         LogEvent::Agent(AgentEvent::KeyCreated(key.clone())),
-        LogEvent::Agent(AgentEvent::KeyRevoked(key)),
+        LogEvent::Agent(AgentEvent::KeyRevoked(key.clone())),
+        LogEvent::Agent(AgentEvent::KeyExpired(key)),
         LogEvent::Agent(AgentEvent::KeyRejected(KeyRejected { prefix: None })),
         called(true),
     ];

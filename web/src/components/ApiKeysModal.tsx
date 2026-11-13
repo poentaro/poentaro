@@ -12,6 +12,7 @@ import {
   ErrorBanner,
   footnoteStyle,
 } from './accountDialogParts'
+import { RevokeApiKeyDialog } from './RevokeApiKeyDialog'
 import { SpinnerLabel } from './SpinnerLabel'
 import {
   bodyStyle,
@@ -50,10 +51,17 @@ const keyUseStyle: React.CSSProperties = {
   fontSize: '12px',
 }
 
-function lastUsed(key: ApiKeySummary): string {
-  return key.lastUsedAt === null || key.lastUsedAt === undefined
-    ? 'Never used'
-    : `Used ${new Date(key.lastUsedAt).toLocaleDateString()}`
+function day(millis: number): string {
+  return new Date(millis).toLocaleDateString()
+}
+
+function keyStatus(key: ApiKeySummary): string {
+  if (key.expired) return 'Expired'
+  const used =
+    key.lastUsedAt === null || key.lastUsedAt === undefined
+      ? 'Never used'
+      : `Used ${day(key.lastUsedAt)}`
+  return `${used} · Expires ${day(key.expiresAt)}`
 }
 
 /**
@@ -69,6 +77,7 @@ export function ApiKeysModal({ open, onOpenChange }: ApiKeysModalProps) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [traceId, setTraceId] = useState<string | null>(null)
+  const [revoking, setRevoking] = useState<ApiKeySummary | null>(null)
   const token = accountAuth?.token ?? null
   // The parent passes a new `onOpenChange` on every render. Read through a
   // ref, it doesn't make the dialog reload its keys or clear its prompt.
@@ -118,6 +127,7 @@ export function ApiKeysModal({ open, onOpenChange }: ApiKeysModalProps) {
   }
 
   async function revoke(id: string) {
+    setRevoking(null)
     if (!token) return
     setError(null)
     // A revoke succeeds with no value, so `settle`'s `null` can't tell.
@@ -175,17 +185,22 @@ export function ApiKeysModal({ open, onOpenChange }: ApiKeysModalProps) {
         {keys.map((key) => (
           <div key={key.id} style={keyRowStyle} data-testid="api-key-row">
             <code>{key.prefix}…</code>
-            <span style={keyUseStyle}>{lastUsed(key)}</span>
+            <span style={keyUseStyle}>{keyStatus(key)}</span>
             <button
               type="button"
               style={buttonStyle}
-              onClick={() => void revoke(key.id)}
+              onClick={() => setRevoking(key)}
             >
               Revoke
             </button>
           </div>
         ))}
       </div>
+      <RevokeApiKeyDialog
+        prefix={revoking?.prefix ?? null}
+        onCancel={() => setRevoking(null)}
+        onConfirm={() => revoking && void revoke(revoking.id)}
+      />
     </AccountDialogFrame>
   )
 }

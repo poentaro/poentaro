@@ -26,6 +26,7 @@ struct ApiKeyOwnerRow {
     id: String,
     user_id: String,
     prefix: String,
+    created_at: i64,
     last_used_at: Option<i64>,
 }
 
@@ -88,6 +89,7 @@ pub(crate) async fn get_api_key(db: &D1Database, token_hash: &str) -> Result<Opt
         id: row.id,
         user_id: row.user_id,
         prefix: row.prefix,
+        created_at: row.created_at,
         last_used_at: row.last_used_at,
     }))
 }

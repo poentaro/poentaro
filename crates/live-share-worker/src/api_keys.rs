@@ -23,6 +23,10 @@ const SHOWN_LENGTH: usize = 12;
 /// of calls writes to D1 at most once a minute.
 pub const TOUCH_EVERY_MILLIS: i64 = 60 * 1000;
 
+/// How long a key works after it is created: 30 days. Every key gets the
+/// same lifetime, so a forgotten key stops working on its own.
+pub const KEY_LIFETIME_MILLIS: i64 = 30 * 24 * 60 * 60 * 1000;
+
 /// A key as the account menu lists it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StoredApiKey {
@@ -38,6 +42,7 @@ pub struct ApiKeyOwner {
     pub id: String,
     pub user_id: String,
     pub prefix: String,
+    pub created_at: i64,
     pub last_used_at: Option<i64>,
 }
 
@@ -50,6 +55,16 @@ pub fn bearer_key(authorization: Option<&str>) -> Option<&str> {
 /// The start of `key` that names it.
 pub fn shown_prefix(key: &str) -> String {
     key.chars().take(SHOWN_LENGTH).collect()
+}
+
+/// When a key created at `created_at` stops working.
+pub fn expires_at(created_at: i64) -> i64 {
+    created_at + KEY_LIFETIME_MILLIS
+}
+
+/// Whether a key created at `created_at` no longer works at `now`.
+pub fn is_expired(created_at: i64, now: i64) -> bool {
+    now >= expires_at(created_at)
 }
 
 /// Whether a use at `now` should write a new `last_used_at`.
@@ -76,15 +91,22 @@ pub struct ApiKeySummary {
     pub prefix: String,
     pub created_at: i64,
     pub last_used_at: Option<i64>,
+    /// When the key stops working (`expires_at`).
+    pub expires_at: i64,
+    /// Whether it had stopped working when it was listed.
+    pub expired: bool,
 }
 
-impl From<StoredApiKey> for ApiKeySummary {
-    fn from(key: StoredApiKey) -> Self {
+impl ApiKeySummary {
+    /// `key` as it stands at `now`.
+    pub fn at(key: StoredApiKey, now: i64) -> Self {
         ApiKeySummary {
             id: key.id,
             prefix: key.prefix,
             created_at: key.created_at,
             last_used_at: key.last_used_at,
+            expires_at: expires_at(key.created_at),
+            expired: is_expired(key.created_at, now),
         }
     }
 }
