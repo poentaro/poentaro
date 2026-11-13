@@ -40,3 +40,43 @@ description: Work on the next open GitHub issue that no agent has taken yet — 
    - Open the URL in a fresh browser and confirm that it shows the change
      and that you're signed in. Then give the user the URL and the fewest
      remaining steps to see it.
+
+## Once the user approves the PR
+
+Approval means the user says so in chat (e.g. "approved", "lgtm", "ship it")
+or leaves an approving review on GitHub. Then, without pausing between steps:
+
+1. **Set auto-merge.** First confirm the PR's base is `master`
+   (`gh pr view <n> --repo poentaro/poentaro --json baseRefName`); if it is
+   stacked on another PR's branch, say so and handle the bottom of the stack
+   first. Confirm the `master` ruleset still requires the CI checks, since
+   auto-merge without them has merged PRs before CI finished. Then
+   `gh pr merge <n> --repo poentaro/poentaro --auto --squash`.
+2. **Watch until merged, fixing CI failures.** Wait on the checks
+   (`gh pr checks <n> --repo poentaro/poentaro --watch`, in the background or
+   via Monitor, not a polling loop). When a check fails, read its log
+   (`gh run view <run-id> --log-failed`), fix the cause in the worktree,
+   commit and push, then keep watching. Investigate e2e failures rather than
+   re-running them away; re-run a job only when the log shows a known flake.
+   If the branch falls behind `master` with conflicts, rebase and push.
+   Stop and ask only if a fix would change what the user approved.
+3. **Notify on merge.** When `gh pr view <n> --json state` reports `MERGED`,
+   send a push notification (PushNotification) and tell the user the PR is
+   merged, then ask them to reply "ok" to start the cleanup. Do nothing more
+   until they do.
+4. **Clean up** after the "ok":
+   - Stop every server started for this issue (dev servers from `just dev`,
+     `cf dev` workers, Vite, Playwright runs), checking with `lsof -i` that
+     their ports are free.
+   - Remove the worktree (`git worktree remove <path>`, then
+     `git worktree prune`) and delete the local branch; the remote branch is
+     deleted on merge, otherwise delete it too.
+   - Delete temporary repos, clones and scratch files made for the issue
+     (e.g. the fixture scripts and scratch Vite config in the scratchpad, or
+     anything in `/tmp`).
+   - In the main checkout, `git fetch` and fast-forward `master` only if it
+     has no local changes; other sessions may share that tree.
+   - Report what was removed and anything left behind on purpose.
+5. **Close this herdr pane** as the very last action, since it ends this
+   session: `herdr pane close "$HERDR_PANE_ID"`. Skip it if `HERDR_PANE_ID`
+   is unset (not running inside herdr).
