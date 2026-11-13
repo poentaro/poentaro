@@ -1,19 +1,20 @@
 import { expect, type Page } from '@playwright/test'
+import { anyxLightThemeRules } from '../../../src/anyx-monaco'
 import { highlightKindStyles } from '../../../src/components/editorTheme'
 import type { HighlightKind } from '../../../src/poentaroWasm'
 import { Given, Then } from './fixtures'
 
 const SOURCE = [
+  '## Hymn',
   'metadata {',
   '    row height 30,',
-  '    colour: red,',
   '},',
   '',
-  'parts ["Melody" [M]: notes, "Echo" [E]: follow [M]],',
+  'parts ["Melody" [MEL]: notes { volume : 80% }, "Echo" [E]: follow [MEL]],',
   '',
   'score """',
   '    bpm=92 break',
-  '    [M] 1 2 3 4',
+  '    [MEL] 1 2 3 4',
   '    """,',
 ].join('\n')
 
@@ -24,9 +25,11 @@ function hexToRgb(hex: string): string {
   return `rgb(${red}, ${green}, ${blue})`
 }
 
-const keywordColors = Object.values(highlightKindStyles).map(({ foreground }) =>
-  hexToRgb(foreground),
-)
+function anyxColor(tokenClass: string): string {
+  const rule = anyxLightThemeRules.find((rule) => rule.token === tokenClass)
+  if (!rule?.foreground) throw new Error(`No anyx color for ${tokenClass}`)
+  return hexToRgb(rule.foreground)
+}
 
 /**
  * Color of the shortest run of rendered editor spans starting with `text`
@@ -85,15 +88,18 @@ Then(
 )
 
 Then(
-  'the editor text {string} is not colored as a keyword',
-  async ({ page }, text: string) => {
-    // Wait until highlighting has run, so a later keyword color can't
-    // still arrive.
+  'the editor text {string} is colored as an anyx {string}',
+  async ({ page }, text: string, tokenClass: string) => {
     await expect
-      .poll(() => editorTokenColor(page, 'height'))
-      .toBe(hexToRgb(highlightKindStyles['metadata-key'].foreground))
-    const color = await editorTokenColor(page, text)
-    expect(color).not.toBe('missing')
-    expect(keywordColors).not.toContain(color)
+      .poll(() => editorTokenColor(page, text))
+      .toBe(anyxColor(tokenClass))
+  },
+)
+
+Then(
+  'the editor text {string} is not colored as an anyx {string}',
+  async ({ page }, text: string, tokenClass: string) => {
+    await expect.poll(() => editorTokenColor(page, text)).not.toBe('missing')
+    expect(await editorTokenColor(page, text)).not.toBe(anyxColor(tokenClass))
   },
 )

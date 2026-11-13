@@ -1165,11 +1165,8 @@ world poentaro-wasm {
     // name, the preset's new name when the edit renamed it, or none when gone.
     export follow-preset-rename: func(previous-source: string, source: string, preset-name: string) -> option<string>;
 
-    // Kind of one editor keyword `highlight-tokens` reports.
+    // Kind of one score-string keyword `highlight-tokens` reports.
     enum highlight-kind {
-        section-header,
-        metadata-key,
-        part-kind,
         directive-key,
         lyric-reading,
     }
@@ -1180,8 +1177,9 @@ world poentaro-wasm {
         span: span,
     }
 
-    // Every `.poentaro` keyword in `source`, ordered by position, found by the
-    // parser's own lexers. Drives the editor's semantic highlighting.
+    // Every keyword inside the score string of `source`, ordered by position,
+    // found by the score's own lexer. Drives the editor's semantic
+    // highlighting; anyx's tokenizer colors the rest of the document.
     export highlight-tokens: func(source: string) -> list<highlight-token>;
 
     // Which section a `# <section>` header opens.
@@ -1193,8 +1191,7 @@ world poentaro-wasm {
         preset,
     }
 
-    // One known section header line's UTF-8 byte span (its `section-header`
-    // highlight token's span), excluding any trailing comment.
+    // One known section header keyword's UTF-8 byte span.
     record section-header {
         kind: section-kind,
         span: span,
