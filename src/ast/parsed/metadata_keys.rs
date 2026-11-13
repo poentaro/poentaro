@@ -77,10 +77,6 @@ impl YesNo {
             Self::No
         }
     }
-
-    pub fn to_bool(self) -> bool {
-        self == Self::Yes
-    }
 }
 
 /// The `directive_row_offset = x y` key.

@@ -29,18 +29,7 @@ keyword_enum! {
     }
 }
 
-/// What `notation = ...` called [`Notation::Numbered`] before the rename.
-/// Still read so older files keep their preset's notation; never written.
-const LEGACY_NUMBERED_KEYWORD: &str = "jianpu";
-
 impl Notation {
-    /// The notation a `notation = ...` line names: [`Self::from_keyword`],
-    /// plus the legacy spelling of [`Self::Numbered`].
-    pub fn from_source_value(value: &str) -> Option<Self> {
-        Self::from_keyword(value)
-            .or_else(|| (value == LEGACY_NUMBERED_KEYWORD).then_some(Self::Numbered))
-    }
-
     /// Whether this notation is drawn as staff notation by Verovio, which
     /// ignores the `metadata` text styles.
     pub fn ignores_text_styles(self) -> bool {

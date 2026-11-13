@@ -4,14 +4,14 @@
 
 use itertools::Itertools;
 
-use crate::ast::parsed::{
-    ParsedMetadata, PresetKey, DEFAULT_PRESET_NAME, DIRECTIVE_ROW_OFFSET_KEY,
-};
+use crate::ast::parsed::{ParsedMetadata, PresetKey, DEFAULT_PRESET_NAME};
 use crate::error::Span;
-use crate::parser::anyx::decoded::{decode, span, AbbreviationText, FieldName, ValueText};
+use crate::parser::anyx::decoded::{decode, span, AbbreviationText, FieldName};
 use crate::parser::anyx::quoted;
-use crate::parser::anyx::{field_text, read_metadata_field};
-use poentaro_grammar::{DecodeError, Document, DocumentPreset, Field, Record, Value};
+use crate::parser::anyx::{field_text, notation_of as read_notation, read_metadata_field};
+use poentaro_grammar::{
+    DecodeError, Document, DocumentPreset, Keyed, MetadataField, MetadataRecord, PresetField,
+};
 
 use super::metadata_edit::{canonical_fields, MetadataEdit, MetadataFields};
 use super::preset_edit::{NewPreset, PresetEdit, PresetSummary};
@@ -51,16 +51,30 @@ fn find_preset<'d>(document: &'d Document, name: &str) -> Option<&'d DocumentPre
         .find(|preset| preset.name.value.value == name)
 }
 
-/// The record's fields that decoded, in order.
-fn fields(record: &Record) -> impl DoubleEndedIterator<Item = &Field> {
-    record.field.iter().filter_map(|field| field.as_ref().ok())
+/// A preset's fields that decoded, in order.
+fn preset_fields(preset: &DocumentPreset) -> impl DoubleEndedIterator<Item = &PresetField> {
+    preset.fields.preset_field.iter().flatten()
 }
 
-/// The last field of `record` named `key`.
-fn last_field<'r>(record: &'r Record, key: &str) -> Option<&'r Field> {
-    fields(record)
-        .filter(|field| field.key() == key)
-        .next_back()
+/// A section's metadata fields as decoded: a preset's metadata overrides, or
+/// the metadata section's fields.
+type Metadata<'d> = Vec<Result<&'d MetadataField, &'d DecodeError>>;
+
+fn section_metadata(record: &MetadataRecord) -> Metadata<'_> {
+    record.metadata_field.iter().map(Result::as_ref).collect()
+}
+
+fn preset_metadata(preset: &DocumentPreset) -> Metadata<'_> {
+    preset
+        .fields
+        .preset_field
+        .iter()
+        .filter_map(|field| match field {
+            Ok(PresetField::Metadata(field)) => Some(Ok(field)),
+            Ok(_) => None,
+            Err(error) => Some(Err(error)),
+        })
+        .collect()
 }
 
 // ── metadata ─────────────────────────────────────────────────────────────
@@ -68,7 +82,11 @@ fn last_field<'r>(record: &'r Record, key: &str) -> Option<&'r Field> {
 /// The section Edit Metadata edits, and its record.
 struct EditedSection<'d> {
     whole: anyx::Span,
-    body: &'d Record,
+    /// The `{ … }` the fields are in.
+    braces: anyx::Span,
+    metadata: Metadata<'d>,
+    /// A preset's own fields, which the form leaves as written.
+    preset_only: Vec<anyx::Span>,
     is_preset: bool,
 }
 
@@ -80,43 +98,52 @@ fn edited_section<'d>(
         .and_then(|name| find_preset(document, name))
         .map(|preset| EditedSection {
             whole: preset.span,
-            body: &preset.fields,
+            braces: preset.fields.span,
+            metadata: preset_metadata(preset),
+            preset_only: preset_fields(preset)
+                .filter(|field| !matches!(field, PresetField::Metadata(_)))
+                .map(Keyed::span)
+                .collect(),
             is_preset: true,
         });
     preset.or_else(|| {
         document.metadata.as_ref().map(|section| EditedSection {
             whole: section.span,
-            body: &section.fields,
+            braces: section.fields.span,
+            metadata: section_metadata(&section.fields),
+            preset_only: Vec::new(),
             is_preset: false,
         })
     })
 }
 
-fn is_preset_only(field: &Result<Field, DecodeError>) -> bool {
-    field
-        .as_ref()
-        .is_ok_and(|field| PresetKey::from_keyword(&field.key()).is_some())
-}
-
-fn metadata_of(body: &Record) -> ParsedMetadata {
+fn metadata_of(fields: &[Result<&MetadataField, &DecodeError>]) -> ParsedMetadata {
     let mut metadata = ParsedMetadata::default();
-    body.field
+    fields
         .iter()
-        .filter(|field| !is_preset_only(field))
-        .for_each(|field| read_metadata_field(&mut metadata, field, &mut Vec::new()));
+        .for_each(|field| read_metadata_field(&mut metadata, *field, &mut Vec::new()));
     metadata
 }
 
 fn fields_of(section: &EditedSection, document: &Document) -> MetadataFields {
-    let directive_row_offset = last_field(section.body, DIRECTIVE_ROW_OFFSET_KEY)
-        // As the form's text input shows it: `0 -4`.
-        .and_then(|field| field.arguments.text().ok());
+    // As the form's text input shows it: `0 -4`.
+    let directive_row_offset = section
+        .metadata
+        .iter()
+        .flatten()
+        .filter_map(|field| match field {
+            MetadataField::DirectiveRowOffset { offset, .. } => {
+                Some(format!("{} {}", offset.x.value, offset.y.value))
+            }
+            _ => None,
+        })
+        .next_back();
     let inherited = match &document.metadata {
-        Some(metadata) if section.is_preset => metadata_of(&metadata.fields),
+        Some(metadata) if section.is_preset => metadata_of(&section_metadata(&metadata.fields)),
         _ => ParsedMetadata::default(),
     };
     MetadataFields {
-        metadata: metadata_of(section.body),
+        metadata: metadata_of(&section.metadata),
         directive_row_offset,
         inherited,
     }
@@ -129,14 +156,56 @@ pub(super) fn parse_metadata_fields(source: &str, preset_name: Option<&str>) -> 
         .unwrap_or_default()
 }
 
-/// What the form leaves as written: a preset's own fields, and text the
-/// converter kept because it couldn't read it.
-fn kept_fields<'s>(source: &'s str, body: &Record) -> Vec<&'s str> {
-    fields(body)
-        .filter(|field| {
-            PresetKey::from_keyword(&field.key()).is_some() || field.unconverted_text().is_some()
+/// The elements of the `{ … }` at `braces`.
+fn record_elements(source: &str, braces: anyx::Span) -> Vec<anyx::Span> {
+    fn find(node: &anyx::Node, braces: anyx::Span) -> Option<Vec<anyx::Span>> {
+        let children: &[anyx::Node] = match &node.kind {
+            anyx::NodeKind::Braces(nodes) if node.span == braces => {
+                return Some(nodes.iter().map(|node| node.span).collect());
+            }
+            anyx::NodeKind::Parens(nodes)
+            | anyx::NodeKind::Brackets(nodes)
+            | anyx::NodeKind::Braces(nodes) => nodes,
+            anyx::NodeKind::Call(call) => &call.arguments,
+            _ => &[],
+        };
+        children.iter().find_map(|child| find(child, braces))
+    }
+    anyx::parse(source)
+        .syntax
+        .nodes()
+        .iter()
+        .find_map(|node| find(node, braces))
+        .unwrap_or_default()
+}
+
+/// What the form leaves as written: a preset's own fields, text the converter
+/// kept because it couldn't read it, and fields that don't decode.
+fn kept_fields<'s>(source: &'s str, section: &EditedSection) -> Vec<&'s str> {
+    let unconverted = section
+        .metadata
+        .iter()
+        .flatten()
+        .filter(|field| matches!(field, MetadataField::CouldNotConvert { .. }))
+        .map(|field| field.span());
+    let failed = section.metadata.iter().filter_map(|field| field.err());
+    let undecoded = record_elements(source, section.braces)
+        .into_iter()
+        .filter(|element| {
+            failed
+                .clone()
+                .any(|error| element.start <= error.span.start && error.span.end <= element.end)
         })
-        .map(|field| text_of(source, span(field.span)))
+        .collect_vec();
+    section
+        .preset_only
+        .iter()
+        .copied()
+        .chain(unconverted)
+        .chain(undecoded)
+        .unique_by(|at| (at.start, at.end))
+        .sorted_by_key(|at| at.start)
+        .map(|at| text_of(source, span(at)))
         .collect()
 }
 
@@ -151,7 +220,7 @@ pub(super) fn update_metadata_field(
     };
     let mut fields = fields_of(&section, &document);
     edit.apply(&mut fields);
-    let elements = kept_fields(source, section.body)
+    let elements = kept_fields(source, &section)
         .into_iter()
         .map(str::to_owned)
         .chain(
@@ -160,7 +229,7 @@ pub(super) fn update_metadata_field(
                 .map(|field| field_text(&field.key, &field.value)),
         )
         .join(",\n");
-    let head = Span::new(section.whole.start, section.body.span.start);
+    let head = Span::new(section.whole.start, section.braces.start);
     let text = format!("{}{{\n{elements}\n}}", text_of(source, head));
     replace_span(source, span(section.whole), &formatted_section(&text))
 }
@@ -185,9 +254,11 @@ pub(super) fn list_presets(source: &str) -> Vec<PresetSummary> {
 }
 
 fn notation_of(preset: &DocumentPreset) -> Option<Notation> {
-    fields(&preset.fields)
-        .filter(|field| field.key() == PresetKey::Notation.keyword())
-        .filter_map(|field| Notation::from_source_value(&field.arguments.text().ok()?))
+    preset_fields(preset)
+        .filter_map(|field| match field {
+            PresetField::Notation { notation, .. } => Some(read_notation(notation).value),
+            _ => None,
+        })
         .next_back()
 }
 
@@ -196,17 +267,21 @@ fn notation_of(preset: &DocumentPreset) -> Option<Notation> {
 pub(super) fn part_list_of(source: &str, name: &str, key: PresetKey) -> Option<Vec<String>> {
     let document = decode(source).document;
     let preset = find_preset(&document, name)?;
-    let field = last_field(&preset.fields, key.keyword())?;
-    let Value::List(elements) = &field.arguments else {
-        return Some(Vec::new());
-    };
-    Some(
-        elements
-            .value
-            .iter()
-            .filter_map(|element| element.as_ref().ok()?.text().ok())
-            .collect(),
-    )
+    let parts = preset_fields(preset)
+        .filter_map(|field| match (field, key) {
+            (PresetField::VisibleParts { parts, .. }, PresetKey::VisibleParts)
+            | (PresetField::SoloedParts { parts, .. }, PresetKey::SoloedParts) => Some(parts),
+            _ => None,
+        })
+        .next_back()
+        .map(|parts| {
+            parts
+                .abbreviation
+                .iter()
+                .filter_map(|element| element.as_ref().ok()?.text().ok())
+                .collect()
+        });
+    parts
 }
 
 pub(super) fn has_preset(source: &str, name: &str) -> bool {
@@ -230,9 +305,9 @@ pub(super) fn update_preset_field(source: &str, name: &str, edit: &PresetEdit) -
         return source.to_owned();
     };
     let keyword = edit.key().keyword();
-    let matching = fields(&preset.fields)
+    let matching = preset_fields(preset)
         .filter(|field| field.key() == keyword)
-        .map(|field| span(field.span))
+        .map(|field| span(field.span()))
         .collect_vec();
     let whole = span(preset.span);
     let text = text_of(source, whole);

@@ -14,7 +14,7 @@ Feature: Text style metadata object syntax
   The old flat per-component keys (lyrics_font_size,
   lyric_click_target_padding_pt, notes_horizontal_padding_pt, etc.) are
   retired outright — no backward compatibility is preserved. Those keys
-  now fail as unknown metadata fields (regression coverage for that lives
+  now fail as keys the grammar doesn't list (regression coverage for that lives
   in src/parser/anyx/read/metadata_tests.rs, not here).
 
   Scenario Outline: A single component parses into the kind's TextStyle
@@ -65,7 +65,7 @@ Feature: Text style metadata object syntax
   Scenario: An unknown field inside the object is a recoverable error
     Given "metadata" sets "lyrics" to "{ bogus_field: 4 }"
     When it is compiled
-    Then compiling reports an unknown metadata field "lyrics style bogus field"
+    Then compiling reports an error containing "found the word `bogus`; expected the word `font size`"
 
   Scenario Outline: A malformed object literal is a recoverable parse error
     Given "metadata" sets "notes" to "<malformed>"

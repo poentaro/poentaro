@@ -236,7 +236,7 @@ score """
     """,
 "#;
     let fields = parse_metadata_fields(source, None);
-    assert_eq!(fields.directive_row_offset.as_deref(), Some("0 -"));
+    assert_eq!(fields.directive_row_offset, None);
     assert_eq!(fields.metadata.directive_row_offset, None);
     let result = update_metadata_field(source, None, text_edit(MetadataTextKey::Title, Some("t")));
     assert!(result.contains("directive row offset (0, -)"));

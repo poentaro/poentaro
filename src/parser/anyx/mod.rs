@@ -13,7 +13,7 @@ mod read;
 mod words;
 mod write;
 
-pub(crate) use read::{read, read_metadata_field, source_part_declarations};
+pub(crate) use read::{notation_of, read, read_metadata_field, source_part_declarations};
 pub(crate) use words::{abbreviation, label, quoted};
 pub(crate) use write::{key_value_field as field_text, part_kind_text, PartKindText};
 

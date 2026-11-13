@@ -31,24 +31,6 @@ pub enum RecoverableErrorKind {
     ChordInvalidToken { message: String },
     /// An unexpected character in a note duration suffix — note is emitted with default duration.
     DurationUnexpectedChar { ch: char },
-    /// A metadata line does not contain `=` — the line is skipped.
-    MetadataMalformedLine { line: String },
-    /// A metadata field name is not recognized — the line is skipped.
-    MetadataUnknownField { field: String },
-    /// A metadata integer field could not be parsed — the field keeps its default.
-    MetadataInvalidInteger { field: String, value: String },
-    /// A metadata integer field parsed to zero — the field keeps its default.
-    MetadataMustBePositive { field: String },
-    /// A metadata boolean field is not `yes` or `no` — the field keeps its default.
-    MetadataInvalidBoolean { field: String, value: String },
-    /// A metadata `x y` integer-pair field is malformed — the field keeps its default.
-    MetadataInvalidIntegerPair { field: String, value: String },
-    /// A metadata enum field's value isn't one of its allowed literals — the field keeps its default.
-    MetadataInvalidEnum {
-        field: String,
-        value: String,
-        allowed: String,
-    },
     /// A parts abbreviation is used by more than one declaration — the duplicate is skipped.
     PartsDuplicateAbbreviation { abbrev: String },
     /// The `parts` section contains no valid declarations — document renders empty.
@@ -69,8 +51,6 @@ pub enum RecoverableErrorKind {
     PresetReservedName { name: String },
     /// A preset's `visible_parts` or `soloed_parts` names an abbreviation not declared in `parts` — the entry is ignored.
     PresetUnknownPart { abbreviation: String },
-    /// A preset-only field (`visible_parts`, `soloed_parts`, `notation`) appears in `metadata` — the line is skipped.
-    PresetOnlyField { field: String },
     /// A lyrics line is empty — treated as `_` (no lyrics for this measure).
     LyricsLineEmpty,
     /// A lyrics slot has no paired notes track — lyrics are skipped.
@@ -183,13 +163,6 @@ impl RecoverableErrorKind {
             Self::ChordExpectedDegreeDigit { ch } => format!("expected chord degree digit (0-7), got: {ch}"),
             Self::ChordInvalidToken { message } => message.clone(),
             Self::DurationUnexpectedChar { ch } => format!("unexpected character in note duration: {ch}"),
-            Self::MetadataMalformedLine { line } => format!("expected key = value, got: {line}"),
-            Self::MetadataUnknownField { field } => format!("unknown metadata field: {field}"),
-            Self::MetadataInvalidInteger { field, value } => format!("{field} must be a positive integer, got: {value}"),
-            Self::MetadataMustBePositive { field } => format!("{field} must be greater than zero"),
-            Self::MetadataInvalidBoolean { field, value } => format!("{field} must be 'yes' or 'no', got: {value}"),
-            Self::MetadataInvalidIntegerPair { field, value } => format!("{field} must be two integers separated by a space, e.g. \"0 0\", got: {value}"),
-            Self::MetadataInvalidEnum { field, value, allowed } => format!("{field} must be one of {allowed}, got: {value}"),
             Self::PartsDuplicateAbbreviation { abbrev } => format!("duplicate abbreviation: {abbrev}"),
             Self::PartsEmptySection => "expected at least one part in parts [...]".to_string(),
             Self::PartsEmptyDisplayName => "display name cannot be empty".to_string(),
@@ -202,7 +175,6 @@ impl RecoverableErrorKind {
             Self::PresetDuplicateName { name } => format!("duplicate preset \"{name}\""),
             Self::PresetReservedName { name } => format!("\"{name}\" is reserved for the song without a preset; choose another name"),
             Self::PresetUnknownPart { abbreviation } => format!("no part with abbreviation '{abbreviation}' in parts [ ... ]"),
-            Self::PresetOnlyField { field } => format!("{field} can only be set in a preset"),
             Self::LyricsLineEmpty => "lyrics line cannot be empty; use '_' for no lyrics".to_string(),
             Self::LyricsNoNotesTrack { abbrev } => format!("lyrics line for '{abbrev}' has no matching notes track"),
             Self::LyricsBracketNotOneSyllable { found } => format!("a lyric bracket must hold exactly one syllable, found {found}"),

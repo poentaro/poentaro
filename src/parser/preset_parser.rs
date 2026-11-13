@@ -7,9 +7,7 @@ use crate::ast::parsed::{
     AbbreviationReference, Notation, ParsedMetadata, ParsedPreset, PartDecl, DEFAULT_PRESET_NAME,
 };
 use crate::error::{Diagnostic, RecoverableError, Span, Spanned, Warning};
-use crate::parser::anyx::decoded::{span, FieldName, ValueText};
 use crate::parser::section::PresetName;
-use poentaro_grammar::Field;
 
 pub struct ParsedPresets {
     /// The valid presets, in file order.
@@ -60,29 +58,6 @@ pub(crate) struct PresetFields {
     pub visible_parts: Option<Vec<AbbreviationReference>>,
     pub soloed_parts: Vec<AbbreviationReference>,
     pub notation: Option<Spanned<Notation>>,
-}
-
-/// A `notation` field's value, reporting one that isn't a notation.
-pub(crate) fn parse_notation(
-    field: &Field,
-    errors: &mut Vec<RecoverableError>,
-) -> Option<Spanned<Notation>> {
-    let span = span(field.arguments.span());
-    let text = field
-        .arguments
-        .text()
-        .map_err(|error| errors.push(error))
-        .ok()?;
-    let notation = Notation::from_source_value(&text);
-    if notation.is_none() {
-        errors.push(RecoverableError::metadata_invalid_enum(
-            span,
-            &field.written_key(),
-            &text,
-            &Notation::ALL.iter().map(|value| value.keyword()).join(", "),
-        ));
-    }
-    notation.map(|value| Spanned::new(value, span))
 }
 
 /// The preset `fields` describe, with `errors` and a warning when its notation

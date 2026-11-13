@@ -3,15 +3,14 @@
 use itertools::Itertools;
 
 use super::read_metadata_field;
-use crate::ast::parsed::{AbbreviationReference, PartDecl, PresetKey};
-use crate::error::{RecoverableError, Span};
-use crate::parser::anyx::decoded::{decode_error, invalid, span, AbbreviationText, FieldName};
+use crate::ast::parsed::{AbbreviationReference, Notation, PartDecl};
+use crate::error::{RecoverableError, Span, Spanned};
+use crate::parser::anyx::decoded::{decode_error, span, AbbreviationText};
 use crate::parser::preset_parser::{
-    collect_presets, finish_preset, known_parts, parse_notation, ParsedPresetSection,
-    ParsedPresets, PresetFields,
+    collect_presets, finish_preset, known_parts, ParsedPresetSection, ParsedPresets, PresetFields,
 };
 use crate::parser::section::PresetName;
-use poentaro_grammar::{DocumentPreset, Field, Value};
+use poentaro_grammar::{DocumentPreset, Notation as NotationChoice, PartReferences, PresetField};
 
 pub(super) fn read_presets(presets: &[DocumentPreset], declarations: &[PartDecl]) -> ParsedPresets {
     let named = presets
@@ -40,50 +39,48 @@ fn read_preset(named: NamedPreset, declarations: &[PartDecl]) -> ParsedPresetSec
     let NamedPreset { name, preset } = named;
     let mut fields = PresetFields::default();
     let mut errors = Vec::new();
-    for field in &preset.fields.field {
+    for field in &preset.fields.preset_field {
         match field {
-            Ok(field) if PresetKey::from_keyword(&field.key()).is_some() => {
-                read_preset_field(&mut fields, field, declarations, &mut errors);
+            Err(error) => errors.push(decode_error(error)),
+            Ok(PresetField::Metadata(field)) => {
+                read_metadata_field(&mut fields.overrides, Ok(field), &mut errors);
             }
-            _ => read_metadata_field(&mut fields.overrides, field, &mut errors),
+            Ok(PresetField::VisibleParts { parts, .. }) => {
+                fields.visible_parts = Some(part_list(parts, declarations, &mut errors));
+            }
+            Ok(PresetField::SoloedParts { parts, .. }) => {
+                fields.soloed_parts = part_list(parts, declarations, &mut errors);
+            }
+            Ok(PresetField::Notation { notation, .. }) => {
+                fields.notation = Some(notation_of(notation));
+            }
         }
     }
     let header_span = Span::new(preset.span.start, preset.name.span.end);
     finish_preset(name, header_span, fields, errors)
 }
 
-fn read_preset_field(
-    fields: &mut PresetFields,
-    field: &Field,
-    declarations: &[PartDecl],
-    errors: &mut Vec<RecoverableError>,
-) {
-    match PresetKey::from_keyword(&field.key()) {
-        Some(PresetKey::VisibleParts) => {
-            fields.visible_parts = Some(part_list(field, declarations, errors));
-        }
-        Some(PresetKey::SoloedParts) => {
-            fields.soloed_parts = part_list(field, declarations, errors);
-        }
-        Some(PresetKey::Notation) => {
-            fields.notation = parse_notation(field, errors).or(fields.notation.take());
-        }
-        None => {}
-    }
+/// The notation a `notation` field names, `jianpu` being `numbered`'s old name.
+pub(crate) fn notation_of(notation: &NotationChoice) -> Spanned<Notation> {
+    let (value, at) = match notation {
+        NotationChoice::Numbered(at) | NotationChoice::Jianpu(at) => (Notation::Numbered, at),
+        NotationChoice::Violin(at) => (Notation::Violin, at),
+        NotationChoice::Cello(at) => (Notation::Cello, at),
+        NotationChoice::Abc(at) => (Notation::Abc, at),
+        NotationChoice::Guitar(at) => (Notation::Guitar, at),
+        NotationChoice::Harmonica(at) => (Notation::Harmonica, at),
+    };
+    Spanned::new(value, span(*at))
 }
 
 /// `[S, A1]`, as the declared parts it names.
 fn part_list(
-    field: &Field,
+    parts: &PartReferences,
     declarations: &[PartDecl],
     errors: &mut Vec<RecoverableError>,
 ) -> Vec<AbbreviationReference> {
-    let Value::List(elements) = &field.arguments else {
-        errors.push(invalid(field.arguments.span(), "expected `[ … ]` here"));
-        return Vec::new();
-    };
-    let references = elements
-        .value
+    let references = parts
+        .abbreviation
         .iter()
         .filter_map(|element| {
             let reference = element.as_ref().map_err(decode_error).and_then(|element| {

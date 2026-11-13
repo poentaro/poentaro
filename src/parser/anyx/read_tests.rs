@@ -159,7 +159,7 @@ fn a_score_that_is_not_a_string_is_reported() {
 fn an_unknown_section_is_reported() {
     assert_eq!(
         error_messages("lyrics []"),
-        ["found the word `lyrics`; expected the word `could`, `metadata`, `parts`, `sequence`, `preset` or `score`"]
+        ["found the word `lyrics`; expected the word `could not convert`, `metadata`, `parts`, `sequence`, `preset` or `score`"]
     );
 }
 
@@ -182,7 +182,10 @@ fn an_unknown_metadata_field_is_reported_as_written() {
     .map(crate::error::RecoverableError::message)
     .collect::<Vec<_>>();
     assert_eq!(messages.len(), 1, "{messages:?}");
-    assert!(messages[0].contains("notes font size"), "{messages:?}");
+    assert!(
+        messages[0].contains("found the word `font`; expected the word `notes style`"),
+        "{messages:?}"
+    );
 }
 
 #[test]

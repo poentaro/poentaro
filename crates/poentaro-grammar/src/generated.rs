@@ -20,7 +20,7 @@ pub struct Document {
 #[derive(Clone, Debug, PartialEq)]
 pub struct DocumentMetadata {
     pub keyword: Span,
-    pub fields: Record,
+    pub fields: MetadataRecord,
     pub span: Span,
 }
 
@@ -42,7 +42,7 @@ pub struct DocumentSequence {
 pub struct DocumentPreset {
     pub keyword: Span,
     pub name: Spanned<StringLiteral>,
-    pub fields: Record,
+    pub fields: PresetRecord,
     pub span: Span,
 }
 
@@ -60,36 +60,271 @@ pub struct Unconverted {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Record {
-    pub field: Vec<Result<Field, DecodeError>>,
+pub struct MetadataRecord {
+    pub metadata_field: Vec<Result<MetadataField, DecodeError>>,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Field {
-    pub name: CallName,
-    pub arguments: Value,
+pub enum MetadataField {
+    Text(TextField),
+    Style(TextStyle),
+    Number(NumberField),
+    Flag(FlagField),
+    DirectiveRowOffset {
+        key: Span,
+        offset: MetadataFieldDirectiveRowOffsetOffset,
+        span: Span,
+    },
+    CouldNotConvert {
+        key: Span,
+        text: Spanned<StringLiteral>,
+        span: Span,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MetadataFieldDirectiveRowOffsetOffset {
+    pub x: SignedInteger,
+    pub y: SignedInteger,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Value {
-    Integer(SignedInteger),
-    Text(Spanned<StringLiteral>),
-    Percentage(Percentage),
-    Pair {
-        x: Box<Value>,
-        y: Box<Value>,
+pub enum TextField {
+    Title {
+        key: Span,
+        text: Spanned<StringLiteral>,
         span: Span,
     },
-    Record(Record),
-    List(Spanned<Vec<Result<Abbreviation, DecodeError>>>),
-    Words(Words),
-    Written {
-        name: CallName,
-        arguments: Vec<Node>,
+    Subtitle {
+        key: Span,
+        text: Spanned<StringLiteral>,
         span: Span,
     },
+    Author {
+        key: Span,
+        text: Spanned<StringLiteral>,
+        span: Span,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum TextStyle {
+    TitleStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    SubtitleStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    AuthorStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    SequenceStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    PartLegendStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    MeasureNumberStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    SectionLabelStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    PartLabelStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    PageNumberStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    RunningTitleStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    LyricsStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    NotesStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    ChordsStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+    NoteDashStyle {
+        key: Span,
+        style: StyleRecord,
+        span: Span,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum NumberField {
+    RowHeight {
+        key: Span,
+        number: Positive,
+        span: Span,
+    },
+    MaxMeasuresPerSystem {
+        key: Span,
+        number: Positive,
+        span: Span,
+    },
+    NoteNumberWidth {
+        key: Span,
+        number: Positive,
+        span: Span,
+    },
+    PartsListColumns {
+        key: Span,
+        number: Positive,
+        span: Span,
+    },
+    PartLabelWidthPt {
+        key: Span,
+        number: Positive,
+        span: Span,
+    },
+    PageMarginPt {
+        key: Span,
+        number: Positive,
+        span: Span,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum FlagField {
+    MergeDuplicateMeasuresAcrossParts { key: Span, flag: Flag, span: Span },
+    HideRestingParts { key: Span, flag: Flag, span: Span },
+    HideSystemDividers { key: Span, flag: Flag, span: Span },
+}
+
+pub type Positive = Spanned<u64>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Flag {
+    Yes(Span),
+    No(Span),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PresetRecord {
+    pub preset_field: Vec<Result<PresetField, DecodeError>>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PresetField {
+    VisibleParts {
+        key: Span,
+        parts: PartReferences,
+        span: Span,
+    },
+    SoloedParts {
+        key: Span,
+        parts: PartReferences,
+        span: Span,
+    },
+    Notation {
+        key: Span,
+        notation: Notation,
+        span: Span,
+    },
+    Metadata(MetadataField),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PartReferences {
+    pub abbreviation: Vec<Result<Abbreviation, DecodeError>>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Notation {
+    Numbered(Span),
+    Violin(Span),
+    Cello(Span),
+    Abc(Span),
+    Guitar(Span),
+    Harmonica(Span),
+    Jianpu(Span),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StyleRecord {
+    pub style_field: Vec<Result<StyleField, DecodeError>>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum StyleField {
+    FontSize {
+        key: Span,
+        size: Positive,
+        span: Span,
+    },
+    HorizontalPaddingPt {
+        key: Span,
+        points: Spanned<u64>,
+        span: Span,
+    },
+    VerticalPaddingPt {
+        key: Span,
+        points: Spanned<u64>,
+        span: Span,
+    },
+    Bold {
+        key: Span,
+        flag: Flag,
+        span: Span,
+    },
+    Italic {
+        key: Span,
+        flag: Flag,
+        span: Span,
+    },
+    Underline {
+        key: Span,
+        flag: Flag,
+        span: Span,
+    },
+    FontFamily {
+        key: Span,
+        family: FontFamily,
+        span: Span,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum FontFamily {
+    Serif(Span),
+    SansSerif { span: Span },
+    Monospace(Span),
 }
 
 pub type SignedInteger = Spanned<i64>;
@@ -269,16 +504,126 @@ pub struct LineChoice {
     pub span: Span,
 }
 
-impl Value {
+impl MetadataField {
     pub fn span(&self) -> Span {
         match self {
-            Value::Pair { span, .. } | Value::Written { span, .. } => *span,
-            Value::Integer(value) => value.span,
-            Value::Text(value) => value.span,
-            Value::Percentage(value) => value.span,
-            Value::Record(value) => value.span,
-            Value::List(value) => value.span,
-            Value::Words(value) => value.span,
+            MetadataField::DirectiveRowOffset { span, .. }
+            | MetadataField::CouldNotConvert { span, .. } => *span,
+            MetadataField::Text(value) => value.span(),
+            MetadataField::Style(value) => value.span(),
+            MetadataField::Number(value) => value.span(),
+            MetadataField::Flag(value) => value.span(),
+        }
+    }
+}
+
+impl TextField {
+    pub fn span(&self) -> Span {
+        match self {
+            TextField::Title { span, .. }
+            | TextField::Subtitle { span, .. }
+            | TextField::Author { span, .. } => *span,
+        }
+    }
+}
+
+impl TextStyle {
+    pub fn span(&self) -> Span {
+        match self {
+            TextStyle::TitleStyle { span, .. }
+            | TextStyle::SubtitleStyle { span, .. }
+            | TextStyle::AuthorStyle { span, .. }
+            | TextStyle::SequenceStyle { span, .. }
+            | TextStyle::PartLegendStyle { span, .. }
+            | TextStyle::MeasureNumberStyle { span, .. }
+            | TextStyle::SectionLabelStyle { span, .. }
+            | TextStyle::PartLabelStyle { span, .. }
+            | TextStyle::PageNumberStyle { span, .. }
+            | TextStyle::RunningTitleStyle { span, .. }
+            | TextStyle::LyricsStyle { span, .. }
+            | TextStyle::NotesStyle { span, .. }
+            | TextStyle::ChordsStyle { span, .. }
+            | TextStyle::NoteDashStyle { span, .. } => *span,
+        }
+    }
+}
+
+impl NumberField {
+    pub fn span(&self) -> Span {
+        match self {
+            NumberField::RowHeight { span, .. }
+            | NumberField::MaxMeasuresPerSystem { span, .. }
+            | NumberField::NoteNumberWidth { span, .. }
+            | NumberField::PartsListColumns { span, .. }
+            | NumberField::PartLabelWidthPt { span, .. }
+            | NumberField::PageMarginPt { span, .. } => *span,
+        }
+    }
+}
+
+impl FlagField {
+    pub fn span(&self) -> Span {
+        match self {
+            FlagField::MergeDuplicateMeasuresAcrossParts { span, .. }
+            | FlagField::HideRestingParts { span, .. }
+            | FlagField::HideSystemDividers { span, .. } => *span,
+        }
+    }
+}
+
+impl Flag {
+    pub fn span(&self) -> Span {
+        match self {
+            Flag::Yes(span) | Flag::No(span) => *span,
+        }
+    }
+}
+
+impl PresetField {
+    pub fn span(&self) -> Span {
+        match self {
+            PresetField::VisibleParts { span, .. }
+            | PresetField::SoloedParts { span, .. }
+            | PresetField::Notation { span, .. } => *span,
+            PresetField::Metadata(value) => value.span(),
+        }
+    }
+}
+
+impl Notation {
+    pub fn span(&self) -> Span {
+        match self {
+            Notation::Numbered(span)
+            | Notation::Violin(span)
+            | Notation::Cello(span)
+            | Notation::Abc(span)
+            | Notation::Guitar(span)
+            | Notation::Harmonica(span)
+            | Notation::Jianpu(span) => *span,
+        }
+    }
+}
+
+impl StyleField {
+    pub fn span(&self) -> Span {
+        match self {
+            StyleField::FontSize { span, .. }
+            | StyleField::HorizontalPaddingPt { span, .. }
+            | StyleField::VerticalPaddingPt { span, .. }
+            | StyleField::Bold { span, .. }
+            | StyleField::Italic { span, .. }
+            | StyleField::Underline { span, .. }
+            | StyleField::FontFamily { span, .. } => *span,
+        }
+    }
+}
+
+impl FontFamily {
+    pub fn span(&self) -> Span {
+        match self {
+            FontFamily::Serif(span)
+            | FontFamily::SansSerif { span, .. }
+            | FontFamily::Monospace(span) => *span,
         }
     }
 }
@@ -366,6 +711,552 @@ impl LineChoices {
     }
 }
 
+impl support::Errors for Document {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.unconverted, found);
+        support::Errors::errors(&self.metadata, found);
+        support::Errors::errors(&self.parts, found);
+        support::Errors::errors(&self.sequence, found);
+        support::Errors::errors(&self.preset, found);
+        support::Errors::errors(&self.score, found);
+        support::Errors::errors(&self.errors, found);
+    }
+}
+
+impl support::Errors for DocumentMetadata {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.keyword, found);
+        support::Errors::errors(&self.fields, found);
+    }
+}
+
+impl support::Errors for DocumentParts {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.keyword, found);
+        support::Errors::errors(&self.parts, found);
+    }
+}
+
+impl support::Errors for DocumentSequence {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.keyword, found);
+        support::Errors::errors(&self.entries, found);
+    }
+}
+
+impl support::Errors for DocumentPreset {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.keyword, found);
+        support::Errors::errors(&self.name, found);
+        support::Errors::errors(&self.fields, found);
+    }
+}
+
+impl support::Errors for DocumentScore {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.keyword, found);
+        support::Errors::errors(&self.text, found);
+    }
+}
+
+impl support::Errors for Unconverted {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.text, found);
+    }
+}
+
+impl support::Errors for MetadataRecord {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.metadata_field, found);
+    }
+}
+
+impl support::Errors for MetadataField {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            MetadataField::Text(value) => support::Errors::errors(value, found),
+            MetadataField::Style(value) => support::Errors::errors(value, found),
+            MetadataField::Number(value) => support::Errors::errors(value, found),
+            MetadataField::Flag(value) => support::Errors::errors(value, found),
+            MetadataField::DirectiveRowOffset { key, offset, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(offset, found);
+            }
+            MetadataField::CouldNotConvert { key, text, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(text, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for MetadataFieldDirectiveRowOffsetOffset {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.x, found);
+        support::Errors::errors(&self.y, found);
+    }
+}
+
+impl support::Errors for TextField {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            TextField::Title { key, text, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(text, found);
+            }
+            TextField::Subtitle { key, text, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(text, found);
+            }
+            TextField::Author { key, text, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(text, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for TextStyle {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            TextStyle::TitleStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::SubtitleStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::AuthorStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::SequenceStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::PartLegendStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::MeasureNumberStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::SectionLabelStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::PartLabelStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::PageNumberStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::RunningTitleStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::LyricsStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::NotesStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::ChordsStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+            TextStyle::NoteDashStyle { key, style, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(style, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for NumberField {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            NumberField::RowHeight { key, number, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(number, found);
+            }
+            NumberField::MaxMeasuresPerSystem { key, number, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(number, found);
+            }
+            NumberField::NoteNumberWidth { key, number, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(number, found);
+            }
+            NumberField::PartsListColumns { key, number, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(number, found);
+            }
+            NumberField::PartLabelWidthPt { key, number, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(number, found);
+            }
+            NumberField::PageMarginPt { key, number, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(number, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for FlagField {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            FlagField::MergeDuplicateMeasuresAcrossParts { key, flag, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(flag, found);
+            }
+            FlagField::HideRestingParts { key, flag, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(flag, found);
+            }
+            FlagField::HideSystemDividers { key, flag, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(flag, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for Flag {
+    fn errors<'a>(&'a self, _: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            Flag::Yes(_) => {}
+            Flag::No(_) => {}
+        }
+    }
+}
+
+impl support::Errors for PresetRecord {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.preset_field, found);
+    }
+}
+
+impl support::Errors for PresetField {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            PresetField::VisibleParts { key, parts, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(parts, found);
+            }
+            PresetField::SoloedParts { key, parts, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(parts, found);
+            }
+            PresetField::Notation { key, notation, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(notation, found);
+            }
+            PresetField::Metadata(value) => support::Errors::errors(value, found),
+        }
+    }
+}
+
+impl support::Errors for PartReferences {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.abbreviation, found);
+    }
+}
+
+impl support::Errors for Notation {
+    fn errors<'a>(&'a self, _: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            Notation::Numbered(_) => {}
+            Notation::Violin(_) => {}
+            Notation::Cello(_) => {}
+            Notation::Abc(_) => {}
+            Notation::Guitar(_) => {}
+            Notation::Harmonica(_) => {}
+            Notation::Jianpu(_) => {}
+        }
+    }
+}
+
+impl support::Errors for StyleRecord {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.style_field, found);
+    }
+}
+
+impl support::Errors for StyleField {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            StyleField::FontSize { key, size, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(size, found);
+            }
+            StyleField::HorizontalPaddingPt { key, points, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(points, found);
+            }
+            StyleField::VerticalPaddingPt { key, points, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(points, found);
+            }
+            StyleField::Bold { key, flag, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(flag, found);
+            }
+            StyleField::Italic { key, flag, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(flag, found);
+            }
+            StyleField::Underline { key, flag, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(flag, found);
+            }
+            StyleField::FontFamily { key, family, .. } => {
+                support::Errors::errors(key, found);
+                support::Errors::errors(family, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for FontFamily {
+    fn errors<'a>(&'a self, _: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            FontFamily::Serif(_) => {}
+            FontFamily::SansSerif { .. } => {}
+            FontFamily::Monospace(_) => {}
+        }
+    }
+}
+
+impl support::Errors for Percentage {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.number, found);
+    }
+}
+
+impl support::Errors for Words {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.name, found);
+        support::Errors::errors(&self.arguments, found);
+    }
+}
+
+impl support::Errors for PartList {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.part, found);
+    }
+}
+
+impl support::Errors for Part {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            Part::Unconverted(value) => support::Errors::errors(value, found),
+            Part::Abbreviated {
+                display,
+                abbreviation,
+                kind,
+                ..
+            } => {
+                support::Errors::errors(display, found);
+                support::Errors::errors(abbreviation, found);
+                support::Errors::errors(kind, found);
+            }
+            Part::Named { display, kind, .. } => {
+                support::Errors::errors(display, found);
+                support::Errors::errors(kind, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for PartKind {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            PartKind::Notes {
+                keyword, options, ..
+            } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(options, found);
+            }
+            PartKind::Chords {
+                keyword, options, ..
+            } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(options, found);
+            }
+            PartKind::Percussion {
+                keyword, options, ..
+            } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(options, found);
+            }
+            PartKind::Follow {
+                keyword,
+                target,
+                options,
+                ..
+            } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(target, found);
+                support::Errors::errors(options, found);
+            }
+            PartKind::Lyrics {
+                keyword,
+                targets,
+                options,
+                ..
+            } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(targets, found);
+                support::Errors::errors(options, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for Options {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.part_option, found);
+    }
+}
+
+impl support::Errors for PartOption {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            PartOption::Instrument { keyword, name, .. } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(name, found);
+            }
+            PartOption::Range { keyword, value, .. } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(value, found);
+            }
+            PartOption::Sound { keyword, value, .. } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(value, found);
+            }
+            PartOption::Volume {
+                keyword,
+                percentage,
+                ..
+            } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(percentage, found);
+            }
+            PartOption::Octave {
+                keyword,
+                signed_integer,
+                ..
+            } => {
+                support::Errors::errors(keyword, found);
+                support::Errors::errors(signed_integer, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for Sound {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            Sound::Program(value) => support::Errors::errors(value, found),
+            Sound::Voice(value) => support::Errors::errors(value, found),
+        }
+    }
+}
+
+impl support::Errors for Abbreviation {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            Abbreviation::Text(value) => support::Errors::errors(value, found),
+            Abbreviation::Number(value) => support::Errors::errors(value, found),
+            Abbreviation::Written {
+                name, arguments, ..
+            } => {
+                support::Errors::errors(name, found);
+                support::Errors::errors(arguments, found);
+            }
+        }
+    }
+}
+
+impl support::Errors for EntryList {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.sequence_entry, found);
+    }
+}
+
+impl support::Errors for SequenceEntry {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            SequenceEntry::WithWithout {
+                label,
+                lines,
+                parts,
+                ..
+            } => {
+                support::Errors::errors(label, found);
+                support::Errors::errors(lines, found);
+                support::Errors::errors(parts, found);
+            }
+            SequenceEntry::WithOnly {
+                label,
+                lines,
+                parts,
+                ..
+            } => {
+                support::Errors::errors(label, found);
+                support::Errors::errors(lines, found);
+                support::Errors::errors(parts, found);
+            }
+            SequenceEntry::With { label, lines, .. } => {
+                support::Errors::errors(label, found);
+                support::Errors::errors(lines, found);
+            }
+            SequenceEntry::Without { label, parts, .. } => {
+                support::Errors::errors(label, found);
+                support::Errors::errors(parts, found);
+            }
+            SequenceEntry::Only { label, parts, .. } => {
+                support::Errors::errors(label, found);
+                support::Errors::errors(parts, found);
+            }
+            SequenceEntry::Label(value) => support::Errors::errors(value, found),
+        }
+    }
+}
+
+impl support::Errors for Label {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            Label::Text(value) => support::Errors::errors(value, found),
+            Label::Words(value) => support::Errors::errors(value, found),
+        }
+    }
+}
+
+impl support::Errors for LineChoices {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        match self {
+            LineChoices::Many(value) => support::Errors::errors(value, found),
+            LineChoices::One(value) => support::Errors::errors(value, found),
+        }
+    }
+}
+
+impl support::Errors for LineChoice {
+    fn errors<'a>(&'a self, found: &mut std::vec::Vec<&'a support::DecodeError>) {
+        support::Errors::errors(&self.part, found);
+        support::Errors::errors(&self.line, found);
+    }
+}
+
 pub fn decode_document(nodes: &[Node]) -> Result<Document, DecodeError> {
     let mut elements = support::document(nodes);
     let mut errors = Vec::new();
@@ -419,7 +1310,7 @@ fn decode_document_metadata(node: &Node) -> Result<DocumentMetadata, DecodeError
     let mut parts = support::call(node, "the call `metadata _`")?;
     let decoded = DocumentMetadata {
         keyword: parts.word_span("metadata")?,
-        fields: parts.one(decode_record, "a record")?,
+        fields: parts.one(decode_metadata_record, "a metadata record")?,
         span: node.span,
     };
     parts.finish()?;
@@ -456,7 +1347,7 @@ fn decode_document_preset(node: &Node) -> Result<DocumentPreset, DecodeError> {
             |node| support::string(node, |_| true, "a string"),
             "a string",
         )?,
-        fields: parts.one(decode_record, "a record")?,
+        fields: parts.one(decode_preset_record, "a preset record")?,
         span: node.span,
     };
     parts.finish()?;
@@ -480,7 +1371,7 @@ fn decode_document_score(node: &Node) -> Result<DocumentScore, DecodeError> {
 pub fn decode_unconverted(node: &Node) -> Result<Unconverted, DecodeError> {
     let mut parts = support::call(node, "the call `could not convert _`")?;
     let decoded = Unconverted {
-        text: parts.word("could")?.word("not")?.word("convert")?.one(
+        text: parts.word("could not convert")?.one(
             |node| support::string(node, |_| true, "a string"),
             "a string",
         )?,
@@ -490,74 +1381,618 @@ pub fn decode_unconverted(node: &Node) -> Result<Unconverted, DecodeError> {
     Ok(decoded)
 }
 
-pub fn decode_record(node: &Node) -> Result<Record, DecodeError> {
+pub fn decode_metadata_record(node: &Node) -> Result<MetadataRecord, DecodeError> {
     let mut elements = support::curly_brace(node)?;
-    let decoded = Record {
-        field: elements.each(decode_field),
+    let decoded = MetadataRecord {
+        metadata_field: elements.each(decode_metadata_field),
         span: node.span,
     };
     elements.finish()?;
     Ok(decoded)
 }
 
-pub fn decode_field(node: &Node) -> Result<Field, DecodeError> {
-    let (name, arguments) = support::any_call(
-        node,
-        |name| name.ends_with(" _"),
-        "a call whose name ends with \" _\"",
-    )?;
-    let mut arguments = support::arguments(node, arguments);
-    let decoded = Field {
-        name,
-        arguments: arguments.one(decode_value, "a value")?,
+pub fn decode_metadata_field(node: &Node) -> Result<MetadataField, DecodeError> {
+    decode_text_field(node)
+        .map(MetadataField::Text)
+        .or_else(|error| error.or(decode_text_style(node).map(MetadataField::Style)))
+        .or_else(|error| error.or(decode_number_field(node).map(MetadataField::Number)))
+        .or_else(|error| error.or(decode_flag_field(node).map(MetadataField::Flag)))
+        .or_else(|error| error.or(decode_metadata_field_directive_row_offset(node)))
+        .or_else(|error| error.or(decode_metadata_field_could_not_convert(node)))
+}
+
+fn decode_metadata_field_directive_row_offset(node: &Node) -> Result<MetadataField, DecodeError> {
+    let mut parts = support::call(node, "the call `directive row offset _`")?;
+    let decoded = MetadataField::DirectiveRowOffset {
+        key: parts.word_span("directive row offset")?,
+        offset: parts.one(decode_metadata_field_directive_row_offset_offset, "`(...)`")?,
         span: node.span,
     };
-    arguments.finish()?;
+    parts.finish()?;
     Ok(decoded)
 }
 
-pub fn decode_value(node: &Node) -> Result<Value, DecodeError> {
-    decode_signed_integer(node)
-        .map(Value::Integer)
-        .or_else(|error| error.or(support::string(node, |_| true, "a string").map(Value::Text)))
-        .or_else(|error| error.or(decode_percentage(node).map(Value::Percentage)))
-        .or_else(|error| error.or(decode_value_pair(node)))
-        .or_else(|error| error.or(decode_record(node).map(Value::Record)))
-        .or_else(|error| error.or(decode_value_list(node).map(Value::List)))
-        .or_else(|error| error.or(decode_words(node).map(Value::Words)))
-        .or_else(|error| error.or(decode_value_written(node)))
-}
-
-fn decode_value_pair(node: &Node) -> Result<Value, DecodeError> {
-    let mut elements = support::parenthesis(node)?;
-    let decoded = Value::Pair {
-        x: elements.one(|node| decode_value(node).map(Box::new), "a value")?,
-        y: elements.one(|node| decode_value(node).map(Box::new), "a value")?,
-        span: node.span,
-    };
-    elements.finish()?;
-    Ok(decoded)
-}
-
-fn decode_value_list(
+fn decode_metadata_field_directive_row_offset_offset(
     node: &Node,
-) -> Result<Spanned<Vec<Result<Abbreviation, DecodeError>>>, DecodeError> {
-    let mut elements = support::square_bracket(node)?;
-    let value = elements.each(decode_abbreviation);
-    elements.finish()?;
-    Ok(Spanned {
-        value,
+) -> Result<MetadataFieldDirectiveRowOffsetOffset, DecodeError> {
+    let mut elements = support::parenthesis(node)?;
+    let decoded = MetadataFieldDirectiveRowOffsetOffset {
+        x: elements.one(decode_signed_integer, "a signed integer")?,
+        y: elements.one(decode_signed_integer, "a signed integer")?,
         span: node.span,
-    })
+    };
+    elements.finish()?;
+    Ok(decoded)
 }
 
-fn decode_value_written(node: &Node) -> Result<Value, DecodeError> {
-    let (name, arguments) = support::any_call(node, |_| true, "a call")?;
-    Ok(Value::Written {
-        name,
-        arguments: arguments.to_vec(),
+fn decode_metadata_field_could_not_convert(node: &Node) -> Result<MetadataField, DecodeError> {
+    let mut parts = support::call(node, "the call `could not convert _`")?;
+    let decoded = MetadataField::CouldNotConvert {
+        key: parts.word_span("could not convert")?,
+        text: parts.one(
+            |node| support::string(node, |_| true, "a string"),
+            "a string",
+        )?,
         span: node.span,
-    })
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_text_field(node: &Node) -> Result<TextField, DecodeError> {
+    decode_text_field_title(node)
+        .or_else(|error| error.or(decode_text_field_subtitle(node)))
+        .or_else(|error| error.or(decode_text_field_author(node)))
+}
+
+fn decode_text_field_title(node: &Node) -> Result<TextField, DecodeError> {
+    let mut parts = support::call(node, "the call `title _`")?;
+    let decoded = TextField::Title {
+        key: parts.word_span("title")?,
+        text: parts.one(
+            |node| support::string(node, |_| true, "a string"),
+            "a string",
+        )?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_field_subtitle(node: &Node) -> Result<TextField, DecodeError> {
+    let mut parts = support::call(node, "the call `subtitle _`")?;
+    let decoded = TextField::Subtitle {
+        key: parts.word_span("subtitle")?,
+        text: parts.one(
+            |node| support::string(node, |_| true, "a string"),
+            "a string",
+        )?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_field_author(node: &Node) -> Result<TextField, DecodeError> {
+    let mut parts = support::call(node, "the call `author _`")?;
+    let decoded = TextField::Author {
+        key: parts.word_span("author")?,
+        text: parts.one(
+            |node| support::string(node, |_| true, "a string"),
+            "a string",
+        )?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_text_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    decode_text_style_title_style(node)
+        .or_else(|error| error.or(decode_text_style_subtitle_style(node)))
+        .or_else(|error| error.or(decode_text_style_author_style(node)))
+        .or_else(|error| error.or(decode_text_style_sequence_style(node)))
+        .or_else(|error| error.or(decode_text_style_part_legend_style(node)))
+        .or_else(|error| error.or(decode_text_style_measure_number_style(node)))
+        .or_else(|error| error.or(decode_text_style_section_label_style(node)))
+        .or_else(|error| error.or(decode_text_style_part_label_style(node)))
+        .or_else(|error| error.or(decode_text_style_page_number_style(node)))
+        .or_else(|error| error.or(decode_text_style_running_title_style(node)))
+        .or_else(|error| error.or(decode_text_style_lyrics_style(node)))
+        .or_else(|error| error.or(decode_text_style_notes_style(node)))
+        .or_else(|error| error.or(decode_text_style_chords_style(node)))
+        .or_else(|error| error.or(decode_text_style_note_dash_style(node)))
+}
+
+fn decode_text_style_title_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `title style _`")?;
+    let decoded = TextStyle::TitleStyle {
+        key: parts.word_span("title style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_subtitle_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `subtitle style _`")?;
+    let decoded = TextStyle::SubtitleStyle {
+        key: parts.word_span("subtitle style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_author_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `author style _`")?;
+    let decoded = TextStyle::AuthorStyle {
+        key: parts.word_span("author style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_sequence_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `sequence style _`")?;
+    let decoded = TextStyle::SequenceStyle {
+        key: parts.word_span("sequence style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_part_legend_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `part legend style _`")?;
+    let decoded = TextStyle::PartLegendStyle {
+        key: parts.word_span("part legend style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_measure_number_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `measure number style _`")?;
+    let decoded = TextStyle::MeasureNumberStyle {
+        key: parts.word_span("measure number style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_section_label_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `section label style _`")?;
+    let decoded = TextStyle::SectionLabelStyle {
+        key: parts.word_span("section label style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_part_label_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `part label style _`")?;
+    let decoded = TextStyle::PartLabelStyle {
+        key: parts.word_span("part label style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_page_number_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `page number style _`")?;
+    let decoded = TextStyle::PageNumberStyle {
+        key: parts.word_span("page number style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_running_title_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `running title style _`")?;
+    let decoded = TextStyle::RunningTitleStyle {
+        key: parts.word_span("running title style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_lyrics_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `lyrics style _`")?;
+    let decoded = TextStyle::LyricsStyle {
+        key: parts.word_span("lyrics style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_notes_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `notes style _`")?;
+    let decoded = TextStyle::NotesStyle {
+        key: parts.word_span("notes style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_chords_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `chords style _`")?;
+    let decoded = TextStyle::ChordsStyle {
+        key: parts.word_span("chords style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_text_style_note_dash_style(node: &Node) -> Result<TextStyle, DecodeError> {
+    let mut parts = support::call(node, "the call `note dash style _`")?;
+    let decoded = TextStyle::NoteDashStyle {
+        key: parts.word_span("note dash style")?,
+        style: parts.one(decode_style_record, "a style record")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_number_field(node: &Node) -> Result<NumberField, DecodeError> {
+    decode_number_field_row_height(node)
+        .or_else(|error| error.or(decode_number_field_max_measures_per_system(node)))
+        .or_else(|error| error.or(decode_number_field_note_number_width(node)))
+        .or_else(|error| error.or(decode_number_field_parts_list_columns(node)))
+        .or_else(|error| error.or(decode_number_field_part_label_width_pt(node)))
+        .or_else(|error| error.or(decode_number_field_page_margin_pt(node)))
+}
+
+fn decode_number_field_row_height(node: &Node) -> Result<NumberField, DecodeError> {
+    let mut parts = support::call(node, "the call `row height _`")?;
+    let decoded = NumberField::RowHeight {
+        key: parts.word_span("row height")?,
+        number: parts.one(decode_positive, "a positive")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_number_field_max_measures_per_system(node: &Node) -> Result<NumberField, DecodeError> {
+    let mut parts = support::call(node, "the call `max measures per system _`")?;
+    let decoded = NumberField::MaxMeasuresPerSystem {
+        key: parts.word_span("max measures per system")?,
+        number: parts.one(decode_positive, "a positive")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_number_field_note_number_width(node: &Node) -> Result<NumberField, DecodeError> {
+    let mut parts = support::call(node, "the call `note number width _`")?;
+    let decoded = NumberField::NoteNumberWidth {
+        key: parts.word_span("note number width")?,
+        number: parts.one(decode_positive, "a positive")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_number_field_parts_list_columns(node: &Node) -> Result<NumberField, DecodeError> {
+    let mut parts = support::call(node, "the call `parts list columns _`")?;
+    let decoded = NumberField::PartsListColumns {
+        key: parts.word_span("parts list columns")?,
+        number: parts.one(decode_positive, "a positive")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_number_field_part_label_width_pt(node: &Node) -> Result<NumberField, DecodeError> {
+    let mut parts = support::call(node, "the call `part label width pt _`")?;
+    let decoded = NumberField::PartLabelWidthPt {
+        key: parts.word_span("part label width pt")?,
+        number: parts.one(decode_positive, "a positive")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_number_field_page_margin_pt(node: &Node) -> Result<NumberField, DecodeError> {
+    let mut parts = support::call(node, "the call `page margin pt _`")?;
+    let decoded = NumberField::PageMarginPt {
+        key: parts.word_span("page margin pt")?,
+        number: parts.one(decode_positive, "a positive")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_flag_field(node: &Node) -> Result<FlagField, DecodeError> {
+    decode_flag_field_merge_duplicate_measures_across_parts(node)
+        .or_else(|error| error.or(decode_flag_field_hide_resting_parts(node)))
+        .or_else(|error| error.or(decode_flag_field_hide_system_dividers(node)))
+}
+
+fn decode_flag_field_merge_duplicate_measures_across_parts(
+    node: &Node,
+) -> Result<FlagField, DecodeError> {
+    let mut parts = support::call(node, "the call `merge duplicate measures across parts _`")?;
+    let decoded = FlagField::MergeDuplicateMeasuresAcrossParts {
+        key: parts.word_span("merge duplicate measures across parts")?,
+        flag: parts.one(decode_flag, "a flag")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_flag_field_hide_resting_parts(node: &Node) -> Result<FlagField, DecodeError> {
+    let mut parts = support::call(node, "the call `hide resting parts _`")?;
+    let decoded = FlagField::HideRestingParts {
+        key: parts.word_span("hide resting parts")?,
+        flag: parts.one(decode_flag, "a flag")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_flag_field_hide_system_dividers(node: &Node) -> Result<FlagField, DecodeError> {
+    let mut parts = support::call(node, "the call `hide system dividers _`")?;
+    let decoded = FlagField::HideSystemDividers {
+        key: parts.word_span("hide system dividers")?,
+        flag: parts.one(decode_flag, "a flag")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_positive(node: &Node) -> Result<Positive, DecodeError> {
+    support::integer::<u64>(
+        node,
+        1,
+        i128::from(u64::MAX),
+        false,
+        "an integer of at least 1",
+    )
+}
+
+pub fn decode_flag(node: &Node) -> Result<Flag, DecodeError> {
+    support::word(node, "yes")
+        .map(Flag::Yes)
+        .or_else(|error| error.or(support::word(node, "no").map(Flag::No)))
+}
+
+pub fn decode_preset_record(node: &Node) -> Result<PresetRecord, DecodeError> {
+    let mut elements = support::curly_brace(node)?;
+    let decoded = PresetRecord {
+        preset_field: elements.each(decode_preset_field),
+        span: node.span,
+    };
+    elements.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_preset_field(node: &Node) -> Result<PresetField, DecodeError> {
+    decode_preset_field_visible_parts(node)
+        .or_else(|error| error.or(decode_preset_field_soloed_parts(node)))
+        .or_else(|error| error.or(decode_preset_field_notation(node)))
+        .or_else(|error| error.or(decode_metadata_field(node).map(PresetField::Metadata)))
+}
+
+fn decode_preset_field_visible_parts(node: &Node) -> Result<PresetField, DecodeError> {
+    let mut parts = support::call(node, "the call `visible parts _`")?;
+    let decoded = PresetField::VisibleParts {
+        key: parts.word_span("visible parts")?,
+        parts: parts.one(decode_part_references, "part references")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_preset_field_soloed_parts(node: &Node) -> Result<PresetField, DecodeError> {
+    let mut parts = support::call(node, "the call `soloed parts _`")?;
+    let decoded = PresetField::SoloedParts {
+        key: parts.word_span("soloed parts")?,
+        parts: parts.one(decode_part_references, "part references")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_preset_field_notation(node: &Node) -> Result<PresetField, DecodeError> {
+    let mut parts = support::call(node, "the call `notation _`")?;
+    let decoded = PresetField::Notation {
+        key: parts.word_span("notation")?,
+        notation: parts.one(decode_notation, "a notation")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_part_references(node: &Node) -> Result<PartReferences, DecodeError> {
+    let mut elements = support::square_bracket(node)?;
+    let decoded = PartReferences {
+        abbreviation: elements.each(decode_abbreviation),
+        span: node.span,
+    };
+    elements.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_notation(node: &Node) -> Result<Notation, DecodeError> {
+    support::word(node, "numbered")
+        .map(Notation::Numbered)
+        .or_else(|error| error.or(support::word(node, "violin").map(Notation::Violin)))
+        .or_else(|error| error.or(support::word(node, "cello").map(Notation::Cello)))
+        .or_else(|error| error.or(support::word(node, "abc").map(Notation::Abc)))
+        .or_else(|error| error.or(support::word(node, "guitar").map(Notation::Guitar)))
+        .or_else(|error| error.or(support::word(node, "harmonica").map(Notation::Harmonica)))
+        .or_else(|error| error.or(support::word(node, "jianpu").map(Notation::Jianpu)))
+}
+
+pub fn decode_style_record(node: &Node) -> Result<StyleRecord, DecodeError> {
+    let mut elements = support::curly_brace(node)?;
+    let decoded = StyleRecord {
+        style_field: elements.each(decode_style_field),
+        span: node.span,
+    };
+    elements.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_style_field(node: &Node) -> Result<StyleField, DecodeError> {
+    decode_style_field_font_size(node)
+        .or_else(|error| error.or(decode_style_field_horizontal_padding_pt(node)))
+        .or_else(|error| error.or(decode_style_field_vertical_padding_pt(node)))
+        .or_else(|error| error.or(decode_style_field_bold(node)))
+        .or_else(|error| error.or(decode_style_field_italic(node)))
+        .or_else(|error| error.or(decode_style_field_underline(node)))
+        .or_else(|error| error.or(decode_style_field_font_family(node)))
+}
+
+fn decode_style_field_font_size(node: &Node) -> Result<StyleField, DecodeError> {
+    let mut parts = support::call(node, "the call `font size _`")?;
+    let decoded = StyleField::FontSize {
+        key: parts.word_span("font size")?,
+        size: parts.one(decode_positive, "a positive")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_style_field_horizontal_padding_pt(node: &Node) -> Result<StyleField, DecodeError> {
+    let mut parts = support::call(node, "the call `horizontal padding pt _`")?;
+    let decoded = StyleField::HorizontalPaddingPt {
+        key: parts.word_span("horizontal padding pt")?,
+        points: parts.one(
+            |node| {
+                support::integer::<u64>(
+                    node,
+                    0,
+                    i128::from(u64::MAX),
+                    false,
+                    "an integer of at least 0",
+                )
+            },
+            "an integer of at least 0",
+        )?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_style_field_vertical_padding_pt(node: &Node) -> Result<StyleField, DecodeError> {
+    let mut parts = support::call(node, "the call `vertical padding pt _`")?;
+    let decoded = StyleField::VerticalPaddingPt {
+        key: parts.word_span("vertical padding pt")?,
+        points: parts.one(
+            |node| {
+                support::integer::<u64>(
+                    node,
+                    0,
+                    i128::from(u64::MAX),
+                    false,
+                    "an integer of at least 0",
+                )
+            },
+            "an integer of at least 0",
+        )?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_style_field_bold(node: &Node) -> Result<StyleField, DecodeError> {
+    let mut parts = support::call(node, "the call `bold _`")?;
+    let decoded = StyleField::Bold {
+        key: parts.word_span("bold")?,
+        flag: parts.one(decode_flag, "a flag")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_style_field_italic(node: &Node) -> Result<StyleField, DecodeError> {
+    let mut parts = support::call(node, "the call `italic _`")?;
+    let decoded = StyleField::Italic {
+        key: parts.word_span("italic")?,
+        flag: parts.one(decode_flag, "a flag")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_style_field_underline(node: &Node) -> Result<StyleField, DecodeError> {
+    let mut parts = support::call(node, "the call `underline _`")?;
+    let decoded = StyleField::Underline {
+        key: parts.word_span("underline")?,
+        flag: parts.one(decode_flag, "a flag")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+fn decode_style_field_font_family(node: &Node) -> Result<StyleField, DecodeError> {
+    let mut parts = support::call(node, "the call `font family _`")?;
+    let decoded = StyleField::FontFamily {
+        key: parts.word_span("font family")?,
+        family: parts.one(decode_font_family, "a font family")?,
+        span: node.span,
+    };
+    parts.finish()?;
+    Ok(decoded)
+}
+
+pub fn decode_font_family(node: &Node) -> Result<FontFamily, DecodeError> {
+    support::word(node, "serif")
+        .map(FontFamily::Serif)
+        .or_else(|error| error.or(decode_font_family_sans_serif(node)))
+        .or_else(|error| error.or(support::word(node, "monospace").map(FontFamily::Monospace)))
+}
+
+fn decode_font_family_sans_serif(node: &Node) -> Result<FontFamily, DecodeError> {
+    let mut parts = support::call(node, "the call `sans serif`")?;
+    let decoded = FontFamily::SansSerif { span: node.span };
+    parts.word("sans serif")?;
+    parts.finish()?;
+    Ok(decoded)
 }
 
 pub fn decode_signed_integer(node: &Node) -> Result<SignedInteger, DecodeError> {
@@ -1086,6 +2521,93 @@ pub mod support {
         }
     }
 
+    /// A decoded value that can hold errors: the ones `EACH` keeps in place of
+    /// the elements that did not fit, and the ones `ANY ORDER` keeps for the
+    /// nodes that fit nothing. Every generated type has it, so a tool such as a
+    /// language server can list every error in a document without knowing its
+    /// grammar.
+    pub trait Errors {
+        /// Adds every error inside `self` to `found`, in source order.
+        fn errors<'a>(&'a self, found: &mut Vec<&'a DecodeError>);
+
+        /// Every error inside `self`, in source order.
+        fn all_errors(&self) -> Vec<&DecodeError> {
+            let mut found = Vec::new();
+            self.errors(&mut found);
+            found
+        }
+    }
+
+    impl Errors for DecodeError {
+        fn errors<'a>(&'a self, found: &mut Vec<&'a DecodeError>) {
+            found.push(self);
+        }
+    }
+
+    impl<T: Errors> Errors for Result<T, DecodeError> {
+        fn errors<'a>(&'a self, found: &mut Vec<&'a DecodeError>) {
+            match self {
+                Ok(value) => value.errors(found),
+                Err(error) => found.push(error),
+            }
+        }
+    }
+
+    impl<T: Errors> Errors for Vec<T> {
+        fn errors<'a>(&'a self, found: &mut Vec<&'a DecodeError>) {
+            for value in self {
+                value.errors(found);
+            }
+        }
+    }
+
+    impl<T: Errors> Errors for Option<T> {
+        fn errors<'a>(&'a self, found: &mut Vec<&'a DecodeError>) {
+            if let Some(value) = self {
+                value.errors(found);
+            }
+        }
+    }
+
+    impl<T: Errors> Errors for Box<T> {
+        fn errors<'a>(&'a self, found: &mut Vec<&'a DecodeError>) {
+            (**self).errors(found);
+        }
+    }
+
+    impl<T: Errors> Errors for Spanned<T> {
+        fn errors<'a>(&'a self, found: &mut Vec<&'a DecodeError>) {
+            self.value.errors(found);
+        }
+    }
+
+    macro_rules! no_errors {
+    ($($type:ty),*) => {
+        $(impl Errors for $type {
+            fn errors<'a>(&'a self, _: &mut Vec<&'a DecodeError>) {}
+        })*
+    };
+}
+
+    no_errors!(
+        Span,
+        Node,
+        StringLiteral,
+        String,
+        CallName,
+        u8,
+        u16,
+        u32,
+        u64,
+        u128,
+        i8,
+        i16,
+        i32,
+        i64,
+        i128,
+        f64
+    );
+
     /// The name of a call matched by `ANYFIX CALL`: its text, such as
     /// `max size _`, its words and slots, and where its words are.
     #[derive(Clone, Debug, PartialEq)]
@@ -1441,19 +2963,25 @@ pub mod support {
             Ok(self)
         }
 
-        /// Like [`Sequence::word`], giving the word's span.
+        /// Like [`Sequence::word`], giving the word's span. `text` may be
+        /// several words separated by spaces, from `WORDS "a b"`: they are
+        /// matched in a row, and the span runs from the first to the last.
         pub fn word_span(&mut self, text: &str) -> Result<Span, DecodeError> {
-            let span = match self.items.get(self.index) {
-                Some(Item::Word(found, span)) if *found == text => *span,
-                Some(Item::Node(node)) if is_word(node, text) => node.span,
-                Some(Item::Node(_)) if self.other_call.is_some() => {
-                    return Err(self.is_other_call());
-                }
-                _ => return Err(self.unexpected(&format!("the word `{text}`"))),
-            };
-            self.index += 1;
-            self.other_call = None;
-            Ok(span)
+            let mut span: Option<Span> = None;
+            for word in text.split(' ') {
+                let found = match self.items.get(self.index) {
+                    Some(Item::Word(found, at)) if *found == word => *at,
+                    Some(Item::Node(node)) if is_word(node, word) => node.span,
+                    Some(Item::Node(_)) if self.other_call.is_some() => {
+                        return Err(self.is_other_call());
+                    }
+                    _ => return Err(self.unexpected(&format!("the word `{text}`"))),
+                };
+                self.index += 1;
+                self.other_call = None;
+                span = Some(span.map_or(found, |first| first.to(found)));
+            }
+            Ok(span.unwrap_or(Span::empty(0)))
         }
 
         /// Matches every name word in a row, at least one, whose text, the

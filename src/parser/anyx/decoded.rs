@@ -6,8 +6,8 @@ use itertools::Itertools;
 
 use crate::error::{RecoverableError, Span};
 use poentaro_grammar::{
-    parse_document, Abbreviation, CallName, DecodeError, Document, Field, Spanned, Unconverted,
-    Value, Words,
+    parse_document, Abbreviation, CallName, DecodeError, Document, Keyed, Spanned, Unconverted,
+    Words,
 };
 
 pub(crate) fn span(span: anyx::Span) -> Span {
@@ -109,40 +109,15 @@ pub(crate) fn content_span(literal: &Spanned<StringLiteral>) -> Span {
     span(literal.content)
 }
 
-/// What a `name : value` field's name says.
+/// What a field's key says.
 pub(crate) trait FieldName {
-    /// The field's name as a keyword: its words joined with `_`.
+    /// The key as a keyword: its words joined with `_`.
     fn key(&self) -> String;
-    fn written_key(&self) -> String;
-    fn key_span(&self) -> Span;
-    /// `could not convert "…"`: text the converter kept because it couldn't read it.
-    fn unconverted_text(&self) -> Option<&str>;
-    fn unconverted_error(&self) -> Option<RecoverableError>;
 }
 
-impl FieldName for Field {
+impl<F: Keyed + ?Sized> FieldName for F {
     fn key(&self) -> String {
-        self.name.words().join("_")
-    }
-
-    fn written_key(&self) -> String {
-        self.name.words().join(" ")
-    }
-
-    fn key_span(&self) -> Span {
-        span(self.name.span)
-    }
-
-    fn unconverted_text(&self) -> Option<&str> {
-        match (&self.arguments, self.key().as_str()) {
-            (Value::Text(text), "could_not_convert") => Some(&text.value.value),
-            _ => None,
-        }
-    }
-
-    fn unconverted_error(&self) -> Option<RecoverableError> {
-        let text = self.unconverted_text()?;
-        Some(unconverted_error_at(self.span, text))
+        self.key_words().replace(' ', "_")
     }
 }
 
@@ -150,7 +125,7 @@ pub(crate) fn unconverted_error(unconverted: &Unconverted) -> RecoverableError {
     unconverted_error_at(unconverted.span, &unconverted.text.value.value)
 }
 
-fn unconverted_error_at(at: anyx::Span, text: &str) -> RecoverableError {
+pub(crate) fn unconverted_error_at(at: anyx::Span, text: &str) -> RecoverableError {
     invalid(
         at,
         format!(
@@ -161,30 +136,6 @@ fn unconverted_error_at(at: anyx::Span, text: &str) -> RecoverableError {
                 .join(" / ")
         ),
     )
-}
-
-/// A field's value as text.
-pub(crate) trait ValueText {
-    /// The value as a keyword (`80%`, `-1`, `sans_serif`, `Bb4`), or a pair
-    /// as its two values with a space between (`0 -4`).
-    fn text(&self) -> Result<String, RecoverableError>;
-}
-
-impl ValueText for Value {
-    fn text(&self) -> Result<String, RecoverableError> {
-        match self {
-            Value::Integer(integer) => Ok(integer.value.to_string()),
-            Value::Text(text) => Ok(text.value.value.clone()),
-            Value::Percentage(percentage) => Ok(format!("{}%", percentage.number.value)),
-            Value::Words(words) => Ok(words.text("_")),
-            Value::Written {
-                name, arguments, ..
-            } => joined(name, arguments, "_"),
-            Value::Pair { x, y, .. } => Ok(format!("{} {}", x.text()?, y.text()?)),
-            Value::Record(record) => Err(not_flat(record.span)),
-            Value::List(list) => Err(not_flat(list.span)),
-        }
-    }
 }
 
 /// Words as one piece of text.

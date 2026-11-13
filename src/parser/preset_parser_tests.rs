@@ -144,8 +144,8 @@ fn unknown_notation_is_an_error() {
     assert_eq!(only_preset(&doc).notation, None);
     assert!(matches!(
         error_kinds(&doc).as_slice(),
-        [RecoverableErrorKind::MetadataInvalidEnum { field, value, .. }]
-            if field == "notation" && value == "lute"
+        [RecoverableErrorKind::AnyxInvalid { message }]
+            if message.starts_with("found the word `lute`; expected the word `numbered`")
     ));
 }
 
@@ -174,7 +174,8 @@ fn unknown_key_is_an_error() {
     let doc = parse_document(&document_with_presets("preset \"P\" { colour : red },"));
     assert!(matches!(
         error_kinds(&doc).as_slice(),
-        [RecoverableErrorKind::MetadataUnknownField { field }] if field == "colour"
+        [RecoverableErrorKind::AnyxInvalid { message }]
+            if message.starts_with("found the word `colour`; expected the word `visible parts`")
     ));
 }
 
@@ -219,22 +220,12 @@ fn default_is_a_reserved_name_in_any_case() {
 fn preset_only_keys_are_errors_in_metadata() {
     let source = "metadata { visible parts : main, notation : violin },\n\nparts [\"Main\" [main] : notes],\n\nscore \"\"\"\n[main] 1\n\"\"\",\n";
     let doc = parse_document(source);
-    let kinds: Vec<RecoverableErrorKind> = doc
+    let found: Vec<&str> = doc
         .metadata_parse_errors
         .iter()
-        .map(|error| error.kind.clone())
+        .map(|error| text_at(source, error.span))
         .collect();
-    assert_eq!(
-        kinds,
-        [
-            RecoverableErrorKind::PresetOnlyField {
-                field: "visible parts".to_string()
-            },
-            RecoverableErrorKind::PresetOnlyField {
-                field: "notation".to_string()
-            },
-        ]
-    );
+    assert_eq!(found, ["visible", "notation"]);
 }
 
 #[test]

@@ -113,8 +113,8 @@ fn section_label_vertical_padding_pt_grows_the_label_box_height() {
             .expect("directive line with a section label should be present")
     }
 
-    let unpadded = label_box_height("section_label style : { vertical padding pt : 0 }");
-    let padded = label_box_height("section_label style : { vertical padding pt : 8 }");
+    let unpadded = label_box_height("section label style : { vertical padding pt : 0 }");
+    let padded = label_box_height("section label style : { vertical padding pt : 8 }");
     assert!(
         padded >= unpadded + 8.0,
         "padded label box height ({padded}) should be at least 8pt taller than unpadded ({unpadded})"
@@ -190,8 +190,8 @@ fn page_number_vertical_padding_pt_pushes_the_footer_text_up() {
             .expect("footer page-number text element should be present")
     }
 
-    let unpadded = footer_text_y("page_number style : { vertical padding pt : 0 }");
-    let padded = footer_text_y("page_number style : { vertical padding pt : 4 }");
+    let unpadded = footer_text_y("page number style : { vertical padding pt : 0 }");
+    let padded = footer_text_y("page number style : { vertical padding pt : 4 }");
     assert!(
         padded <= unpadded - 4.0,
         "padded footer text y ({padded}) should sit at least 4pt above unpadded ({unpadded})"
