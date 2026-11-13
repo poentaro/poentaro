@@ -353,7 +353,9 @@ pub(crate) struct GroupedPart {
 
 #[path = "grouped_sequence.rs"]
 mod grouped_sequence;
-pub use grouped_sequence::{ChosenLine, PartFilterDisplay, SequenceSpan};
+pub use grouped_sequence::{
+    line_choices_suffix, part_filter_suffix, ChosenLine, PartFilterDisplay, SequenceSpan,
+};
 
 #[path = "grouped_notes.rs"]
 mod grouped_notes;

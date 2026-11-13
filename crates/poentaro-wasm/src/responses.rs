@@ -185,26 +185,10 @@ pub(crate) fn list_measure_spans_response(source: &str) -> ListMeasureSpansRespo
                 .sequence
                 .unwrap_or_default()
                 .into_iter()
-                .map(|entry| {
-                    let label = match &entry.part_filter_display {
-                        None => entry.label.clone(),
-                        Some(display) => {
-                            use poentaro::parser::sequence_parser::PartFilterKind;
-                            match display.kind {
-                                PartFilterKind::Omit => {
-                                    format!("{}(-{})", entry.label, display.parts.join(" -"))
-                                }
-                                PartFilterKind::Only => {
-                                    format!("{}({})", entry.label, display.parts.join(" "))
-                                }
-                            }
-                        }
-                    };
-                    SequenceEntryOut {
-                        label,
-                        start_measure_index: entry.start,
-                        end_measure_index: entry.end,
-                    }
+                .map(|entry| SequenceEntryOut {
+                    label: entry.display_label(),
+                    start_measure_index: entry.start,
+                    end_measure_index: entry.end,
                 })
                 .collect();
             ListMeasureSpansResponse::Ok {

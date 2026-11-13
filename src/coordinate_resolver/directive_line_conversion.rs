@@ -186,8 +186,6 @@ pub(super) fn sequence_line_content(
     font_size: f32,
     directive_font_sizes: DirectiveLineFontSizes,
 ) -> Vec<TextSpan> {
-    use crate::parser::sequence_parser::PartFilterKind;
-
     let mut spans = vec![TextSpan {
         content: "Sequence: ".to_string(),
         bold: false,
@@ -212,34 +210,19 @@ pub(super) fn sequence_line_content(
             directive_font_sizes.sequence_italic,
             directive_font_sizes.sequence_underline,
         ));
-        if !entry.lines.is_empty() {
-            let lines = entry
-                .lines
-                .iter()
-                .map(|line| format!("{} {}", line.part, line.line))
-                .collect::<Vec<_>>()
-                .join(", ");
-            spans.push(TextSpan {
-                content: format!(" ({lines})"),
-                bold: false,
-                italic: false,
-                underline: false,
-                font_size,
-            });
-        }
-        if let Some(filter) = &entry.part_filter {
-            let content = match filter.kind {
-                PartFilterKind::Omit => format!(" (-{})", filter.parts.join(" -")),
-                PartFilterKind::Only => format!(" ({})", filter.parts.join(" ")),
-            };
-            spans.push(TextSpan {
-                content,
-                bold: false,
-                italic: false,
-                underline: false,
-                font_size,
-            });
-        }
+        let suffixes =
+            crate::ast::grouped::line_choices_suffix(&entry.lines)
+                .into_iter()
+                .chain(entry.part_filter.as_ref().map(|filter| {
+                    crate::ast::grouped::part_filter_suffix(filter.kind, &filter.parts)
+                }));
+        spans.extend(suffixes.map(|content| TextSpan {
+            content,
+            bold: false,
+            italic: false,
+            underline: false,
+            font_size,
+        }));
     }
     spans
 }
