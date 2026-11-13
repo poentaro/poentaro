@@ -4,6 +4,7 @@ import type { PartToggleState } from '../types'
 import { usePoentaroWorkerActions } from './usePoentaroWorkerActions'
 import { usePoentaroWorkerState } from './usePoentaroWorkerState'
 import type { PoentaroWorkerState } from './usePoentaroWorkerTypes'
+import type { SelectedSequenceRange } from './useSequenceNavigation'
 
 export type { PoentaroWorkerState } from './usePoentaroWorkerTypes'
 
@@ -24,12 +25,7 @@ export function usePoentaroWorker(
    * produces further down. See `useSequenceNavigation`'s matching parameter
    * doc comment.
    */
-  selectedSequenceRangeRef: RefObject<{
-    start: number
-    end: number
-    entryStartIndex: number
-    entryEndIndex: number
-  } | null>,
+  selectedSequenceRangeRef: RefObject<SelectedSequenceRange | null>,
   /**
    * Owned by the caller (`useAppController`) for the same reason as
    * `selectedSequenceRangeRef` above — `useMeasureAudioPlayback` needs it

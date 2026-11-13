@@ -15,7 +15,10 @@ import { useLyricSelection } from './useLyricSelection'
 import { useMeasureRangeSelection } from './useMeasureRangeSelection'
 import { useNoteSelection } from './useNoteSelection'
 import { useSectionNavigation } from './useSectionNavigation'
-import { useSequenceNavigation } from './useSequenceNavigation'
+import {
+  type SelectedSequenceRange,
+  useSequenceNavigation,
+} from './useSequenceNavigation'
 
 /** Wires together section/sequence jump navigation and note/lyric/measure
  * range selection — the editor-selection half of `useAppController`. Split
@@ -33,12 +36,7 @@ export function useAppSelectionAndNavigation(
   ) => void,
   sequenceEntries: SequenceEntry[],
   measureSpans: MeasureSpan[],
-  selectedSequenceRangeRef: RefObject<{
-    start: number
-    end: number
-    entryStartIndex: number
-    entryEndIndex: number
-  } | null>,
+  selectedSequenceRangeRef: RefObject<SelectedSequenceRange | null>,
   noteSpans: NoteSpan[],
   lyricSpans: LyricSpan[],
   playNoteSelection: (
