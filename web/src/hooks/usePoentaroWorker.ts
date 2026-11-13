@@ -165,5 +165,6 @@ export function usePoentaroWorker(
     describeSelection: actions.describeSelection,
     importFromFile: actions.importFromFile,
     staffNotation: actions.staffNotation,
+    previewLayout: actions.previewLayout,
   }
 }

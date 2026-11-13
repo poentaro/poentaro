@@ -12,6 +12,7 @@ import { Editor } from './Editor'
 import { EditorToolbarButton } from './EditorToolbarButton'
 import { EditPartsModal } from './EditPartsModal'
 import { NotationToggle } from './NotationToggle'
+import { PageViewToggle } from './PageViewToggle'
 import { PitchDrawer } from './PitchDrawer'
 import { Preview } from './Preview'
 import { PartFocusEditor } from './partFocus/PartFocusEditor'
@@ -87,6 +88,7 @@ export function AppWorkspace({
   measureAudioElement,
   noPartsSelected,
   staffNotation,
+  previewLayout,
   partToggles,
   onPartFocusDraftChange,
 }: AppWorkspaceProps) {
@@ -347,11 +349,19 @@ export function AppWorkspace({
         <Preview
           documents={documents}
           floatingControls={
-            <NotationToggle
-              notation={staffNotation.notation}
-              onChange={staffNotation.setNotation}
-            />
+            <>
+              <PageViewToggle
+                view={previewLayout.view}
+                onChange={previewLayout.setView}
+              />
+              <NotationToggle
+                notation={staffNotation.notation}
+                onChange={staffNotation.setNotation}
+              />
+            </>
           }
+          maxView={previewLayout.view === 'max'}
+          onPagesWidthChange={previewLayout.setContainerWidth}
           staffScore={staffView ? staffNotation.score : null}
           highlightedDocuments={highlightedDocuments}
           rendering={staffView ? staffNotation.loading : rendering}

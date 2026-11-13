@@ -13,6 +13,7 @@ import { usePoentaroWorkerPartDeclaration } from './usePoentaroWorkerPartDeclara
 import { usePoentaroWorkerRenderRequests } from './usePoentaroWorkerRenderRequests'
 import { usePoentaroWorkerShiftOctave } from './usePoentaroWorkerShiftOctave'
 import type { usePoentaroWorkerState } from './usePoentaroWorkerState'
+import { usePreviewLayout } from './usePreviewLayout'
 import { useStaffNotation } from './useStaffNotation'
 
 interface UsePoentaroWorkerActionsParams {
@@ -180,10 +181,12 @@ export function usePoentaroWorkerActions({
     requestDownload: state.requestDownload,
   })
 
+  const previewLayout = usePreviewLayout()
   const staffNotation = useStaffNotation({
     workerRef: state.workerRef,
     source,
     visibility: state.visibility,
+    pageLayout: previewLayout.pageLayout,
     staffRenderTracker: state.staffRenderTracker,
     debounceMs,
   })
@@ -197,6 +200,7 @@ export function usePoentaroWorkerActions({
     cursorOffsetTimerRef: state.cursorOffsetTimerRef,
     visibility: state.visibility,
     notation: staffNotation.notation,
+    pageLayout: previewLayout.pageLayout,
     renderedTracks: state.renderedTracks,
     setDocuments: state.setDocuments,
     setNextWavUrl,
@@ -336,6 +340,7 @@ export function usePoentaroWorkerActions({
     describeSelection,
     importFromFile,
     staffNotation,
+    previewLayout,
     previewInstrument,
     previewPercussion,
     stopPreviewInstrument,

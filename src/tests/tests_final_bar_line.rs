@@ -15,8 +15,10 @@ fn bar_line_kinds_by_page(input: &str, page_height_pt: f32) -> Vec<Vec<BarLineKi
             parts_list_columns: 3,
             ..Default::default()
         },
-        595.0,
-        page_height_pt,
+        grid_layout::PageLayout::Paged(grid_layout::PageSize {
+            width_pt: 595.0,
+            height_pt: page_height_pt,
+        }),
         None,
     )
     .pages;

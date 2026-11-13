@@ -154,6 +154,7 @@ export default function App() {
     handlePlayNoteSelection,
     noPartsSelected,
     staffNotation,
+    previewLayout,
   } = useAppController()
   const previewInteractive = wasm.status === 'ready'
   const handleAccountSignOut = useCallback(() => {
@@ -389,6 +390,7 @@ export default function App() {
           measureAudioElement={measureAudioElement}
           noPartsSelected={noPartsSelected}
           staffNotation={staffNotation}
+          previewLayout={previewLayout}
           partToggles={partToggles}
           onPartFocusDraftChange={setPartFocusDraft}
         />

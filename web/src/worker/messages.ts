@@ -1,6 +1,7 @@
 import type {
   FontBytesByFamily,
   NoteTiming,
+  PageLayout,
   StaffClef,
   StaffMeasure,
   SvgDocument,
@@ -64,6 +65,7 @@ export type WorkerRequest =
       id: number
       visibility: ResolvedPartVisibility
       notation: Notation
+      pageLayout: PageLayout
     }
   | { type: 'listParts'; source: string; id: number }
   | {
@@ -188,6 +190,7 @@ export type WorkerRequest =
       ranges: { start: number; end: number }[]
       visibility: ResolvedPartVisibility
       notation: Notation
+      pageLayout: PageLayout
     }
   | { type: 'listMeasureSpans'; source: string; id: number }
   | {
@@ -247,6 +250,7 @@ export type WorkerRequest =
       id: number
       visibility: ResolvedPartVisibility
       clef: StaffClef
+      pageLayout: PageLayout
     }
 
 export type WorkerResponse =

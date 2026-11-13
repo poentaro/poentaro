@@ -38,7 +38,7 @@ export async function handleGenerateStaffPdf(
     clef,
   )
   if (mei.tag === 'err') return fail(mei.val.diagnostics)
-  const engraved = await engraveMei(mei.val.mei)
+  const engraved = await engraveMei(mei.val.mei, { tag: 'a4' })
   if (engraved.status === 'err') {
     return fail(singleErrorDiagnostic(engraved.message))
   }
@@ -77,7 +77,7 @@ export async function handleGenerateSplitStaffPdf(
   if (meis.tag === 'err') return fail(meis.val.diagnostics)
   const parts = []
   for (const part of meis.val) {
-    const engraved = await engraveMei(part.mei)
+    const engraved = await engraveMei(part.mei, { tag: 'a4' })
     if (engraved.status === 'err') {
       return fail(singleErrorDiagnostic(engraved.message))
     }

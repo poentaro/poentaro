@@ -100,7 +100,14 @@ fn layout_single_block_produces_one_page() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     assert_eq!(pages.len(), 1);
 }
 
@@ -113,7 +120,14 @@ fn layout_page_has_correct_dimensions() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     assert!((pages[0].width_pt - 595.0).abs() < 0.001);
     assert!((pages[0].height_pt - 842.0).abs() < 0.001);
 }
@@ -127,7 +141,14 @@ fn layout_rows_include_header_and_footer() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     // At minimum: header title row, header subtitle+author row, footer row
     assert!(pages[0].rows.len() >= 3, "len={}", pages[0].rows.len());
 }
@@ -141,7 +162,14 @@ fn layout_page_total_height_does_not_exceed_page_height() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     for page in &pages {
         let total: f32 = page.rows.iter().map(|r| r.height_pt).sum();
         assert!(
@@ -166,8 +194,10 @@ fn footer_row_fills_remaining_page_height() {
         &compile_result,
         &cfg_wide(),
         &hdr(),
-        595.0,
-        page_height,
+        crate::grid_layout::PageLayout::Paged(crate::grid_layout::PageSize {
+            width_pt: 595.0,
+            height_pt: page_height,
+        }),
         None,
     )
     .pages;
@@ -193,7 +223,14 @@ fn footer_element_valign_is_bottom() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     let footer_row = pages[0].rows.last().unwrap();
     assert!(
         footer_row
@@ -235,8 +272,7 @@ fn layout_draws_divider_between_systems_by_default() {
         &compile_result,
         &cfg_one_measure_per_system(false),
         &hdr(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -256,8 +292,7 @@ fn layout_omits_divider_when_hide_system_dividers_is_set() {
         &compile_result,
         &cfg_one_measure_per_system(true),
         &hdr(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;

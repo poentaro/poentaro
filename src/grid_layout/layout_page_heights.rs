@@ -1,9 +1,11 @@
 use super::make_header_rows;
+use crate::grid_layout::page_layout::PageLayout;
 use crate::grid_layout::types::Header;
 use crate::render_config::RenderConfig;
 
 /// Height (points) available to systems on the first page versus every later
 /// page, which differ because later pages carry only the small running title.
+/// A continuous page has no height limit, so every system lands on it.
 #[derive(Clone, Copy)]
 pub(super) struct PageUsableHeights {
     first_page: f32,
@@ -11,7 +13,11 @@ pub(super) struct PageUsableHeights {
 }
 
 impl PageUsableHeights {
-    pub(super) fn new(header: &Header, config: &RenderConfig, page_height_pt: f32) -> Self {
+    pub(super) fn new(header: &Header, config: &RenderConfig, page_layout: PageLayout) -> Self {
+        let page_height_pt = match page_layout {
+            PageLayout::Paged(size) => size.height_pt,
+            PageLayout::Continuous(_) => f32::INFINITY,
+        };
         let base = config.row_height as f32;
         let below_header = |is_first_page: bool| {
             let header_h: f32 = make_header_rows(header, base, is_first_page)

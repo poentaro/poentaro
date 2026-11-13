@@ -158,8 +158,7 @@ fn playback_cursor_target_extends_over_its_lyric_verse_row() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -210,8 +209,7 @@ fn note_click_target_does_not_extend_over_its_lyric_verse_row() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;

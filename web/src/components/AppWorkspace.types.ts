@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import type { PreviewLayout } from '../hooks/usePreviewLayout'
 import type { StaffNotation } from '../hooks/useStaffNotation'
 import type {
   MetadataEdit,
@@ -166,6 +167,7 @@ export interface AppWorkspaceProps {
   measureAudioElement: HTMLAudioElement | null
   noPartsSelected: boolean
   staffNotation: StaffNotation
+  previewLayout: PreviewLayout
   /** Passed through to the part focus editor's ghost lines. */
   partToggles: PartToggleState
   /** The part focus editor's draft source, which the preview follows. */

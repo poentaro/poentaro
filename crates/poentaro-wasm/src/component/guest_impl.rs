@@ -83,15 +83,6 @@ impl Guest for Component {
         resolve_part_visibility(source, parts, toggles, preset_name)
     }
 
-    fn render_svg(
-        source: String,
-        visibility: ResolvedPartVisibility,
-        raw_instruments: Vec<InstrumentInfo>,
-        note_labels: NoteLabels,
-    ) -> RenderResponse {
-        render_svg(source, visibility, raw_instruments, note_labels)
-    }
-
     fn render_mei(
         source: String,
         visibility: ResolvedPartVisibility,
@@ -333,7 +324,8 @@ impl Guest for Component {
         part_focus_measures(source: String, abbreviation: String, toggles: PartToggleState) -> PartFocusMeasuresResponse;
         part_stream_ranges_to_source(source: String, abbreviation: String, edited_stream: String, ranges: Vec<Span>) -> Vec<Span>;
         source_ranges_to_part_stream(source: String, abbreviation: String, edited_stream: String, ranges: Vec<Span>) -> Vec<Span>;
-        render_svg_with_highlight_range(source: String, raw_measure_ranges: Vec<MeasureRangeIn>, visibility: ResolvedPartVisibility, raw_instruments: Vec<InstrumentInfo>, note_labels: NoteLabels) -> RenderResponse;
+        render_svg(source: String, visibility: ResolvedPartVisibility, raw_instruments: Vec<InstrumentInfo>, note_labels: NoteLabels, page_layout: PageLayout) -> RenderResponse;
+        render_svg_with_highlight_range(source: String, raw_measure_ranges: Vec<MeasureRangeIn>, visibility: ResolvedPartVisibility, raw_instruments: Vec<InstrumentInfo>, note_labels: NoteLabels, page_layout: PageLayout) -> RenderResponse;
         render_split_meis(source: String, base_name: String, preset_name: Option<String>, raw_instruments: Vec<InstrumentInfo>, clef: StaffClef) -> RenderSplitMeisResponse;
         generate_staff_pdf(pages: Vec<String>, source: String, fonts: FontBytesByFamily) -> GeneratePdfResponse;
         generate_split_staff_pdfs(parts: Vec<StaffPdfPart>, fonts: FontBytesByFamily) -> GenerateSplitPdfsResponse;

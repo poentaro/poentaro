@@ -50,8 +50,14 @@ fn no_orphan_empty_lyric_row_when_no_part_has_lyric_text() {
         part_legend_font_size: score.metadata.part_legend.font_size as f32,
         ..Default::default()
     };
-    let pages =
-        poentaro::grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None).pages;
+    let pages = poentaro::grid_layout::layout(
+        &compile_result,
+        &config,
+        &header,
+        poentaro::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
 
     let has_orphan_lyric_row = pages[0].rows.iter().any(|row| {
         !row.elements.is_empty()

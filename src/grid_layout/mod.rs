@@ -1,7 +1,9 @@
 pub(crate) mod click_targets;
 pub(crate) mod expand;
+mod header_fit;
 pub(crate) mod highlight;
 pub mod layout;
+pub mod page_layout;
 pub(crate) mod playback_cursor;
 pub(crate) mod slur_placement;
 pub(crate) mod system_walk;
@@ -9,6 +11,7 @@ pub(crate) mod tuplet_placement;
 pub mod types;
 
 pub use layout::{layout, LayoutOutput};
+pub use page_layout::{ContinuousPage, PageLayout, PageSize};
 pub use types::{
     GridContent, GridElement, GridPage, GridRow, HAlign, Header, MeasureRange, PostArcGridContent,
     VAlign,
@@ -66,6 +69,8 @@ mod tests_column_rod_spring;
 mod tests_column_span_weight;
 #[cfg(test)]
 mod tests_dot_spacing;
+#[cfg(test)]
+mod tests_header_fit;
 #[cfg(test)]
 mod tests_header_rows;
 #[cfg(test)]

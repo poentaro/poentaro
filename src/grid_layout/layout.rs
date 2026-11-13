@@ -1,5 +1,6 @@
 use crate::compiler::types::{BarLineKind, CompileResult, ElementContent, MeasureBlock};
 use crate::error::{Diagnostic, Span, Warning};
+use crate::grid_layout::page_layout::PageLayout;
 use crate::grid_layout::slur_placement::{build_measure_placements, resolve_slur_spans};
 use crate::grid_layout::tuplet_placement::resolve_tuplet_spans;
 use crate::grid_layout::types::Header;
@@ -273,18 +274,21 @@ pub struct LayoutOutput {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// Public entry point: convert compiler blocks to GridPages.
+/// Public entry point: convert compiler blocks to GridPages laid out on
+/// `page_layout`. `config`'s page margin is used as given; callers apply
+/// [`PageLayout::margin_pt`] to it first.
 pub fn layout(
     compile_result: &CompileResult,
     config: &RenderConfig,
     header: &Header,
-    page_width_pt: f32,
-    page_height_pt: f32,
+    page_layout: PageLayout,
     highlighted_measure_ranges: Option<Vec<MeasureRange>>,
 ) -> LayoutOutput {
+    let page_width_pt = page_layout.width_pt();
     let base = config.row_height as f32;
     let blocks = &compile_result.blocks;
     let frame = config.page_frame();
+    let header = &*page_layout.fit_header(header, page_width_pt - 2.0 * frame.margin_pt);
     let systems = pack_into_systems(blocks, config, frame.usable_music_width_pt(page_width_pt));
 
     let measure_placements = build_measure_placements(&systems);
@@ -296,7 +300,7 @@ pub fn layout(
         systems,
         &tuplet_bracket_map,
         base,
-        PageUsableHeights::new(header, config, page_height_pt),
+        PageUsableHeights::new(header, config, page_layout),
         config.hide_system_dividers,
         config.lyric_sizing(),
     );
@@ -333,14 +337,13 @@ pub fn layout(
             page_width_pt,
         });
         diagnostics.extend(page_diagnostics);
-        let body_height: f32 = rows.iter().map(|r| r.height_pt).sum();
-        let remaining_height = frame.usable_height_pt(page_height_pt) - body_height;
-        rows.push(page_footer_row(
+        let page_height_pt = finish_page(
+            &mut rows,
+            page_layout,
             config,
             page_idx as u32 + 1,
             total_pages,
-            remaining_height,
-        ));
+        );
         abs_system_index_start += page_sys.len();
         let page_targets = PageHighlightsAndTargets::for_page(&highlight_and_click_infos, page_idx);
         pages.push(GridPage {
@@ -361,26 +364,31 @@ pub fn layout(
     LayoutOutput { pages, diagnostics }
 }
 
-/// Builds a page's footer row from `config`'s page-number style — split out
-/// of [`layout`] to keep it under clippy's line-count limit.
-fn page_footer_row(
+/// Adds a fixed-size page's footer, the page number, to `rows`, and
+/// returns the page's height: the page size's, or a continuous page's
+/// content plus its margins.
+fn finish_page(
+    rows: &mut Vec<GridRow>,
+    page_layout: PageLayout,
     config: &RenderConfig,
     page_num: u32,
     total_pages: u32,
-    remaining_height: f32,
-) -> GridRow {
-    make_footer_row(
-        page_num,
-        total_pages,
-        config.page_number_font_size as f32,
-        crate::grid_layout::types::TextStyleFlags {
-            bold: config.page_number_bold,
-            italic: config.page_number_italic,
-            underline: config.page_number_underline,
-        },
-        config.page_number_font_family,
-        remaining_height,
-    )
+) -> f32 {
+    let frame = config.page_frame();
+    let body_height: f32 = rows.iter().map(|r| r.height_pt).sum();
+    match page_layout {
+        PageLayout::Paged(size) => {
+            let remaining_height = frame.usable_height_pt(size.height_pt) - body_height;
+            rows.push(make_footer_row(
+                config,
+                page_num,
+                total_pages,
+                remaining_height,
+            ));
+            size.height_pt
+        }
+        PageLayout::Continuous(_) => body_height + 2.0 * frame.margin_pt,
+    }
 }
 
 #[path = "layout_page_targets.rs"]

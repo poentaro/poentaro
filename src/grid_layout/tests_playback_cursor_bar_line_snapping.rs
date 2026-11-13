@@ -76,8 +76,7 @@ fn playback_cursor_targets_snap_to_bar_lines_at_measure_edges() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -163,8 +162,7 @@ fn playback_cursor_target_snaps_to_bar_line_despite_trailing_subdivision_padding
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -241,8 +239,7 @@ fn playback_cursor_target_extends_to_next_note_without_its_own_trailing_column()
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;

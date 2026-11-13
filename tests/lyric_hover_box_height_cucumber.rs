@@ -30,6 +30,7 @@ use cucumber::{given, then, when, World as _};
 use metadata_field::metadata_field;
 use poentaro::compositor::types::{AbsoluteContent, DominantBaseline};
 use poentaro::fonts::SERIF_FONT_BYTES;
+use poentaro::grid_layout::PageLayout;
 use poentaro::render_config::RenderConfig;
 use poentaro::renderer::new_renderer::render_new;
 use poentaro::renderer::new_types::SvgKind;
@@ -147,7 +148,7 @@ score """
     let compile_result = poentaro::compiler::compile(&score);
     let compile_result = poentaro::consolidator::consolidate(compile_result);
     let grid_pages =
-        grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None).pages;
+        grid_layout::layout(&compile_result, &config, &header, PageLayout::A4, None).pages;
     let abs = coordinate_resolver::resolve(
         &grid_pages,
         config.note_number_width as f32,

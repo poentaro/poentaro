@@ -67,8 +67,7 @@ fn erroneous_measure_produces_error_highlight() {
         },
         &config,
         &header,
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -127,8 +126,7 @@ fn click_target_row_start_skips_hidden_system_divider() {
         },
         &shown_config,
         &header,
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -145,8 +143,7 @@ fn click_target_row_start_skips_hidden_system_divider() {
         },
         &hidden_config,
         &header,
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -214,8 +211,7 @@ fn non_erroneous_measure_produces_no_error_highlight() {
         },
         &config,
         &header,
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;

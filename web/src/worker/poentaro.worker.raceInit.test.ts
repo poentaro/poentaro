@@ -110,6 +110,7 @@ const raceMessages: WorkerRequest[] = [
     id: 1,
     visibility: ALL_PARTS_VISIBLE,
     notation: 'numbered',
+    pageLayout: { tag: 'a4' },
   },
   { type: 'listParts', source: '', id: 2 },
   {
@@ -159,6 +160,7 @@ const raceMessages: WorkerRequest[] = [
     ranges: [{ start: 0, end: 0 }],
     visibility: ALL_PARTS_VISIBLE,
     notation: 'numbered',
+    pageLayout: { tag: 'a4' },
   },
   { type: 'listMeasureSpans', source: '', id: 12 },
   { type: 'previewInstrument', id: 13, programNumber: 0 },

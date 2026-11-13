@@ -8,6 +8,8 @@ mod tests_final_bar_line;
 mod tests_lyric_label_click_targets;
 #[path = "tests_part_kind_x_alignment.rs"]
 mod tests_part_kind_x_alignment;
+#[path = "tests_render_continuous_page.rs"]
+mod tests_render_continuous_page;
 #[path = "tests_render_filtering.rs"]
 mod tests_render_filtering;
 #[path = "tests_render_filtering_slur.rs"]

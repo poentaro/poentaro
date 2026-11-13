@@ -168,7 +168,7 @@ score """
             ..Default::default()
         },
         &[],
-        NoteLabels::Degrees,
+        RenderView::default(),
     )
     .unwrap()
     .documents;
@@ -315,7 +315,7 @@ preset "Choir" { subtitle "Choir subtitle" },
                 ..Default::default()
             },
             &[],
-            NoteLabels::Degrees,
+            RenderView::default(),
         )
         .unwrap()
         .documents;

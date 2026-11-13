@@ -82,6 +82,27 @@
   /* Clear `.preview-pages`' vertical scrollbar. */
   right: 1.25rem;
   z-index: 10;
+  display: flex;
+  gap: 0.375rem;
+}
+
+/* Max view: one page laid out to this area's width, flush to its edges.
+   The stable gutter keeps a scrollbar appearing from narrowing the page
+   and triggering another layout. */
+.preview-pages--max {
+  /* The top padding clears the floating controls, which would otherwise
+     sit on the title. */
+  padding: 3rem 0 0;
+  align-items: stretch;
+  scrollbar-gutter: stable;
+}
+
+.preview-pages--max .preview-page {
+  box-shadow: none;
+}
+
+.preview-pages--max .preview-page--staff > svg {
+  width: 100%;
 }
 
 /* The floating trigger keeps a shadow so it reads above the page. */

@@ -71,7 +71,7 @@ score """
         "test.poentaro",
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
+        RenderView::default(),
     )
     .unwrap();
 
@@ -118,7 +118,7 @@ score """
         "test.poentaro",
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
+        RenderView::default(),
     )
     .unwrap();
 
@@ -176,7 +176,7 @@ score """
         "test.poentaro",
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
+        RenderView::default(),
     )
     .unwrap();
 

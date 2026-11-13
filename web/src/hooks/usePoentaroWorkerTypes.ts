@@ -18,6 +18,7 @@ import type {
 } from '../types'
 import type { NoteCell } from '../utils/noteSpanSelection'
 import type { StaffRenderResult } from '../worker/messages'
+import type { PreviewLayout } from './usePreviewLayout'
 import type { StaffNotation } from './useStaffNotation'
 
 /** Tracks one in-flight "send source, get rewritten source back" round trip
@@ -265,4 +266,6 @@ export interface PoentaroWorkerState {
   /** The numbered/staff preview toggle and, while it's on staff, the
    * Verovio-engraved pages. */
   staffNotation: StaffNotation
+  /** A4 pages or max view, and the page layout the preview renders on. */
+  previewLayout: PreviewLayout
 }

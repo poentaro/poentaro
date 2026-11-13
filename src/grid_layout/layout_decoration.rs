@@ -346,7 +346,7 @@ fn make_part_list_rows(entries: &[&PartListEntry], header: &Header) -> Vec<GridR
                     halign: HAlign::Start,
                     valign: VAlign::Center,
                     content: GridContent::Text {
-                        content: format!("{} \u{2014} {}", entry.abbreviation, entry.display_name),
+                        content: entry.legend_text(),
                         font_size: header.part_legend_font_size,
                         bold: header.part_legend_bold,
                         italic: header.part_legend_italic,

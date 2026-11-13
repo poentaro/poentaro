@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { poentaroWasm } from '../poentaroWasm'
+import { type PageLayout, poentaroWasm } from '../poentaroWasm'
 import type { ResolvedPartVisibility } from '../types'
 import type {
   Notation,
@@ -32,6 +32,8 @@ interface UseStaffNotationParams {
   workerRef: RefObject<Worker | null>
   source: string
   visibility: ResolvedPartVisibility
+  /** A4 pages, or max view's continuous page (`usePreviewLayout`). */
+  pageLayout: PageLayout
   staffRenderTracker: StaffRenderRequestTracker
   debounceMs: number
 }
@@ -58,6 +60,7 @@ export function useStaffNotation({
   workerRef,
   source,
   visibility,
+  pageLayout,
   staffRenderTracker,
   debounceMs,
 }: UseStaffNotationParams): StaffNotation {
@@ -105,6 +108,7 @@ export function useStaffNotation({
         id,
         visibility,
         clef,
+        pageLayout,
       } satisfies WorkerRequest)
     }, debounceMs)
     return () => window.clearTimeout(timer)
@@ -112,6 +116,7 @@ export function useStaffNotation({
     notation,
     source,
     visibility,
+    pageLayout,
     debounceMs,
     workerRef,
     requestIdRef,

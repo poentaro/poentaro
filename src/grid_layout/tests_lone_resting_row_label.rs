@@ -36,7 +36,16 @@ fn row_labels(source: &str) -> Vec<String> {
     let score = group(document).unwrap();
     let config = RenderConfig::from_metadata(&score.metadata);
     let compile_result = consolidate(compile(&score));
-    let output = layout(&compile_result, &config, &header(), 2000.0, 4000.0, None);
+    let output = layout(
+        &compile_result,
+        &config,
+        &header(),
+        crate::grid_layout::PageLayout::Paged(crate::grid_layout::PageSize {
+            width_pt: 2000.0,
+            height_pt: 4000.0,
+        }),
+        None,
+    );
     output
         .pages
         .iter()

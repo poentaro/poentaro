@@ -38,8 +38,14 @@ score """
         ..Default::default()
     };
     let config = cfg();
-    let pages =
-        crate::grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None).pages;
+    let pages = crate::grid_layout::layout(
+        &compile_result,
+        &config,
+        &header,
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
 
     let note_heads: Vec<(NumberedPitch, u32)> = pages
         .iter()

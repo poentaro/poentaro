@@ -168,8 +168,7 @@ fn lyric_click_target_spans_its_note_full_column_width() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -241,8 +240,7 @@ fn lyric_click_target_of_first_syllable_snaps_to_leading_bar_line() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -324,8 +322,7 @@ fn lyric_click_target_of_last_syllable_snaps_to_trailing_bar_line() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
