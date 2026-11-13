@@ -7,6 +7,9 @@ export interface SelectedSequenceRange {
   end: number
   entryStartIndex: number
   entryEndIndex: number
+  /** The written measures the selected entries cover, first to last in the
+   * score: the measure range the selection puts in the editor. */
+  coveredMeasures: { start: number; end: number }
 }
 
 interface LineRange {
@@ -111,6 +114,16 @@ export function envelopeOfLineRanges(ranges: LineRange[]): LineRange | null {
   }
 }
 
+function envelopeOfMeasureRanges(ranges: { start: number; end: number }[]): {
+  start: number
+  end: number
+} {
+  return {
+    start: Math.min(...ranges.map((r) => r.start)),
+    end: Math.max(...ranges.map((r) => r.end)),
+  }
+}
+
 export function useSequenceNavigation(
   sequenceEntries: SequenceEntry[],
   measureSpans: MeasureSpan[],
@@ -176,6 +189,13 @@ export function useSequenceNavigation(
       // this the backend can't tell which occurrence was actually clicked.
       entryStartIndex: selectedIndexRange.start,
       entryEndIndex: selectedIndexRange.end,
+      coveredMeasures: envelopeOfMeasureRanges(
+        computeSequenceSelectionMeasureRanges(
+          sequenceEntries,
+          selectedIndexRange.start,
+          selectedIndexRange.end,
+        ),
+      ),
     }
   }, [selectedIndexRange, sequenceEntries])
 

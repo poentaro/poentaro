@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import type { NoteTiming } from '../poentaroWasm'
 import type { NoteCell } from '../utils/noteSpanSelection'
 import type { WorkerRequest } from '../worker/poentaro.worker'
+import type { SelectedSequenceRange } from './useSequenceNavigation'
 
 interface UseMeasureAudioPlaybackParams {
   workerRef: RefObject<Worker | null>
@@ -16,12 +17,7 @@ interface UseMeasureAudioPlaybackParams {
    * (which is itself owned by `usePoentaroWorker`) — a ref avoids the circular
    * dependency of threading a fresh value back into this hook's own call.
    */
-  selectedSequenceRangeRef: RefObject<{
-    start: number
-    end: number
-    entryStartIndex: number
-    entryEndIndex: number
-  } | null>
+  selectedSequenceRangeRef: RefObject<SelectedSequenceRange | null>
   /** The visible-part abbreviations a no-mounted-editor (Synced/shared
    * viewer) measure/bar-line/part-label selection touched — `undefined`
    * when there's no such restriction to apply (an editor is mounted, no
@@ -150,9 +146,37 @@ export function useMeasureAudioPlayback({
     [],
   )
 
+  // A selected `sequence` entry plays as that occurrence, with its
+  // `WITH`/`WITHOUT`/`ONLY` (e.g. the second `A WITH [i] 2` sings line 2),
+  // for as long as the selection is still the entry's measures. Returns
+  // whether it played.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSequenceRangeRef is a stable ref read at call time, not a reactive dependency
+  const playSelectedSequenceEntry = useCallback(
+    (selected: { start: number; end: number }) => {
+      const entry = selectedSequenceRangeRef.current
+      if (
+        entry === null ||
+        entry.coveredMeasures.start !== selected.start ||
+        entry.coveredMeasures.end !== selected.end
+      )
+        return false
+      playMeasureRange(
+        entry.start,
+        entry.end,
+        false,
+        true,
+        entry.entryStartIndex,
+        entry.entryEndIndex,
+      )
+      return true
+    },
+    [playMeasureRange],
+  )
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: measureRangeSelectedPartNamesRef is a stable ref read at call time, not a reactive dependency
   const playSelectedMeasures = useCallback(() => {
     if (selectedMeasureRange === null) return
+    if (playSelectedSequenceEntry(selectedMeasureRange)) return
     // Exact range: stop at the end measure's first occurrence, so a
     // single-measure selection (e.g. "play current measure") doesn't
     // overrun into a later D.C./D.S. al Coda repeat pass. Ignore
@@ -177,7 +201,7 @@ export function useMeasureAudioPlayback({
       undefined,
       measureRangeSelectedPartNamesRef.current,
     )
-  }, [selectedMeasureRange, playMeasureRange])
+  }, [selectedMeasureRange, playMeasureRange, playSelectedSequenceEntry])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSequenceRangeRef is a stable ref read at call time, not a reactive dependency
   const playFromCurrentMeasure = useCallback(() => {
@@ -237,6 +261,13 @@ export function useMeasureAudioPlayback({
       selectedPartNames: string[],
       selectedCells: NoteCell[],
     ) => {
+      if (
+        playSelectedSequenceEntry({
+          start: minMeasureIndex,
+          end: maxMeasureIndex,
+        })
+      )
+        return
       playMeasureRange(
         minMeasureIndex,
         maxMeasureIndex,
@@ -248,7 +279,7 @@ export function useMeasureAudioPlayback({
         selectedCells,
       )
     },
-    [playMeasureRange],
+    [playMeasureRange, playSelectedSequenceEntry],
   )
 
   return {

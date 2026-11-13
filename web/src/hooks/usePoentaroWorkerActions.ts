@@ -13,16 +13,12 @@ import { usePoentaroWorkerPartDeclaration } from './usePoentaroWorkerPartDeclara
 import { usePoentaroWorkerRenderRequests } from './usePoentaroWorkerRenderRequests'
 import { usePoentaroWorkerShiftOctave } from './usePoentaroWorkerShiftOctave'
 import type { usePoentaroWorkerState } from './usePoentaroWorkerState'
+import type { SelectedSequenceRange } from './useSequenceNavigation'
 import { useStaffNotation } from './useStaffNotation'
 
 interface UsePoentaroWorkerActionsParams {
   state: ReturnType<typeof usePoentaroWorkerState>
-  selectedSequenceRangeRef: RefObject<{
-    start: number
-    end: number
-    entryStartIndex: number
-    entryEndIndex: number
-  } | null>
+  selectedSequenceRangeRef: RefObject<SelectedSequenceRange | null>
   measureRangeSelectedPartNamesRef: RefObject<string[] | undefined>
   source: string
   activeFile: string
