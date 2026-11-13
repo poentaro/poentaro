@@ -9,7 +9,7 @@ use crate::ast::parsed::{
 use crate::error::{Diagnostic, RecoverableError, Span, Spanned, Warning};
 use crate::parser::anyx::decoded::{span, FieldName, ValueText};
 use crate::parser::section::PresetName;
-use poentaro_grammar::Field;
+use poentaro_grammar::Keyed;
 
 pub struct ParsedPresets {
     /// The valid presets, in file order.
@@ -64,12 +64,12 @@ pub(crate) struct PresetFields {
 
 /// A `notation` field's value, reporting one that isn't a notation.
 pub(crate) fn parse_notation(
-    field: &Field,
+    field: &dyn Keyed,
     errors: &mut Vec<RecoverableError>,
 ) -> Option<Spanned<Notation>> {
-    let span = span(field.arguments.span());
+    let span = span(field.value().span());
     let text = field
-        .arguments
+        .value()
         .text()
         .map_err(|error| errors.push(error))
         .ok()?;

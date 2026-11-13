@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::error::{RecoverableError, Span};
 use poentaro_grammar::{
-    parse_document, Abbreviation, CallName, DecodeError, Document, Field, Spanned, Unconverted,
+    parse_document, Abbreviation, CallName, DecodeError, Document, Keyed, Spanned, Unconverted,
     Value, Words,
 };
 
@@ -120,21 +120,21 @@ pub(crate) trait FieldName {
     fn unconverted_error(&self) -> Option<RecoverableError>;
 }
 
-impl FieldName for Field {
+impl<F: Keyed + ?Sized> FieldName for F {
     fn key(&self) -> String {
-        self.name.words().join("_")
+        self.key_words().replace(' ', "_")
     }
 
     fn written_key(&self) -> String {
-        self.name.words().join(" ")
+        self.key_words()
     }
 
     fn key_span(&self) -> Span {
-        span(self.name.span)
+        span(self.key_words_span())
     }
 
     fn unconverted_text(&self) -> Option<&str> {
-        match (&self.arguments, self.key().as_str()) {
+        match (self.value(), self.key().as_str()) {
             (Value::Text(text), "could_not_convert") => Some(&text.value.value),
             _ => None,
         }
@@ -142,7 +142,7 @@ impl FieldName for Field {
 
     fn unconverted_error(&self) -> Option<RecoverableError> {
         let text = self.unconverted_text()?;
-        Some(unconverted_error_at(self.span, text))
+        Some(unconverted_error_at(Keyed::span(self), text))
     }
 }
 

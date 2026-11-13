@@ -9,7 +9,7 @@ use crate::ast::parsed::{
 };
 use crate::error::RecoverableError;
 use crate::parser::anyx::decoded::{decode_error, invalid, span, FieldName, ValueText};
-use poentaro_grammar::{DecodeError, Field, Record, Value};
+use poentaro_grammar::{DecodeError, Keyed, MetadataRecord, StyleField, StyleRecord, Value};
 
 /// A recognized `metadata` key, classified by the value it takes.
 enum MetadataKey {
@@ -31,20 +31,20 @@ impl MetadataKey {
     }
 }
 
-pub(super) fn read_metadata(record: &Record) -> (ParsedMetadata, Vec<RecoverableError>) {
+pub(super) fn read_metadata(record: &MetadataRecord) -> (ParsedMetadata, Vec<RecoverableError>) {
     let mut metadata = ParsedMetadata::default();
     let mut errors = Vec::new();
     record
-        .field
+        .metadata_field
         .iter()
-        .for_each(|field| read_metadata_field(&mut metadata, field, &mut errors));
+        .for_each(|field| read_metadata_field(&mut metadata, field.as_ref(), &mut errors));
     (metadata, errors)
 }
 
 /// Reads one `name : value` field into `metadata`.
-pub(crate) fn read_metadata_field(
+pub(crate) fn read_metadata_field<F: Keyed + ?Sized>(
     metadata: &mut ParsedMetadata,
-    field: &Result<Field, DecodeError>,
+    field: Result<&F, &DecodeError>,
     errors: &mut Vec<RecoverableError>,
 ) {
     let field = match field {
@@ -53,16 +53,19 @@ pub(crate) fn read_metadata_field(
     };
     if let Some(error) = field.unconverted_error() {
         errors.push(error);
-    } else if let Value::Record(style_fields) = &field.arguments {
+    } else if let Value::Record(style_fields) = field.value() {
         read_style(metadata, field, style_fields, errors);
     } else if let Err(error) = read_plain_field(metadata, field) {
         errors.push(error);
     }
 }
 
-fn read_plain_field(metadata: &mut ParsedMetadata, field: &Field) -> Result<(), RecoverableError> {
+fn read_plain_field<F: Keyed + ?Sized>(
+    metadata: &mut ParsedMetadata,
+    field: &F,
+) -> Result<(), RecoverableError> {
     let name = field.written_key();
-    let value = &field.arguments;
+    let value = field.value();
     match MetadataKey::from_keyword(&field.key()) {
         Some(MetadataKey::Number(key)) => {
             *metadata.number_mut(key) = Some(read_positive(&name, value)?);
@@ -187,10 +190,10 @@ fn read_style_component(
 }
 
 /// `lyrics style : { font size : 14, … }`.
-fn read_style(
+fn read_style<F: Keyed + ?Sized>(
     metadata: &mut ParsedMetadata,
-    field: &Field,
-    style_fields: &Record,
+    field: &F,
+    style_fields: &StyleRecord,
     errors: &mut Vec<RecoverableError>,
 ) {
     let key = field.key();
@@ -212,7 +215,7 @@ fn read_style(
         return;
     };
     let style = metadata.style_mut(kind);
-    for style_field in &style_fields.field {
+    for style_field in &style_fields.style_field {
         let result = match style_field {
             Ok(style_field) => read_style_field(style, field, style_field),
             Err(error) => Err(decode_error(error)),
@@ -223,19 +226,15 @@ fn read_style(
     }
 }
 
-fn read_style_field(
+fn read_style_field<F: Keyed + ?Sized>(
     style: &mut TextStyle,
-    field: &Field,
-    style_field: &Field,
+    field: &F,
+    style_field: &StyleField,
 ) -> Result<(), RecoverableError> {
     let name = format!("{} {}", field.written_key(), style_field.written_key());
     let component = TextStyleComponent::from_keyword(&style_field.key())
         .ok_or_else(|| RecoverableError::metadata_unknown_field(style_field.key_span(), &name))?;
-    style.set_component(read_style_component(
-        component,
-        &name,
-        &style_field.arguments,
-    )?);
+    style.set_component(read_style_component(component, &name, style_field.value())?);
     Ok(())
 }
 

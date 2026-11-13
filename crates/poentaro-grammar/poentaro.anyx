@@ -2,9 +2,10 @@
 ## crates/anyx-generator/README.md). `just generate-parser` writes
 ## `generated.rs` from it.
 ##
-## The grammar says which shapes are allowed. What the shapes mean, such as
-## which metadata keys exist or which instrument a word names, is checked in
-## Rust. Lists people edit by hand use `EACH`, so that one mistake does not
+## The grammar says which shapes are allowed, and lists the metadata, style
+## and preset keys, so a mistyped key's error (and an editor's completion)
+## names every key there is. What the values mean, such as which instrument
+## a word names, is checked in Rust. Lists people edit by hand use `EACH`, so that one mistake does not
 ## hide the rest.
 
 ## Sections may come in any order. A section's `keyword` and a part's or
@@ -12,22 +13,86 @@
 ## score section is kept as an error, and the first one is read.
 ENTRY: ANY ORDER [
   unconverted: ZERO OR MORE: unconverted,
-  metadata: OPTIONAL: ANYFIX CALL [keyword: WORD "metadata", fields: record],
+  metadata: OPTIONAL: ANYFIX CALL [keyword: WORD "metadata", fields: metadata record],
   parts: OPTIONAL: ANYFIX CALL [keyword: WORD "parts", parts: part list],
   sequence: OPTIONAL: ANYFIX CALL [keyword: WORD "sequence", entries: entry list],
-  preset: ZERO OR MORE: ANYFIX CALL [keyword: WORD "preset", name: STRING, fields: record],
+  preset: ZERO OR MORE: ANYFIX CALL [keyword: WORD "preset", name: STRING, fields: preset record],
   score: OPTIONAL: ANYFIX CALL [keyword: WORD "score", text: STRING],
 ],
 
 ## Text the converter from the old syntax kept because it could not read it.
-unconverted: ANYFIX CALL [WORD "could", WORD "not", WORD "convert", text: STRING],
+unconverted: ANYFIX CALL [WORDS "could not convert", text: STRING],
 
 ## ── fields ──────────────────────────────────────────────────────────────
 
-record: CURLY BRACE: EACH: field,
+## Every listed key takes any `value`, so a wrong value is reported by Rust,
+## which knows what each key means. A field whose key is not listed is
+## `unknown`, the fallback, so that Rust can say a key is unknown, or that it
+## belongs only in a preset.
+metadata record: CURLY BRACE: EACH: metadata field,
 
-## `max measures per system: 6` is the call `max measures per system _`.
-## Unconverted text in a record is the field `could not convert _`.
+metadata field: ONE OF [
+  title: ANYFIX CALL [key: WORDS "title", value],
+  subtitle: ANYFIX CALL [key: WORDS "subtitle", value],
+  author: ANYFIX CALL [key: WORDS "author", value],
+  ## A text style: `lyrics style { font size 14 }`.
+  title style: ANYFIX CALL [key: WORDS "title style", value],
+  subtitle style: ANYFIX CALL [key: WORDS "subtitle style", value],
+  author style: ANYFIX CALL [key: WORDS "author style", value],
+  sequence style: ANYFIX CALL [key: WORDS "sequence style", value],
+  part legend style: ANYFIX CALL [key: WORDS "part legend style", value],
+  measure number style: ANYFIX CALL [key: WORDS "measure number style", value],
+  section label style: ANYFIX CALL [key: WORDS "section label style", value],
+  part label style: ANYFIX CALL [key: WORDS "part label style", value],
+  page number style: ANYFIX CALL [key: WORDS "page number style", value],
+  running title style: ANYFIX CALL [key: WORDS "running title style", value],
+  lyrics style: ANYFIX CALL [key: WORDS "lyrics style", value],
+  notes style: ANYFIX CALL [key: WORDS "notes style", value],
+  chords style: ANYFIX CALL [key: WORDS "chords style", value],
+  note dash style: ANYFIX CALL [key: WORDS "note dash style", value],
+  row height: ANYFIX CALL [key: WORDS "row height", value],
+  max measures per system: ANYFIX CALL [key: WORDS "max measures per system", value],
+  note number width: ANYFIX CALL [key: WORDS "note number width", value],
+  parts list columns: ANYFIX CALL [key: WORDS "parts list columns", value],
+  part label width pt: ANYFIX CALL [key: WORDS "part label width pt", value],
+  page margin pt: ANYFIX CALL [key: WORDS "page margin pt", value],
+  merge duplicate measures across parts: ANYFIX CALL [key: WORDS "merge duplicate measures across parts", value],
+  hide resting parts: ANYFIX CALL [key: WORDS "hide resting parts", value],
+  hide system dividers: ANYFIX CALL [key: WORDS "hide system dividers", value],
+  ## `(0, -4)`.
+  directive row offset: ANYFIX CALL [key: WORDS "directive row offset", value],
+  ## Text the converter from the old syntax kept because it could not read it.
+  could not convert: ANYFIX CALL [key: WORDS "could not convert", value],
+  unknown: field,
+],
+
+## A preset's own keys, and the metadata it overrides.
+preset record: CURLY BRACE: EACH: preset field,
+
+preset field: ONE OF [
+  ## `[S, A1]`.
+  visible parts: ANYFIX CALL [key: WORDS "visible parts", value],
+  soloed parts: ANYFIX CALL [key: WORDS "soloed parts", value],
+  notation: ANYFIX CALL [key: WORDS "notation", value],
+  metadata: metadata field,
+],
+
+## A text style's `{ … }`.
+style record: CURLY BRACE: EACH: style field,
+
+style field: ONE OF [
+  font size: ANYFIX CALL [key: WORDS "font size", value],
+  horizontal padding pt: ANYFIX CALL [key: WORDS "horizontal padding pt", value],
+  vertical padding pt: ANYFIX CALL [key: WORDS "vertical padding pt", value],
+  bold: ANYFIX CALL [key: WORDS "bold", value],
+  italic: ANYFIX CALL [key: WORDS "italic", value],
+  underline: ANYFIX CALL [key: WORDS "underline", value],
+  font family: ANYFIX CALL [key: WORDS "font family", value],
+  unknown: field,
+],
+
+## Any `name value` field: `max measures per system 6` is the call
+## `max measures per system _`.
 field: ANYFIX CALL [NAME [ENDS WITH " _"], ARGUMENTS: value],
 
 value: ONE OF [
@@ -35,7 +100,8 @@ value: ONE OF [
   text: STRING,
   percentage,
   pair: PARENTHESIS [x: value, y: value],
-  record,
+  ## Only a text style takes a record.
+  record: style record,
   list: SQUARE BRACKET: EACH: abbreviation,
   words,
   ## Anything else, such as `20k`, which Rust reports as the wrong value for

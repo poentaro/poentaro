@@ -11,7 +11,7 @@ use crate::parser::preset_parser::{
     ParsedPresets, PresetFields,
 };
 use crate::parser::section::PresetName;
-use poentaro_grammar::{DocumentPreset, Field, Value};
+use poentaro_grammar::{DocumentPreset, Keyed, PresetField, Value};
 
 pub(super) fn read_presets(presets: &[DocumentPreset], declarations: &[PartDecl]) -> ParsedPresets {
     let named = presets
@@ -40,12 +40,12 @@ fn read_preset(named: NamedPreset, declarations: &[PartDecl]) -> ParsedPresetSec
     let NamedPreset { name, preset } = named;
     let mut fields = PresetFields::default();
     let mut errors = Vec::new();
-    for field in &preset.fields.field {
+    for field in &preset.fields.preset_field {
         match field {
             Ok(field) if PresetKey::from_keyword(&field.key()).is_some() => {
                 read_preset_field(&mut fields, field, declarations, &mut errors);
             }
-            _ => read_metadata_field(&mut fields.overrides, field, &mut errors),
+            _ => read_metadata_field(&mut fields.overrides, field.as_ref(), &mut errors),
         }
     }
     let header_span = Span::new(preset.span.start, preset.name.span.end);
@@ -54,7 +54,7 @@ fn read_preset(named: NamedPreset, declarations: &[PartDecl]) -> ParsedPresetSec
 
 fn read_preset_field(
     fields: &mut PresetFields,
-    field: &Field,
+    field: &PresetField,
     declarations: &[PartDecl],
     errors: &mut Vec<RecoverableError>,
 ) {
@@ -74,12 +74,12 @@ fn read_preset_field(
 
 /// `[S, A1]`, as the declared parts it names.
 fn part_list(
-    field: &Field,
+    field: &PresetField,
     declarations: &[PartDecl],
     errors: &mut Vec<RecoverableError>,
 ) -> Vec<AbbreviationReference> {
-    let Value::List(elements) = &field.arguments else {
-        errors.push(invalid(field.arguments.span(), "expected `[ … ]` here"));
+    let Value::List(elements) = field.value() else {
+        errors.push(invalid(field.value().span(), "expected `[ … ]` here"));
         return Vec::new();
     };
     let references = elements

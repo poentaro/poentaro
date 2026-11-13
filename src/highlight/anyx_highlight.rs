@@ -11,8 +11,7 @@ use crate::parser::score::interleaved_parser::directive_keyword_spans;
 use crate::parser::section::SectionKind;
 use crate::parser::{read_document, ReadDocument};
 use crate::utils::{is_han_char, pinyin_override_at};
-use anyx::NamePart;
-use poentaro_grammar::{Document, Part, PartKind, PartOption, Record, Value};
+use poentaro_grammar::{DecodeError, Document, Keyed, Part, PartKind, PartOption, Value};
 
 fn token(kind: HighlightKind, at: anyx::Span) -> HighlightToken {
     HighlightToken {
@@ -57,24 +56,33 @@ fn headers(document: &Document) -> Vec<SectionHeader> {
     .collect()
 }
 
-/// Field names in a `{ … }` record, nested records included.
-fn field_keys(record: &Record) -> Vec<HighlightToken> {
-    record
-        .field
+/// Field keys in a `{ … }` record, a text style's included.
+fn field_keys<F: Keyed>(source: &str, fields: &[Result<F, DecodeError>]) -> Vec<HighlightToken> {
+    fields
         .iter()
         .flatten()
         .flat_map(|field| {
-            let words = field.name.parts.iter().filter_map(|part| match part {
-                NamePart::Word { span, .. } => Some(token(HighlightKind::MetadataKey, *span)),
-                NamePart::Slot => None,
-            });
-            let nested = match &field.arguments {
-                Value::Record(record) => field_keys(record),
+            let words = key_words(source, field.key_words_span())
+                .map(|word| token(HighlightKind::MetadataKey, word));
+            let nested = match field.value() {
+                Value::Record(record) => field_keys(source, &record.style_field),
                 _ => Vec::new(),
             };
             words.chain(nested).collect_vec()
         })
         .collect()
+}
+
+/// Each word of a key, so that the spaces between them stay uncolored.
+fn key_words(source: &str, key: anyx::Span) -> impl Iterator<Item = anyx::Span> + '_ {
+    let text = source.get(key.start..key.end).unwrap_or_default();
+    text.split(' ')
+        .scan(key.start, |start, word| {
+            let span = anyx::Span::new(*start, *start + word.len());
+            *start += word.len() + 1;
+            Some(span)
+        })
+        .filter(|span| span.start < span.end)
 }
 
 /// A part's kind word, and its option names.
@@ -173,9 +181,13 @@ pub(super) fn highlight_tokens(source: &str) -> Vec<HighlightToken> {
     let records = document
         .metadata
         .iter()
-        .map(|section| &section.fields)
-        .chain(document.preset.iter().map(|section| &section.fields))
-        .flat_map(field_keys);
+        .flat_map(|section| field_keys(source, &section.fields.metadata_field))
+        .chain(
+            document
+                .preset
+                .iter()
+                .flat_map(|section| field_keys(source, &section.fields.preset_field)),
+        );
     let parts = document
         .parts
         .iter()

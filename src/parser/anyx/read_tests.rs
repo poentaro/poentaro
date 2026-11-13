@@ -159,7 +159,7 @@ fn a_score_that_is_not_a_string_is_reported() {
 fn an_unknown_section_is_reported() {
     assert_eq!(
         error_messages("lyrics []"),
-        ["found the word `lyrics`; expected the word `could`, `metadata`, `parts`, `sequence`, `preset` or `score`"]
+        ["found the word `lyrics`; expected the word `could not convert`, `metadata`, `parts`, `sequence`, `preset` or `score`"]
     );
 }
 
