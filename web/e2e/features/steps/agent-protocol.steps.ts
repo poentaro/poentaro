@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import createClient from 'openapi-fetch'
 import type { paths } from '../../../src/generated/live-share-worker/schema'
 import {
@@ -17,6 +17,8 @@ const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 interface CreatedKey {
   id: string
   secret: string
+  /** What the AI agents dialog shows of the key. */
+  prefix: string
 }
 
 interface AgentAnswer {
@@ -65,7 +67,9 @@ function withLastLine(lastLine: string): string {
 
 async function ownersFile(path: string) {
   const identityToken = await seedTokenFor(currentSignedInEmail())
-  const { data } = await worker.POST('/files/list', { body: { identityToken } })
+  const { data } = await worker.POST('/files/list', {
+    body: { identityToken },
+  })
   const file = data?.files.find((listed) => listed.name === path)
   if (!file) throw new Error(`the signed-in account has no file ${path}`)
   return file
@@ -98,7 +102,11 @@ Given('the signed-in account has an API key', async () => {
       `POST /api-keys failed with ${response.status}: ${JSON.stringify(error)}`,
     )
   }
-  key = { id: data.key.id, secret: keyInPrompt(data.prompt) }
+  key = {
+    id: data.key.id,
+    secret: keyInPrompt(data.prompt),
+    prefix: data.key.prefix,
+  }
 })
 
 Given(
@@ -124,16 +132,6 @@ When(
 
 When('the agent sends {string}', async ({}, request: string) => {
   await sendAsAgent(request)
-})
-
-When('the key is revoked', async () => {
-  if (!key) throw new Error('no API key was created in this scenario')
-  const identityToken = await seedTokenFor(currentSignedInEmail())
-  const { response } = await worker.POST('/api-keys/{id}/revoke', {
-    params: { path: { id: key.id } },
-    body: { identityToken },
-  })
-  expect(response.ok).toBe(true)
 })
 
 Then("the agent's last result is not an error", async () => {
@@ -179,6 +177,27 @@ Then(
     await expect(prompt).toContainText('~/.agents/skills/poentaro/SKILL.md')
     await expect(prompt).toContainText(`curl -s ${CLOUD_WORKER_ORIGIN}/agent`)
     await expect(prompt).toContainText('Start each session by sending `SCHEMA`')
+  },
+)
+
+/** The dialog's row of this scenario's key; other scenarios' keys may
+ * share the account. */
+function rowOfTheAgentsKey(page: Page): Locator {
+  if (!key) throw new Error('no API key was created in this scenario')
+  return page
+    .getByTestId('api-keys-modal')
+    .getByTestId('api-key-row')
+    .filter({ hasText: key.prefix })
+}
+
+When("I revoke the agent's key in the AI agents dialog", async ({ page }) => {
+  await rowOfTheAgentsKey(page).getByRole('button', { name: 'Revoke' }).click()
+})
+
+Then(
+  "the AI agents dialog no longer lists the agent's key",
+  async ({ page }) => {
+    await expect(rowOfTheAgentsKey(page)).toHaveCount(0)
   },
 )
 

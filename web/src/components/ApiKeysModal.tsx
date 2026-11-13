@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAccountAuth } from '../storage/accountAuth'
 import {
   type AccountResult,
@@ -70,6 +70,12 @@ export function ApiKeysModal({ open, onOpenChange }: ApiKeysModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [traceId, setTraceId] = useState<string | null>(null)
   const token = accountAuth?.token ?? null
+  // The parent passes a new `onOpenChange` on every render. Read through a
+  // ref, it doesn't make the dialog reload its keys or clear its prompt.
+  const onOpenChangeRef = useRef(onOpenChange)
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+  })
 
   /** The value of `result`, or `null` after showing why it failed. */
   const settle = useCallback(
@@ -78,34 +84,26 @@ export function ApiKeysModal({ open, onOpenChange }: ApiKeysModalProps) {
       setTraceId(result.traceId)
       if (result.failure.kind === 'session-ended') {
         setAccountAuth(null)
-        onOpenChange(false)
+        onOpenChangeRef.current(false)
       } else if (result.failure.kind === 'message') {
         setError(result.failure.message)
       }
       return null
     },
-    [setAccountAuth, onOpenChange],
+    [setAccountAuth],
   )
 
-  const refresh = useCallback(async () => {
-    if (!token) return
-    const listed = settle(await listApiKeys(token))
-    if (listed) setKeys(listed)
-  }, [token, settle])
-
-  // Clears only on opening: `refresh` changes whenever the parent re-renders
-  // with a new `onOpenChange`, which would hide a just-created key's prompt.
   useEffect(() => {
-    if (!open) return
+    if (!open || !token) return
     setPrompt(null)
     setCopied(false)
     setError(null)
     setTraceId(null)
-  }, [open])
-
-  useEffect(() => {
-    if (open) void refresh()
-  }, [open, refresh])
+    void listApiKeys(token).then((result) => {
+      const listed = settle(result)
+      if (listed) setKeys(listed)
+    })
+  }, [open, token, settle])
 
   async function create() {
     if (!token || busy) return
@@ -122,7 +120,10 @@ export function ApiKeysModal({ open, onOpenChange }: ApiKeysModalProps) {
   async function revoke(id: string) {
     if (!token) return
     setError(null)
-    if (settle(await revokeApiKey(token, id)) === null) return
+    // A revoke succeeds with no value, so `settle`'s `null` can't tell.
+    const revoked = await revokeApiKey(token, id)
+    settle(revoked)
+    if (!revoked.ok) return
     setKeys((current) => current.filter((key) => key.id !== id))
   }
 

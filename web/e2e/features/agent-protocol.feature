@@ -69,8 +69,12 @@ Feature: An AI agent edits the owner's scores with an API key
     When the agent sends "files/read \"agent-private.poentaro\""
     Then the agent's last result starts with "files/read \"agent-private.poentaro\" ERROR missing"
 
-  Scenario: A revoked key is refused
+  Scenario: A key revoked in the dialog leaves the list and is refused
     Given the signed-in account has an API key
-    When the key is revoked
-    And the agent sends "files/list"
+    When the app loads for the account chip flow
+    And I click the account chip
+    And I click "AI agents" in the profile popover
+    And I revoke the agent's key in the AI agents dialog
+    Then the AI agents dialog no longer lists the agent's key
+    When the agent sends "files/list"
     Then the agent is refused for its key
