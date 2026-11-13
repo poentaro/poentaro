@@ -218,8 +218,8 @@ export function renderSvgDocument(doc: SvgDocument, key: number): ReactNode {
     <svg
       key={key}
       xmlns="http://www.w3.org/2000/svg"
-      width="210mm"
-      height="297mm"
+      width={`${doc.widthPt}pt`}
+      height={`${doc.heightPt}pt`}
       viewBox={`0 0 ${Math.round(doc.widthPt)} ${Math.round(doc.heightPt)}`}
     >
       {Array.from(doc.rootElementIndices, (index) =>

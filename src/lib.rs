@@ -80,7 +80,7 @@ pub use compiler::NoteLabels;
 pub use document_render::{
     render_documents_from_source_with_visibility,
     render_documents_with_highlight_range_and_visibility, render_mei_from_source_with_visibility,
-    RenderDocumentOutput,
+    RenderDocumentOutput, RenderView,
 };
 pub use filters::*;
 pub use lyric_spans::*;
@@ -281,7 +281,13 @@ fn render_svg_docs_with_parts(
     let grid_layout::LayoutOutput {
         pages: grid_pages,
         diagnostics,
-    } = grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None);
+    } = grid_layout::layout(
+        &compile_result,
+        &config,
+        &header,
+        grid_layout::PageLayout::A4,
+        None,
+    );
     let abs = coordinate_resolver::resolve(
         &grid_pages,
         config.note_number_width as f32,

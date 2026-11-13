@@ -190,6 +190,21 @@ pub(super) fn note_labels_from_wit(labels: NoteLabels) -> poentaro::NoteLabels {
     }
 }
 
+pub(super) fn page_layout_from_wit(layout: PageLayout) -> poentaro::grid_layout::PageLayout {
+    match layout {
+        PageLayout::A4 => poentaro::grid_layout::PageLayout::A4,
+        PageLayout::Continuous(page) => {
+            poentaro::grid_layout::PageLayout::Continuous(poentaro::grid_layout::ContinuousPage {
+                // One point per CSS pixel, so max view draws the score at
+                // three quarters of its printed size: a few more measures
+                // per line than true size, and still larger than an A4
+                // page shrunk to a phone.
+                width_pt: page.width_px,
+            })
+        }
+    }
+}
+
 pub(super) fn clef_choice_from_wit(clef: StaffClef) -> poentaro::mei_export::ClefChoice {
     match clef {
         StaffClef::Violin => poentaro::mei_export::ClefChoice::Violin,

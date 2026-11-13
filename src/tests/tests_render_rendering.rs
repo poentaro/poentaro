@@ -165,8 +165,14 @@ score """
     };
     let compile_result = compiler::compile(&score);
     let compile_result = consolidator::consolidate(compile_result);
-    let grid_pages =
-        grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None).pages;
+    let grid_pages = grid_layout::layout(
+        &compile_result,
+        &config,
+        &header,
+        grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     let abs = coordinate_resolver::resolve(
         &grid_pages,
         config.note_number_width as f32,
@@ -252,8 +258,14 @@ score """
     };
     let compile_result = compiler::compile(&score);
     let compile_result = consolidator::consolidate(compile_result);
-    let grid_pages =
-        grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None).pages;
+    let grid_pages = grid_layout::layout(
+        &compile_result,
+        &config,
+        &header,
+        grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     let mut abs = coordinate_resolver::resolve(
         &grid_pages,
         config.note_number_width as f32,

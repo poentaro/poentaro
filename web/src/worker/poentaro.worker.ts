@@ -261,6 +261,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       msg.visibility,
       GM_INSTRUMENTS,
       noteLabelsFor(msg.notation),
+      msg.pageLayout,
     )
     if (result.tag === 'ok') {
       postMessage({
@@ -330,6 +331,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     msg.visibility,
     GM_INSTRUMENTS,
     noteLabelsFor(msg.notation),
+    msg.pageLayout,
   )
   if (result.tag === 'ok') {
     postMessage({

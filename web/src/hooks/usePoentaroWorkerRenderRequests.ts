@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import { useCallback, useEffect, useRef } from 'react'
-import type { SvgDocument } from '../poentaroWasm'
+import type { PageLayout, SvgDocument } from '../poentaroWasm'
 import type { Diagnostic, MeasureSpan, ResolvedPartVisibility } from '../types'
 import type { Notation } from '../worker/messages'
 import type { WorkerRequest } from '../worker/poentaro.worker'
@@ -15,6 +15,8 @@ interface UsePoentaroWorkerRenderRequestsParams {
   visibility: ResolvedPartVisibility
   /** The preview's notation; the ABC view renders letter names. */
   notation: Notation
+  /** A4 pages, or max view's continuous page (`usePreviewLayout`). */
+  pageLayout: PageLayout
   renderedTracks: string[] | undefined
   setDocuments: (value: SvgDocument[]) => void
   setNextWavUrl: (value: string | null) => void
@@ -71,6 +73,7 @@ export function usePoentaroWorkerRenderRequests({
   debounceMs,
   visibility,
   notation,
+  pageLayout,
   renderedTracks,
   setDocuments,
   setNextWavUrl,
@@ -151,9 +154,10 @@ export function usePoentaroWorkerRenderRequests({
       id,
       visibility,
       notation,
+      pageLayout,
     }
     worker.postMessage(payload)
-  }, [source, activeFile, visibility, notation])
+  }, [source, activeFile, visibility, notation, pageLayout])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: lastSelectionRef/cursorOffsetTimerRef/measureSpansRef are stable refs passed in as params
   const notifySelection = useCallback(
@@ -244,8 +248,9 @@ export function usePoentaroWorkerRenderRequests({
       ranges: highlightRanges,
       visibility,
       notation,
+      pageLayout,
     } satisfies WorkerRequest)
-  }, [selectedMeasureRange, visibility, notation])
+  }, [selectedMeasureRange, visibility, notation, pageLayout])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: workerRef/measureSpansRequestIdRef/latestMeasureSpansIdRef are stable refs passed in as params
   useEffect(() => {

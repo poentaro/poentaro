@@ -98,8 +98,7 @@ fn chord_lyric_click_targets_stay_one_column_wide() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;

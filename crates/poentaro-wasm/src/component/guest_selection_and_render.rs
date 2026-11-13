@@ -210,6 +210,7 @@ pub(super) fn render_svg(
     visibility: ResolvedPartVisibility,
     raw_instruments: Vec<InstrumentInfo>,
     note_labels: NoteLabels,
+    page_layout: PageLayout,
 ) -> RenderResponse {
     let instruments: Vec<poentaro::parser::parts_parser::InstrumentInfo> = raw_instruments
         .into_iter()
@@ -220,6 +221,7 @@ pub(super) fn render_svg(
         &resolved_part_visibility_from_wit(visibility),
         &instruments,
         note_labels_from_wit(note_labels),
+        page_layout_from_wit(page_layout),
     ))
 }
 
@@ -229,6 +231,7 @@ pub(super) fn render_svg_with_highlight_range(
     visibility: ResolvedPartVisibility,
     raw_instruments: Vec<InstrumentInfo>,
     note_labels: NoteLabels,
+    page_layout: PageLayout,
 ) -> RenderResponse {
     let instruments: Vec<poentaro::parser::parts_parser::InstrumentInfo> = raw_instruments
         .into_iter()
@@ -244,6 +247,7 @@ pub(super) fn render_svg_with_highlight_range(
         &resolved_part_visibility_from_wit(visibility),
         &instruments,
         note_labels_from_wit(note_labels),
+        page_layout_from_wit(page_layout),
     ))
 }
 

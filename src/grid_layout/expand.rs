@@ -263,12 +263,12 @@ pub(crate) fn expand_system_to_rows(
     all_rows
 }
 
+/// A page's footer row: its page number, in `config`'s page-number style,
+/// sized to `height_pt`, whatever is left of the page.
 pub(crate) fn make_footer_row(
+    config: &crate::render_config::RenderConfig,
     page_num: u32,
     total_pages: u32,
-    font_size: f32,
-    style: crate::grid_layout::types::TextStyleFlags,
-    font_family: crate::compositor::types::FontFamily,
     height_pt: f32,
 ) -> GridRow {
     GridRow {
@@ -283,11 +283,11 @@ pub(crate) fn make_footer_row(
             valign: VAlign::Bottom,
             content: GridContent::Text {
                 content: format!("{page_num} / {total_pages}"),
-                font_size,
-                bold: style.bold,
-                italic: style.italic,
-                underline: style.underline,
-                font_family,
+                font_size: config.page_number_font_size as f32,
+                bold: config.page_number_bold,
+                italic: config.page_number_italic,
+                underline: config.page_number_underline,
+                font_family: config.page_number_font_family,
             },
         }],
     }

@@ -1,5 +1,5 @@
 import type { VerovioToolkit } from 'verovio/esm'
-import { poentaroWasm } from '../poentaroWasm'
+import { type PageLayout, poentaroWasm } from '../poentaroWasm'
 import { GM_INSTRUMENTS } from '../utils/gmInstruments'
 import type {
   StaffEngraveResult,
@@ -35,7 +35,6 @@ function loadToolkit(): Promise<VerovioToolkit> {
   ])
     .then(async ([wasm, esm]) => {
       const toolkit = new esm.VerovioToolkit(await wasm.default())
-      toolkit.setOptions(VEROVIO_OPTIONS)
       return toolkit
     })
     .catch((error: unknown) => {
@@ -45,10 +44,35 @@ function loadToolkit(): Promise<VerovioToolkit> {
   return toolkitPromise
 }
 
-/** Engraves MEI (from Rust) into one SVG string per page. */
-export async function engraveMei(mei: string): Promise<StaffEngraveResult> {
+/** Verovio's page units are tenths of a millimetre at 100% scale; at
+ * `scale: 40` one CSS pixel of rendered width is 2.5 of them. */
+const PAGE_UNITS_PER_CSS_PIXEL = 100 / VEROVIO_OPTIONS.scale
+
+/** Verovio's largest page height: tall enough for max view's single page. */
+const MAX_PAGE_HEIGHT = 60000
+
+/** A4 pages, or max view's one page as wide as the preview and as tall as
+ * the score. */
+function pageOptions(pageLayout: PageLayout) {
+  if (pageLayout.tag === 'a4') {
+    return { ...VEROVIO_OPTIONS, adjustPageHeight: false }
+  }
+  return {
+    ...VEROVIO_OPTIONS,
+    pageWidth: Math.round(pageLayout.val.widthPx * PAGE_UNITS_PER_CSS_PIXEL),
+    pageHeight: MAX_PAGE_HEIGHT,
+    adjustPageHeight: true,
+  }
+}
+
+/** Engraves MEI (from Rust) into one SVG string per page of `pageLayout`. */
+export async function engraveMei(
+  mei: string,
+  pageLayout: PageLayout,
+): Promise<StaffEngraveResult> {
   try {
     const toolkit = await loadToolkit()
+    toolkit.setOptions(pageOptions(pageLayout))
     if (!toolkit.loadData(mei)) {
       return { status: 'err', message: 'Verovio could not read the score.' }
     }
@@ -79,7 +103,7 @@ async function renderStaff(
       message: mei.val.diagnostics[0]?.message ?? 'Could not export the score.',
     }
   }
-  const engraved = await engraveMei(mei.val.mei)
+  const engraved = await engraveMei(mei.val.mei, msg.pageLayout)
   if (engraved.status === 'err') return engraved
   return {
     status: 'ok',

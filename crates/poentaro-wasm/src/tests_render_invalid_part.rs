@@ -10,6 +10,7 @@ fn a_document_with_an_invalid_part_still_renders_and_reports_only_that_error() {
         &ResolvedPartVisibility::default(),
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     );
     let RenderResponse::Ok {
         documents,

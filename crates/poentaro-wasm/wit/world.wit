@@ -64,6 +64,19 @@ world poentaro-wasm {
         guitar-chords,
     }
 
+    /// The page(s) the preview lays the numbered layout out on
+    /// (`poentaro::grid_layout::PageLayout`): A4 pages, or max view's one
+    /// continuous page as wide as the preview.
+    variant page-layout {
+        a4,
+        continuous(continuous-page),
+    }
+
+    record continuous-page {
+        /// The preview's content width in CSS pixels.
+        width-px: f32,
+    }
+
     /// Which instrument the staff view is engraved for
     /// (`poentaro::mei_export::ClefChoice`): every staff in treble
     /// clef for a violin, in bass clef for a cello.
@@ -510,9 +523,9 @@ world poentaro-wasm {
     // `list-note-spans`, `rename-symbol`, ...) was safe by accident, since
     // hyphens vs. underscores kept the two mechanisms' literal export names
     // distinct — this was the first single-word export.
-    export render-svg: func(source: string, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, note-labels: note-labels) -> render-response;
+    export render-svg: func(source: string, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, note-labels: note-labels, page-layout: page-layout) -> render-response;
 
-    export render-svg-with-highlight-range: func(source: string, raw-measure-ranges: list<measure-range-in>, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, note-labels: note-labels) -> render-response;
+    export render-svg-with-highlight-range: func(source: string, raw-measure-ranges: list<measure-range-in>, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, note-labels: note-labels, page-layout: page-layout) -> render-response;
 
     /// Which `<measure>` in the MEI (and so which `id` in Verovio's SVG)
     /// engraves which score measure — the staff view's only way to map

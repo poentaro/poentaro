@@ -21,6 +21,7 @@ score """
         &ResolvedPartVisibility::default(),
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     );
     match resp {
         RenderResponse::Ok { documents, .. } => {
@@ -55,6 +56,7 @@ score """
         &ResolvedPartVisibility::default(),
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     ) {
         RenderResponse::Ok { documents, .. } => documents,
         RenderResponse::Err { .. } => panic!("expected ok"),
@@ -67,6 +69,7 @@ score """
         },
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     ) {
         RenderResponse::Ok { documents, .. } => documents,
         RenderResponse::Err { .. } => panic!("expected ok"),
@@ -92,6 +95,7 @@ score """
         &ResolvedPartVisibility::default(),
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     ) {
         RenderResponse::Ok { documents, .. } => documents,
         RenderResponse::Err { .. } => panic!("expected ok"),
@@ -104,6 +108,7 @@ score """
         },
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     ) {
         RenderResponse::Ok { documents, .. } => documents,
         RenderResponse::Err { .. } => panic!("expected ok"),
@@ -120,6 +125,7 @@ fn err_response_has_structured_diagnostic() {
         &ResolvedPartVisibility::default(),
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     );
     let diagnostics = match resp {
         RenderResponse::Err { diagnostics, .. } | RenderResponse::Ok { diagnostics, .. } => {
@@ -149,6 +155,7 @@ score """
         &ResolvedPartVisibility::default(),
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     );
     match resp {
         RenderResponse::Ok {
@@ -178,6 +185,7 @@ fn reference_poentaro_renders() {
             &ResolvedPartVisibility::default(),
             &[],
             NoteLabels::Degrees,
+            poentaro::grid_layout::PageLayout::A4,
         );
         match resp {
             RenderResponse::Ok {
@@ -229,6 +237,7 @@ score """
         &ResolvedPartVisibility::default(),
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     );
     let diagnostics = match resp {
         RenderResponse::Ok { diagnostics, .. } => diagnostics,
@@ -286,6 +295,7 @@ score """
         &ResolvedPartVisibility::default(),
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     );
     match resp {
         RenderResponse::Ok {
@@ -342,6 +352,7 @@ score """
         &ResolvedPartVisibility::default(),
         &[],
         NoteLabels::Degrees,
+        poentaro::grid_layout::PageLayout::A4,
     );
     match resp {
         RenderResponse::Ok {
