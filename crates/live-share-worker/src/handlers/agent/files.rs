@@ -1,14 +1,16 @@
-//! The methods of `poentaro.protocol.anyx`, over D1, acting as the key's
+//! The methods of Poentaro's schema (`crates/poentaro-protocol/schema`), over
+//! D1, acting as the key's
 //! owner on the owner's own files. Files are addressed by path; a write is
 //! the same compare-and-swap as the web app's save, and goes into the file's
 //! version history the same way.
 
 use std::cell::RefCell;
 
-use poentaro_protocol::{
-    CreateContentError, ExportMidiError, ExportSvgError, File, FileSummary, IntoValue, ReadError,
-    Saved, Server, Value, WriteAtRevisionContentError,
+use poentaro_protocol::files::export::{MidiError, SvgError};
+use poentaro_protocol::files::{
+    CreateContentError, File, FileSummary, ReadError, Saved, WriteAtRevisionContentError,
 };
+use poentaro_protocol::{IntoValue, Value};
 use worker::D1Database;
 
 use crate::agent::{export_midi, export_svg, file_id, new_file_path_problem, score_diagnostics};
@@ -188,10 +190,12 @@ fn random_id_bytes() -> worker::Result<[u8; 16]> {
         .map_err(|_| worker::Error::RustError("expected 16 random bytes".to_string()))
 }
 
-impl Server for AgentFiles<'_> {
+impl poentaro_protocol::Server for AgentFiles<'_> {
     type Error = worker::Error;
+}
 
-    async fn list_files(&self) -> worker::Result<Vec<FileSummary>> {
+impl poentaro_protocol::files::Server for AgentFiles<'_> {
+    async fn list(&self) -> worker::Result<Vec<FileSummary>> {
         let listed = db::list_files_by_owner(self.d1, &self.user_id).await;
         let ending = match &listed {
             Ok(_) => "ok".to_string(),
@@ -199,7 +203,7 @@ impl Server for AgentFiles<'_> {
         };
         self.calls
             .borrow_mut()
-            .push(format!("list files: {ending}"));
+            .push(format!("files/list: {ending}"));
         let mut summaries: Vec<FileSummary> = listed?
             .into_iter()
             .filter(|file| file.trashed_at.is_none())
@@ -214,7 +218,7 @@ impl Server for AgentFiles<'_> {
 
     async fn read(&self, path: String) -> Outcome<File, ReadError> {
         let outcome = self.read_file(&path).await;
-        self.note("read _", &outcome);
+        self.note("files/read _", &outcome);
         outcome
     }
 
@@ -225,7 +229,7 @@ impl Server for AgentFiles<'_> {
         content: String,
     ) -> Outcome<Saved, WriteAtRevisionContentError> {
         let outcome = self.write_file(&path, revision, content).await;
-        self.note("write _ at revision _ content _", &outcome);
+        self.note("files/write _ at revision _ content _", &outcome);
         outcome
     }
 
@@ -235,35 +239,37 @@ impl Server for AgentFiles<'_> {
         content: String,
     ) -> Outcome<Saved, CreateContentError> {
         let outcome = self.create_file(path, content).await;
-        self.note("create _ content _", &outcome);
+        self.note("files/create _ content _", &outcome);
+        outcome
+    }
+}
+
+impl poentaro_protocol::files::export::Server for AgentFiles<'_> {
+    async fn svg(&self, path: String) -> Outcome<Vec<String>, SvgError> {
+        let outcome =
+            self.content_to_export(&path)
+                .await
+                .map(|content| match content {
+                    Err(ReadError::Missing) => Err(SvgError::Missing),
+                    Err(ReadError::Trashed) => Err(SvgError::Trashed),
+                    Ok(content) => export_svg(&content)
+                        .map_err(|diagnostics| SvgError::Unreadable { diagnostics }),
+                });
+        self.note("files/export/svg _", &outcome);
         outcome
     }
 
-    async fn export_svg(&self, path: String) -> Outcome<Vec<String>, ExportSvgError> {
+    async fn midi(&self, path: String) -> Outcome<Vec<u8>, MidiError> {
         let outcome = self
             .content_to_export(&path)
             .await
             .map(|content| match content {
-                Err(ReadError::Missing) => Err(ExportSvgError::Missing),
-                Err(ReadError::Trashed) => Err(ExportSvgError::Trashed),
-                Ok(content) => export_svg(&content)
-                    .map_err(|diagnostics| ExportSvgError::Unreadable { diagnostics }),
-            });
-        self.note("export svg _", &outcome);
-        outcome
-    }
-
-    async fn export_midi(&self, path: String) -> Outcome<Vec<u8>, ExportMidiError> {
-        let outcome = self
-            .content_to_export(&path)
-            .await
-            .map(|content| match content {
-                Err(ReadError::Missing) => Err(ExportMidiError::Missing),
-                Err(ReadError::Trashed) => Err(ExportMidiError::Trashed),
+                Err(ReadError::Missing) => Err(MidiError::Missing),
+                Err(ReadError::Trashed) => Err(MidiError::Trashed),
                 Ok(content) => export_midi(&content)
-                    .map_err(|diagnostics| ExportMidiError::Unreadable { diagnostics }),
+                    .map_err(|diagnostics| MidiError::Unreadable { diagnostics }),
             });
-        self.note("export midi _", &outcome);
+        self.note("files/export/midi _", &outcome);
         outcome
     }
 }

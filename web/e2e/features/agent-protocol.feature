@@ -31,10 +31,10 @@ Feature: An AI agent edits the owner's scores with an API key
     Given a cloud file named "agent-export.poentaro" is seeded for the signed-in account
     And the signed-in account has an API key
     And the agent writes "agent-export.poentaro" at the revision it first saw with the last line "1 2 3 4"
-    When the agent sends "export svg \"agent-export.poentaro\""
+    When the agent sends "files/export/svg \"agent-export.poentaro\""
     Then the agent's last result is not an error
     And the agent's last result contains "<svg"
-    When the agent sends "export midi \"agent-export.poentaro\""
+    When the agent sends "files/export/midi \"agent-export.poentaro\""
     Then the agent's last result starts with "\"TVRoZA"
 
   Scenario: A write at an old revision is a conflict and changes nothing
@@ -55,11 +55,11 @@ Feature: An AI agent edits the owner's scores with an API key
   Scenario: The key never reaches another account's files
     Given a cloud file named "agent-private.poentaro" is seeded for "e2e-agent-other@poentaro.test"
     And the signed-in account has an API key
-    When the agent sends "read \"agent-private.poentaro\""
+    When the agent sends "files/read \"agent-private.poentaro\""
     Then the agent's last result starts with "ERROR missing"
 
   Scenario: A revoked key is refused
     Given the signed-in account has an API key
     When the key is revoked
-    And the agent sends "list files"
+    And the agent sends "files/list"
     Then the agent is refused for its key

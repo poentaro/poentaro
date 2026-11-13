@@ -1,15 +1,3 @@
-# Poentaro turns `.poentaro` text into numbered musical notation (jianpu) and
-# keeps the account owner's scores in the cloud. When you save, anyone who
-# has the score open sees the change.
-#
-# Before you write a score, read its syntax at `/agent/syntax` on this
-# server, with the same header.
-#
-# To edit a score: read it, change the text, then write it at the revision
-# you read. If the write comes back as a conflict, apply your change again
-# to the content it returns and write at the revision it returns.
-PROTOCOL poentaro VERSION 1,
-
 # A file in the account's tree.
 RECORD file summary {
     # A slash path, such as `Hymns/hymn.poentaro`.
@@ -20,7 +8,7 @@ RECORD file summary {
 RECORD file { path: TEXT, revision: INTEGER, content: TEXT },
 
 # One problem in a score.
-RECORD diagnostic {
+PUBLIC RECORD diagnostic {
     # Counted from 1, in the content you sent.
     line: INTEGER,
     # Counted from 1, in characters.
@@ -33,11 +21,11 @@ RECORD diagnostic {
 RECORD saved { revision: INTEGER, warnings: LIST diagnostic },
 
 # The owner moved this file to the trash. Ask them to restore it.
-ERROR trashed,
+PUBLIC ERROR trashed,
 
-# No file has this path. It may have been renamed: run `list files` to see
+# No file has this path. It may have been renamed: run `files/list` to see
 # the exact paths.
-ERROR missing,
+PUBLIC ERROR missing,
 
 # Someone saved first. Apply your change to `content`, then write at
 # `revision`.
@@ -52,14 +40,10 @@ ERROR already exists at revision (revision: INTEGER),
 # The path isn't valid, such as an empty folder name or a `..`.
 ERROR invalid path (message: TEXT),
 
-# The score has errors, so it can't be exported. Fix them, then write the
-# score again.
-ERROR unreadable (diagnostics: LIST diagnostic),
-
-ERRORS file errors [trashed, missing],
+PUBLIC ERRORS file errors [trashed, missing],
 
 # Every file this account owns.
-METHOD list files RETURNS files: LIST file summary,
+METHOD list RETURNS files: LIST file summary,
 
 METHOD read (path: TEXT) RETURNS (file: file) ERRORS file errors,
 
@@ -72,15 +56,3 @@ METHOD write (path: TEXT) at revision (revision: INTEGER) content (content: TEXT
 METHOD create (path: TEXT) content (content: TEXT)
     RETURNS (saved: saved)
     ERRORS [already exists at revision, invalid path, rejected],
-
-# The score as numbered notation: one SVG document per page. Text widths
-# are estimated, so a system may break slightly differently than in the app.
-METHOD export svg (path: TEXT)
-    RETURNS (pages: LIST: TEXT)
-    ERRORS [unreadable, file errors],
-
-# The score as a Standard MIDI File, to hear or inspect what it plays.
-# Decode the base64 to get the `.mid` file.
-METHOD export midi (path: TEXT)
-    RETURNS (midi: BYTES)
-    ERRORS [unreadable, file errors],

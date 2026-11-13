@@ -3,11 +3,13 @@
 #![allow(clippy::all, dead_code, unused_imports, unused_mut, unused_variables)]
 
 use anyx_protocol::client::{CallError, Transport};
-use anyx_protocol::server;
 use anyx_protocol::{FieldsBuilder, FieldsReader, FromValue, IntoValue, Value};
 
-/// The schema as written.
-pub const SCHEMA: &str = r#"# Poentaro turns `.poentaro` text into numbered musical notation (jianpu) and
+/// The schema as written, a file per scope.
+pub const SCHEMA_FILES: &[anyx_protocol::SchemaFile<'static>] = &[
+    anyx_protocol::SchemaFile {
+        path: "protocol.anyx",
+        source: r#"# Poentaro turns `.poentaro` text into numbered musical notation (jianpu) and
 # keeps the account owner's scores in the cloud. When you save, anyone who
 # has the score open sees the change.
 #
@@ -18,8 +20,11 @@ pub const SCHEMA: &str = r#"# Poentaro turns `.poentaro` text into numbered musi
 # you read. If the write comes back as a conflict, apply your change again
 # to the content it returns and write at the revision it returns.
 PROTOCOL poentaro VERSION 1,
-
-# A file in the account's tree.
+"#,
+    },
+    anyx_protocol::SchemaFile {
+        path: "files.anyx",
+        source: r#"# A file in the account's tree.
 RECORD file summary {
     # A slash path, such as `Hymns/hymn.poentaro`.
     path: TEXT,
@@ -29,7 +34,7 @@ RECORD file summary {
 RECORD file { path: TEXT, revision: INTEGER, content: TEXT },
 
 # One problem in a score.
-RECORD diagnostic {
+PUBLIC RECORD diagnostic {
     # Counted from 1, in the content you sent.
     line: INTEGER,
     # Counted from 1, in characters.
@@ -42,11 +47,11 @@ RECORD diagnostic {
 RECORD saved { revision: INTEGER, warnings: LIST diagnostic },
 
 # The owner moved this file to the trash. Ask them to restore it.
-ERROR trashed,
+PUBLIC ERROR trashed,
 
-# No file has this path. It may have been renamed: run `list files` to see
+# No file has this path. It may have been renamed: run `files/list` to see
 # the exact paths.
-ERROR missing,
+PUBLIC ERROR missing,
 
 # Someone saved first. Apply your change to `content`, then write at
 # `revision`.
@@ -61,14 +66,10 @@ ERROR already exists at revision (revision: INTEGER),
 # The path isn't valid, such as an empty folder name or a `..`.
 ERROR invalid path (message: TEXT),
 
-# The score has errors, so it can't be exported. Fix them, then write the
-# score again.
-ERROR unreadable (diagnostics: LIST diagnostic),
-
-ERRORS file errors [trashed, missing],
+PUBLIC ERRORS file errors [trashed, missing],
 
 # Every file this account owns.
-METHOD list files RETURNS files: LIST file summary,
+METHOD list RETURNS files: LIST file summary,
 
 METHOD read (path: TEXT) RETURNS (file: file) ERRORS file errors,
 
@@ -81,476 +82,57 @@ METHOD write (path: TEXT) at revision (revision: INTEGER) content (content: TEXT
 METHOD create (path: TEXT) content (content: TEXT)
     RETURNS (saved: saved)
     ERRORS [already exists at revision, invalid path, rejected],
+"#,
+    },
+    anyx_protocol::SchemaFile {
+        path: "files/export.anyx",
+        source: r#"# The score has errors, so it can't be exported. Fix them, then write the
+# score again.
+ERROR unreadable (diagnostics: LIST files/diagnostic),
 
 # The score as numbered notation: one SVG document per page. Text widths
 # are estimated, so a system may break slightly differently than in the app.
-METHOD export svg (path: TEXT)
+METHOD svg (path: TEXT)
     RETURNS (pages: LIST: TEXT)
-    ERRORS [unreadable, file errors],
+    ERRORS [unreadable, files/file errors],
 
 # The score as a Standard MIDI File, to hear or inspect what it plays.
 # Decode the base64 to get the `.mid` file.
-METHOD export midi (path: TEXT)
+METHOD midi (path: TEXT)
     RETURNS (midi: BYTES)
-    ERRORS [unreadable, file errors],
-"#;
+    ERRORS [unreadable, files/file errors],
+"#,
+    },
+];
 
 /// The schema, read once.
 pub fn schema() -> &'static anyx_protocol::Schema {
-    static SCHEMA_READ: std::sync::LazyLock<anyx_protocol::Schema> =
-        std::sync::LazyLock::new(|| {
-            anyx_protocol::Schema::parse(SCHEMA).expect("the generator checked the schema")
+    static SCHEMA_READ: ::std::sync::LazyLock<anyx_protocol::Schema> =
+        ::std::sync::LazyLock::new(|| {
+            anyx_protocol::Schema::parse_files(SCHEMA_FILES)
+                .expect("the generator checked the schema")
         });
     &SCHEMA_READ
 }
 
-/// A file in the account's tree.
-#[derive(Clone, Debug, PartialEq)]
-pub struct FileSummary {
-    /// A slash path, such as `Hymns/hymn.poentaro`.
-    pub path: String,
-    pub revision: i64,
-}
-
-impl IntoValue for FileSummary {
-    fn into_value(self) -> Value {
-        Value::Record(
-            FieldsBuilder::new()
-                .field("path", self.path)
-                .field("revision", self.revision)
-                .build(),
-        )
-    }
-}
-
-impl FromValue for FileSummary {
-    fn from_value(value: Value) -> Option<Self> {
-        let Value::Record(fields) = value else {
-            return None;
-        };
-        let mut fields = FieldsReader::new(fields);
-        Some(Self {
-            path: fields.field("path")?,
-            revision: fields.field("revision")?,
-        })
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct File {
-    pub path: String,
-    pub revision: i64,
-    pub content: String,
-}
-
-impl IntoValue for File {
-    fn into_value(self) -> Value {
-        Value::Record(
-            FieldsBuilder::new()
-                .field("path", self.path)
-                .field("revision", self.revision)
-                .field("content", self.content)
-                .build(),
-        )
-    }
-}
-
-impl FromValue for File {
-    fn from_value(value: Value) -> Option<Self> {
-        let Value::Record(fields) = value else {
-            return None;
-        };
-        let mut fields = FieldsReader::new(fields);
-        Some(Self {
-            path: fields.field("path")?,
-            revision: fields.field("revision")?,
-            content: fields.field("content")?,
-        })
-    }
-}
-
-/// One problem in a score.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Diagnostic {
-    /// Counted from 1, in the content you sent.
-    pub line: i64,
-    /// Counted from 1, in characters.
-    pub column: i64,
-    pub message: String,
-}
-
-impl IntoValue for Diagnostic {
-    fn into_value(self) -> Value {
-        Value::Record(
-            FieldsBuilder::new()
-                .field("line", self.line)
-                .field("column", self.column)
-                .field("message", self.message)
-                .build(),
-        )
-    }
-}
-
-impl FromValue for Diagnostic {
-    fn from_value(value: Value) -> Option<Self> {
-        let Value::Record(fields) = value else {
-            return None;
-        };
-        let mut fields = FieldsReader::new(fields);
-        Some(Self {
-            line: fields.field("line")?,
-            column: fields.field("column")?,
-            message: fields.field("message")?,
-        })
-    }
-}
-
-/// A score that was saved, and what may still be wrong with it. Warnings
-/// never stop a save, but each is worth a look.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Saved {
-    pub revision: i64,
-    pub warnings: Vec<Diagnostic>,
-}
-
-impl IntoValue for Saved {
-    fn into_value(self) -> Value {
-        Value::Record(
-            FieldsBuilder::new()
-                .field("revision", self.revision)
-                .field("warnings", self.warnings)
-                .build(),
-        )
-    }
-}
-
-impl FromValue for Saved {
-    fn from_value(value: Value) -> Option<Self> {
-        let Value::Record(fields) = value else {
-            return None;
-        };
-        let mut fields = FieldsReader::new(fields);
-        Some(Self {
-            revision: fields.field("revision")?,
-            warnings: fields.field("warnings")?,
-        })
-    }
-}
-
-/// The errors of `read _`.
-#[derive(Clone, Debug, PartialEq)]
-pub enum ReadError {
-    /// The owner moved this file to the trash. Ask them to restore it.
-    Trashed,
-    /// No file has this path. It may have been renamed: run `list files` to see
-    /// the exact paths.
-    Missing,
-}
-
-impl IntoValue for ReadError {
-    fn into_value(self) -> Value {
-        match self {
-            ReadError::Trashed => Value::Variant {
-                shape: "trashed".to_string(),
-                arguments: vec![],
-            },
-            ReadError::Missing => Value::Variant {
-                shape: "missing".to_string(),
-                arguments: vec![],
-            },
-        }
-    }
-}
-
-impl FromValue for ReadError {
-    fn from_value(value: Value) -> Option<Self> {
-        let Value::Variant { shape, arguments } = value else {
-            return None;
-        };
-        let mut arguments = arguments.into_iter();
-        Some(match shape.as_str() {
-            "trashed" => ReadError::Trashed,
-            "missing" => ReadError::Missing,
-            _ => return None,
-        })
-    }
-}
-
-/// The errors of `write _ at revision _ content _`.
-#[derive(Clone, Debug, PartialEq)]
-pub enum WriteAtRevisionContentError {
-    /// Someone saved first. Apply your change to `content`, then write at
-    /// `revision`.
-    ConflictAtRevisionContent { revision: i64, content: String },
-    /// The score has errors, so nothing was saved. Fix them and send it again.
-    Rejected { diagnostics: Vec<Diagnostic> },
-    /// The owner moved this file to the trash. Ask them to restore it.
-    Trashed,
-    /// No file has this path. It may have been renamed: run `list files` to see
-    /// the exact paths.
-    Missing,
-}
-
-impl IntoValue for WriteAtRevisionContentError {
-    fn into_value(self) -> Value {
-        match self {
-            WriteAtRevisionContentError::ConflictAtRevisionContent { revision, content } => {
-                Value::Variant {
-                    shape: "conflict at revision _ content _".to_string(),
-                    arguments: vec![revision.into_value(), content.into_value()],
-                }
-            }
-            WriteAtRevisionContentError::Rejected { diagnostics } => Value::Variant {
-                shape: "rejected _".to_string(),
-                arguments: vec![diagnostics.into_value()],
-            },
-            WriteAtRevisionContentError::Trashed => Value::Variant {
-                shape: "trashed".to_string(),
-                arguments: vec![],
-            },
-            WriteAtRevisionContentError::Missing => Value::Variant {
-                shape: "missing".to_string(),
-                arguments: vec![],
-            },
-        }
-    }
-}
-
-impl FromValue for WriteAtRevisionContentError {
-    fn from_value(value: Value) -> Option<Self> {
-        let Value::Variant { shape, arguments } = value else {
-            return None;
-        };
-        let mut arguments = arguments.into_iter();
-        Some(match shape.as_str() {
-            "conflict at revision _ content _" => {
-                WriteAtRevisionContentError::ConflictAtRevisionContent {
-                    revision: FromValue::from_value(arguments.next()?)?,
-                    content: FromValue::from_value(arguments.next()?)?,
-                }
-            }
-            "rejected _" => WriteAtRevisionContentError::Rejected {
-                diagnostics: FromValue::from_value(arguments.next()?)?,
-            },
-            "trashed" => WriteAtRevisionContentError::Trashed,
-            "missing" => WriteAtRevisionContentError::Missing,
-            _ => return None,
-        })
-    }
-}
-
-/// The errors of `create _ content _`.
-#[derive(Clone, Debug, PartialEq)]
-pub enum CreateContentError {
-    /// A file already has this path. Read it, or create under another path.
-    AlreadyExistsAtRevision { revision: i64 },
-    /// The path isn't valid, such as an empty folder name or a `..`.
-    InvalidPath { message: String },
-    /// The score has errors, so nothing was saved. Fix them and send it again.
-    Rejected { diagnostics: Vec<Diagnostic> },
-}
-
-impl IntoValue for CreateContentError {
-    fn into_value(self) -> Value {
-        match self {
-            CreateContentError::AlreadyExistsAtRevision { revision } => Value::Variant {
-                shape: "already exists at revision _".to_string(),
-                arguments: vec![revision.into_value()],
-            },
-            CreateContentError::InvalidPath { message } => Value::Variant {
-                shape: "invalid path _".to_string(),
-                arguments: vec![message.into_value()],
-            },
-            CreateContentError::Rejected { diagnostics } => Value::Variant {
-                shape: "rejected _".to_string(),
-                arguments: vec![diagnostics.into_value()],
-            },
-        }
-    }
-}
-
-impl FromValue for CreateContentError {
-    fn from_value(value: Value) -> Option<Self> {
-        let Value::Variant { shape, arguments } = value else {
-            return None;
-        };
-        let mut arguments = arguments.into_iter();
-        Some(match shape.as_str() {
-            "already exists at revision _" => CreateContentError::AlreadyExistsAtRevision {
-                revision: FromValue::from_value(arguments.next()?)?,
-            },
-            "invalid path _" => CreateContentError::InvalidPath {
-                message: FromValue::from_value(arguments.next()?)?,
-            },
-            "rejected _" => CreateContentError::Rejected {
-                diagnostics: FromValue::from_value(arguments.next()?)?,
-            },
-            _ => return None,
-        })
-    }
-}
-
-/// The errors of `export svg _`.
-#[derive(Clone, Debug, PartialEq)]
-pub enum ExportSvgError {
-    /// The score has errors, so it can't be exported. Fix them, then write the
-    /// score again.
-    Unreadable { diagnostics: Vec<Diagnostic> },
-    /// The owner moved this file to the trash. Ask them to restore it.
-    Trashed,
-    /// No file has this path. It may have been renamed: run `list files` to see
-    /// the exact paths.
-    Missing,
-}
-
-impl IntoValue for ExportSvgError {
-    fn into_value(self) -> Value {
-        match self {
-            ExportSvgError::Unreadable { diagnostics } => Value::Variant {
-                shape: "unreadable _".to_string(),
-                arguments: vec![diagnostics.into_value()],
-            },
-            ExportSvgError::Trashed => Value::Variant {
-                shape: "trashed".to_string(),
-                arguments: vec![],
-            },
-            ExportSvgError::Missing => Value::Variant {
-                shape: "missing".to_string(),
-                arguments: vec![],
-            },
-        }
-    }
-}
-
-impl FromValue for ExportSvgError {
-    fn from_value(value: Value) -> Option<Self> {
-        let Value::Variant { shape, arguments } = value else {
-            return None;
-        };
-        let mut arguments = arguments.into_iter();
-        Some(match shape.as_str() {
-            "unreadable _" => ExportSvgError::Unreadable {
-                diagnostics: FromValue::from_value(arguments.next()?)?,
-            },
-            "trashed" => ExportSvgError::Trashed,
-            "missing" => ExportSvgError::Missing,
-            _ => return None,
-        })
-    }
-}
-
-/// The errors of `export midi _`.
-#[derive(Clone, Debug, PartialEq)]
-pub enum ExportMidiError {
-    /// The score has errors, so it can't be exported. Fix them, then write the
-    /// score again.
-    Unreadable { diagnostics: Vec<Diagnostic> },
-    /// The owner moved this file to the trash. Ask them to restore it.
-    Trashed,
-    /// No file has this path. It may have been renamed: run `list files` to see
-    /// the exact paths.
-    Missing,
-}
-
-impl IntoValue for ExportMidiError {
-    fn into_value(self) -> Value {
-        match self {
-            ExportMidiError::Unreadable { diagnostics } => Value::Variant {
-                shape: "unreadable _".to_string(),
-                arguments: vec![diagnostics.into_value()],
-            },
-            ExportMidiError::Trashed => Value::Variant {
-                shape: "trashed".to_string(),
-                arguments: vec![],
-            },
-            ExportMidiError::Missing => Value::Variant {
-                shape: "missing".to_string(),
-                arguments: vec![],
-            },
-        }
-    }
-}
-
-impl FromValue for ExportMidiError {
-    fn from_value(value: Value) -> Option<Self> {
-        let Value::Variant { shape, arguments } = value else {
-            return None;
-        };
-        let mut arguments = arguments.into_iter();
-        Some(match shape.as_str() {
-            "unreadable _" => ExportMidiError::Unreadable {
-                diagnostics: FromValue::from_value(arguments.next()?)?,
-            },
-            "trashed" => ExportMidiError::Trashed,
-            "missing" => ExportMidiError::Missing,
-            _ => return None,
-        })
-    }
-}
-
-/// The methods of the schema, for a server to implement. An `Err` is the
-/// server's own failure: the caller gets `INTERNAL ERROR`, and the calls
-/// after it don't run.
+/// The methods of the schema's root, for a server to implement, with the
+/// `Server` trait of each scope. An `Err` is the server's own failure: the
+/// caller gets `INTERNAL ERROR`, and the calls after it don't run.
 #[allow(async_fn_in_trait)]
 pub trait Server {
     type Error;
-
-    /// Every file this account owns.
-    ///
-    /// `list files`, returning `files`.
-    async fn list_files(&self) -> Result<Vec<FileSummary>, Self::Error>;
-
-    /// `read _`, returning `file`.
-    async fn read(&self, path: String) -> Result<Result<File, ReadError>, Self::Error>;
-
-    /// Saves the score, if the file is still at `revision`.
-    ///
-    /// `write _ at revision _ content _`, returning `saved`.
-    async fn write_at_revision_content(
-        &self,
-        path: String,
-        revision: i64,
-        content: String,
-    ) -> Result<Result<Saved, WriteAtRevisionContentError>, Self::Error>;
-
-    /// Makes a new file, and its folders if they don't exist.
-    ///
-    /// `create _ content _`, returning `saved`.
-    async fn create_content(
-        &self,
-        path: String,
-        content: String,
-    ) -> Result<Result<Saved, CreateContentError>, Self::Error>;
-
-    /// The score as numbered notation: one SVG document per page. Text widths
-    /// are estimated, so a system may break slightly differently than in the app.
-    ///
-    /// `export svg _`, returning `pages`.
-    async fn export_svg(
-        &self,
-        path: String,
-    ) -> Result<Result<Vec<String>, ExportSvgError>, Self::Error>;
-
-    /// The score as a Standard MIDI File, to hear or inspect what it plays.
-    /// Decode the base64 to get the `.mid` file.
-    ///
-    /// `export midi _`, returning `midi`.
-    async fn export_midi(
-        &self,
-        path: String,
-    ) -> Result<Result<Vec<u8>, ExportMidiError>, Self::Error>;
 }
 
 /// Runs `request` against `implementation` and writes the response. Every
 /// call runs, in order, until one fails with an internal error, which
 /// `on_internal_error` hears; the calls after it don't run.
-pub async fn handle<S: Server>(
+pub async fn handle<S: Server + files::Server + files::export::Server>(
     implementation: &S,
     request: &str,
-    mut on_internal_error: impl FnMut(S::Error),
+    mut on_internal_error: impl FnMut(<S as Server>::Error),
 ) -> String {
     let schema = schema();
-    let calls = match server::read_request(schema, request) {
+    let calls = match anyx_protocol::server::read_request(schema, request) {
         Ok(calls) => calls,
         Err(response) => return response,
     };
@@ -564,34 +146,44 @@ pub async fn handle<S: Server>(
         }
         let mut arguments = call.arguments.into_iter();
         let outcome = match call.method {
-            0 => server::value(implementation.list_files().await),
-            1 => server::result(implementation.read(server::argument(&mut arguments)).await),
-            2 => server::result(
-                implementation
-                    .write_at_revision_content(
-                        server::argument(&mut arguments),
-                        server::argument(&mut arguments),
-                        server::argument(&mut arguments),
-                    )
-                    .await,
+            0 => anyx_protocol::server::value(<S as files::Server>::list(implementation).await),
+            1 => anyx_protocol::server::result(
+                <S as files::Server>::read(
+                    implementation,
+                    anyx_protocol::server::argument(&mut arguments),
+                )
+                .await,
             ),
-            3 => server::result(
-                implementation
-                    .create_content(
-                        server::argument(&mut arguments),
-                        server::argument(&mut arguments),
-                    )
-                    .await,
+            2 => anyx_protocol::server::result(
+                <S as files::Server>::write_at_revision_content(
+                    implementation,
+                    anyx_protocol::server::argument(&mut arguments),
+                    anyx_protocol::server::argument(&mut arguments),
+                    anyx_protocol::server::argument(&mut arguments),
+                )
+                .await,
             ),
-            4 => server::result(
-                implementation
-                    .export_svg(server::argument(&mut arguments))
-                    .await,
+            3 => anyx_protocol::server::result(
+                <S as files::Server>::create_content(
+                    implementation,
+                    anyx_protocol::server::argument(&mut arguments),
+                    anyx_protocol::server::argument(&mut arguments),
+                )
+                .await,
             ),
-            5 => server::result(
-                implementation
-                    .export_midi(server::argument(&mut arguments))
-                    .await,
+            4 => anyx_protocol::server::result(
+                <S as files::export::Server>::svg(
+                    implementation,
+                    anyx_protocol::server::argument(&mut arguments),
+                )
+                .await,
+            ),
+            5 => anyx_protocol::server::result(
+                <S as files::export::Server>::midi(
+                    implementation,
+                    anyx_protocol::server::argument(&mut arguments),
+                )
+                .await,
             ),
             _ => unreachable!("the codec read a method of the schema"),
         };
@@ -601,7 +193,7 @@ pub async fn handle<S: Server>(
             anyx_protocol::Outcome::InternalError
         }));
     }
-    server::respond(schema, &methods, outcomes)
+    anyx_protocol::server::respond(schema, &methods, outcomes)
 }
 
 /// Calls the methods of the schema through a [`Transport`], one call per
@@ -615,78 +207,571 @@ impl<T: Transport> Client<T> {
         Self { transport }
     }
 
-    /// Every file this account owns.
-    ///
-    /// `list files`, returning `files`.
-    pub async fn list_files(
-        &self,
-    ) -> Result<Vec<FileSummary>, CallError<std::convert::Infallible, T::Error>> {
-        anyx_protocol::client::call(&self.transport, schema(), 0, vec![]).await
+    /// The methods of the scope `files`.
+    pub fn files(&self) -> files::Client<'_, T> {
+        files::Client {
+            transport: &self.transport,
+        }
+    }
+}
+
+/// The scope `files`.
+pub mod files {
+    use anyx_protocol::client::{CallError, Transport};
+    use anyx_protocol::{FieldsBuilder, FieldsReader, FromValue, IntoValue, Value};
+
+    /// A file in the account's tree.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FileSummary {
+        /// A slash path, such as `Hymns/hymn.poentaro`.
+        pub path: String,
+        pub revision: i64,
     }
 
-    /// `read _`, returning `file`.
-    pub async fn read(&self, path: String) -> Result<File, CallError<ReadError, T::Error>> {
-        anyx_protocol::client::call(&self.transport, schema(), 1, vec![path.into_value()]).await
+    impl IntoValue for FileSummary {
+        fn into_value(self) -> Value {
+            Value::Record(
+                FieldsBuilder::new()
+                    .field("path", self.path)
+                    .field("revision", self.revision)
+                    .build(),
+            )
+        }
     }
 
-    /// Saves the score, if the file is still at `revision`.
-    ///
-    /// `write _ at revision _ content _`, returning `saved`.
-    pub async fn write_at_revision_content(
-        &self,
-        path: String,
-        revision: i64,
-        content: String,
-    ) -> Result<Saved, CallError<WriteAtRevisionContentError, T::Error>> {
-        anyx_protocol::client::call(
-            &self.transport,
-            schema(),
-            2,
-            vec![
-                path.into_value(),
-                revision.into_value(),
-                content.into_value(),
-            ],
-        )
-        .await
+    impl FromValue for FileSummary {
+        fn from_value(value: Value) -> Option<Self> {
+            let Value::Record(fields) = value else {
+                return None;
+            };
+            let mut fields = FieldsReader::new(fields);
+            Some(Self {
+                path: fields.field("path")?,
+                revision: fields.field("revision")?,
+            })
+        }
     }
 
-    /// Makes a new file, and its folders if they don't exist.
-    ///
-    /// `create _ content _`, returning `saved`.
-    pub async fn create_content(
-        &self,
-        path: String,
-        content: String,
-    ) -> Result<Saved, CallError<CreateContentError, T::Error>> {
-        anyx_protocol::client::call(
-            &self.transport,
-            schema(),
-            3,
-            vec![path.into_value(), content.into_value()],
-        )
-        .await
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct File {
+        pub path: String,
+        pub revision: i64,
+        pub content: String,
     }
 
-    /// The score as numbered notation: one SVG document per page. Text widths
-    /// are estimated, so a system may break slightly differently than in the app.
-    ///
-    /// `export svg _`, returning `pages`.
-    pub async fn export_svg(
-        &self,
-        path: String,
-    ) -> Result<Vec<String>, CallError<ExportSvgError, T::Error>> {
-        anyx_protocol::client::call(&self.transport, schema(), 4, vec![path.into_value()]).await
+    impl IntoValue for File {
+        fn into_value(self) -> Value {
+            Value::Record(
+                FieldsBuilder::new()
+                    .field("path", self.path)
+                    .field("revision", self.revision)
+                    .field("content", self.content)
+                    .build(),
+            )
+        }
     }
 
-    /// The score as a Standard MIDI File, to hear or inspect what it plays.
-    /// Decode the base64 to get the `.mid` file.
-    ///
-    /// `export midi _`, returning `midi`.
-    pub async fn export_midi(
-        &self,
-        path: String,
-    ) -> Result<Vec<u8>, CallError<ExportMidiError, T::Error>> {
-        anyx_protocol::client::call(&self.transport, schema(), 5, vec![path.into_value()]).await
+    impl FromValue for File {
+        fn from_value(value: Value) -> Option<Self> {
+            let Value::Record(fields) = value else {
+                return None;
+            };
+            let mut fields = FieldsReader::new(fields);
+            Some(Self {
+                path: fields.field("path")?,
+                revision: fields.field("revision")?,
+                content: fields.field("content")?,
+            })
+        }
+    }
+
+    /// One problem in a score.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Diagnostic {
+        /// Counted from 1, in the content you sent.
+        pub line: i64,
+        /// Counted from 1, in characters.
+        pub column: i64,
+        pub message: String,
+    }
+
+    impl IntoValue for Diagnostic {
+        fn into_value(self) -> Value {
+            Value::Record(
+                FieldsBuilder::new()
+                    .field("line", self.line)
+                    .field("column", self.column)
+                    .field("message", self.message)
+                    .build(),
+            )
+        }
+    }
+
+    impl FromValue for Diagnostic {
+        fn from_value(value: Value) -> Option<Self> {
+            let Value::Record(fields) = value else {
+                return None;
+            };
+            let mut fields = FieldsReader::new(fields);
+            Some(Self {
+                line: fields.field("line")?,
+                column: fields.field("column")?,
+                message: fields.field("message")?,
+            })
+        }
+    }
+
+    /// A score that was saved, and what may still be wrong with it. Warnings
+    /// never stop a save, but each is worth a look.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Saved {
+        pub revision: i64,
+        pub warnings: Vec<Diagnostic>,
+    }
+
+    impl IntoValue for Saved {
+        fn into_value(self) -> Value {
+            Value::Record(
+                FieldsBuilder::new()
+                    .field("revision", self.revision)
+                    .field("warnings", self.warnings)
+                    .build(),
+            )
+        }
+    }
+
+    impl FromValue for Saved {
+        fn from_value(value: Value) -> Option<Self> {
+            let Value::Record(fields) = value else {
+                return None;
+            };
+            let mut fields = FieldsReader::new(fields);
+            Some(Self {
+                revision: fields.field("revision")?,
+                warnings: fields.field("warnings")?,
+            })
+        }
+    }
+
+    /// The errors of `files/read _`.
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum ReadError {
+        /// The owner moved this file to the trash. Ask them to restore it.
+        Trashed,
+        /// No file has this path. It may have been renamed: run `files/list` to see
+        /// the exact paths.
+        Missing,
+    }
+
+    impl IntoValue for ReadError {
+        fn into_value(self) -> Value {
+            match self {
+                ReadError::Trashed => Value::Variant {
+                    shape: "trashed".to_string(),
+                    arguments: vec![],
+                },
+                ReadError::Missing => Value::Variant {
+                    shape: "missing".to_string(),
+                    arguments: vec![],
+                },
+            }
+        }
+    }
+
+    impl FromValue for ReadError {
+        fn from_value(value: Value) -> Option<Self> {
+            let Value::Variant { shape, arguments } = value else {
+                return None;
+            };
+            let mut arguments = arguments.into_iter();
+            Some(match shape.as_str() {
+                "trashed" => ReadError::Trashed,
+                "missing" => ReadError::Missing,
+                _ => return None,
+            })
+        }
+    }
+
+    /// The errors of `files/write _ at revision _ content _`.
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum WriteAtRevisionContentError {
+        /// Someone saved first. Apply your change to `content`, then write at
+        /// `revision`.
+        ConflictAtRevisionContent { revision: i64, content: String },
+        /// The score has errors, so nothing was saved. Fix them and send it again.
+        Rejected { diagnostics: Vec<Diagnostic> },
+        /// The owner moved this file to the trash. Ask them to restore it.
+        Trashed,
+        /// No file has this path. It may have been renamed: run `files/list` to see
+        /// the exact paths.
+        Missing,
+    }
+
+    impl IntoValue for WriteAtRevisionContentError {
+        fn into_value(self) -> Value {
+            match self {
+                WriteAtRevisionContentError::ConflictAtRevisionContent { revision, content } => {
+                    Value::Variant {
+                        shape: "conflict at revision _ content _".to_string(),
+                        arguments: vec![revision.into_value(), content.into_value()],
+                    }
+                }
+                WriteAtRevisionContentError::Rejected { diagnostics } => Value::Variant {
+                    shape: "rejected _".to_string(),
+                    arguments: vec![diagnostics.into_value()],
+                },
+                WriteAtRevisionContentError::Trashed => Value::Variant {
+                    shape: "trashed".to_string(),
+                    arguments: vec![],
+                },
+                WriteAtRevisionContentError::Missing => Value::Variant {
+                    shape: "missing".to_string(),
+                    arguments: vec![],
+                },
+            }
+        }
+    }
+
+    impl FromValue for WriteAtRevisionContentError {
+        fn from_value(value: Value) -> Option<Self> {
+            let Value::Variant { shape, arguments } = value else {
+                return None;
+            };
+            let mut arguments = arguments.into_iter();
+            Some(match shape.as_str() {
+                "conflict at revision _ content _" => {
+                    WriteAtRevisionContentError::ConflictAtRevisionContent {
+                        revision: FromValue::from_value(arguments.next()?)?,
+                        content: FromValue::from_value(arguments.next()?)?,
+                    }
+                }
+                "rejected _" => WriteAtRevisionContentError::Rejected {
+                    diagnostics: FromValue::from_value(arguments.next()?)?,
+                },
+                "trashed" => WriteAtRevisionContentError::Trashed,
+                "missing" => WriteAtRevisionContentError::Missing,
+                _ => return None,
+            })
+        }
+    }
+
+    /// The errors of `files/create _ content _`.
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum CreateContentError {
+        /// A file already has this path. Read it, or create under another path.
+        AlreadyExistsAtRevision { revision: i64 },
+        /// The path isn't valid, such as an empty folder name or a `..`.
+        InvalidPath { message: String },
+        /// The score has errors, so nothing was saved. Fix them and send it again.
+        Rejected { diagnostics: Vec<Diagnostic> },
+    }
+
+    impl IntoValue for CreateContentError {
+        fn into_value(self) -> Value {
+            match self {
+                CreateContentError::AlreadyExistsAtRevision { revision } => Value::Variant {
+                    shape: "already exists at revision _".to_string(),
+                    arguments: vec![revision.into_value()],
+                },
+                CreateContentError::InvalidPath { message } => Value::Variant {
+                    shape: "invalid path _".to_string(),
+                    arguments: vec![message.into_value()],
+                },
+                CreateContentError::Rejected { diagnostics } => Value::Variant {
+                    shape: "rejected _".to_string(),
+                    arguments: vec![diagnostics.into_value()],
+                },
+            }
+        }
+    }
+
+    impl FromValue for CreateContentError {
+        fn from_value(value: Value) -> Option<Self> {
+            let Value::Variant { shape, arguments } = value else {
+                return None;
+            };
+            let mut arguments = arguments.into_iter();
+            Some(match shape.as_str() {
+                "already exists at revision _" => CreateContentError::AlreadyExistsAtRevision {
+                    revision: FromValue::from_value(arguments.next()?)?,
+                },
+                "invalid path _" => CreateContentError::InvalidPath {
+                    message: FromValue::from_value(arguments.next()?)?,
+                },
+                "rejected _" => CreateContentError::Rejected {
+                    diagnostics: FromValue::from_value(arguments.next()?)?,
+                },
+                _ => return None,
+            })
+        }
+    }
+
+    /// The methods of the scope `files`, for a server to implement. Its
+    /// `Error` is the root `Server`'s.
+    #[allow(async_fn_in_trait)]
+    pub trait Server: super::Server {
+        /// Every file this account owns.
+        ///
+        /// `files/list`, returning `files`.
+        async fn list(&self) -> Result<Vec<FileSummary>, Self::Error>;
+
+        /// `files/read _`, returning `file`.
+        async fn read(&self, path: String) -> Result<Result<File, ReadError>, Self::Error>;
+
+        /// Saves the score, if the file is still at `revision`.
+        ///
+        /// `files/write _ at revision _ content _`, returning `saved`.
+        async fn write_at_revision_content(
+            &self,
+            path: String,
+            revision: i64,
+            content: String,
+        ) -> Result<Result<Saved, WriteAtRevisionContentError>, Self::Error>;
+
+        /// Makes a new file, and its folders if they don't exist.
+        ///
+        /// `files/create _ content _`, returning `saved`.
+        async fn create_content(
+            &self,
+            path: String,
+            content: String,
+        ) -> Result<Result<Saved, CreateContentError>, Self::Error>;
+    }
+
+    /// Calls the methods of the scope `files` through the transport of the root
+    /// `Client`.
+    pub struct Client<'a, T> {
+        pub transport: &'a T,
+    }
+
+    impl<'a, T: Transport> Client<'a, T> {
+        /// Every file this account owns.
+        ///
+        /// `files/list`, returning `files`.
+        pub async fn list(
+            &self,
+        ) -> Result<Vec<FileSummary>, CallError<::std::convert::Infallible, T::Error>> {
+            anyx_protocol::client::call(self.transport, super::schema(), 0, vec![]).await
+        }
+
+        /// `files/read _`, returning `file`.
+        pub async fn read(&self, path: String) -> Result<File, CallError<ReadError, T::Error>> {
+            anyx_protocol::client::call(self.transport, super::schema(), 1, vec![path.into_value()])
+                .await
+        }
+
+        /// Saves the score, if the file is still at `revision`.
+        ///
+        /// `files/write _ at revision _ content _`, returning `saved`.
+        pub async fn write_at_revision_content(
+            &self,
+            path: String,
+            revision: i64,
+            content: String,
+        ) -> Result<Saved, CallError<WriteAtRevisionContentError, T::Error>> {
+            anyx_protocol::client::call(
+                self.transport,
+                super::schema(),
+                2,
+                vec![
+                    path.into_value(),
+                    revision.into_value(),
+                    content.into_value(),
+                ],
+            )
+            .await
+        }
+
+        /// Makes a new file, and its folders if they don't exist.
+        ///
+        /// `files/create _ content _`, returning `saved`.
+        pub async fn create_content(
+            &self,
+            path: String,
+            content: String,
+        ) -> Result<Saved, CallError<CreateContentError, T::Error>> {
+            anyx_protocol::client::call(
+                self.transport,
+                super::schema(),
+                3,
+                vec![path.into_value(), content.into_value()],
+            )
+            .await
+        }
+
+        /// The methods of the scope `files/export`.
+        pub fn export(&self) -> export::Client<'a, T> {
+            export::Client {
+                transport: self.transport,
+            }
+        }
+    }
+
+    /// The scope `files/export`.
+    pub mod export {
+        use anyx_protocol::client::{CallError, Transport};
+        use anyx_protocol::{FieldsBuilder, FieldsReader, FromValue, IntoValue, Value};
+
+        /// The errors of `files/export/svg _`.
+        #[derive(Clone, Debug, PartialEq)]
+        pub enum SvgError {
+            /// The score has errors, so it can't be exported. Fix them, then write the
+            /// score again.
+            Unreadable {
+                diagnostics: Vec<super::super::files::Diagnostic>,
+            },
+            /// The owner moved this file to the trash. Ask them to restore it.
+            Trashed,
+            /// No file has this path. It may have been renamed: run `files/list` to see
+            /// the exact paths.
+            Missing,
+        }
+
+        impl IntoValue for SvgError {
+            fn into_value(self) -> Value {
+                match self {
+                    SvgError::Unreadable { diagnostics } => Value::Variant {
+                        shape: "unreadable _".to_string(),
+                        arguments: vec![diagnostics.into_value()],
+                    },
+                    SvgError::Trashed => Value::Variant {
+                        shape: "trashed".to_string(),
+                        arguments: vec![],
+                    },
+                    SvgError::Missing => Value::Variant {
+                        shape: "missing".to_string(),
+                        arguments: vec![],
+                    },
+                }
+            }
+        }
+
+        impl FromValue for SvgError {
+            fn from_value(value: Value) -> Option<Self> {
+                let Value::Variant { shape, arguments } = value else {
+                    return None;
+                };
+                let mut arguments = arguments.into_iter();
+                Some(match shape.as_str() {
+                    "unreadable _" => SvgError::Unreadable {
+                        diagnostics: FromValue::from_value(arguments.next()?)?,
+                    },
+                    "trashed" => SvgError::Trashed,
+                    "missing" => SvgError::Missing,
+                    _ => return None,
+                })
+            }
+        }
+
+        /// The errors of `files/export/midi _`.
+        #[derive(Clone, Debug, PartialEq)]
+        pub enum MidiError {
+            /// The score has errors, so it can't be exported. Fix them, then write the
+            /// score again.
+            Unreadable {
+                diagnostics: Vec<super::super::files::Diagnostic>,
+            },
+            /// The owner moved this file to the trash. Ask them to restore it.
+            Trashed,
+            /// No file has this path. It may have been renamed: run `files/list` to see
+            /// the exact paths.
+            Missing,
+        }
+
+        impl IntoValue for MidiError {
+            fn into_value(self) -> Value {
+                match self {
+                    MidiError::Unreadable { diagnostics } => Value::Variant {
+                        shape: "unreadable _".to_string(),
+                        arguments: vec![diagnostics.into_value()],
+                    },
+                    MidiError::Trashed => Value::Variant {
+                        shape: "trashed".to_string(),
+                        arguments: vec![],
+                    },
+                    MidiError::Missing => Value::Variant {
+                        shape: "missing".to_string(),
+                        arguments: vec![],
+                    },
+                }
+            }
+        }
+
+        impl FromValue for MidiError {
+            fn from_value(value: Value) -> Option<Self> {
+                let Value::Variant { shape, arguments } = value else {
+                    return None;
+                };
+                let mut arguments = arguments.into_iter();
+                Some(match shape.as_str() {
+                    "unreadable _" => MidiError::Unreadable {
+                        diagnostics: FromValue::from_value(arguments.next()?)?,
+                    },
+                    "trashed" => MidiError::Trashed,
+                    "missing" => MidiError::Missing,
+                    _ => return None,
+                })
+            }
+        }
+
+        /// The methods of the scope `files/export`, for a server to implement. Its
+        /// `Error` is the root `Server`'s.
+        #[allow(async_fn_in_trait)]
+        pub trait Server: super::super::Server {
+            /// The score as numbered notation: one SVG document per page. Text widths
+            /// are estimated, so a system may break slightly differently than in the app.
+            ///
+            /// `files/export/svg _`, returning `pages`.
+            async fn svg(&self, path: String)
+            -> Result<Result<Vec<String>, SvgError>, Self::Error>;
+
+            /// The score as a Standard MIDI File, to hear or inspect what it plays.
+            /// Decode the base64 to get the `.mid` file.
+            ///
+            /// `files/export/midi _`, returning `midi`.
+            async fn midi(&self, path: String) -> Result<Result<Vec<u8>, MidiError>, Self::Error>;
+        }
+
+        /// Calls the methods of the scope `files/export` through the transport of the root
+        /// `Client`.
+        pub struct Client<'a, T> {
+            pub transport: &'a T,
+        }
+
+        impl<'a, T: Transport> Client<'a, T> {
+            /// The score as numbered notation: one SVG document per page. Text widths
+            /// are estimated, so a system may break slightly differently than in the app.
+            ///
+            /// `files/export/svg _`, returning `pages`.
+            pub async fn svg(
+                &self,
+                path: String,
+            ) -> Result<Vec<String>, CallError<SvgError, T::Error>> {
+                anyx_protocol::client::call(
+                    self.transport,
+                    super::super::schema(),
+                    4,
+                    vec![path.into_value()],
+                )
+                .await
+            }
+
+            /// The score as a Standard MIDI File, to hear or inspect what it plays.
+            /// Decode the base64 to get the `.mid` file.
+            ///
+            /// `files/export/midi _`, returning `midi`.
+            pub async fn midi(
+                &self,
+                path: String,
+            ) -> Result<Vec<u8>, CallError<MidiError, T::Error>> {
+                anyx_protocol::client::call(
+                    self.transport,
+                    super::super::schema(),
+                    5,
+                    vec![path.into_value()],
+                )
+                .await
+            }
+        }
     }
 }

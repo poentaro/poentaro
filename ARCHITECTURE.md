@@ -737,16 +737,27 @@ An account owner's AI agent reads and edits the owner's own scores over the
 **anyx protocol** (anyx's `anyx-protocol`): requests and responses are anyx
 text, and the methods are declared in a schema.
 
-- Schema and generated code: `crates/poentaro-protocol`.
-  `poentaro.protocol.anyx` declares `list files`, `read _`,
-  `write _ at revision _ content _`, `create _ content _`, `export svg _`
-  and `export midi _`, their records (`file summary`, `file`, `diagnostic`,
-  `saved`) and errors (`trashed`, `missing`,
+- Schema and generated code: `crates/poentaro-protocol`. The schema is the
+  folder `schema/`, a file per **scope**: `protocol.anyx` holds only the
+  `PROTOCOL` header, `files.anyx` is the scope `files` and
+  `files/export.anyx` the scope `files/export`. A method is called by its
+  full name, its scope's path then its shape: `files/list`,
+  `files/read _`, `files/write _ at revision _ content _`,
+  `files/create _ content _`, `files/export/svg _` and
+  `files/export/midi _`. `files` declares the records (`file summary`,
+  `file`, `diagnostic`, `saved`) and errors (`trashed`, `missing`,
   `conflict at revision _ content _`, `rejected _`,
-  `already exists at revision _`, `invalid path _`, `unreadable _`). `src/generated.rs` is
-  what anyx's `anyx-protocol-generate` writes from it: the record structs, a
-  `{Method}Error` enum per method, the `Server` trait, `handle(server,
-  request, on_internal_error) -> String`, a `Client`, and `SCHEMA`/`schema()`.
+  `already exists at revision _`, `invalid path _`); `files/export`
+  declares `unreadable _`. A type or error is private to its scope unless
+  `PUBLIC`, and another scope names it by full path (`files/diagnostic`,
+  `files/file errors`). `src/generated.rs` is what anyx's
+  `anyx-protocol-generate` writes from it, a module per scope
+  (`poentaro_protocol::files::export`): the record structs, a
+  `{Method}Error` enum per method, a `Server` trait per scope (the root one
+  holds `type Error`), `handle(server, request, on_internal_error) ->
+  String`, a `Client` (`client.files().export().svg(path)`), and
+  `SCHEMA_FILES`/`schema()`. `tests/generated.rs` lists the schema's files
+  and fails when one is missing from that list.
   `just generate-protocol` rewrites it, and a test fails when it is stale.
   Like `poentaro-grammar`, the crate is outside the workspace lints and its
   `generated.rs` is exempt from the 400-line limit.
@@ -758,8 +769,9 @@ text, and the methods are declared in a schema.
   revoked key is a plain-text `401`; the per-key `AGENT_RATE_LIMITER`
   (`cloudflare.config.ts`, 60 requests a minute) a `429`.
 - Methods (`src/handlers/agent/files.rs`, `AgentFiles`, an implementation of
-  `Server` over D1): files are addressed by path (`db::get_file_by_name`).
-  `list files` lists the live files; `read`/`write` answer `trashed` for a
+  `Server`, `files::Server` and `files::export::Server` over D1): files are
+  addressed by path (`db::get_file_by_name`). `files/list` lists the live
+  files; `read`/`write` answer `trashed` for a
   binned file and `missing` for none. `write` is the same compare-and-swap
   as `POST /files/{id}/content` and records version history the same way
   (`handlers::files::record_version`). `write` and `create` refuse a score
@@ -770,7 +782,8 @@ text, and the methods are declared in a schema.
   `create` wants a valid path ending in `.poentaro`
   (`agent::new_file_path_problem`) that is not also a folder, and gives the
   file a version 4 UUID (`agent::file_id`), the id form the web app uses.
-  `export svg` and `export midi` (`agent::export_svg`/`export_midi`) answer
+  `files/export/svg` and `files/export/midi`
+  (`agent::export_svg`/`export_midi`) answer
   a live file's SVG pages and Standard MIDI File (a `BYTES` value, base64
   on the wire), or `unreadable` with the same errors that would stop a
   save, since the renderer recovers from most errors and would draw a
@@ -788,8 +801,9 @@ text, and the methods are declared in a schema.
   pastes into the agent, which is the only time the key is shown.
 - Logging: `LogEvent::Agent(AgentEvent)`, flow `agent`: `key_created`,
   `key_revoked`, `key_rejected` and one `called` row per `POST /agent`
-  listing each call as its method and ending (`read _: ok`,
-  `write _ at revision _ content _: conflict at revision _ content _`),
+  listing each call as its full method name and ending
+  (`files/read _: ok`,
+  `files/write _ at revision _ content _: conflict at revision _ content _`),
   subject `key:<prefix>`.
 - Live edits: the web app checks the open cloud file's revision every
   `REVISION_POLL_MILLIS` (5 s) while the tab is in view
@@ -1114,7 +1128,8 @@ away from the wasm build both times:
 | **static folder link** | A `#share-folder=<payload>` link carrying a compressed `FolderSnapshot` of a folder at one moment; works for local and cloud folders, never updates, and is not offered above `MAX_STATIC_FOLDER_LINK_CHARS` (the dialog suggests a synced link instead). |
 | **API key** | A `poe_…` key an account owner creates in the account menu's **AI agents** dialog, for their AI agent to send to `POST /agent` as `Authorization: Bearer`. It acts as its owner on the owner's own files only; only its hash is stored, and its `prefix` names it. See "AI agents". |
 | **agent** | An AI agent (Claude Code, Codex, …) that the account owner points at `GET /agent` with an API key. It reads the guide and the schema there, then reads and edits the owner's scores through `POST /agent`. |
-| **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result is a value, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro's schema is `crates/poentaro-protocol/poentaro.protocol.anyx`. |
+| **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result is a value, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro's schema is the folder `crates/poentaro-protocol/schema`, a file per scope. |
+| **scope** (anyx protocol) | A file of an anyx-protocol schema folder other than `protocol.anyx`, named by its path without `.anyx` (`files/export`). Its methods are called by full name (`files/export/svg _`), and its types and errors are private to it unless `PUBLIC`. |
 | **share overview** | `file_tree::ShareOverview`, the owner's live file and folder links as `POST /shares/overview` reports them; everything the share UI shows (markers, "via X" tags, warnings) is derived from it in Rust. |
 | **selection unit** | `file_tree::SelectionUnit`: one thing a multi-select action applies to — a file, or a folder whose files are all ticked (moved and deleted as a folder, so its structure survives). Folders inside a ticked folder are not listed again. |
 | **shared via** | `file_tree::SharedVia`: the innermost shared folder strictly above a file or folder, shown as a "via <name>" tag and "Shared via <name>" menu item. |

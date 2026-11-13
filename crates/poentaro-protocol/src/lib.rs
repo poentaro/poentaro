@@ -1,9 +1,11 @@
-//! The methods an account owner's AI agent calls on Poentaro:
-//! `poentaro.protocol.anyx` is the schema, and `generated.rs` is the server
-//! trait, codec and client anyx-protocol-generate writes from it.
+//! The methods an account owner's AI agent calls on Poentaro: `schema/` is
+//! the schema, a file per scope (`files.anyx` is the scope `files`), and
+//! `generated.rs` is the server traits, codec and client
+//! anyx-protocol-generate writes from it, a module per scope.
 //! `just generate-protocol` writes it again after the schema changes.
 //!
-//! The worker implements `Server` over D1 (`crates/live-share-worker`,
+//! The worker implements `Server`, `files::Server` and
+//! `files::export::Server` over D1 (`crates/live-share-worker`,
 //! `handlers::agent`) and serves `POST /agent` through `handle`.
 
 #[rustfmt::skip]

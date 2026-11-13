@@ -2,8 +2,7 @@
 //! being saved and which warnings come back with it, a score's SVG and MIDI
 //! exports, whether a path can name a new file, and the id a new file gets.
 //! The methods themselves are `handlers::agent`, an implementation of
-//! the `Server` that `poentaro-protocol` generates from
-//! `poentaro.protocol.anyx`.
+//! the `Server` traits that `poentaro-protocol` generates from its schema.
 //!
 //! D1-free and `pub` so `tests/agent.rs` can test it.
 
@@ -11,7 +10,7 @@ use itertools::{Either, Itertools};
 use poentaro::document::anyx_errors;
 use poentaro::error::{Diagnostic as ScoreDiagnostic, IrrecoverableError};
 use poentaro::file_tree::{TreePath, FILE_EXTENSION};
-use poentaro_protocol::Diagnostic;
+use poentaro_protocol::files::Diagnostic;
 
 /// The name a score is compiled under; it only appears in messages.
 const SCORE_FILE_NAME: &str = "score.poentaro";

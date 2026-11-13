@@ -84,7 +84,7 @@ async function firstSeenRevision(path: string): Promise<number> {
 async function writeAsAgent(path: string, content: string): Promise<void> {
   const revision = await firstSeenRevision(path)
   await sendAsAgent(
-    `write ${JSON.stringify(path)} at revision ${revision} content ${JSON.stringify(content)}`,
+    `files/write ${JSON.stringify(path)} at revision ${revision} content ${JSON.stringify(content)}`,
   )
 }
 

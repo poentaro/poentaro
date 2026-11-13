@@ -1,5 +1,5 @@
 //! `/agent`: where an account owner's AI agent reads and edits the owner's
-//! scores, through the anyx protocol `poentaro.protocol.anyx` describes.
+//! scores, through the anyx protocol `crates/poentaro-protocol/schema` describes.
 //!
 //! - `GET /agent` is the guide: how to write a request, then the schema.
 //! - `GET /agent/syntax` is `syntax.md`, the score syntax.
@@ -53,7 +53,7 @@ fn guide(origin: &str) -> String {
         "Send a request as the body of `POST {origin}/agent`, with the header \
          `Authorization: Bearer <key>`, the key you fetched this guide with. \
          The response is plain text.\n\n    \
-         curl -s {origin}/agent -H \"Authorization: Bearer $KEY\" --data-binary 'list files'\n\n\
+         curl -s {origin}/agent -H \"Authorization: Bearer $KEY\" --data-binary 'files/list'\n\n\
          For a request with many lines, write it to a file and send \
          `--data-binary @request.anyx`."
     );
