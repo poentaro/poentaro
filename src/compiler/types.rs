@@ -225,6 +225,9 @@ pub enum ElementContent {
     /// A syllable of a lyric part.
     Lyric {
         text: String,
+        /// The pinyin printed above `text`, tone-marked (`háng`), when the
+        /// lyric line gave the character's reading: `行(hang2)`.
+        ruby: Option<String>,
         /// Identity of the note this syllable is sung on — the same id its
         /// note's own `ColumnElement::note_id` carries (not stored on this
         /// element's own `ColumnElement::note_id`, which stays `None`: see

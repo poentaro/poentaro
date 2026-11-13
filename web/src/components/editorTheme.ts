@@ -17,6 +17,7 @@ export const highlightKindStyles: Record<HighlightKind, TokenStyle> = {
   'metadata-key': { foreground: '001080' },
   'part-kind': { foreground: '267f99' },
   'directive-key': { foreground: '0000ff' },
+  'lyric-reading': { foreground: '795e26', fontStyle: 'italic' },
 }
 
 export function definePoentaroEditorTheme(monacoApi: Monaco) {

@@ -190,6 +190,21 @@ score """
 }
 
 #[test]
+fn a_given_reading_follows_its_character_in_staff_notation() {
+    let mei = mei_of(
+        r#"parts ["Melody" [m]: notes, "Words" [w]: lyrics [m]],
+
+score """
+    key=C4 time=2/4
+    [m] 1 2
+    [w] 银行(hang2)
+    """,
+"#,
+    );
+    assert!(mei.contains(r#"<verse n="1"><syl>行(háng)</syl></verse>"#));
+}
+
+#[test]
 fn hidden_parts_get_no_staff() {
     let source = r#"parts ["Soprano" [S]: notes, "Alto" [A]: notes, "Words" [w]: lyrics [A]],
 

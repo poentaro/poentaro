@@ -1,0 +1,14 @@
+metadata { title "Pinyin for a polyphonic character" },
+
+parts ["Melody" [M]: notes, "Verse 1" [v1]: lyrics [M], "Verse 2" [v2]: lyrics [M]],
+
+score """
+    time=4/4 key=C4 bpm=90
+    [M] 1 2 3 5
+    [v1] 要去银行(háng)
+    [v2] 长(zhang3)大了 -
+
+    [M] 5 3 2 1
+    [v1] 我 们 回 家
+    [v2] 一 起 走 吧
+    """,

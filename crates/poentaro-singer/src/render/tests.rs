@@ -1,4 +1,4 @@
-use super::lyrics::phrase_text;
+use super::lyrics::{chimera_notes, phrase_text};
 use super::{mix, phrases, piece_count, segments, sing, sing_piece};
 use crate::{SingingPlan, SungNote, SungPart, SungSyllable, Voice};
 
@@ -111,4 +111,15 @@ fn pieces_sung_separately_and_mixed_in_any_order_make_the_same_song() {
         .collect::<Vec<_>>();
     assert_eq!(mix(&plan, &reversed), sing(&plan));
     assert_eq!(sing_piece(&plan, 3), None);
+}
+
+#[test]
+fn a_given_reading_stands_alone_as_numbered_pinyin() {
+    let notes = [
+        note(0.0, 1.0, word("银")),
+        note(1.0, 2.0, SungSyllable::Pinyin("hang2".to_string())),
+    ];
+    let phrase = notes.iter().collect::<Vec<_>>();
+    assert_eq!(phrase_text(&phrase), "银 hang2");
+    assert_eq!(chimera_notes(&phrase).len(), 2);
 }

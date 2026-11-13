@@ -12,6 +12,7 @@ fn highlight_kind_to_wit(kind: highlight::HighlightKind) -> HighlightKind {
         highlight::HighlightKind::MetadataKey => HighlightKind::MetadataKey,
         highlight::HighlightKind::PartKind => HighlightKind::PartKind,
         highlight::HighlightKind::DirectiveKey => HighlightKind::DirectiveKey,
+        highlight::HighlightKind::LyricReading => HighlightKind::LyricReading,
     }
 }
 

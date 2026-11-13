@@ -49,11 +49,7 @@ fn lyric_syllable_halign_center_is_independent_of_column_weight() {
             column_span: 1,
             halign: HAlign::Center,
             valign: VAlign::Center,
-            content: GridContent::LyricSyllable {
-                text: "la".to_string(),
-                source_part_index: 0,
-                note_id: 0,
-            },
+            content: la_syllable(),
         };
         GridPage {
             width_pt: 595.0,
@@ -143,6 +139,8 @@ fn lyric_syllable_shares_the_note_head_padding_formula() {
         valign: VAlign::Center,
         content: GridContent::LyricSyllable {
             text: "la".to_string(),
+            ruby: None,
+            ruby_band_pt: 0.0,
             source_part_index: 0,
             note_id: 0,
         },
@@ -203,6 +201,8 @@ fn cjk_lyric_syllable_compensates_its_leading_glyphs_left_bearing() {
         valign: VAlign::Center,
         content: GridContent::LyricSyllable {
             text: "漢字".to_string(),
+            ruby: None,
+            ruby_band_pt: 0.0,
             source_part_index: 0,
             note_id: 0,
         },
@@ -251,4 +251,14 @@ fn cjk_lyric_syllable_compensates_its_leading_glyphs_left_bearing() {
         lyric.x < 25.0 + x_start + 4.0,
         "a CJK syllable's x should sit left of the flat configured-padding x"
     );
+}
+
+fn la_syllable() -> GridContent {
+    GridContent::LyricSyllable {
+        text: "la".to_string(),
+        ruby: None,
+        ruby_band_pt: 0.0,
+        source_part_index: 0,
+        note_id: 0,
+    }
 }

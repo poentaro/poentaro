@@ -35,9 +35,12 @@ pub fn singing_plan(score: &Score, sample_rate: u32) -> Result<SingingPlan, Irre
 }
 
 fn sings_a_word(part: &SungPart) -> bool {
-    part.notes
-        .iter()
-        .any(|note| matches!(note.syllable, SungSyllable::Word(_)))
+    part.notes.iter().any(|note| {
+        matches!(
+            note.syllable,
+            SungSyllable::Word(_) | SungSyllable::Pinyin(_)
+        )
+    })
 }
 
 struct SingingPart {

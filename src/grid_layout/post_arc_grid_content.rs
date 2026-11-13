@@ -54,6 +54,8 @@ pub enum PostArcGridContent {
     RowLabel(String),
     LyricSyllable {
         text: String,
+        ruby: Option<String>,
+        ruby_band_pt: f32,
         source_part_index: usize,
         note_id: usize,
     },

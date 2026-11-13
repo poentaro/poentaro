@@ -15,6 +15,8 @@ pub enum HighlightKind {
     PartKind,
     /// A score directive keyword (`bpm`, `key`, …, `break`).
     DirectiveKey,
+    /// The reading after a Chinese lyric character, `(háng)` in `行(háng)`.
+    LyricReading,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -52,6 +52,9 @@ pub struct SungNote {
 pub enum SungSyllable {
     /// A new syllable, as written in the lyric line.
     Word(String),
+    /// A Chinese character sung with the reading the lyric line gave it
+    /// (`行(háng)`), as numbered pinyin: `hang2`, or `hang5` for neutral.
+    Pinyin(String),
     /// The previous syllable's vowel carries on at this note's pitch: a held
     /// `-` in the lyrics, or a slur onto a different pitch.
     Held,

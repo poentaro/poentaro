@@ -128,6 +128,22 @@ pub(crate) fn lyric_font_size(text: &str, base: f32, cjk: f32) -> f32 {
     }
 }
 
+/// Font size of the pinyin printed above a lyric's Chinese character.
+pub(crate) fn lyric_ruby_font_size(cjk: f32) -> f32 {
+    cjk * 0.5
+}
+
+/// How much taller a lyric row grows to fit pinyin above its characters.
+pub(crate) fn lyric_ruby_band_pt(cjk: f32) -> f32 {
+    let ruby = lyric_ruby_font_size(cjk);
+    text_vertical_extent(FontFamily::Serif, ruby) + lyric_ruby_gap_pt(cjk)
+}
+
+/// The space between the pinyin and the top of its character.
+pub(crate) fn lyric_ruby_gap_pt(cjk: f32) -> f32 {
+    lyric_ruby_font_size(cjk) * 0.4
+}
+
 /// Real advance width (in points) of one character at the given font size,
 /// measured from the pinned `FontFamily::SansSerif` (directive line) font's
 /// `hmtx` table.

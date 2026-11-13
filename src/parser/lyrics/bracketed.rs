@@ -3,7 +3,7 @@
 //! chord part" in `syntax.md`.
 use crate::ast::parsed::Syllable;
 use crate::error::{RecoverableError, Span};
-use crate::utils::tokenize_lyrics;
+use crate::utils::{is_han_char, pinyin_override_at, tokenize_lyrics, tokenize_lyrics_with_errors};
 
 /// The syllables of one chord-lyric line plus any bracket mistakes found.
 /// Each bracket yields one syllable with `bracketed: true` (when valid).
@@ -35,10 +35,19 @@ pub fn tokenize_bracketed_lyrics(content: &str, base_offset: usize) -> Bracketed
         if !is_open(c) && !is_close(c) {
             continue;
         }
-        result.syllables.extend(tokenize_lyrics(
+        // `行(háng)` is the character's reading, not a bracketed item: the
+        // plain text around it is tokenised with it.
+        if let Some(end) = attached_pinyin_end(content, idx, base_offset) {
+            while chars.peek().is_some_and(|(i, _)| *i < end) {
+                chars.next();
+            }
+            continue;
+        }
+        push_plain(
+            &mut result,
             &content[plain_start..idx],
             base_offset + plain_start,
-        ));
+        );
         let after = idx + c.len_utf8();
         plain_start = after;
         if is_close(c) {
@@ -87,11 +96,31 @@ pub fn tokenize_bracketed_lyrics(content: &str, base_offset: usize) -> Bracketed
             }
         }
     }
-    result.syllables.extend(tokenize_lyrics(
+    push_plain(
+        &mut result,
         &content[plain_start..],
         base_offset + plain_start,
-    ));
+    );
     result
+}
+
+fn push_plain(result: &mut BracketedLyrics, text: &str, base_offset: usize) {
+    let plain = tokenize_lyrics_with_errors(text, base_offset);
+    result.syllables.extend(plain.syllables);
+    result.errors.extend(plain.errors);
+}
+
+/// Where a valid `(pinyin)` attached to the Chinese character before `open`
+/// ends; a bracket holding anything else stays a bracketed item (`我(陪)`).
+fn attached_pinyin_end(content: &str, open: usize, base_offset: usize) -> Option<usize> {
+    content
+        .get(..open)?
+        .chars()
+        .next_back()
+        .filter(|c| is_han_char(*c))?;
+    pinyin_override_at(content, open, base_offset)
+        .filter(|attached| attached.pinyin.is_ok())
+        .map(|attached| attached.end)
 }
 
 #[cfg(test)]

@@ -163,6 +163,15 @@ pub(super) struct RowResolveConfig {
     pub(super) glyph_font_families: GlyphFontFamilies,
 }
 
+/// A lyric syllable in a row grown for pinyin sits in the row's lower part,
+/// below the band the pinyin is drawn in.
+fn lyric_ruby_shift(content: &GridContent) -> f32 {
+    match content {
+        GridContent::LyricSyllable { ruby_band_pt, .. } => ruby_band_pt * 0.5,
+        _ => 0.0,
+    }
+}
+
 fn resolve_row_element(
     el: &GridElement,
     row: &GridRow,
@@ -205,7 +214,7 @@ fn resolve_row_element(
         VAlign::Top => row_y,
         VAlign::Center => row_y + row.height_pt * 0.5,
         VAlign::Bottom => row_y + row.height_pt - bottom_padding,
-    };
+    } + lyric_ruby_shift(&el.content);
 
     if let Some(el) = resolve_span_marking(el, y, geometry, config) {
         return Ok(Some(el));

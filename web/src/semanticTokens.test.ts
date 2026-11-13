@@ -7,6 +7,7 @@ const tokenTypes: HighlightKind[] = [
   'metadata-key',
   'part-kind',
   'directive-key',
+  'lyric-reading',
 ]
 
 function tokenAt(

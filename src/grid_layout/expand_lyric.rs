@@ -3,6 +3,7 @@
 
 use crate::compiler::types::{BarLineKind, ElementContent, MeasureBlock, MULTI_MEASURE_REST_WIDTH};
 use crate::coordinate_resolver::LyricFontSizes;
+use crate::grid_layout::layout::lyric_ruby_band_pt;
 use crate::grid_layout::layout::{
     block_column_width, lyric_row_height, LyricSizing, LABEL_COLS, MUSIC_START_COL,
 };
@@ -94,12 +95,13 @@ pub(crate) fn expand_lyric_part(system: &[MeasureBlock], params: &LyricPartParam
     let column_count = params.column_count;
     let bar_height = params.bar_height;
     let font_size = lyric_part_max_font_size(system, part_idx, params.lyric_sizing.font_sizes);
+    let ruby_band_pt = lyric_ruby_band_pt(system, part_idx, params.lyric_sizing.font_sizes.cjk);
     let mut row = GridRow {
         height_pt: lyric_row_height(
             params.base,
             font_size,
             params.lyric_sizing.click_target_padding_pt,
-        ),
+        ) + ruby_band_pt,
         column_count,
         has_label_region: true,
         measure_layout: params.measure_layout.to_vec(),
@@ -114,7 +116,11 @@ pub(crate) fn expand_lyric_part(system: &[MeasureBlock], params: &LyricPartParam
         if let Some(part_row) = block.rows.get(part_idx) {
             for el in &part_row.elements {
                 match &el.content {
-                    ElementContent::Lyric { text, note_id } => {
+                    ElementContent::Lyric {
+                        text,
+                        ruby,
+                        note_id,
+                    } => {
                         row.elements.push(GridElement {
                             column: MUSIC_START_COL + measure_col_offset + el.column,
                             column_span: 1,
@@ -122,6 +128,8 @@ pub(crate) fn expand_lyric_part(system: &[MeasureBlock], params: &LyricPartParam
                             valign: VAlign::Center,
                             content: GridContent::LyricSyllable {
                                 text: text.clone(),
+                                ruby: ruby.clone(),
+                                ruby_band_pt,
                                 source_part_index: part_row.source_part_index,
                                 note_id: *note_id,
                             },

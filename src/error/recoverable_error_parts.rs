@@ -68,6 +68,15 @@ impl RecoverableError {
         }
     }
 
+    pub fn lyrics_pinyin_invalid(span: Span, text: &str) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::LyricsPinyinInvalid {
+                text: text.to_string(),
+            },
+        }
+    }
+
     pub fn lyrics_bracket_count_mismatch(
         span: Span,
         brackets: usize,

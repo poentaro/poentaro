@@ -250,10 +250,13 @@ pub(super) fn grid_to_absolute(
         }),
         PostArcGridContent::LyricSyllable {
             text,
+            ruby,
             source_part_index,
             note_id,
+            ..
         } => Some(AbsoluteContent::Lyric {
             text: text.clone(),
+            ruby: ruby.clone(),
             source_part_index: *source_part_index,
             note_id: *note_id,
         }),
