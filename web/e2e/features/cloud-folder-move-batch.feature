@@ -16,9 +16,9 @@ Feature: A folder move is delivered to the cloud as one all-or-nothing batch
     And "CloudBatchA2/two.poentaro" exists on the server for the signed-in account
     And "CloudBatchA/one.poentaro" does not exist on the server for the signed-in account
     And "CloudBatchA/two.poentaro" does not exist on the server for the signed-in account
-    And the cloud answered the batch renames with "204"
+    And the cloud answered the batch renames with "moved"
 
-  Scenario: A collision on one file adjusts the batch instead of half-applying it
+  Scenario: A destination folder made elsewhere meanwhile gets the next numbered folder instead of a merge
     Given a cloud file named "CloudBatchB/one.poentaro" is seeded for the signed-in account
     And a cloud file named "CloudBatchB/two.poentaro" is seeded for the signed-in account
     And I record the batch renames the cloud answers
@@ -28,11 +28,12 @@ Feature: A folder move is delivered to the cloud as one all-or-nothing batch
     And I type "CloudBatchB2" in the rename dialog and confirm
     And a cloud file named "CloudBatchB2/two.poentaro" is seeded for the signed-in account
     And the cloud is reachable again
-    Then "CloudBatchB2/one.poentaro" exists on the server for the signed-in account
-    And "CloudBatchB2/two 2.poentaro" exists on the server for the signed-in account
+    Then "CloudBatchB2 2/one.poentaro" exists on the server for the signed-in account
+    And "CloudBatchB2 2/two.poentaro" exists on the server for the signed-in account
     And "CloudBatchB/one.poentaro" does not exist on the server for the signed-in account
     And "CloudBatchB/two.poentaro" does not exist on the server for the signed-in account
-    And the cloud answered the batch renames with "409, 204"
+    And the file tree shows the folder "CloudBatchB2 2"
+    And the cloud answered the batch renames with "destinations taken, moved"
 
   Scenario: A folder move still waiting to be delivered survives a reload
     Given a cloud file named "CloudBatchC/one.poentaro" is seeded for the signed-in account

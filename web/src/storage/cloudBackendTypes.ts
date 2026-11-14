@@ -1,5 +1,5 @@
 import type { FileStoreState } from '../fileStore'
-import type { WorkerSchemas } from '../syncedShare/workerClient'
+import type { FilesVersionsVersion } from '../generated/protocol/app'
 import type { BaseSnapshots } from './outbox/baseSnapshots'
 import type { ConflictFlow } from './outbox/conflictFlow'
 import type { OutboxLooper } from './outbox/outboxLooper'
@@ -84,8 +84,10 @@ export interface CloudBackend extends StorageBackend {
   fetchVersion(fileId: string, revision: number): Promise<FileVersion>
 }
 
-export type FileVersionSummary = WorkerSchemas['FileVersionSummary']
-export type FileVersion = WorkerSchemas['FileVersionResponse']
+export type FileVersionSummary = FilesVersionsVersion
+export interface FileVersion {
+  content: string
+}
 
 export interface ServerFile {
   revision: number

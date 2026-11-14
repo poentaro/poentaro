@@ -1,33 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import {
-  createTestBackend,
-  fetchMock,
-  jsonResponse,
-} from './cloudBackendTestHelpers'
+import { createTestBackend } from './cloudBackendTestHelpers'
 
 describe('createCloudBackend: fetchServerFile()', () => {
-  const files = [
-    {
-      id: 'id-a',
-      name: 'a.poentaro',
-      content: '1 2',
-      revision: 4,
-      trashedAt: null,
-    },
-  ]
+  const seed = [{ id: 'id-a', path: 'a.poentaro', content: '1 2', revision: 4 }]
 
-  it('returns the revision and content of the listed file', async () => {
-    fetchMock.mockResolvedValue(jsonResponse(200, { files }))
-    const { backend } = createTestBackend()
+  it('returns the revision and content of the file', async () => {
+    const { backend } = createTestBackend(seed)
     expect(await backend.fetchServerFile('id-a')).toEqual({
       revision: 4,
       content: '1 2',
     })
   })
 
-  it('returns undefined for an unlisted file', async () => {
-    fetchMock.mockResolvedValue(jsonResponse(200, { files }))
-    const { backend } = createTestBackend()
+  it('returns undefined for a file the server lacks', async () => {
+    const { backend } = createTestBackend(seed)
     expect(await backend.fetchServerFile('nope')).toBeUndefined()
   })
 })

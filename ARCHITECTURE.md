@@ -255,7 +255,7 @@ The React app (`web/`) runs the compiler in a dedicated worker (`web/src/worker/
 - Placeholder files (`placeholder.rs`, `cloudBackendPlaceholders.ts`): the cloud (worker + D1) knows only files, so an explicit empty folder `A/B` is persisted as the file `A/B/.keep` with empty content; the worker and schema are unaware of folders. Rust owns the convention: `PLACEHOLDER_LEAF`, `is_placeholder_path(path)`, `placeholder_path(folder) -> Result<TreePath, PathError>`, and `classify_cloud_listing(&[ListedEntry { id, name, trashed }]) -> ListingClassification { folders, trashed_folders, hidden_file_ids }` (`FolderPlaceholder { folder, file_id }`), exposed as WIT `file-store-classify-cloud-listing`, `-placeholder-path`, `-is-placeholder-path`. Users cannot create the reserved leaf: `rename_file`, `rename_error` and `move_folder` fail with `FileStoreError::ReservedName` (WIT kind `reserved-name`); the placeholder logic itself does not go through those. Where the placeholder's file id lives: not in `FileStoreState` (local mode never has placeholders, and `file_ids`/`user_files`/`bin` stay placeholder-free). The cloud backend's `load()` runs the raw listing (after `applyPendingStructure`, so a still-queued create-folder shows at once, also after a reload) through `classify_cloud_listing`, drops every placeholder row (active or trashed) from the file list, sets `FileStoreState.folders` from the active ones, and keeps a `folder -> { fileId, trashed }` map inside the backend (`createPlaceholders`). `createFolder` queues `CreateFile` `<folder>/.keep`; folder rename/move queues one `RenameFiles` batch covering the moved files and the explicit-folder placeholder moves (`moveFolder` in `cloudBackendFolders.ts`; `rename()` in `cloudBackendPlaceholders.ts` returns the placeholder's `RenameMove`); `deleteFolder` queues `TrashFile` for every explicit folder removed. Because names are unique across trashed rows too, re-creating a deleted folder restores its trashed placeholder, and renaming a folder onto a deleted folder's name trashes the old placeholder and restores that one. A placeholder stays when real files are later added to the folder (harmless; the folder is explicit from then on). A `name_taken` answer for a placeholder create/rename (another device made the same folder) counts as delivered instead of becoming a visible `.keep 2.poentaro`.
 - Sorting compares names case-insensitively (lowercased), falling back to a plain comparison for a deterministic total order; this approximates the TS `localeCompare` it replaces.
 - `unique_path` mirrors the old `fileStore.ts` `uniqueName`: only siblings of `desired` (same parent folder) count as taken; a collision becomes `stem 2.ext`, `stem 3.ext`, ...; a name with no extension (or only a leading dot) gets `.poentaro`.
-- `path_after_collision(rejected: &TreePath) -> Result<TreePath, PathError>` (also in `unique_name.rs`) is the cloud outbox's retry name when the worker answers `name_taken` and only the rejected path is known: it steps over a trailing ` N` on the stem (`a.poentaro` -> `a 2.poentaro`, `a 2.poentaro` -> `a 3.poentaro`), keeps the folder prefix, and goes through `unique_path`. Exposed as the WIT export `file-store-name-after-collision` (`guest_file_store.rs`); `web/src/storage/outbox/sendMessage.ts` calls it for a `create-file`/`rename-file`/`restore-file` `name_taken` answer. The old TS `suggestNameAfterCollision` is deleted. A folder move is one `rename-files` batch (see Cloud outbox): when the worker answers `names_taken`, `sendMessage.ts` maps each listed name to a `NameAdjustment { rejected, replacement }` through the same export (`replacement` is none for a `.keep` placeholder path, whose move is dropped), and the outbox rewrites the matching moves and resends the whole batch.
+- `path_after_collision(rejected: &TreePath) -> Result<TreePath, PathError>` (also in `unique_name.rs`) is the cloud outbox's retry name when the worker answers `name_taken` and only the rejected path is known: it steps over a trailing ` N` on the stem (`a.poentaro` -> `a 2.poentaro`, `a 2.poentaro` -> `a 3.poentaro`), keeps the folder prefix, and goes through `unique_path`. `folder_after_collision(rejected)` is the same for a folder (`New` -> `New 2`), for a `folders/move` whose destination folder exists. Exposed as the WIT exports `file-store-name-after-collision` and `file-store-folder-after-collision` (`guest_file_store.rs`); `web/src/storage/outbox/sendMessage.ts` calls it for a `create-file`/`rename-file`/`restore-file` `name_taken` answer. The old TS `suggestNameAfterCollision` is deleted. A folder move is one `rename-files` batch (see Cloud outbox): when the worker answers `names_taken`, `sendMessage.ts` maps each listed name to a `NameAdjustment { rejected, replacement }` through the same export (`replacement` is none for a `.keep` placeholder path, whose move is dropped), and the outbox rewrites the matching moves and resends the whole batch.
 
 ### Source editing
 
@@ -854,6 +854,19 @@ routes stay served until no old tab calls them.
   `poentaro::file_tree::move_folder`.
 - Logging: `LogEvent::Protocol(ProtocolEvent)`: `Called` with every method
   name of the request and whether one failed, or `Refused` with the status.
+- Web: the generated clients (`web/src/generated/protocol/`) go through
+  `web/src/protocol/` (`clients.ts`: `publicClient`, `appClient`,
+  `testClient`; `transport.ts`: `codecFor`, `sendTo`), with the text encoded
+  and decoded in Rust (WIT `protocol-encode-request`,
+  `protocol-decode-response`). The cloud backend and its outbox take
+  `AppFileCalls` (the client's `files`/`folders` calls), which the unit tests
+  replace with `createFakeAppFiles` (`web/src/storage/fakeAppFiles.ts`, an
+  in-memory server).
+- E2e: `web/e2e/protocolClients.ts` gives the Node side the same clients.
+  `web/e2e/appCalls.ts` matches the page's `POST /app` requests by method,
+  decoding them in Rust (WIT `protocol-decode-request`), and answers or
+  rewrites them with an outcome encoded in Rust (`protocol-encode-response`):
+  `routeAppCall`, `answerCall`, `refuseCall`, `rewriteAnswers`.
 
 ### Version history
 
@@ -1227,10 +1240,11 @@ camelCase, enums are tagged with `kind`.
   The head message is index 0.
 - `QueuedMessage { message_id, created_at_ms, message: Message, attempts: Vec<Attempt> }`.
 - `Message`: `CreateFile { name, content }`, `SaveContent { content }`,
-  `RenameFile { to }`, `TrashFile`, `RestoreFile`, `RenameFiles { moves: Vec<RenameMove { file_id, to }> }`. The file id lives on the lane, except for `RenameFiles` (a folder move): it sits alone on a synthetic lane `batch:<message_id>` (`BATCH_LANE_PREFIX`) so a half-delivered move cannot exist; no revision is recorded for that lane and it is removed once the batch is delivered.
+  `RenameFile { to }`, `TrashFile`, `RestoreFile`, `RenameFiles { moves: Vec<RenameMove { file_id, to }>, folder: Option<FolderMove { from, to }> }` (`folder` is set when the batch is one folder move, which `sendMessage.ts` sends as a single `folders/move _ to _`; without it each move is sent as `files/move _ to _`). The file id lives on the lane, except for `RenameFiles` (a folder move): it sits alone on a synthetic lane `batch:<message_id>` (`BATCH_LANE_PREFIX`) so a half-delivered move cannot exist; no revision is recorded for that lane and it is removed once the batch is delivered.
   Ordering (`scheduling::is_blocked`): a batch is not sent before a pending `CreateFile` (placeholder creates included) of any member file, nor before an earlier rename/trash/restore of a member file or an earlier batch sharing a file; a later per-file rename/trash/restore of a member waits for the batch. `SaveContent` is never blocked. `applyPendingStructure` (`cloudBackendOutbox.ts`) replays pending messages in `createdAtMs` order, including batch moves.
 - `Attempt { at_ms, outcome: AttemptOutcome }`; `AttemptOutcome`: `Succeeded`,
   `Transient`, `Unauthorized`, `RevisionConflict`, `NameTaken`, `NamesTaken { adjustments }`, `Permanent`.
+  On `NamesTaken`, `batch_adjust::adjust_batch` rewrites the head message: an adjustment naming `folder.to` (the destination folder exists) moves the whole batch into the replacement folder and keeps `folder`; otherwise each taken move is renamed or dropped and `folder` is cleared.
   A delivered message's log (kept in its `sent:` record) ends in `Succeeded`;
   that is what makes a history row "Sent".
 - `LaneStatus`: `Idle`, `Draining`, `Waiting { retry_at_ms }`, `NeedsSignIn`,
@@ -1266,8 +1280,9 @@ The shell only does I/O, timers and rendering; every decision is a wasm call.
 - Existing: `outboxStore.ts` (persists `StoredRecord`s), `memoryOutboxStore.ts`
   (in-memory store), `outboxLock.ts` (single-tab lock), `outboxScheduler.ts`
   (timer driven by `next_wake_ms`).
-- `sendMessage.ts` (performs a `SendRequest` over HTTP and maps the
-  response to a `SendResult`), `outboxLooper.ts` (the Looper; runs on the
+- `sendMessage.ts` (performs a `SendRequest` through `poentaro app`'s file
+  calls and maps each method error to a `SendResult`; an error the outbox
+  can't fix is `Permanent { status, reason: <error kind> }`), `outboxLooper.ts` (the Looper; runs on the
   leader tab only), `baseSnapshots.ts` (Base snapshot storage under
   `base:<fileId>`), `conflictFlow.ts` (drives `NeedsMerge` through
   `merge_three_way`: a clean merge is saved at once, a conflicting one is kept

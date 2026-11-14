@@ -21,10 +21,10 @@ Feature: Cloud outbox history: every message, sent or not, can be inspected and 
 
   Scenario: H3 A failing file is listed with its attempt and can be filtered as a problem
     Given a cloud file named "outbox-h3.poentaro" is seeded for the signed-in account
-    And every content-save request for "outbox-h3.poentaro" will fail with a 400 response
+    And every content-save request for "outbox-h3.poentaro" will be refused as "trashed"
     And I open and edit "outbox-h3" with suffix " 5"
     When I open the sync panel
     And I filter the outbox history by status "Any problem"
     Then the outbox history lists "outbox-h3.poentaro" as "Couldn't sync"
     When I expand "outbox-h3.poentaro" in the outbox history
-    Then the outbox history row for "outbox-h3.poentaro" shows an attempt with outcome "400"
+    Then the outbox history row for "outbox-h3.poentaro" shows an attempt with outcome "trashed"

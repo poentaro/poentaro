@@ -1,43 +1,16 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Message, SendRequest } from '../../poentaroWasm'
+import { SessionEnded } from '../../protocol/transport'
+import { WorkerRequestError } from '../../syncedShare/workerClient'
 import { installRealWasm } from '../cloudBackendTestHelpers'
-import { type SendMessageDeps, sendMessage } from './sendMessage'
+import { createFakeAppFiles, type FakeFile } from '../fakeAppFiles'
+import { sendMessage } from './sendMessage'
 
 beforeAll(installRealWasm)
 
-interface FakeReply {
-  status: number
-  body?: unknown
-}
-
-type Post = (
-  path: string,
-  options: { signal?: AbortSignal; body: unknown },
-) => Promise<unknown>
-
-function replyWith({ status, body }: FakeReply) {
-  const response = {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: new Headers(),
-  } as Response
-  return status >= 200 && status < 300
-    ? { data: body, response }
-    : { error: body, response }
-}
-
-function makeDeps(
-  post: Post,
-  overrides: Partial<SendMessageDeps> = {},
-): SendMessageDeps {
-  return {
-    client: { POST: post } as unknown as SendMessageDeps['client'],
-    identityToken: 'token',
-    fetchServerContent: async () => 'server text',
-    restoreName: () => 'restored.poentaro',
-    ...overrides,
-  }
-}
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 function requestFor(message: Message, expectedRevision = 3n): SendRequest {
   return {
@@ -53,255 +26,231 @@ const saveContent = (content: string): Message => ({
   val: { content },
 })
 
-const respond =
-  (reply: FakeReply): Post =>
-  async () =>
-    replyWith(reply)
+const fileOne: FakeFile = {
+  id: 'file-1',
+  path: 'a.poentaro',
+  content: 'server text',
+  revision: 3,
+}
 
-afterEach(() => {
-  vi.useRealTimers()
-})
+const WRITE = 'files/write _ at revision _ content _'
+
+function send(message: Message, seed: FakeFile[] = [fileOne]) {
+  const server = createFakeAppFiles(seed)
+  return {
+    server,
+    result: sendMessage(requestFor(message), { app: server.app }),
+  }
+}
+
+/** Sends a save to a server whose next write answers `failure`. */
+function saveFailingWith(failure: Parameters<typeof server.failNext>[1]) {
+  const server = createFakeAppFiles([fileOne])
+  server.failNext(WRITE, failure)
+  return sendMessage(requestFor(saveContent('x')), { app: server.app })
+}
+const server = createFakeAppFiles()
 
 describe('sendMessage success', () => {
-  it('saves content and returns the new revision', async () => {
-    const post = vi.fn<Post>(async () =>
-      replyWith({ status: 200, body: { revision: 4 } }),
-    )
-    const result = await sendMessage(
-      requestFor(saveContent('1 2 3')),
-      makeDeps(post),
-    )
-    expect(result).toEqual({ tag: 'ok', val: { revision: 4n } })
-    expect(post).toHaveBeenCalledWith(
-      '/files/{id}/content',
-      expect.objectContaining({
-        body: { identityToken: 'token', content: '1 2 3', expectedRevision: 3 },
-      }),
-    )
+  it('saves content at the recorded revision and returns the new one', async () => {
+    const { server, result } = send(saveContent('1 2 3'))
+    expect(await result).toEqual({ tag: 'ok', val: { revision: 4n } })
+    expect(server.lastCall()).toEqual({
+      method: WRITE,
+      args: ['file-1', 3, '1 2 3'],
+    })
   })
 
   it('creates a file with the lane id', async () => {
-    const post = vi.fn<Post>(async () =>
-      replyWith({ status: 200, body: { revision: 1 } }),
+    const { server, result } = send(
+      { tag: 'create-file', val: { name: 'b.poentaro', content: 'x' } },
+      [],
     )
-    const result = await sendMessage(
-      requestFor({
-        tag: 'create-file',
-        val: { name: 'a.poentaro', content: 'x' },
-      }),
-      makeDeps(post),
-    )
-    expect(result).toEqual({ tag: 'ok', val: { revision: 1n } })
-    expect(post).toHaveBeenCalledWith(
-      '/files',
-      expect.objectContaining({
-        body: {
-          identityToken: 'token',
-          id: 'file-1',
-          name: 'a.poentaro',
-          content: 'x',
-        },
-      }),
-    )
+    expect(await result).toEqual({ tag: 'ok', val: { revision: 0n } })
+    expect(server.file('file-1')).toMatchObject({
+      path: 'b.poentaro',
+      content: 'x',
+    })
+  })
+
+  it('takes a create whose earlier answer was lost as made', async () => {
+    const { result } = send({
+      tag: 'create-file',
+      val: { name: 'a.poentaro', content: 'server text' },
+    })
+    expect(await result).toEqual({ tag: 'ok', val: { revision: 3n } })
   })
 
   it.each([
-    [
-      { tag: 'rename-file', val: { to: 'b.poentaro' } } as Message,
-      '/files/{id}/rename',
-    ],
-    [{ tag: 'trash-file' } as Message, '/files/{id}/delete'],
-    [{ tag: 'restore-file' } as Message, '/files/{id}/restore'],
-  ])('routes %j and keeps the recorded revision for an empty body', async (message, path) => {
-    const post = vi.fn<Post>(async () => replyWith({ status: 200 }))
-    const result = await sendMessage(requestFor(message), makeDeps(post))
-    expect(result).toEqual({ tag: 'ok', val: { revision: 3n } })
-    expect(post).toHaveBeenCalledWith(path, expect.anything())
+    [{ tag: 'rename-file', val: { to: 'b.poentaro' } } as Message],
+    [{ tag: 'trash-file' } as Message],
+  ])('keeps the recorded revision for %j', async (message) => {
+    const { result } = send(message)
+    expect(await result).toEqual({ tag: 'ok', val: { revision: 3n } })
   })
 
-  it('restores under the current local name', async () => {
-    const post = vi.fn<Post>(async () => replyWith({ status: 200 }))
-    await sendMessage(requestFor({ tag: 'restore-file' }), makeDeps(post))
-    expect(post).toHaveBeenCalledWith(
-      '/files/{id}/restore',
-      expect.objectContaining({
-        body: { identityToken: 'token', name: 'restored.poentaro' },
-      }),
-    )
+  it('restores, and takes a file already back as restored', async () => {
+    const trashed = { ...fileOne, trashedAt: 5 }
+    expect(await send({ tag: 'restore-file' }, [trashed]).result).toEqual({
+      tag: 'ok',
+      val: { revision: 3n },
+    })
+    expect(await send({ tag: 'restore-file' }).result).toEqual({
+      tag: 'ok',
+      val: { revision: 3n },
+    })
+  })
+
+  it('takes trashing a file that is gone as done', async () => {
+    expect(await send({ tag: 'trash-file' }, []).result).toEqual({
+      tag: 'ok',
+      val: { revision: 3n },
+    })
   })
 })
 
 describe('sendMessage failures', () => {
   it('treats a network error as transient', async () => {
-    const post: Post = async () => {
-      throw new TypeError('Failed to fetch')
-    }
-    const result = await sendMessage(
-      requestFor(saveContent('x')),
-      makeDeps(post),
-    )
+    const result = await saveFailingWith(new TypeError('Failed to fetch'))
     expect(result.tag).toBe('transient')
   })
 
-  it('aborts after the timeout and reports transient', async () => {
+  it('gives up waiting after the timeout and reports transient', async () => {
     vi.useFakeTimers()
-    const post: Post = (_path, { signal }) =>
-      new Promise((_resolve, reject) => {
-        signal?.addEventListener('abort', () => reject(new Error('aborted')))
-      })
-    const pending = sendMessage(
-      requestFor(saveContent('x')),
-      makeDeps(post, { timeoutMs: 15_000 }),
-    )
+    const calls = await server.app()
+    const pending = sendMessage(requestFor(saveContent('x')), {
+      app: async () => ({
+        ...calls,
+        files: {
+          ...calls.files,
+          writeAtRevisionContent: () => new Promise(() => undefined),
+        },
+      }),
+      timeoutMs: 15_000,
+    })
     await vi.advanceTimersByTimeAsync(15_000)
     expect((await pending).tag).toBe('transient')
   })
 
-  it.each([500, 503, 429])('treats status %i as transient', async (status) => {
-    const result = await sendMessage(
-      requestFor(saveContent('x')),
-      makeDeps(respond({ status, body: { code: 'internal', message: 'm' } })),
-    )
+  it('treats a server failure as transient', async () => {
+    const result = await saveFailingWith({ kind: 'internalError' })
     expect(result.tag).toBe('transient')
   })
 
-  it('treats a 5xx with a non-JSON body as transient', async () => {
-    const result = await sendMessage(
-      requestFor(saveContent('x')),
-      makeDeps(respond({ status: 502 })),
-    )
-    expect(result.tag).toBe('transient')
-  })
-
-  it('maps 401 to unauthorized', async () => {
-    const result = await sendMessage(
-      requestFor(saveContent('x')),
-      makeDeps(respond({ status: 401 })),
-    )
-    expect(result).toEqual({ tag: 'unauthorized' })
-  })
-
-  it('maps the unauthorized error code to unauthorized', async () => {
-    const result = await sendMessage(
-      requestFor(saveContent('x')),
-      makeDeps(
-        respond({
-          status: 403,
-          body: { code: 'unauthorized', attempts: 1, failedAt: 0, reason: 'r' },
-        }),
-      ),
-    )
-    expect(result).toEqual({ tag: 'unauthorized' })
-  })
-
-  it('maps any other 4xx to permanent', async () => {
-    const result = await sendMessage(
-      requestFor(saveContent('x')),
-      makeDeps(respond({ status: 400, body: { code: 'bad_request' } })),
-    )
+  it("treats a failure status as transient, naming the request's trace ID", async () => {
+    const response = new Response('', {
+      status: 503,
+      headers: { 'X-Trace-Id': '0123456789abcdef' },
+    })
+    const result = await saveFailingWith(new WorkerRequestError(response, null))
     expect(result).toEqual({
-      tag: 'permanent',
-      val: { status: 400, reason: 'bad_request' },
+      tag: 'transient',
+      val: { reason: 'status 503, trace ID 0123456789abcdef' },
     })
   })
 
-  it("names the failed request's trace ID in the reason", async () => {
-    const result = await sendMessage(
-      requestFor(saveContent('x')),
-      makeDeps(
-        respond({
-          status: 400,
-          body: { code: 'bad_request', traceId: '0123456789abcdef' },
-        }),
-      ),
-    )
+  it('maps an ended session to unauthorized', async () => {
+    const result = await saveFailingWith(new SessionEnded())
+    expect(result).toEqual({ tag: 'unauthorized' })
+  })
+
+  it("names the refusing response's trace ID in a permanent reason", async () => {
+    const empty = createFakeAppFiles([])
+    const result = await sendMessage(requestFor(saveContent('x')), {
+      app: async (options) => {
+        options.onTraceId?.('0123456789abcdef')
+        return empty.app()
+      },
+    })
     expect(result).toEqual({
       tag: 'permanent',
-      val: { status: 400, reason: 'bad_request, trace ID 0123456789abcdef' },
+      val: { status: 404, reason: 'missing, trace ID 0123456789abcdef' },
+    })
+  })
+
+  it('is permanent to save a file in the trash', async () => {
+    const { result } = send(saveContent('x'), [{ ...fileOne, trashedAt: 1 }])
+    expect(await result).toEqual({
+      tag: 'permanent',
+      val: { status: 410, reason: 'trashed' },
     })
   })
 })
 
 describe('sendMessage revision conflict', () => {
-  const conflict = respond({
-    status: 409,
-    body: { code: 'revision_conflict', currentRevision: 9 },
-  })
+  const moved = { ...fileOne, revision: 9 }
 
   it('reports a conflict when the server text differs', async () => {
-    const result = await sendMessage(
-      requestFor(saveContent('mine')),
-      makeDeps(conflict),
-    )
-    expect(result).toEqual({ tag: 'conflict', val: { currentRevision: 9n } })
+    const { result } = send(saveContent('mine'), [moved])
+    expect(await result).toEqual({
+      tag: 'conflict',
+      val: { currentRevision: 9n },
+    })
   })
 
   it('treats equal server text as a lost acknowledgement', async () => {
-    const result = await sendMessage(
-      requestFor(saveContent('server text')),
-      makeDeps(conflict),
-    )
-    expect(result).toEqual({ tag: 'ok', val: { revision: 9n } })
-  })
-
-  it('reports transient when the server text cannot be fetched', async () => {
-    const result = await sendMessage(
-      requestFor(saveContent('mine')),
-      makeDeps(conflict, {
-        fetchServerContent: async () => {
-          throw new TypeError('offline')
-        },
-      }),
-    )
-    expect(result.tag).toBe('transient')
+    const { result } = send(saveContent('server text'), [moved])
+    expect(await result).toEqual({ tag: 'ok', val: { revision: 9n } })
   })
 })
 
-describe('sendMessage batch rename', () => {
-  const batch = (...moves: Array<{ fileId: string; to: string }>): Message => ({
+describe('sendMessage folder move', () => {
+  const folderMove = (from: string, to: string): Message => ({
     tag: 'rename-files',
-    val: { moves },
+    val: {
+      moves: [{ fileId: 'a', to: `${to}/a.poentaro` }],
+      folder: { from, to },
+    },
+  })
+  const inOld: FakeFile = { id: 'a', path: 'Old/a.poentaro', content: '' }
+
+  it('moves the folder as one call', async () => {
+    const { server, result } = send(folderMove('Old', 'New'), [inOld])
+    expect(await result).toEqual({ tag: 'ok', val: { revision: 3n } })
+    expect(server.calls).toEqual([
+      { method: 'folders/move _ to _', args: ['Old', 'New'] },
+    ])
+    expect(server.file('a')?.path).toBe('New/a.poentaro')
   })
 
-  it('posts every move to the batch route', async () => {
-    const post = vi.fn<Post>(async () => replyWith({ status: 204 }))
+  it('takes a folder already moved as moved', async () => {
+    const { result } = send(folderMove('Old', 'New'), [
+      { ...inOld, path: 'New/a.poentaro' },
+    ])
+    expect(await result).toEqual({ tag: 'ok', val: { revision: 3n } })
+  })
 
+  it('adjusts a destination folder someone else made', async () => {
+    const { result } = send(folderMove('Old', 'New'), [
+      inOld,
+      { id: 'b', path: 'New/b.poentaro', content: '' },
+    ])
+    expect(await result).toEqual({
+      tag: 'names-taken',
+      val: { adjustments: [{ rejected: 'New', replacement: 'New 2' }] },
+    })
+  })
+})
+
+describe('sendMessage folder move race', () => {
+  it('names a file taken inside the destination on its own', async () => {
+    const server = createFakeAppFiles([
+      { id: 'a', path: 'Old/a.poentaro', content: '' },
+    ])
+    server.failNext('folders/move _ to _', {
+      kind: 'error',
+      error: { kind: 'destinationsTaken', paths: ['New/a.poentaro'] },
+    })
     const result = await sendMessage(
-      requestFor(
-        batch(
-          { fileId: 'a', to: 'New/a.poentaro' },
-          { fileId: 'b', to: 'New/b.poentaro' },
-        ),
-      ),
-      makeDeps(post),
-    )
-
-    expect(result).toEqual({ tag: 'ok', val: { revision: 3n } })
-    expect(post).toHaveBeenCalledWith(
-      '/files/rename-batch',
-      expect.objectContaining({
-        body: {
-          identityToken: 'token',
-          moves: [
-            { id: 'a', name: 'New/a.poentaro' },
-            { id: 'b', name: 'New/b.poentaro' },
-          ],
+      requestFor({
+        tag: 'rename-files',
+        val: {
+          moves: [{ fileId: 'a', to: 'New/a.poentaro' }],
+          folder: { from: 'Old', to: 'New' },
         },
       }),
+      { app: server.app },
     )
-  })
-
-  it('adjusts each destination the worker reports as taken', async () => {
-    const result = await sendMessage(
-      requestFor(batch({ fileId: 'a', to: 'New/a.poentaro' })),
-      makeDeps(
-        respond({
-          status: 409,
-          body: { code: 'names_taken', names: ['New/a.poentaro'] },
-        }),
-      ),
-    )
-
     expect(result).toEqual({
       tag: 'names-taken',
       val: {
@@ -311,89 +260,88 @@ describe('sendMessage batch rename', () => {
       },
     })
   })
+})
 
-  it('drops the move of a folder marker that already exists', async () => {
-    const result = await sendMessage(
-      requestFor(batch({ fileId: 'k', to: 'New/.keep' })),
-      makeDeps(
-        respond({
-          status: 409,
-          body: { code: 'names_taken', names: ['New/.keep'] },
-        }),
-      ),
-    )
-
-    expect(result).toEqual({
-      tag: 'names-taken',
-      val: {
-        adjustments: [{ rejected: 'New/.keep', replacement: undefined }],
-      },
-    })
+describe('sendMessage batch queued without its folder', () => {
+  const batch = (...moves: Array<{ fileId: string; to: string }>): Message => ({
+    tag: 'rename-files',
+    val: { moves },
   })
 
-  it('is permanent when a file of the batch no longer exists', async () => {
-    const result = await sendMessage(
-      requestFor(batch({ fileId: 'a', to: 'New/a.poentaro' })),
-      makeDeps(respond({ status: 404, body: { code: 'not_found' } })),
+  it('moves each file, skipping one gone since', async () => {
+    const { server, result } = send(
+      batch(
+        { fileId: 'a', to: 'New/a.poentaro' },
+        { fileId: 'gone', to: 'New/b.poentaro' },
+      ),
+      [{ id: 'a', path: 'Old/a.poentaro', content: '' }],
     )
+    expect(await result).toEqual({ tag: 'ok', val: { revision: 3n } })
+    expect(server.file('a')?.path).toBe('New/a.poentaro')
+  })
 
-    expect(result).toEqual({
-      tag: 'permanent',
-      val: { status: 404, reason: 'not_found' },
+  it('adjusts each taken destination, dropping a folder marker', async () => {
+    const { result } = send(
+      batch(
+        { fileId: 'a', to: 'New/a.poentaro' },
+        { fileId: 'k', to: 'New/.keep' },
+      ),
+      [
+        { id: 'a', path: 'Old/a.poentaro', content: '' },
+        { id: 'k', path: 'Old/.keep', content: '' },
+        { id: 'x', path: 'New/a.poentaro', content: '' },
+        { id: 'y', path: 'New/.keep', content: '' },
+      ],
+    )
+    expect(await result).toEqual({
+      tag: 'names-taken',
+      val: {
+        adjustments: [
+          { rejected: 'New/a.poentaro', replacement: 'New/a 2.poentaro' },
+          { rejected: 'New/.keep', replacement: undefined },
+        ],
+      },
     })
   })
 })
 
-describe('sendMessage name_taken', () => {
-  const taken = respond({ status: 409, body: { code: 'name_taken' } })
+describe('sendMessage taken path', () => {
+  const holder: FakeFile = {
+    id: 'other',
+    path: 'Hymns/Advent/O Come.poentaro',
+    content: '',
+  }
 
   it('suggests a new name for a create', async () => {
-    const result = await sendMessage(
-      requestFor({
+    const { result } = send(
+      {
         tag: 'create-file',
-        val: { name: 'a.poentaro', content: '' },
-      }),
-      makeDeps(taken),
+        val: { name: 'Hymns/Advent/O Come.poentaro', content: '' },
+      },
+      [holder],
     )
-    expect(result).toEqual({
-      tag: 'name-taken',
-      val: { suggestedName: 'a 2.poentaro' },
-    })
-  })
-
-  it('suggests a new name for a rename', async () => {
-    const result = await sendMessage(
-      requestFor({ tag: 'rename-file', val: { to: 'b.poentaro' } }),
-      makeDeps(taken),
-    )
-    expect(result).toEqual({
-      tag: 'name-taken',
-      val: { suggestedName: 'b 2.poentaro' },
-    })
-  })
-
-  it('keeps the folder when suggesting a new name', async () => {
-    const result = await sendMessage(
-      requestFor({
-        tag: 'rename-file',
-        val: { to: 'Hymns/Advent/O Come.poentaro' },
-      }),
-      makeDeps(taken),
-    )
-    expect(result).toEqual({
+    expect(await result).toEqual({
       tag: 'name-taken',
       val: { suggestedName: 'Hymns/Advent/O Come 2.poentaro' },
     })
   })
 
-  it('is permanent for a message kind with no name', async () => {
-    const result = await sendMessage(
-      requestFor(saveContent('x')),
-      makeDeps(taken),
+  it('suggests a new name for a rename, keeping the folder', async () => {
+    const { result } = send(
+      { tag: 'rename-file', val: { to: 'Hymns/Advent/O Come.poentaro' } },
+      [fileOne, holder],
     )
-    expect(result).toEqual({
-      tag: 'permanent',
-      val: { status: 409, reason: 'name_taken' },
+    expect(await result).toEqual({
+      tag: 'name-taken',
+      val: { suggestedName: 'Hymns/Advent/O Come 2.poentaro' },
     })
+  })
+
+  it("takes a folder's marker that exists already as the folder", async () => {
+    const { result } = send(
+      { tag: 'create-file', val: { name: 'Hymns/.keep', content: '' } },
+      [{ id: 'other', path: 'Hymns/.keep', content: '' }],
+    )
+    expect(await result).toEqual({ tag: 'ok', val: { revision: 3n } })
   })
 })

@@ -154,7 +154,7 @@ handler calls today, add a Rust test, then delete the REST route.
 
 One caller at a time; each stays green on its e2e features.
 
-- [ ] A `send` per endpoint in `web/src/protocol/`: sets the URL, bearer token
+- [x] A `send` per endpoint in `web/src/protocol/`: sets the URL, bearer token
       and schema hash, turns 401 into the existing "session ended" flow and
       409 into the reload prompt.
 - [ ] **Lazy loading.** Find everything that reads a file's content without
@@ -162,11 +162,11 @@ One caller at a time; each stays green on its e2e features.
       revision check every 5 seconds) and make each fetch with `files/read _`
       or cache what was read. Offline, a file never opened here shows as
       unavailable.
-- [ ] `storage/accountRequests.ts`: sign up, sign in, sign out, change
+- [x] `storage/accountRequests.ts`: sign up, sign in, sign out, change
       password
 - [ ] `hooks/useCloudStoreLoader.ts`, `storage/cloudBackend.ts`: list, read,
       create, write
-- [ ] `storage/cloudBackendOutbox.ts`, `storage/outbox/sendMessage.ts`: same
+- [x] `storage/cloudBackendOutbox.ts`, `storage/outbox/sendMessage.ts`: same
       ids, new transport
 - [ ] `storage/cloudBackendFolders.ts`, `cloudBackendNaming.ts`: folder
       move, restore; delete the naming logic that moved to Rust
@@ -175,7 +175,7 @@ One caller at a time; each stays green on its e2e features.
 - [ ] `hooks/useSyncedShareOwner.ts`, `hooks/useFolderShares.ts`: links
 - [ ] `hooks/useSyncedShareViewer.ts`, `syncedShare/workerClient.ts`,
       `syncedShareUrl.ts`: `links/open _`
-- [ ] API keys dialog: `keys/*`
+- [x] API keys dialog: `keys/*`
 - [ ] `bridge/main.ts`, `originMigration/importOriginMigration.ts`:
       `migrations/*`
 - [ ] `syncedShare/errors.ts`: map each method's error `kind` instead of

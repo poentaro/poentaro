@@ -23,6 +23,21 @@ pub(super) fn protocol_encode_request(
     anyx_protocol::json::encode_request_json(schema(protocol), &method, &arguments)
 }
 
+pub(super) fn protocol_decode_request(
+    protocol: Protocol,
+    request: String,
+) -> Result<String, String> {
+    anyx_protocol::json::decode_request_json(schema(protocol), &request)
+}
+
+pub(super) fn protocol_encode_response(
+    protocol: Protocol,
+    request: String,
+    outcomes: String,
+) -> Result<String, String> {
+    anyx_protocol::json::encode_response_json(schema(protocol), &request, &outcomes)
+}
+
 pub(super) fn protocol_decode_response(
     protocol: Protocol,
     method: String,

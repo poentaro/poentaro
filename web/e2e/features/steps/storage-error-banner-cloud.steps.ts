@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { workerRouteGlob } from '../../cloudFileHelpers'
+import { routeAppCall } from '../../appCalls'
 import {
   fileSwitcherTrigger,
   fileTabByExactName,
@@ -10,6 +10,8 @@ import {
 import { gotoCloudApp } from './cloud-account-helpers'
 import { installContentSaveTracking } from './cloud-content-save-tracking'
 import { Given, Then, When } from './fixtures'
+
+const CONTENT_SAVE = 'files/write _ at revision _ content _'
 
 // Mirrors `useStorageBackend.ts`'s `AUTOSAVE_DEBOUNCE_MS`. Not imported
 // directly -- that module transitively pulls in `fileStore.ts`'s Vite-only
@@ -24,13 +26,13 @@ Given(
     // `'offline'`, matching a real offline `fetch`. One-shot: every request
     // after this falls through to the real worker.
     let contentSaveCount = 0
-    await page.route(workerRouteGlob('/files/{id}/content'), async (route) => {
+    await routeAppCall(page, CONTENT_SAVE, async (route) => {
       contentSaveCount += 1
       if (contentSaveCount === 1) {
         await route.abort('failed')
         return
       }
-      await route.continue()
+      await route.fallback()
     })
   },
 )

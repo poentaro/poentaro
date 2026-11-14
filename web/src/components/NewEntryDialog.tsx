@@ -1,5 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useEffect, useRef, useState } from 'react'
+import { useWasmReady } from '../hooks/useWasmReady'
 import './FileDialogs.css'
 
 export interface NewEntryDialogProps {
@@ -34,8 +35,12 @@ export function NewEntryDialog({
   }, [open])
 
   const trimmed = draft.trim()
-  const error = open && trimmed ? createError(parent, trimmed) : undefined
-  const canConfirm = trimmed !== '' && error === undefined
+  // The name is checked in Rust, so it can't be confirmed before the wasm
+  // component is ready.
+  const wasmReady = useWasmReady()
+  const error =
+    open && trimmed && wasmReady ? createError(parent, trimmed) : undefined
+  const canConfirm = trimmed !== '' && wasmReady && error === undefined
 
   const confirm = () => {
     if (!canConfirm) return

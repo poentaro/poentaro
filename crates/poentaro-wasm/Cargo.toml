@@ -22,7 +22,7 @@ itertools = "0.13"
 cloud-outbox = { path = "../cloud-outbox" }
 brotli = "8"
 poentaro-protocol = { path = "../poentaro-protocol" }
-anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "adf3324655a63b97f1c7e57f400baa804f38eb10", features = ["json"] }
+anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "ff7a3cf597b219faee27526bad2be8715fa3d5ce", features = ["json"] }
 
 [dev-dependencies]
 zip = { version = "2", default-features = false, features = ["deflate"] }

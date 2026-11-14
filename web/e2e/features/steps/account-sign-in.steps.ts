@@ -1,11 +1,11 @@
 import { expect, type Page } from '@playwright/test'
-import { workerRouteGlob } from '../../cloudFileHelpers'
 import {
   fileTabByExactName,
   focusEditor,
   openFileActions,
   openFileList,
 } from '../../fileSwitcherHelpers'
+import { answersCall } from '../../protocolClients'
 import { gotoCloudApp } from './cloud-account-helpers'
 import { Then, When } from './fixtures'
 
@@ -62,9 +62,10 @@ When(
     // Registered before navigating so it's in place for the whole scenario,
     // including the post-disconnect edit attempt at the very end -- see
     // "no content request is sent to the worker after disconnecting" below.
-    await page.route(workerRouteGlob('/files/{id}/content'), async (route) => {
-      contentSaveRequests.push(route.request().url())
-      await route.continue()
+    page.on('request', (request) => {
+      if (answersCall(request, 'files/write')) {
+        contentSaveRequests.push(request.postData() ?? '')
+      }
     })
     await gotoCloudApp(page)
     await openFileList(page)

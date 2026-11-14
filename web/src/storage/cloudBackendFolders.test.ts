@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FileStoreState } from '../fileStore'
-import { createTestBackend, fetchMock } from './cloudBackendTestHelpers'
+import { createTestBackend } from './cloudBackendTestHelpers'
 
 const state: FileStoreState = {
   active: 'Scratch.poentaro',
@@ -17,8 +17,11 @@ const state: FileStoreState = {
   },
 }
 
-function neverAnswer() {
-  fetchMock.mockImplementation(() => new Promise(() => undefined))
+/** A backend whose server never answers. */
+function unanswered() {
+  const harness = createTestBackend()
+  harness.server.hang()
+  return harness
 }
 
 function queued(
@@ -39,8 +42,7 @@ function batches(looper: ReturnType<typeof createTestBackend>['looper']) {
 
 describe('createCloudBackend: folder operations', () => {
   it('moveFolder queues one batch rename covering every file inside', async () => {
-    const { backend, looper } = createTestBackend()
-    neverAnswer()
+    const { backend, looper } = unanswered()
 
     const next = await backend.moveFolder(state, 'Hymns', 'Songs')
 
@@ -57,6 +59,7 @@ describe('createCloudBackend: folder operations', () => {
             { fileId: 'id-come', to: 'Songs/Advent/O Come.poentaro' },
             { fileId: 'id-amazing', to: 'Songs/Amazing.poentaro' },
           ],
+          folder: { from: 'Hymns', to: 'Songs' },
         },
       },
     ])
@@ -66,8 +69,7 @@ describe('createCloudBackend: folder operations', () => {
   })
 
   it('moveFolder onto an existing path changes and queues nothing', async () => {
-    const { backend, looper } = createTestBackend()
-    neverAnswer()
+    const { backend, looper } = unanswered()
 
     const next = await backend.moveFolder(state, 'Hymns', 'Scratch.poentaro')
 
@@ -76,8 +78,7 @@ describe('createCloudBackend: folder operations', () => {
   })
 
   it('deleteFolder trashes every file inside on its own', async () => {
-    const { backend, looper } = createTestBackend()
-    neverAnswer()
+    const { backend, looper } = unanswered()
 
     const next = await backend.deleteFolder(state, 'Hymns')
 

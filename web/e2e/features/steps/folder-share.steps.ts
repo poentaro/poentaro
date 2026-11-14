@@ -59,7 +59,10 @@ When(
     const row = folderRowOf(page, folder)
     await row.hover()
     await page
-      .getByRole('button', { name: `Actions for folder ${folder}` })
+      .getByRole('button', {
+        name: `Actions for folder ${folder}`,
+        exact: true,
+      })
       .click()
     await page
       .getByRole('menuitem', { name: 'Share folder', exact: true })
@@ -73,7 +76,10 @@ When(
     await openFileList(page)
     await folderRowOf(page, folder).hover()
     await page
-      .getByRole('button', { name: `Actions for folder ${folder}` })
+      .getByRole('button', {
+        name: `Actions for folder ${folder}`,
+        exact: true,
+      })
       .click()
     await page
       .getByRole('menuitem', { name: 'Sharing settings', exact: true })
@@ -206,7 +212,10 @@ Then(
     await openFileList(page)
     await folderRowOf(page, folder).hover()
     await page
-      .getByRole('button', { name: `Actions for folder ${folder}` })
+      .getByRole('button', {
+        name: `Actions for folder ${folder}`,
+        exact: true,
+      })
       .click()
     await expect(page.getByRole('menuitem', { name: item })).toBeVisible()
     await page.keyboard.press('Escape')

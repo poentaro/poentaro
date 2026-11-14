@@ -1,5 +1,10 @@
 import type { Page } from '@playwright/test'
-import { matchWorkerRoute, type WorkerSchemas } from '../../cloudFileHelpers'
+import type { FilesFileSummary } from '../../../src/generated/protocol/app'
+import { poentaroWasm } from '../../../src/poentaroWasm'
+import { appCallTo } from '../../appCalls'
+
+const WRITE = 'files/write _ at revision _ content _'
+const LIST = 'files/list'
 
 // Shared observation helper for the cloud backend's content-save requests,
 // used by several `.steps.ts` files (`files-cloud-backend`,
@@ -15,8 +20,8 @@ export interface ContentSaveRecord {
 
 export interface ContentSaveTracker {
   records: ContentSaveRecord[]
-  /** File id -> current name, learned from every `POST /files/list`
-   * response the page receives -- lets assertions read naturally by
+  /** File id -> current name, learned from every `files/list`
+   * answer the page receives -- lets assertions read naturally by
    * filename instead of by the file's opaque D1 id. */
   nameForId: Map<string, string>
 }
@@ -26,14 +31,14 @@ export interface ContentSaveTracker {
  * traffic to the real local worker, via `page.on('request'/'response')`
  * rather than `page.route()` -- mirrors the deleted GitHub backend's
  * `onPut` callback + accumulated `putBodies` array, but for the cloud
- * backend's plain-JSON `POST /files/:id/content` requests. Nothing here
- * needs to change what actually happens on the wire (every `/files/*`
- * route is worker+D1 mediated -- see this feature set's own framing note
+ * backend's `files/write` calls. Nothing here
+ * needs to change what actually happens on the wire (every `files/*`
+ * call is worker+D1 mediated -- see this feature set's own framing note
  * in the plan), so a passive observer is simpler and safer than a route
  * handler that has to remember to `route.continue()`.
  *
- * Call once per scenario, before navigating, so the very first `POST
- * /files/list` (which populates `nameForId`) is captured too.
+ * Call once per scenario, before navigating, so the very first
+ * `files/list` (which populates `nameForId`) is captured too.
  */
 // Module-level, not a fixture -- matches every other `.steps.ts` file's
 // established pattern for cross-step state within one scenario (e.g.
@@ -49,28 +54,30 @@ export function installContentSaveTracking(page: Page): ContentSaveTracker {
   const tracker: ContentSaveTracker = { records: [], nameForId: new Map() }
   activeTracker = tracker
 
-  page.on('request', (request) => {
-    if (request.method() !== 'POST') return
-    const id = matchWorkerRoute('/files/{id}/content', request.url())?.id
-    if (!id) return
-    const body = request.postDataJSON() as { content?: unknown } | null
-    if (!body || typeof body.content !== 'string') return
-    tracker.records.push({ id, content: body.content })
+  page.on('request', async (request) => {
+    const call = await appCallTo(request, WRITE)
+    if (!call) return
+    const [id, , content] = call.arguments
+    if (typeof id !== 'string' || typeof content !== 'string') return
+    tracker.records.push({ id, content })
   })
 
-  page.on('response', (response) => {
-    if (response.request().method() !== 'POST') return
-    if (!matchWorkerRoute('/files/list', response.url())) return
-    void response
-      .json()
-      .then((json: WorkerSchemas['ListFilesResponse']) => {
-        for (const file of json.files) {
-          tracker.nameForId.set(file.id, file.name)
-        }
-      })
-      .catch(() => {
-        // A non-2xx or unparseable response -- nothing to learn from it.
-      })
+  page.on('response', async (response) => {
+    if (!(await appCallTo(response.request(), LIST))) return
+    try {
+      const outcome = JSON.parse(
+        poentaroWasm().protocolDecodeResponse(
+          'app',
+          LIST,
+          await response.text(),
+        ),
+      ) as { kind: string; value?: FilesFileSummary[] }
+      for (const file of outcome.value ?? []) {
+        tracker.nameForId.set(file.id, file.path)
+      }
+    } catch {
+      // A failed or unreadable answer -- nothing to learn from it.
+    }
   })
 
   return tracker
@@ -91,7 +98,7 @@ export function currentContentSaveTracker(): ContentSaveTracker {
 
 /** The most recent content-save record for the file currently known by
  * `name`, if any. `undefined` both when no such file has been seen yet
- * (via a `/files/list` response) and when it has but no save has landed
+ * (via a `files/list` answer) and when it has but no save has landed
  * for it. */
 export function lastContentSaveFor(
   tracker: ContentSaveTracker,

@@ -80,6 +80,7 @@ mod history_conversion;
 mod metadata_and_selection_conversion;
 mod metadata_fields_conversion;
 mod outbox_conversion;
+mod outbox_message_conversion;
 mod part_visibility_conversion;
 mod parts_symbols_conversion;
 mod render_and_generate_conversion;

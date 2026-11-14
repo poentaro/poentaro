@@ -1,5 +1,5 @@
-import { expect, type Page } from '@playwright/test'
-import { type WorkerSchemas, workerRouteGlob } from './cloudFileHelpers'
+import { expect, type Page, type Route } from '@playwright/test'
+import { refuseCall, routeAppCall } from './appCalls'
 
 // Generic helpers for e2e scenarios about the cloud outbox (content saves,
 // and later the structural / visibility / conflict phases). Plain functions,
@@ -11,6 +11,9 @@ type ContentSaveFault =
   | { kind: 'abort' }
   /** The server answers with `status` without applying the save. */
   | { kind: 'status'; status: number }
+  /** The server refuses the save with the method error `error`, e.g.
+   * `trashed`. */
+  | { kind: 'refuse'; error: string }
   /** The server applies the save, but the browser never sees the response. */
   | { kind: 'drop-response' }
 
@@ -34,18 +37,14 @@ const rulesByPage = new WeakMap<Page, RuleState[]>()
 /** Maps a worker file id to its current name (see `ContentSaveTracker`). */
 export type FileNameResolver = (fileId: string) => string | undefined
 
-function apiErrorForStatus(status: number): WorkerSchemas['ApiError'] {
-  return status === 400
-    ? { code: 'bad_request' }
-    : { code: 'internal', message: `faked ${status}` }
-}
+const WRITE = 'files/write _ at revision _ content _'
 
 async function handleContentSave(
-  route: Parameters<Parameters<Page['route']>[1]>[0],
+  route: Route,
+  fileId: string,
   rules: RuleState[],
   nameForId: FileNameResolver,
 ): Promise<void> {
-  const fileId = new URL(route.request().url()).pathname.split('/')[2] ?? ''
   const fileName = nameForId(fileId)
   const matching = rules.find(
     (state) =>
@@ -65,8 +64,11 @@ async function handleContentSave(
     case 'status':
       await route.fulfill({
         status: fault.status,
-        json: apiErrorForStatus(fault.status),
+        body: `faked ${fault.status}`,
       })
+      return
+    case 'refuse':
+      await refuseCall(route, fault.error)
       return
     case 'drop-response':
       await route.fetch()
@@ -76,7 +78,7 @@ async function handleContentSave(
 }
 
 /**
- * Faults content-save requests (`POST /files/{id}/content`) according to
+ * Faults content-save requests (`files/write` calls) according to
  * `rule`. Rules accumulate and the first still-active matching one applies.
  * Survives page reloads, so a fault can span a refresh until
  * `allowContentSaves` is called. `nameForId` is only needed for per-file rules.
@@ -93,8 +95,8 @@ export async function interceptContentSaves(
   }
   const rules: RuleState[] = [{ rule, used: 0 }]
   rulesByPage.set(page, rules)
-  await page.route(workerRouteGlob('/files/{id}/content'), (route) =>
-    handleContentSave(route, rules, nameForId),
+  await routeAppCall(page, WRITE, (route, call) =>
+    handleContentSave(route, String(call.arguments[0]), rules, nameForId),
   )
 }
 

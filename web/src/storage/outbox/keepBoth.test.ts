@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FileStoreState } from '../../fileStore'
-import {
-  createTestBackend,
-  fetchMock,
-  jsonResponse,
-} from '../cloudBackendTestHelpers'
+import { createTestBackend } from '../cloudBackendTestHelpers'
 import { keepBoth } from './keepBoth'
 
 const state: FileStoreState = {
@@ -14,25 +10,10 @@ const state: FileStoreState = {
   fileIds: { 'a.poentaro': 'id-a' },
 }
 
-const listing = jsonResponse(200, {
-  files: [
-    {
-      id: 'id-a',
-      name: 'a.poentaro',
-      content: 'server text',
-      revision: 4,
-      trashedAt: null,
-    },
-  ],
-})
-
 async function run() {
-  const harness = createTestBackend()
-  fetchMock.mockImplementation(async (request) =>
-    request.url.endsWith('/files/list')
-      ? listing.clone()
-      : jsonResponse(200, { revision: 1, id: 'x', name: 'n', content: '' }),
-  )
+  const harness = createTestBackend([
+    { id: 'id-a', path: 'a.poentaro', content: 'server text', revision: 4 },
+  ])
   const next = await keepBoth({
     backend: harness.backend,
     state,
@@ -53,16 +34,9 @@ describe('keepBoth', () => {
 
   it('queues the creation of the copy with the local text', async () => {
     const { harness } = await run()
-    const bodies = await Promise.all(
-      fetchMock.mock.calls
-        .map(([request]) => request)
-        .filter((request) => request.url.endsWith('/files'))
-        .map((request) => request.clone().json()),
-    )
-    expect(bodies[0]).toMatchObject({
-      name: 'a (conflicted copy 2026-10-10).poentaro',
-      content: 'local text',
-    })
+    expect(
+      harness.server.fileAt('a (conflicted copy 2026-10-10).poentaro')?.content,
+    ).toBe('local text')
     expect(harness.looper.snapshot().summary.hasUnsynced).toBe(false)
   })
 

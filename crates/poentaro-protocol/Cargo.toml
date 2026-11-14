@@ -9,8 +9,8 @@ description = "Poentaro's anyx protocols, a schema per audience, and the servers
 # workspace lints are for code people write.
 
 [dependencies]
-anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "adf3324655a63b97f1c7e57f400baa804f38eb10" }
+anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "ff7a3cf597b219faee27526bad2be8715fa3d5ce" }
 
 [build-dependencies]
-anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "adf3324655a63b97f1c7e57f400baa804f38eb10" }
-anyx-protocol-generate = { git = "https://github.com/wongjiahau/anyx", rev = "adf3324655a63b97f1c7e57f400baa804f38eb10" }
+anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "ff7a3cf597b219faee27526bad2be8715fa3d5ce" }
+anyx-protocol-generate = { git = "https://github.com/wongjiahau/anyx", rev = "ff7a3cf597b219faee27526bad2be8715fa3d5ce" }

@@ -12,7 +12,7 @@ import { codecFor, sendTo } from '../src/protocol/transport'
 
 /** The local e2e worker, as `cloudFileHelpers.ts`'s `CLOUD_WORKER_ORIGIN`
  * names it. */
-const WORKER_HOST = 'localhost:8797'
+export const WORKER_HOST = 'localhost:8797'
 
 const WASM_CORE = new URL(
   '../../crates/poentaro-wasm/pkg-component/poentaro_wasm.core.wasm',
@@ -21,7 +21,7 @@ const WASM_CORE = new URL(
 
 let wasmReady: Promise<void> | null = null
 
-function ensureWasm(): Promise<void> {
+export function ensureWasm(): Promise<void> {
   if (!wasmReady) {
     // Imported here, not at the top, so `playwright.config.ts` (which
     // imports `e2eAccounts.ts`) never loads the component.
@@ -84,11 +84,17 @@ export async function valueOrFail<T, E>(
   return outcome.value
 }
 
-/** Whether `response` answers a protocol request that calls `method`, e.g.
- * `account/sign in`, for steps that wait on a request the page sends. */
+interface SentRequest {
+  postData(): string | null
+}
+
+/** Whether `message` (a request, or the response to one) is a protocol
+ * request that calls `method`, e.g. `account/sign in`, for steps that
+ * watch or wait on what the page sends. */
 export function answersCall(
-  response: { request(): { postData(): string | null } },
+  message: SentRequest | { request(): SentRequest },
   method: string,
 ): boolean {
-  return response.request().postData()?.includes(method) ?? false
+  const request = 'postData' in message ? message : message.request()
+  return request.postData()?.includes(method) ?? false
 }

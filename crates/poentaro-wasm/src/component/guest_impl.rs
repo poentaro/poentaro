@@ -209,6 +209,8 @@ impl Guest for Component {
 
     forward_to_free_functions! {
         protocol_encode_request(protocol: Protocol, method: String, arguments: String) -> Result<String, String>;
+        protocol_decode_request(protocol: Protocol, request: String) -> Result<String, String>;
+        protocol_encode_response(protocol: Protocol, request: String, outcomes: String) -> Result<String, String>;
         protocol_decode_response(protocol: Protocol, method: String, response: String) -> Result<String, String>;
         select_notes_in_byte_ranges(note_spans: Vec<NoteSpan>, ranges: Vec<ByteRange>) -> NoteSelection;
         select_lyrics_in_byte_ranges(lyric_spans: Vec<LyricSpan>, ranges: Vec<ByteRange>) -> LyricSelection;
@@ -342,6 +344,7 @@ impl Guest for Component {
         file_store_move_targets(state: FileStoreState, excluded_folder: Option<String>) -> Vec<MoveTarget>;
         file_store_move_destination(source_path: String, folder: Option<String>) -> Option<String>;
         file_store_name_after_collision(rejected: String) -> Option<String>;
+        file_store_folder_after_collision(rejected: String) -> Option<String>;
         file_store_classify_cloud_listing(entries: Vec<CloudListedEntry>) -> CloudListingClassification;
         file_store_placeholder_path(folder: String) -> Option<String>;
         file_store_is_placeholder_path(path: String) -> bool;

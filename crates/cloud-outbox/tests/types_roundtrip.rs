@@ -34,6 +34,14 @@ fn messages_roundtrip() -> TestResult {
                 file_id: "f".into(),
                 to: "A/d".into(),
             }],
+            folder: None,
+        },
+        Message::RenameFiles {
+            moves: vec![],
+            folder: Some(FolderMove {
+                from: "A".into(),
+                to: "B/A".into(),
+            }),
         },
         Message::TrashFile,
         Message::RestoreFile,

@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { workerRouteGlob } from '../../cloudFileHelpers'
+import { routeAppCall } from '../../appCalls'
 import {
   fileTabByExactName,
   nameNewFile,
@@ -15,22 +15,18 @@ const newButton = ({ page }: { page: import('@playwright/test').Page }) =>
 Given(
   'the first file-create request will fail with a 500 error',
   async ({ page }) => {
-    // Registered before navigating: fails the first `POST /files` (create)
-    // with a 500, then `route.continue()`s every request after (including a
-    // retried create), so the real worker behaves normally once this
-    // one-shot failure has fired. The body content here is never surfaced --
-    // unlike the deleted GitHub backend (whose Octokit error carried GitHub's
-    // JSON body's own `message` straight through), a non-`ApiError` body
-    // like this one surfaces as `workerClient.ts`'s generic
-    // "worker request failed with status ${status}" message.
+    // Registered before navigating: fails the first `files/create` call
+    // with a 500, then lets every call after through (including a retried
+    // create), so the real worker behaves normally once this one-shot
+    // failure has fired.
     let createCount = 0
-    await page.route(workerRouteGlob('/files'), async (route) => {
+    await routeAppCall(page, 'files/create _ at _ content _', async (route) => {
       createCount += 1
       if (createCount === 1) {
         await route.fulfill({ status: 500, body: 'Internal Server Error' })
         return
       }
-      await route.continue()
+      await route.fallback()
     })
   },
 )

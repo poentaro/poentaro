@@ -1,10 +1,7 @@
 import { expect } from '@playwright/test'
-import {
-  seedCloudFile,
-  trashCloudFile,
-  type WorkerSchemas,
-  workerRouteGlob,
-} from '../../cloudFileHelpers'
+import type { AppOutcome } from '../../appCalls'
+import { rewriteAnswers } from '../../appCalls'
+import { seedCloudFile, trashCloudFile } from '../../cloudFileHelpers'
 import {
   fileTabByExactName,
   openBin,
@@ -63,24 +60,31 @@ Given(
     )
     await trashCloudFile(email, trashSource.id)
 
-    await page.route(workerRouteGlob('/files/list'), async (route) => {
-      const response = await route.fetch()
-      const json = (await response.json()) as WorkerSchemas['ListFilesResponse']
-      for (const file of json.files) {
-        // Only while still trashed -- this route stays registered across
-        // the post-restore reload too (`page.route` handlers are
-        // page-scoped, not one-shot), and by then the restore has for
-        // real renamed this row to "original 2.poentaro" server-side.
-        // Relabelling it back to "original.poentaro" unconditionally would
-        // clobber that real name every time the list is re-fetched,
-        // colliding with the *other*, still-genuinely-active
-        // "original.poentaro" row and losing "original 2" from the list
-        // entirely.
-        if (file.id === trashSource.id && file.trashedAt !== null) {
-          file.name = 'original.poentaro'
-        }
-      }
-      await route.fulfill({ response, json })
+    // Only while still trashed -- these routes stay registered across the
+    // post-restore reload, and by then the restore has for real renamed
+    // this row to "original 2.poentaro". Relabelling it unconditionally
+    // would collide with the other, genuinely active "original.poentaro".
+    interface Summary {
+      id: string
+      path: string
+      trashedAt?: number
+    }
+    const relabel = (summary: Summary): Summary =>
+      summary.id === trashSource.id && summary.trashedAt !== undefined
+        ? { ...summary, path: 'original.poentaro' }
+        : summary
+    await rewriteAnswers(
+      page,
+      'files/list',
+      (outcome): AppOutcome =>
+        outcome.kind === 'value'
+          ? { ...outcome, value: (outcome.value as Summary[]).map(relabel) }
+          : outcome,
+    )
+    await rewriteAnswers(page, 'files/read _', (outcome): AppOutcome => {
+      if (outcome.kind !== 'value') return outcome
+      const file = outcome.value as { summary: Summary; content: string }
+      return { ...outcome, value: { ...file, summary: relabel(file.summary) } }
     })
   },
 )

@@ -1,32 +1,20 @@
-import {
-  callWorker,
-  type createWorkerClient,
-} from '../syncedShare/workerClient'
+import type { AppFileCalls } from '../protocol/clients'
+import { expectValue } from '../protocol/outcome'
 import type { CloudBackend } from './cloudBackendTypes'
 
 /** A cloud file's version history: the versions the worker keeps for it,
- * and one version rebuilt with its diff against the current text. */
+ * and one version's text. */
 export function createVersionCalls(
-  client: ReturnType<typeof createWorkerClient>,
-  identityToken: string,
+  app: () => Promise<AppFileCalls>,
 ): Pick<CloudBackend, 'listVersions' | 'fetchVersion'> {
   return {
-    async listVersions(fileId) {
-      const response = await callWorker(
-        client.POST('/files/{id}/versions', {
-          params: { path: { id: fileId } },
-          body: { identityToken },
-        }),
-      )
-      return response.versions
-    },
+    listVersions: async (fileId) =>
+      expectValue((await app()).files.versions.list(fileId)),
 
-    fetchVersion: (fileId, revision) =>
-      callWorker(
-        client.POST('/files/{id}/versions/get', {
-          params: { path: { id: fileId } },
-          body: { identityToken, revision },
-        }),
+    fetchVersion: async (fileId, revision) => ({
+      content: await expectValue(
+        (await app()).files.versions.readAtRevision(fileId, revision),
       ),
+    }),
   }
 }

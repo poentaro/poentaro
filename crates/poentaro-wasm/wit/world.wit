@@ -1719,8 +1719,14 @@ world poentaro-wasm {
         to: string,
     }
 
+    record folder-move {
+        %from: string,
+        to: string,
+    }
+
     record rename-files-message {
         moves: list<rename-move>,
+        folder: option<folder-move>,
     }
 
     variant message {
@@ -2270,6 +2276,8 @@ world poentaro-wasm {
     export file-store-move-destination: func(source-path: string, folder: option<string>) -> option<string>;
     // The next numbered sibling to try after `rejected` was reported as taken (keeps the folder); none if invalid.
     export file-store-name-after-collision: func(rejected: string) -> option<string>;
+    // The next numbered sibling folder to try after the folder `rejected` was reported as taken; none if invalid.
+    export file-store-folder-after-collision: func(rejected: string) -> option<string>;
     // The reason renaming/moving a file to `to-path` would be rejected, if it would.
     export file-store-rename-error: func(state: file-store-state, from-path: string, to-path: string, context: file-operation-context) -> option<string>;
     // The reason renaming/moving the folder `from-path` to `to-path` would be rejected, if it would.
@@ -2334,6 +2342,10 @@ world poentaro-wasm {
     /// A request with one call of `method`, by its full name such as
     /// `files/read _`. `arguments` is a JSON array, a value per parameter.
     export protocol-encode-request: func(protocol: protocol, method: string, arguments: string) -> result<string, string>;
+    // A request read back as a JSON array of `{ method, arguments }`, one per call: for e2e tests that fake or watch the worker.
+    export protocol-decode-request: func(protocol: protocol, request: string) -> result<string, string>;
+    // The response to `request`, from a JSON array with one outcome per call as protocol-decode-response gives them: for e2e tests that fake the worker.
+    export protocol-encode-response: func(protocol: protocol, request: string, outcomes: string) -> result<string, string>;
     /// The response to one call of `method`, as the generated TypeScript
     /// client's `Outcome` in JSON.
     export protocol-decode-response: func(protocol: protocol, method: string, response: string) -> result<string, string>;
