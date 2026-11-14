@@ -162,6 +162,15 @@ One caller at a time; each stays green on its e2e features.
       revision check every 5 seconds) and make each fetch with `files/read _`
       or cache what was read. Offline, a file never opened here shows as
       unavailable.
+- [ ] Purpose-built methods for what needs many files' content, each with a
+      result size the server controls: a server-side search method with a
+      limit, and `folders/export _`. Needs lazy loading.
+- [ ] Drop the "read every file" batch (`cloudBackendListing.ts`) once lazy
+      loading is in: loading is one `files/list`, then `files/read _` per
+      opened file. The batch was a stopgap for that N+1.
+- [ ] Repin anyx once it has call values and typed tuple batches (anyx
+      `TODO.md`, "Protocol clients and batching"); move any mixed batch to
+      the tuple form and drop `AppFileCalls.batch`'s callback form.
 - [x] `storage/accountRequests.ts`: sign up, sign in, sign out, change
       password
 - [ ] `hooks/useCloudStoreLoader.ts`, `storage/cloudBackend.ts`: list, read,
