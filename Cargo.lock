@@ -116,6 +116,7 @@ source = "git+https://github.com/wongjiahau/anyx?rev=adf3324655a63b97f1c7e57f400
 dependencies = [
  "anyx",
  "base64",
+ "serde_json",
 ]
 
 [[package]]
@@ -2025,10 +2026,12 @@ dependencies = [
 name = "poentaro-wasm"
 version = "0.1.0"
 dependencies = [
+ "anyx-protocol",
  "brotli",
  "cloud-outbox",
  "itertools 0.13.0",
  "poentaro",
+ "poentaro-protocol",
  "proptest",
  "serde",
  "wit-bindgen",

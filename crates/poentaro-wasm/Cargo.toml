@@ -21,6 +21,8 @@ wit-bindgen = "0.44.0"
 itertools = "0.13"
 cloud-outbox = { path = "../cloud-outbox" }
 brotli = "8"
+poentaro-protocol = { path = "../poentaro-protocol" }
+anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "adf3324655a63b97f1c7e57f400baa804f38eb10", features = ["json"] }
 
 [dev-dependencies]
 zip = { version = "2", default-features = false, features = ["deflate"] }

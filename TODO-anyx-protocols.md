@@ -90,14 +90,19 @@ are deleted, and nothing in `web/` builds a URL other than these endpoints.
       schema into `OUT_DIR` (`agent`, `app`, `public`, `test`), included from
       `lib.rs`. Delete the checked-in `src/generated.rs`,
       `tests/generated.rs` and the `generate-protocol` recipe.
-- [ ] Generate the wasm codec (`anyx-protocol-generate wasm`) for `app`,
-      `public` and `test` at build time, into the crate the web app already
-      builds to wasm.
-- [ ] Replace `build:worker-types` in `web/package.json` with a script that
-      generates the TS clients into `web/src/generated/protocol/` (git-ignored),
-      run from `predev`/`prebuild` as today.
-- [ ] The schema hash each client sends is computed by the generator from
-      the schema files, so server and client agree by construction.
+- [x] The wasm codec: `poentaro-wasm` exports `protocol-encode-request` and
+      `protocol-decode-response`, taking the protocol (`app`, `public`,
+      `test`) and calling `anyx_protocol::json` with the generated
+      `schema()`. Not anyx's `wasm` output: that is `#[wasm_bindgen]`, and
+      the web app's wasm is a WIT component.
+- [x] `build:protocol` in `web/package.json` writes the TS clients into
+      `web/src/generated/protocol/` (git-ignored) with the
+      `poentaro-protocol-typescript` binary. `build:worker-types` runs it, so
+      CI, lefthook and `predev`/`prebuild` get it unchanged; it becomes the
+      only step when REST goes.
+- [x] `SCHEMA_HASH`: `build.rs` hashes each schema's files (FNV-1a) into
+      both the Rust module and the TS client, so server and client agree by
+      construction.
 
 ### 2. Worker endpoints (`crates/live-share-worker`)
 

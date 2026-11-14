@@ -2321,4 +2321,20 @@ world poentaro-wasm {
     // The confirmation for deleting the selection.
     export file-store-selection-delete-summary: func(state: file-store-state, selected: list<string>, shares: share-overview) -> selection-delete-summary;
     export file-store-active-label: func(active: string, demo-file-names: list<string>) -> file-active-label;
+
+    // ==================== guest_protocol.rs ====================
+
+    /// Which of Poentaro's anyx protocols (`crates/poentaro-protocol`) a
+    /// request is for.
+    enum protocol {
+        app,
+        public,
+        test,
+    }
+    /// A request with one call of `method`, by its full name such as
+    /// `files/read _`. `arguments` is a JSON array, a value per parameter.
+    export protocol-encode-request: func(protocol: protocol, method: string, arguments: string) -> result<string, string>;
+    /// The response to one call of `method`, as the generated TypeScript
+    /// client's `Outcome` in JSON.
+    export protocol-decode-response: func(protocol: protocol, method: string, response: string) -> result<string, string>;
 }
