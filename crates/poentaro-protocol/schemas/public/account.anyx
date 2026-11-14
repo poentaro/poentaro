@@ -26,6 +26,6 @@ METHOD sign in (email: TEXT) password (password: TEXT)
     ERRORS [
         # The email has no account, or the password is wrong.
         incorrect,
-        # Too many wrong passwords for this email. Try again after `seconds`.
-        locked for (seconds: INTEGER),
+        # Too many wrong passwords for this email.
+        locked for (duration: INTEGER) seconds,
     ] + credential errors,

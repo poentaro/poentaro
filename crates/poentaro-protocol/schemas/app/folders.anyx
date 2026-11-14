@@ -6,8 +6,8 @@ METHOD move (path: TEXT) to (new path: TEXT)
     ERRORS [
         # No file is in this folder.
         no such folder,
-        # Other files hold these destinations. Nothing moved.
-        destinations taken (paths: LIST: TEXT),
-        # A destination would be both a file and a folder. Nothing moved.
-        file folder conflict (path: TEXT),
+        # Nothing moved.
+        (paths: LIST: TEXT) taken by other files,
+        # Nothing moved.
+        (path: TEXT) would be both file and folder,
     ] + paths/bad path,

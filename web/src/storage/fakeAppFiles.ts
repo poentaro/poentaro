@@ -232,7 +232,7 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
               : error({ kind: 'noSuchFolder' })
           }
           if (live().some(inside(to))) {
-            return error({ kind: 'destinationsTaken', paths: [to] })
+            return error({ kind: 'takenByOtherFiles', paths: [to] })
           }
           for (const file of moving) {
             file.path = `${to}${file.path.slice(from.length)}`

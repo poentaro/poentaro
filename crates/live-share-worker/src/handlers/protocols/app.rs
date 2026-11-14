@@ -57,8 +57,8 @@ impl poentaro_protocol::app::account::Server for AppServer<'_> {
             }
             Err(ApiError::SignInLocked {
                 retry_after_seconds,
-            }) => Ok(Err(ChangePasswordFromToError::LockedFor {
-                seconds: retry_after_seconds,
+            }) => Ok(Err(ChangePasswordFromToError::LockedForSeconds {
+                duration: retry_after_seconds,
             })),
             Err(ApiError::WeakPassword { message }) => {
                 Ok(Err(ChangePasswordFromToError::WeakPassword { message }))

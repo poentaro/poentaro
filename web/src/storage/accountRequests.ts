@@ -43,7 +43,7 @@ type AccountError =
   | { kind: 'tooManyRequests' }
   | { kind: 'incorrect' }
   | { kind: 'incorrectPassword' }
-  | { kind: 'lockedFor'; seconds: number }
+  | { kind: 'lockedForSeconds'; duration: number }
 
 const SOMETHING_WENT_WRONG: AccountFailure = {
   kind: 'message',
@@ -54,8 +54,8 @@ function errorFailure(error: AccountError): AccountFailure {
   switch (error.kind) {
     case 'emailTaken':
       return { kind: 'email-taken' }
-    case 'lockedFor':
-      return { kind: 'locked', retryAfterSeconds: error.seconds }
+    case 'lockedForSeconds':
+      return { kind: 'locked', retryAfterSeconds: error.duration }
     case 'invalidEmail':
       return { kind: 'message', message: 'Enter a valid email address.' }
     case 'weakPassword':

@@ -68,7 +68,7 @@ export async function outcomesOf(
 }
 
 /** What the worker answered a request of one call of `method`: `value`,
- * the method error's kind in words (`destinations taken`), or how the call
+ * the method error's kind in words (`taken by other files`), or how the call
  * failed. */
 export async function answerOf(
   method: string,

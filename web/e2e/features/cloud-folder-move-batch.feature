@@ -33,7 +33,7 @@ Feature: A folder move is delivered to the cloud as one all-or-nothing batch
     And "CloudBatchB/one.poentaro" does not exist on the server for the signed-in account
     And "CloudBatchB/two.poentaro" does not exist on the server for the signed-in account
     And the file tree shows the folder "CloudBatchB2 2"
-    And the cloud answered the batch renames with "destinations taken, moved"
+    And the cloud answered the batch renames with "taken by other files, moved"
 
   Scenario: A folder move still waiting to be delivered survives a reload
     Given a cloud file named "CloudBatchC/one.poentaro" is seeded for the signed-in account

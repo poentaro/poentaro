@@ -111,7 +111,7 @@ impl poentaro_protocol::app::files::Server for AppServer<'_> {
                 }))
             }
             Err(ApiError::FileFolderConflict { path }) => {
-                Ok(Err(CreateAtContentError::FileFolderConflict { path }))
+                Ok(Err(CreateAtContentError::WouldBeBothFileAndFolder { path }))
             }
             Err(ApiError::InvalidName { message }) => {
                 Ok(Err(CreateAtContentError::InvalidPath { message }))
@@ -126,7 +126,7 @@ impl poentaro_protocol::app::files::Server for AppServer<'_> {
             Err(ApiError::NotFound) => Ok(Err(MoveToError::Missing)),
             Err(ApiError::NameTaken) => Ok(Err(MoveToError::Taken)),
             Err(ApiError::FileFolderConflict { path }) => {
-                Ok(Err(MoveToError::FileFolderConflict { path }))
+                Ok(Err(MoveToError::WouldBeBothFileAndFolder { path }))
             }
             Err(ApiError::InvalidName { message }) => Ok(Err(MoveToError::InvalidPath { message })),
             Err(error) => Err(internal(error)),
@@ -155,7 +155,7 @@ impl poentaro_protocol::app::files::Server for AppServer<'_> {
             Ok(()) => Ok(Ok(path.as_str().to_string())),
             Err(ApiError::NotFound) => Ok(Err(RestoreError::NotTrashed)),
             Err(ApiError::FileFolderConflict { path }) => {
-                Ok(Err(RestoreError::FileFolderConflict { path }))
+                Ok(Err(RestoreError::WouldBeBothFileAndFolder { path }))
             }
             Err(error) => Err(internal(error)),
         }
@@ -231,7 +231,7 @@ impl poentaro_protocol::app::folders::Server for AppServer<'_> {
                 }))
             }
             FolderMovePlan::DestinationExists => {
-                return Ok(Err(FolderMoveToError::DestinationsTaken {
+                return Ok(Err(FolderMoveToError::TakenByOtherFiles {
                     paths: vec![to.as_str().to_string()],
                 }))
             }
@@ -241,10 +241,10 @@ impl poentaro_protocol::app::folders::Server for AppServer<'_> {
                 Ok(()) => {}
                 Err(ApiError::NotFound) => return Ok(Err(FolderMoveToError::NoSuchFolder)),
                 Err(ApiError::NamesTaken { names }) => {
-                    return Ok(Err(FolderMoveToError::DestinationsTaken { paths: names }))
+                    return Ok(Err(FolderMoveToError::TakenByOtherFiles { paths: names }))
                 }
                 Err(ApiError::FileFolderConflict { path }) => {
-                    return Ok(Err(FolderMoveToError::FileFolderConflict { path }))
+                    return Ok(Err(FolderMoveToError::WouldBeBothFileAndFolder { path }))
                 }
                 Err(ApiError::InvalidName { message }) => {
                     return Ok(Err(FolderMoveToError::InvalidPath { message }))

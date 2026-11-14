@@ -59,8 +59,8 @@ impl poentaro_protocol::public::account::Server for PublicServer<'_> {
             Err(ApiError::IncorrectCredentials) => Ok(Err(SignInPasswordError::Incorrect)),
             Err(ApiError::SignInLocked {
                 retry_after_seconds,
-            }) => Ok(Err(SignInPasswordError::LockedFor {
-                seconds: retry_after_seconds,
+            }) => Ok(Err(SignInPasswordError::LockedForSeconds {
+                duration: retry_after_seconds,
             })),
             Err(ApiError::InvalidEmail) => Ok(Err(SignInPasswordError::InvalidEmail)),
             Err(ApiError::RateLimited) => Ok(Err(SignInPasswordError::TooManyRequests)),

@@ -163,7 +163,7 @@ Then(
     )
     expect(outcome).toMatchObject({
       kind: 'error',
-      error: { kind: 'lockedFor' },
+      error: { kind: 'lockedForSeconds' },
     })
   },
 )

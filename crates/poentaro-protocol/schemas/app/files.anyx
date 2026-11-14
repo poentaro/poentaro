@@ -22,8 +22,7 @@ PUBLIC ERRORS file errors [
 ] + lookup errors,
 
 PUBLIC ERRORS conflict errors [
-    # The path would be both a file and a folder.
-    file folder conflict (path: TEXT),
+    (path: TEXT) would be both file and folder,
 ],
 
 PUBLIC ERRORS path errors [

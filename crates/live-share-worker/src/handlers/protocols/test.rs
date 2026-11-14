@@ -27,7 +27,7 @@ impl poentaro_protocol::test::accounts::Server for TestServer<'_> {
         let requested = (!emails.is_empty()).then_some(emails.as_slice());
         let emails = match emails_to_reset(&allowed, requested) {
             Ok(emails) => emails,
-            Err(email) => return Ok(Err(ResetError::NotATestAccount { email })),
+            Err(email) => return Ok(Err(ResetError::IsNotATestAccount { email })),
         };
         let deleted = db::delete_accounts(self.d1, &emails).await?;
         Ok(Ok(Deleted {

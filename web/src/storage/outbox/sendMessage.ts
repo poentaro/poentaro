@@ -96,7 +96,7 @@ async function moveEach(
         break
       case 'invalidPath':
         return refused(outcome.error, 400)
-      case 'fileFolderConflict':
+      case 'wouldBeBothFileAndFolder':
         return refused(outcome.error, 409)
     }
   }
@@ -116,7 +116,7 @@ async function moveFolder(
       return ok(request.expectedRevision)
     // The destination folder exists already: move into the next numbered
     // folder instead. A file made inside it meanwhile is named on its own.
-    case 'destinationsTaken':
+    case 'takenByOtherFiles':
       return namesTaken(outcome.error.paths, (rejected) =>
         rejected === folder.to
           ? poentaroWasm().fileStoreFolderAfterCollision(rejected)
@@ -124,7 +124,7 @@ async function moveFolder(
       )
     case 'invalidPath':
       return refused(outcome.error, 400)
-    case 'fileFolderConflict':
+    case 'wouldBeBothFileAndFolder':
       return refused(outcome.error, 409)
   }
 }
@@ -150,7 +150,7 @@ async function createFile(
     }
     case 'invalidPath':
       return refused(outcome.error, 400)
-    case 'fileFolderConflict':
+    case 'wouldBeBothFileAndFolder':
       return refused(outcome.error, 409)
   }
 }
@@ -201,7 +201,7 @@ async function renameFile(
       return refused(outcome.error, 404)
     case 'invalidPath':
       return refused(outcome.error, 400)
-    case 'fileFolderConflict':
+    case 'wouldBeBothFileAndFolder':
       return refused(outcome.error, 409)
   }
 }
@@ -218,7 +218,7 @@ async function restoreFile(
       return ok(request.expectedRevision)
     case 'missing':
       return refused(outcome.error, 404)
-    case 'fileFolderConflict':
+    case 'wouldBeBothFileAndFolder':
       return refused(outcome.error, 409)
   }
 }

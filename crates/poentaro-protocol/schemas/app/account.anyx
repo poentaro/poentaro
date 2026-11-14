@@ -7,8 +7,8 @@ METHOD change password from (current password: TEXT) to (new password: TEXT)
     ERRORS [
         # `current password` isn't the account's password.
         incorrect password,
-        # Too many wrong passwords for this email. Try again after `seconds`.
-        locked for (seconds: INTEGER),
+        # Too many wrong passwords for this email.
+        locked for (duration: INTEGER) seconds,
         # The new password isn't strong enough; `message` says why.
         weak password (message: TEXT),
     ],
