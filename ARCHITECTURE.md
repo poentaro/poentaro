@@ -739,8 +739,9 @@ An account owner's AI agent reads and edits the owner's own scores over the
 **anyx protocol** (anyx's `anyx-protocol`): requests and responses are anyx
 text, and the methods are declared in a schema.
 
-- Schema and generated code: `crates/poentaro-protocol`. The schema is the
-  folder `schema/`, a file per **scope**: `protocol.anyx` holds only the
+- Schema and generated code: `crates/poentaro-protocol`. Each audience has
+  its own schema folder in `schemas/` (`agent`, `app`, `public`, `test`).
+  The agent's is `schemas/agent/`, a file per **scope**: `protocol.anyx` holds only the
   `PROTOCOL` header, `files.anyx` is the scope `files`,
   `files/export.anyx` the scope `files/export` and `score.anyx` the scope
   `score`. A method is called by its
@@ -756,22 +757,20 @@ text, and the methods are declared in a schema.
   `already exists at revision _`, `invalid path _`), or in a group that
   methods join with `+`. A type or error group is private to its scope
   unless `PUBLIC`, and another scope names it by full path
-  (`files/diagnostic`, `files/file errors`). `src/generated.rs` is what anyx's
-  `anyx-protocol-generate` writes from it, a module per scope
-  (`poentaro_protocol::files::export`): the record structs, a
+  (`files/diagnostic`, `files/file errors`). `build.rs` runs anyx's
+  `anyx-protocol-generate` on each schema folder at build time and writes a
+  module per audience into `OUT_DIR`, with a module per scope inside
+  (`poentaro_protocol::agent::files::export`): the record structs, a
   `{Method}Error` enum per method, a `Server` trait per scope (the root one
   holds `type Error`), `handle(server, request, on_internal_error) ->
   String`, a `Client` (`client.files().export().svg(path)`), and
-  `SCHEMA_FILES`/`schema()`. `tests/generated.rs` lists the schema's files
-  and fails when one is missing from that list.
-  `just generate-protocol` rewrites it, and a test fails when it is stale.
-  Like `poentaro-grammar`, the crate is outside the workspace lints and its
-  `generated.rs` is exempt from the 400-line limit.
+  `SCHEMA_FILES`/`schema()`. Nothing generated is checked in. Like
+  `poentaro-grammar`, the crate is outside the workspace lints.
 - Route (`src/handlers/agent.rs`): `POST /agent` runs a request sent with
   `Authorization: Bearer poe_…`; any other method is a `405`. Everything
   the agent reads comes through it: anyx's built-in `SCHEMA` call answers
   the guide (how to write a request and read a response, then the schema
-  with its docs), and `score/syntax` (`schema/score.anyx`) answers
+  with its docs), and `score/syntax` (`schemas/agent/score.anyx`) answers
   `syntax.md`. A missing, unknown, revoked or
   expired key is a plain-text `401`; the per-key `AGENT_RATE_LIMITER`
   (`cloudflare.config.ts`, 60 requests a minute) a `429`.
@@ -1146,7 +1145,7 @@ away from the wasm build both times:
 | **static folder link** | A `#share-folder=<payload>` link carrying a compressed `FolderSnapshot` of a folder at one moment; works for local and cloud folders, never updates, and is not offered above `MAX_STATIC_FOLDER_LINK_CHARS` (the dialog suggests a synced link instead). |
 | **API key** | A `poe_…` key an account owner creates in the account menu's **AI agents** dialog, for their AI agent to send to `POST /agent` as `Authorization: Bearer`. It acts as its owner on the owner's own files only, for 30 days; only its hash is stored, and its `prefix` names it. See "AI agents". |
 | **agent** | An AI agent (Claude Code, Codex, …) that the account owner sets up with the AI agents dialog's prompt: it saves the API key and installs the `poentaro` skill, then sends `SCHEMA` to `POST /agent` for the guide and the schema, and reads and edits the owner's scores through the same route. |
-| **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result repeats the call, with long arguments cut short with `…`, then says what came of it: `RETURNS <value>`, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro's schema is the folder `crates/poentaro-protocol/schema`, a file per scope. |
+| **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result repeats the call, with long arguments cut short with `…`, then says what came of it: `RETURNS <value>`, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro has a schema per audience, each a folder in `crates/poentaro-protocol/schemas` with a file per scope. |
 | **`SCHEMA`** (anyx protocol) | The call every anyx-protocol server answers without declaring it: the guide to its schema (how to write a request and read a response, then the schema as written). Generated clients call it as `client.schema()`. |
 | **scope** (anyx protocol) | A file of an anyx-protocol schema folder other than `protocol.anyx`, named by its path without `.anyx` (`files/export`). Its methods are called by full name (`files/export/svg _`), and its types and errors are private to it unless `PUBLIC`. |
 | **share overview** | `file_tree::ShareOverview`, the owner's live file and folder links as `POST /shares/overview` reports them; everything the share UI shows (markers, "via X" tags, warnings) is derived from it in Rust. |

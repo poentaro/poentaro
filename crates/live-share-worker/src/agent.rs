@@ -10,7 +10,7 @@ use itertools::{Either, Itertools};
 use poentaro::document::anyx_errors;
 use poentaro::error::{Diagnostic as ScoreDiagnostic, IrrecoverableError};
 use poentaro::file_tree::{TreePath, FILE_EXTENSION};
-use poentaro_protocol::files::Diagnostic;
+use poentaro_protocol::agent::files::Diagnostic;
 
 /// The name a score is compiled under; it only appears in messages.
 const SCORE_FILE_NAME: &str = "score.poentaro";

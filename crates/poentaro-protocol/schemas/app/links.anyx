@@ -1,0 +1,45 @@
+CHOICE status {
+    # No link was ever made.
+    never shared,
+    # Anyone with the link sees the score as it changes.
+    live (share id: TEXT),
+    # The link shows nothing until it's started again.
+    stopped (share id: TEXT),
+},
+
+RECORD file link { share id: TEXT, file id: TEXT, path: TEXT },
+
+RECORD folder link { share id: TEXT, path: TEXT },
+
+# Every live link. A file or folder is also shared through any shared
+# folder it's in.
+RECORD links { files: LIST file link, folders: LIST folder link },
+
+ERRORS never shared [
+    # There is no link to stop.
+    never shared,
+],
+
+# Starts the file's link. A file has one link for good, so it's the same
+# link every time.
+METHOD start file (id: TEXT) RETURNS (share id: TEXT) ERRORS files/file errors,
+
+METHOD stop file (id: TEXT) RETURNS NOTHING ERRORS never shared,
+
+METHOD status of file (id: TEXT) RETURNS (status: status),
+
+# Starts the folder's link. Like a file's, it's the same link every time.
+METHOD start folder (path: TEXT)
+    RETURNS (share id: TEXT)
+    ERRORS [
+        # No file is in this folder.
+        no such folder,
+        # The folder holds too much to share; `message` says how much.
+        too large (message: TEXT),
+    ] + paths/bad path,
+
+METHOD stop folder (path: TEXT) RETURNS NOTHING ERRORS never shared + paths/bad path,
+
+METHOD status of folder (path: TEXT) RETURNS (status: status) ERRORS paths/bad path,
+
+METHOD list RETURNS (links: links),

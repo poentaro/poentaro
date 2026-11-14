@@ -1,0 +1,3 @@
+# Poentaro turns `.poentaro` text into numbered musical notation (jianpu).
+# Sign in here, then call `poentaro app` with the session's token.
+PROTOCOL poentaro public VERSION 1,

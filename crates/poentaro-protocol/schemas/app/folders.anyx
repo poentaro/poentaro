@@ -1,0 +1,13 @@
+# Moves a folder and every file in it, the trash included: all of them, or
+# none. Moving a folder that is already at `new path` succeeds, so a retry
+# whose answer was lost is safe.
+METHOD move (path: TEXT) to (new path: TEXT)
+    RETURNS (files: LIST files/file summary)
+    ERRORS [
+        # No file is in this folder.
+        no such folder,
+        # Other files hold these destinations. Nothing moved.
+        destinations taken (paths: LIST: TEXT),
+        # A destination would be both a file and a folder. Nothing moved.
+        file folder conflict (path: TEXT),
+    ] + paths/bad path,

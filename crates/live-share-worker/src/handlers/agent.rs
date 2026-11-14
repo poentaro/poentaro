@@ -1,5 +1,5 @@
 //! `/agent`: where an account owner's AI agent reads and edits the owner's
-//! scores, through the anyx protocol `crates/poentaro-protocol/schema` describes.
+//! scores, through the anyx protocol `crates/poentaro-protocol/schemas/agent` describes.
 //!
 //! `POST /agent` runs a request, sent with `Authorization: Bearer poe_…`.
 //! Everything an agent reads comes through it: `SCHEMA` answers the guide
@@ -105,7 +105,7 @@ async fn run(
         calls: RefCell::new(Vec::new()),
     };
     let mut failed = false;
-    let response = poentaro_protocol::handle(&server, request, |error| {
+    let response = poentaro_protocol::agent::handle(&server, request, |error| {
         console_error!("agent: internal error: {error}");
         failed = true;
     })

@@ -1,0 +1,10 @@
+RECORD deleted { accounts: INTEGER, shares: INTEGER, files: INTEGER },
+
+# Deletes these test accounts and everything they own. With no emails, every
+# test account the worker allows.
+METHOD reset (emails: LIST: TEXT)
+    RETURNS (deleted: deleted)
+    ERRORS [
+        # The worker doesn't allow resetting this account.
+        not a test account (email: TEXT),
+    ],

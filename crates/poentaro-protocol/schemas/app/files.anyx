@@ -1,0 +1,69 @@
+# A file in the account's tree, without its score.
+PUBLIC RECORD file summary {
+    # Made by the browser that created the file. It never changes.
+    id: TEXT,
+    # A slash path, such as `Hymns/hymn.poentaro`.
+    path: TEXT,
+    revision: INTEGER,
+    # When the file went to the trash, in milliseconds since 1970.
+    trashed at: OPTIONAL: INTEGER,
+},
+
+RECORD file { summary: file summary, content: TEXT },
+
+PUBLIC ERRORS lookup errors [
+    # This account has no file with this id.
+    missing,
+],
+
+PUBLIC ERRORS file errors [
+    # The file is in the trash. Restore it first.
+    trashed,
+] + lookup errors,
+
+PUBLIC ERRORS path errors [
+    # Another file, in the trash or not, has this path.
+    taken,
+    # The path would be both a file and a folder.
+    file folder conflict (path: TEXT),
+] + paths/bad path,
+
+# Every file this account owns, the trash included.
+METHOD list RETURNS (files: LIST file summary),
+
+# A file and its score. A file in the trash can be read too.
+METHOD read (id: TEXT) RETURNS (file: file) ERRORS lookup errors,
+
+# Saves the score, if the file is still at `revision`. A score that doesn't
+# parse is saved too.
+METHOD write (id: TEXT) at revision (revision: INTEGER) content (content: TEXT)
+    RETURNS (revision: INTEGER)
+    ERRORS [
+        # Someone saved first. The file is now at `revision`, with `content`.
+        conflict at revision (revision: INTEGER) content (content: TEXT),
+    ] + file errors,
+
+# Makes a new file, and its folders if they don't exist.
+METHOD create (id: TEXT) at (path: TEXT) content (content: TEXT)
+    RETURNS (file: file summary)
+    ERRORS [
+        # Another file already has this id.
+        id taken,
+    ] + path errors,
+
+# Moves or renames a file. Its link keeps working.
+METHOD move (id: TEXT) to (path: TEXT)
+    RETURNS NOTHING
+    ERRORS path errors + lookup errors,
+
+# Moves the file to the trash. `files/restore` brings it back.
+METHOD trash (id: TEXT) RETURNS NOTHING ERRORS lookup errors,
+
+# Brings a file back from the trash. If its path has been taken since, it
+# comes back under a free one, such as `hymn (2).poentaro`.
+METHOD restore (id: TEXT)
+    RETURNS (path: TEXT)
+    ERRORS [
+        # The file isn't in the trash.
+        not trashed,
+    ] + lookup errors,
