@@ -219,6 +219,7 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
           }),
       },
     },
+    batch: (build) => Promise.all(build(app)),
     folders: {
       moveTo: (from, to) =>
         call('folders/move _ to _', [from, to], () => {

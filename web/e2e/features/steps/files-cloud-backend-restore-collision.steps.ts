@@ -47,12 +47,12 @@ Given(
     // and `trash/original.poentaro` were genuinely different paths, a trashed
     // and an active row can never really share a name here. This file is
     // seeded under a distinct real name and trashed for real, then the
-    // `/files/list` response the client's own `load()` receives is
-    // relabelled below -- reproducing exactly the state `fileStore.ts`'s
-    // pure `restoreFile` needs to exercise its own local collision-avoidance
-    // (picking "original 2") without lying to the database itself. The
-    // restore the client then issues targets this row's real id with the
-    // client-computed "original 2.poentaro" name, which lands for real.
+    // listing the client's own `load()` receives is relabelled below --
+    // reproducing the state `fileStore.ts`'s pure `restoreFile` needs to
+    // exercise its local collision-avoidance (picking "original 2"). The
+    // server names restores itself (`naming::restored_path`), so it brings
+    // the row back under its real name; this scenario only checks the
+    // client's naming, not what a reload shows.
     const trashSource = await seedCloudFile(
       email,
       'original-collision-source.poentaro',
@@ -60,10 +60,7 @@ Given(
     )
     await trashCloudFile(email, trashSource.id)
 
-    // Only while still trashed -- these routes stay registered across the
-    // post-restore reload, and by then the restore has for real renamed
-    // this row to "original 2.poentaro". Relabelling it unconditionally
-    // would collide with the other, genuinely active "original.poentaro".
+    // Only while still trashed: once restored, its real name shows.
     interface Summary {
       id: string
       path: string
@@ -154,29 +151,6 @@ Then(
     // Exact-text match for `nameA` -- display names drop the `.poentaro`
     // suffix, so "original" is a substring of "original 2"; a plain
     // substring match would match both tabs.
-    await expect(
-      page.locator('.file-tabs .file-tab-name', {
-        hasText: new RegExp(`^${nameA}$`),
-      }),
-    ).toHaveCount(1)
-    await expect(
-      page.locator('.file-tabs .file-tab-name', { hasText: nameB }),
-    ).toHaveCount(1)
-  },
-)
-
-When('I reload the page after the collision restore', async ({ page }) => {
-  await page.reload()
-  await page.waitForSelector('.preview-page', { timeout: 15_000 })
-  await openFileList(page)
-  await page
-    .locator('.file-tab-name', { hasText: /^original$/ })
-    .waitFor({ timeout: 15_000 })
-})
-
-Then(
-  'both {string} and {string} tabs exist exactly once each after reload',
-  async ({ page }, nameA: string, nameB: string) => {
     await expect(
       page.locator('.file-tabs .file-tab-name', {
         hasText: new RegExp(`^${nameA}$`),

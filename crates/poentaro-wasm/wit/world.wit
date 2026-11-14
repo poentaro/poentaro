@@ -2339,14 +2339,14 @@ world poentaro-wasm {
         public,
         test,
     }
-    /// A request with one call of `method`, by its full name such as
-    /// `files/read _`. `arguments` is a JSON array, a value per parameter.
-    export protocol-encode-request: func(protocol: protocol, method: string, arguments: string) -> result<string, string>;
+    /// A request from a JSON array of calls, each `{ method, arguments }` with
+    /// the method's full name such as `files/read _`.
+    export protocol-encode-request: func(protocol: protocol, calls: string) -> result<string, string>;
     // A request read back as a JSON array of `{ method, arguments }`, one per call: for e2e tests that fake or watch the worker.
     export protocol-decode-request: func(protocol: protocol, request: string) -> result<string, string>;
     // The response to `request`, from a JSON array with one outcome per call as protocol-decode-response gives them: for e2e tests that fake the worker.
     export protocol-encode-response: func(protocol: protocol, request: string, outcomes: string) -> result<string, string>;
-    /// The response to one call of `method`, as the generated TypeScript
-    /// client's `Outcome` in JSON.
-    export protocol-decode-response: func(protocol: protocol, method: string, response: string) -> result<string, string>;
+    /// The response to calls of `methods` (a JSON array of full names), as a
+    /// JSON array of the generated TypeScript client's `Outcome`s.
+    export protocol-decode-response: func(protocol: protocol, methods: string, response: string) -> result<string, string>;
 }

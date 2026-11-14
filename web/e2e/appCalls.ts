@@ -56,20 +56,30 @@ export async function routeAppCall(
   return () => page.unroute(APP_ENDPOINT, routed)
 }
 
-/** What the worker answered a call: `returned`, the method error's kind
- * in words (`destinations taken`), or how the call failed. */
+/** The outcome of each call of `methods`, read from a response's text. */
+export async function outcomesOf(
+  methods: string[],
+  text: string,
+): Promise<AppOutcome[]> {
+  await ensureWasm()
+  return JSON.parse(
+    poentaroWasm().protocolDecodeResponse('app', JSON.stringify(methods), text),
+  ) as AppOutcome[]
+}
+
+/** What the worker answered a request of one call of `method`: `value`,
+ * the method error's kind in words (`destinations taken`), or how the call
+ * failed. */
 export async function answerOf(
   method: string,
   response: Response,
 ): Promise<string> {
-  const outcome = JSON.parse(
-    poentaroWasm().protocolDecodeResponse('app', method, await response.text()),
-  ) as { kind: string; error?: { kind: string } }
+  const [outcome] = await outcomesOf([method], await response.text())
   const words = (camel: string) =>
     camel.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`)
-  return outcome.kind === 'error' && outcome.error
+  return outcome?.kind === 'error' && outcome.error
     ? words(outcome.error.kind)
-    : words(outcome.kind)
+    : words(outcome?.kind ?? 'missing')
 }
 
 /** One call's outcome, as the generated client reads it: `{ kind:
@@ -80,11 +90,11 @@ export interface AppOutcome {
   error?: { kind: string; [field: string]: unknown }
 }
 
-/** Answers the routed call with `outcome`, written in Rust as the worker
- * would. */
-export async function answerCall(
+/** Answers the routed request with `outcomes`, one per call, written in
+ * Rust as the worker would. */
+export async function answerCalls(
   route: Route,
-  outcome: AppOutcome,
+  outcomes: AppOutcome[],
 ): Promise<void> {
   await ensureWasm()
   await route.fulfill({
@@ -93,9 +103,21 @@ export async function answerCall(
     body: poentaroWasm().protocolEncodeResponse(
       'app',
       route.request().postData() ?? '',
-      JSON.stringify([outcome]),
+      JSON.stringify(outcomes),
     ),
   })
+}
+
+/** Answers every call of the routed request with `outcome`. */
+export async function answerCall(
+  route: Route,
+  outcome: AppOutcome,
+): Promise<void> {
+  const calls = await appCallsOf(route.request())
+  await answerCalls(
+    route,
+    calls.map(() => outcome),
+  )
 }
 
 /** Answers the routed call with the method error `kind`, e.g. `trashed`. */
@@ -103,22 +125,27 @@ export function refuseCall(route: Route, kind: string): Promise<void> {
   return answerCall(route, { kind: 'error', error: { kind } })
 }
 
-/** Lets the worker answer every call of `method`, then hands the page
- * `rewrite`'s version of that answer instead. */
+/** Lets the worker answer every request whose calls are of `method`, then
+ * hands the page `rewrite`'s version of each call's answer instead. */
 export function rewriteAnswers(
   page: Page,
   method: string,
   rewrite: (outcome: AppOutcome, call: AppCall) => AppOutcome,
 ): Promise<() => Promise<void>> {
-  return routeAppCall(page, method, async (route, call) => {
+  return routeAppCall(page, method, async (route) => {
+    const calls = await appCallsOf(route.request())
     const response = await route.fetch()
-    const outcome = JSON.parse(
-      poentaroWasm().protocolDecodeResponse(
-        'app',
-        method,
-        await response.text(),
-      ),
-    ) as AppOutcome
-    await answerCall(route, rewrite(outcome, call))
+    const outcomes = await outcomesOf(
+      calls.map((call) => call.method),
+      await response.text(),
+    )
+    await answerCalls(
+      route,
+      outcomes.map((outcome, index) => {
+        const call = calls[index]
+        if (!call) throw new Error(`no call for outcome ${index} of ${method}`)
+        return rewrite(outcome, call)
+      }),
+    )
   })
 }

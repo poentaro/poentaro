@@ -9,7 +9,7 @@ description = "The shapes a .poentaro document is made of, as an anyx grammar, a
 # workspace lints are for code people write.
 
 [dependencies]
-anyx = { git = "https://github.com/wongjiahau/anyx", rev = "ff7a3cf597b219faee27526bad2be8715fa3d5ce" }
+anyx = { git = "https://github.com/wongjiahau/anyx", rev = "2edb20a79c697a382219c016b1ace899f91fac7e" }
 
 [dev-dependencies]
-anyx-generator = { git = "https://github.com/wongjiahau/anyx", rev = "ff7a3cf597b219faee27526bad2be8715fa3d5ce" }
+anyx-generator = { git = "https://github.com/wongjiahau/anyx", rev = "2edb20a79c697a382219c016b1ace899f91fac7e" }

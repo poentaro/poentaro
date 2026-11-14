@@ -17,10 +17,10 @@ export class SchemaOutdated extends Error {}
 /** Encodes and decodes `protocol`'s requests in Rust. */
 export function codecFor(protocol: Protocol): Codec {
   return {
-    encodeRequest: (method, args) =>
-      poentaroWasm().protocolEncodeRequest(protocol, method, args),
-    decodeResponse: (method, response) =>
-      poentaroWasm().protocolDecodeResponse(protocol, method, response),
+    encodeRequest: (calls) =>
+      poentaroWasm().protocolEncodeRequest(protocol, calls),
+    decodeResponse: (methods, response) =>
+      poentaroWasm().protocolDecodeResponse(protocol, methods, response),
   }
 }
 

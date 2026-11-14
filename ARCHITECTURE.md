@@ -857,11 +857,14 @@ routes stay served until no old tab calls them.
 - Web: the generated clients (`web/src/generated/protocol/`) go through
   `web/src/protocol/` (`clients.ts`: `publicClient`, `appClient`,
   `testClient`; `transport.ts`: `codecFor`, `sendTo`), with the text encoded
-  and decoded in Rust (WIT `protocol-encode-request`,
-  `protocol-decode-response`). The cloud backend and its outbox take
-  `AppFileCalls` (the client's `files`/`folders` calls), which the unit tests
-  replace with `createFakeAppFiles` (`web/src/storage/fakeAppFiles.ts`, an
-  in-memory server).
+  and decoded in Rust (WIT `protocol-encode-request` takes every call of a
+  request, `protocol-decode-response` gives an outcome per call). A
+  client's `batch(build)` sends every call `build` makes as one request;
+  `cloudBackendListing.ts` reads all files listed by `files/list` in one
+  batch, leaving out a file gone since. The cloud backend and its outbox
+  take `AppFileCalls` (the client's `files`/`folders` calls and `batch`),
+  which the unit tests replace with `createFakeAppFiles`
+  (`web/src/storage/fakeAppFiles.ts`, an in-memory server).
 - E2e: `web/e2e/protocolClients.ts` gives the Node side the same clients.
   `web/e2e/appCalls.ts` matches the page's `POST /app` requests by method,
   decoding them in Rust (WIT `protocol-decode-request`), and answers or

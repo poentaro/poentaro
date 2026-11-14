@@ -4,8 +4,11 @@ import * as test from '../generated/protocol/test'
 import { ensureWasmInit } from '../wasmInit'
 import { codecFor, sendTo } from './transport'
 
-/** The calls the cloud file store makes, so tests can stand in a fake. */
-export type AppFileCalls = Pick<app.Client, 'files' | 'folders'>
+/** The calls the cloud file store makes, so tests can stand in a fake.
+ * `batch` sends several of them as one request. */
+export type AppFileCalls = Pick<app.Client, 'files' | 'folders'> & {
+  batch<R>(build: (calls: AppFileCalls) => Promise<R>[]): Promise<R[]>
+}
 
 export interface ClientOptions {
   /** The worker's host; `workerHost()` when left out. */

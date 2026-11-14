@@ -1,7 +1,6 @@
 import type { Page } from '@playwright/test'
 import type { FilesFileSummary } from '../../../src/generated/protocol/app'
-import { poentaroWasm } from '../../../src/poentaroWasm'
-import { appCallTo } from '../../appCalls'
+import { appCallTo, outcomesOf } from '../../appCalls'
 
 const WRITE = 'files/write _ at revision _ content _'
 const LIST = 'files/list'
@@ -65,14 +64,8 @@ export function installContentSaveTracking(page: Page): ContentSaveTracker {
   page.on('response', async (response) => {
     if (!(await appCallTo(response.request(), LIST))) return
     try {
-      const outcome = JSON.parse(
-        poentaroWasm().protocolDecodeResponse(
-          'app',
-          LIST,
-          await response.text(),
-        ),
-      ) as { kind: string; value?: FilesFileSummary[] }
-      for (const file of outcome.value ?? []) {
+      const [outcome] = await outcomesOf([LIST], await response.text())
+      for (const file of (outcome?.value as FilesFileSummary[]) ?? []) {
         tracker.nameForId.set(file.id, file.path)
       }
     } catch {

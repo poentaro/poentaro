@@ -1,4 +1,4 @@
-//! The codec the web app's generated anyx clients call: it writes a call as
+//! The codec the web app's generated anyx clients call: it writes calls as
 //! the protocol's text and reads the response back as JSON, against the
 //! schemas in `crates/poentaro-protocol`. Each function takes the owned
 //! strings wit-bindgen hands `Guest`, so `needless_pass_by_value` is
@@ -15,12 +15,8 @@ fn schema(protocol: Protocol) -> &'static anyx_protocol::Schema {
     }
 }
 
-pub(super) fn protocol_encode_request(
-    protocol: Protocol,
-    method: String,
-    arguments: String,
-) -> Result<String, String> {
-    anyx_protocol::json::encode_request_json(schema(protocol), &method, &arguments)
+pub(super) fn protocol_encode_request(protocol: Protocol, calls: String) -> Result<String, String> {
+    anyx_protocol::json::encode_requests_json(schema(protocol), &calls)
 }
 
 pub(super) fn protocol_decode_request(
@@ -40,8 +36,8 @@ pub(super) fn protocol_encode_response(
 
 pub(super) fn protocol_decode_response(
     protocol: Protocol,
-    method: String,
+    methods: String,
     response: String,
 ) -> Result<String, String> {
-    anyx_protocol::json::decode_response_json(schema(protocol), &method, &response)
+    anyx_protocol::json::decode_responses_json(schema(protocol), &methods, &response)
 }

@@ -27,22 +27,28 @@ export function createServerReads(app: () => Promise<AppFileCalls>) {
         : undefined
     },
 
-    /** Every file the account owns, the trash included, with its text. */
+    /** Every file the account owns, the trash included, with its text: one
+     * request for the list and one for every file's text. A file deleted in
+     * between is left out. */
     async listFiles(): Promise<ListedServerFile[]> {
       const calls = await app()
       const summaries = await expectValue(calls.files.list())
-      return Promise.all(
-        summaries.map(async (summary) => {
-          const file = await expectValue(calls.files.read(summary.id))
-          return {
-            id: summary.id,
-            name: summary.path,
+      const reads = await calls.batch((batch) =>
+        summaries.map((summary) => batch.files.read(summary.id)),
+      )
+      return reads.map(settled).flatMap((read) => {
+        if (read.kind === 'error') return []
+        const file = read.value
+        return [
+          {
+            id: file.summary.id,
+            name: file.summary.path,
             revision: file.summary.revision,
             trashedAt: file.summary.trashedAt ?? null,
             content: file.content,
-          }
-        }),
-      )
+          },
+        ]
+      })
     },
   }
 }
