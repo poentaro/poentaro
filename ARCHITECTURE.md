@@ -826,6 +826,35 @@ text, and the methods are declared in a schema.
   (`useFocusRevisionCheck`), so an agent's save shows up; unsaved edits are
   never replaced, and their save goes through the outbox's conflict flow.
 
+### Web app protocols (`/public`, `/app`, `/test`)
+
+The web app is moving off the REST routes onto three anyx protocols, each
+generated from its folder in `crates/poentaro-protocol/schemas`. The REST
+routes stay served until no old tab calls them.
+
+- Route (`src/handlers/protocols.rs`, `handlers::protocol_endpoint` /
+  `serve_protocol`): `POST /public` needs no credential; `POST /app` needs a
+  session token as `Authorization: Bearer`, and a token that names no live
+  session is a `401` before any method runs; `POST /test` exists only when
+  `SYNCED_SHARE_E2E_RESET_EMAILS` is set. A client that sends a
+  `Poentaro-Schema` hash other than the schema's own (`SCHEMA_HASH`) gets a
+  `409`, and the web app asks to reload.
+- Servers: `PublicServer` (`protocols/public.rs`), `AppServer`
+  (`protocols/app.rs`, with `app/files.rs` and `app/links.rs`) and
+  `TestServer` (`protocols/test.rs`). They call the same cores as the REST
+  handlers: `handlers::file_store` for file writes, `shares::start_file_link`
+  and friends, `api_keys::create_key`/`revoke_key`, `auth::create_account`,
+  `start_session`, `end_session`, `replace_password`.
+- The app addresses files by id. `files/list` returns summaries without
+  content (`db::list_file_summaries`, `naming::FileSummaryRow`); content
+  comes from `files/read`.
+- Paths the server picks are in `crate::naming`: `restored_path` (a restored
+  file whose path was taken comes back as `stem 2.ext`) and
+  `plan_folder_move` (`FolderMovePlan`), property-tested against
+  `poentaro::file_tree::move_folder`.
+- Logging: `LogEvent::Protocol(ProtocolEvent)`: `Called` with every method
+  name of the request and whether one failed, or `Refused` with the status.
+
 ### Version history
 
 `files.content` stays the head. Each accepted content save that changes the

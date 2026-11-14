@@ -21,12 +21,15 @@ PUBLIC ERRORS file errors [
     trashed,
 ] + lookup errors,
 
+PUBLIC ERRORS conflict errors [
+    # The path would be both a file and a folder.
+    file folder conflict (path: TEXT),
+],
+
 PUBLIC ERRORS path errors [
     # Another file, in the trash or not, has this path.
     taken,
-    # The path would be both a file and a folder.
-    file folder conflict (path: TEXT),
-] + paths/bad path,
+] + conflict errors + paths/bad path,
 
 # Every file this account owns, the trash included.
 METHOD list RETURNS (files: LIST file summary),
@@ -60,10 +63,10 @@ METHOD move (id: TEXT) to (path: TEXT)
 METHOD trash (id: TEXT) RETURNS NOTHING ERRORS lookup errors,
 
 # Brings a file back from the trash. If its path has been taken since, it
-# comes back under a free one, such as `hymn (2).poentaro`.
+# comes back under a free one, such as `hymn 2.poentaro`.
 METHOD restore (id: TEXT)
     RETURNS (path: TEXT)
     ERRORS [
         # The file isn't in the trash.
         not trashed,
-    ] + lookup errors,
+    ] + conflict errors + lookup errors,

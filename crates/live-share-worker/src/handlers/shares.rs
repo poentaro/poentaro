@@ -5,7 +5,7 @@
 //! what a viewer sees. These routes only start, stop and report on the
 //! pointer itself.
 
-use worker::RouteContext;
+use worker::{D1Database, RouteContext};
 
 use crate::api_error::ApiError;
 use crate::app_log::RequestMeta;
@@ -19,7 +19,7 @@ use crate::share;
 use crate::share_id;
 
 use super::routes::{HandlerResult, Json, NoContent, NoPathParams};
-use super::{resolve_files_caller, D1_BINDING};
+use super::{now_millis, resolve_files_caller, D1_BINDING};
 
 /// `GET /shares/{share_id}` -- fully anonymous: the unguessable `share_id`
 /// is the sole credential needed to view (TODO §0). Reads the pointed-at
@@ -30,12 +30,18 @@ pub(super) async fn get_share(
     path: ShareIdPath,
 ) -> HandlerResult<Json<SyncedDoc>> {
     let d1 = ctx.d1(D1_BINDING)?;
-    if let Some(view) = db::get_share_view(&d1, &path.share_id).await? {
-        return Ok(Json(share::to_public_doc(Some(&view))));
+    read_share(&d1, &path.share_id).await.map(Json)
+}
+
+/// What the link `share_id` shows: a file, a folder, or nothing for an
+/// ended link or an unknown id.
+pub(super) async fn read_share(d1: &D1Database, share_id: &str) -> HandlerResult<SyncedDoc> {
+    if let Some(view) = db::get_share_view(d1, share_id).await? {
+        return Ok(share::to_public_doc(Some(&view)));
     }
-    match db::get_folder_share_header(&d1, &path.share_id).await? {
-        Some(header) => Ok(Json(read_folder_share(&d1, &header).await?)),
-        None => Ok(Json(share::to_public_doc(None))),
+    match db::get_folder_share_header(d1, share_id).await? {
+        Some(header) => read_folder_share(d1, &header).await,
+        None => Ok(share::to_public_doc(None)),
     }
 }
 
@@ -43,7 +49,7 @@ pub(super) async fn get_share(
 /// a live one is refused (`SharedFolderTooLarge`) rather than truncated when
 /// the folder has grown past the limits.
 async fn read_folder_share(
-    d1: &worker::D1Database,
+    d1: &D1Database,
     header: &folder_share::FolderShareHeader,
 ) -> HandlerResult<SyncedDoc> {
     if header.ended_at.is_some() {
@@ -69,24 +75,29 @@ pub(super) async fn start_share(
 ) -> HandlerResult<Json<FileShareResponse>> {
     let d1 = ctx.d1(D1_BINDING)?;
     let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
+    let share_id = start_file_link(&d1, &owner_user_id, &path.id).await?;
+    Ok(Json(FileShareResponse { share_id }))
+}
 
-    let is_active_owned_file = db::get_file_by_id(&d1, &path.id, &owner_user_id)
+/// The link of the owner's file `file_id`, started or resumed. `NotFound`
+/// when the owner has no such file outside the trash.
+pub(super) async fn start_file_link(
+    d1: &D1Database,
+    owner_user_id: &str,
+    file_id: &str,
+) -> HandlerResult<String> {
+    let is_active_owned_file = db::get_file_by_id(d1, file_id, owner_user_id)
         .await?
         .is_some_and(|file| file.trashed_at.is_none());
     if !is_active_owned_file {
         return Err(ApiError::NotFound);
     }
-
-    let new_share_id = share_id::generate_unique_share_id(&d1).await?;
-    let now = worker::Date::now().as_millis() as i64;
-    let Some(share_id) =
-        db::upsert_share(&d1, &new_share_id, &owner_user_id, &path.id, now).await?
-    else {
-        return Err(ApiError::Internal {
+    let new_share_id = share_id::generate_unique_share_id(d1).await?;
+    db::upsert_share(d1, &new_share_id, owner_user_id, file_id, now_millis())
+        .await?
+        .ok_or_else(|| ApiError::Internal {
             message: "upserting the share returned no row".to_string(),
-        });
-    };
-    Ok(Json(FileShareResponse { share_id }))
+        })
 }
 
 /// `POST /files/{id}/share/stop` -- ends the caller's share of this file.
@@ -101,9 +112,19 @@ pub(super) async fn stop_share(
     let d1 = ctx.d1(D1_BINDING)?;
     let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
 
-    let now = worker::Date::now().as_millis() as i64;
-    if db::end_share(&d1, &path.id, &owner_user_id, now).await? {
-        Ok(NoContent)
+    stop_file_link(&d1, &owner_user_id, &path.id).await?;
+    Ok(NoContent)
+}
+
+/// Ends the link of the owner's file `file_id`. `NotFound` when it was
+/// never shared.
+pub(super) async fn stop_file_link(
+    d1: &D1Database,
+    owner_user_id: &str,
+    file_id: &str,
+) -> HandlerResult<()> {
+    if db::end_share(d1, file_id, owner_user_id, now_millis()).await? {
+        Ok(())
     } else {
         Err(ApiError::NotFound)
     }
@@ -143,22 +164,29 @@ pub(super) async fn start_folder_share(
     let d1 = ctx.d1(D1_BINDING)?;
     let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
 
-    let stats = db::get_folder_files_stats(&d1, &owner_user_id, folder.as_str()).await?;
+    let share_id = start_folder_link(&d1, &owner_user_id, folder.as_str()).await?;
+    Ok(Json(FileShareResponse { share_id }))
+}
+
+/// The link of the owner's folder `folder` (already validated), started or
+/// resumed. `NotFound` when no file is in it; `SharedFolderTooLarge` past the
+/// size limits.
+pub(super) async fn start_folder_link(
+    d1: &D1Database,
+    owner_user_id: &str,
+    folder: &str,
+) -> HandlerResult<String> {
+    let stats = db::get_folder_files_stats(d1, owner_user_id, folder).await?;
     if stats.file_count == 0 {
         return Err(ApiError::NotFound);
     }
     folder_share::check_size(stats)?;
-
-    let new_share_id = share_id::generate_unique_share_id(&d1).await?;
-    let now = worker::Date::now().as_millis() as i64;
-    let Some(share_id) =
-        db::upsert_folder_share(&d1, &new_share_id, &owner_user_id, folder.as_str(), now).await?
-    else {
-        return Err(ApiError::Internal {
+    let new_share_id = share_id::generate_unique_share_id(d1).await?;
+    db::upsert_folder_share(d1, &new_share_id, owner_user_id, folder, now_millis())
+        .await?
+        .ok_or_else(|| ApiError::Internal {
             message: "upserting the folder share returned no row".to_string(),
-        });
-    };
-    Ok(Json(FileShareResponse { share_id }))
+        })
 }
 
 /// `POST /folders/share/stop` -- ends the caller's share of this folder
@@ -174,9 +202,19 @@ pub(super) async fn stop_folder_share(
     let d1 = ctx.d1(D1_BINDING)?;
     let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
 
-    let now = worker::Date::now().as_millis() as i64;
-    if db::end_folder_share(&d1, &owner_user_id, folder.as_str(), now).await? {
-        Ok(NoContent)
+    stop_folder_link(&d1, &owner_user_id, folder.as_str()).await?;
+    Ok(NoContent)
+}
+
+/// Ends the link of the owner's folder `folder`. `NotFound` when it was
+/// never shared.
+pub(super) async fn stop_folder_link(
+    d1: &D1Database,
+    owner_user_id: &str,
+    folder: &str,
+) -> HandlerResult<()> {
+    if db::end_folder_share(d1, owner_user_id, folder, now_millis()).await? {
+        Ok(())
     } else {
         Err(ApiError::NotFound)
     }

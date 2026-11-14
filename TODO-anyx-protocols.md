@@ -106,49 +106,49 @@ are deleted, and nothing in `web/` builds a URL other than these endpoints.
 
 ### 2. Worker endpoints (`crates/live-share-worker`)
 
-- [ ] `POST /public`: no credential, rate limit by IP as sign-in does today,
+- [x] `POST /public`: no credential, rate limit by IP as sign-in does today,
       call `public::handle`.
-- [ ] `POST /app`: verify the session token (`auth::session`), 401 on
+- [x] `POST /app`: verify the session token (`auth::session`), 401 on
       failure with the same `VerificationFailure` logging as today, call
       `app::handle`.
-- [ ] `POST /test`: only when `e2e_reset_enabled`, otherwise no such route.
-- [ ] Keep `POST /agent` as it is.
-- [ ] Schema hash check: each generated client sends `Poentaro-Schema:
+- [x] `POST /test`: only when `e2e_reset_enabled`, otherwise no such route.
+- [x] Keep `POST /agent` as it is.
+- [x] Schema hash check: each generated client sends `Poentaro-Schema:
       <hash>`; on a mismatch the worker answers 409 and the web app shows
       "Poentaro was updated, reload". Missing header (agents, curl) is fine.
-- [ ] Log each call to `app_log` by its full method name, as `/agent` does.
+- [x] Log each call to `app_log` by its full method name, as `/agent` does.
 
 ### 3. Implement `poentaro public` and `poentaro test`
 
 Each item: implement the `Server` trait method by calling the code the REST
 handler calls today, add a Rust test, then delete the REST route.
 
-- [ ] `account/sign up _ password _` (was `/auth/sign-up`)
-- [ ] `account/sign in _ password _` (was `/auth/sign-in`), keeping the
+- [x] `account/sign up _ password _` (was `/auth/sign-up`)
+- [x] `account/sign in _ password _` (was `/auth/sign-in`), keeping the
       lockout and IP rate limit
-- [ ] `links/open _` (was `GET /shares/{id}`), including folder links and
+- [x] `links/open _` (was `GET /shares/{id}`), including folder links and
       `too large`
-- [ ] `migrations/upload _` and `migrations/claim _` (were
+- [x] `migrations/upload _` and `migrations/claim _` (were
       `/origin-migrations*`)
-- [ ] `accounts/reset _` in `poentaro test` (was `/e2e/reset`)
+- [x] `accounts/reset _` in `poentaro test` (was `/e2e/reset`)
 
 ### 4. Implement `poentaro app`
 
-- [ ] `files/list` (summaries), `files/read _`
-- [ ] `files/write _ at revision _ content _`, with `conflict at revision`
+- [x] `files/list` (summaries), `files/read _`
+- [x] `files/write _ at revision _ content _`, with `conflict at revision`
       returning the current content
-- [ ] `files/create _ at _ content _`, with the browser's id (today's
+- [x] `files/create _ at _ content _`, with the browser's id (today's
       `generateFileId()`); an id clash is an error
-- [ ] `files/move _ to _` (was `/files/{id}/rename`)
-- [ ] `folders/move _ to _` (was `/files/rename-batch`), computing the moves
+- [x] `files/move _ to _` (was `/files/{id}/rename`)
+- [x] `folders/move _ to _` (was `/files/rename-batch`), computing the moves
       in Rust; property-test it against the TS it replaces
-- [ ] `files/trash _`, `files/restore _` (server picks a free name)
-- [ ] `files/versions/list _`, `files/versions/read _ at revision _`
-- [ ] `links/start|stop|status of file _`, `links/start|stop|status of
+- [x] `files/trash _`, `files/restore _` (server picks a free name)
+- [x] `files/versions/list _`, `files/versions/read _ at revision _`
+- [x] `links/start|stop|status of file _`, `links/start|stop|status of
       folder _`, `links/list` (were `/files/{id}/share*`, `/folders/share*`,
       `/shares/overview`)
-- [ ] `keys/list`, `keys/create`, `keys/revoke _` (were `/api-keys*`)
-- [ ] `account/sign out`, `account/change password from _ to _`
+- [x] `keys/list`, `keys/create`, `keys/revoke _` (were `/api-keys*`)
+- [x] `account/sign out`, `account/change password from _ to _`
 
 ### 5. Move the web app over
 

@@ -5,6 +5,8 @@ METHOD upload (payload: TEXT)
     ERRORS [
         # The payload is over the limit; `message` says by how much.
         too large (message: TEXT),
+        # Too many handoffs from this address in the last minute.
+        too many requests,
     ],
 
 # The payload as it was uploaded. A handoff can be claimed once.

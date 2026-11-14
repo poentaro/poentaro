@@ -16,7 +16,7 @@ use worker::D1Database;
 use crate::agent::{export_midi, export_svg, file_id, new_file_path_problem, score_diagnostics};
 use crate::db;
 use crate::files::{self, ContentWriteAttempt, StoredFile};
-use crate::handlers::files::{proposed_name, record_version};
+use crate::handlers::file_store::{proposed_name, record_version};
 use crate::handlers::{is_unique_constraint_violation, now_millis};
 
 /// The score syntax, which `score/syntax` answers.

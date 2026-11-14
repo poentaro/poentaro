@@ -1,5 +1,5 @@
-# Moves a folder and every file in it, the trash included: all of them, or
-# none. Moving a folder that is already at `new path` succeeds, so a retry
+# Moves a folder and every file in it that isn't in the trash: all of them,
+# or none. Files in the trash keep their paths. Moving a folder that is already at `new path` succeeds, so a retry
 # whose answer was lost is safe.
 METHOD move (path: TEXT) to (new path: TEXT)
     RETURNS (files: LIST files/file summary)
