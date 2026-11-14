@@ -1,0 +1,14 @@
+# Ends this session.
+METHOD sign out RETURNS NOTHING,
+
+# Ends every other session of the account. This one stays signed in.
+METHOD change password from (current password: TEXT) to (new password: TEXT)
+    RETURNS NOTHING
+    ERRORS [
+        # `current password` isn't the account's password.
+        incorrect password,
+        # Too many wrong passwords for this email.
+        locked for (duration: INTEGER) seconds,
+        # The new password isn't strong enough; `message` says why.
+        weak password (message: TEXT),
+    ],

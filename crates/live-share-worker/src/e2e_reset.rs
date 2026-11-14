@@ -33,7 +33,8 @@ pub fn parse_reset_emails(value: &str) -> Result<Vec<String>, String> {
 }
 
 /// Which emails one reset deletes: `requested` (normalized) when given --
-/// refused unless every one is in `allowed` -- otherwise all of `allowed`.
+/// refused, naming the first email not in `allowed`, unless every one is --
+/// otherwise all of `allowed`.
 pub fn emails_to_reset(
     allowed: &[String],
     requested: Option<&[String]>,
@@ -46,7 +47,7 @@ pub fn emails_to_reset(
         .map(|email| {
             normalize_email(email)
                 .filter(|email| allowed.contains(email))
-                .ok_or_else(|| format!("{email:?} is not in {EMAILS_VAR}"))
+                .ok_or_else(|| email.clone())
         })
         .collect()
 }

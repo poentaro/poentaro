@@ -255,7 +255,7 @@ The React app (`web/`) runs the compiler in a dedicated worker (`web/src/worker/
 - Placeholder files (`placeholder.rs`, `cloudBackendPlaceholders.ts`): the cloud (worker + D1) knows only files, so an explicit empty folder `A/B` is persisted as the file `A/B/.keep` with empty content; the worker and schema are unaware of folders. Rust owns the convention: `PLACEHOLDER_LEAF`, `is_placeholder_path(path)`, `placeholder_path(folder) -> Result<TreePath, PathError>`, and `classify_cloud_listing(&[ListedEntry { id, name, trashed }]) -> ListingClassification { folders, trashed_folders, hidden_file_ids }` (`FolderPlaceholder { folder, file_id }`), exposed as WIT `file-store-classify-cloud-listing`, `-placeholder-path`, `-is-placeholder-path`. Users cannot create the reserved leaf: `rename_file`, `rename_error` and `move_folder` fail with `FileStoreError::ReservedName` (WIT kind `reserved-name`); the placeholder logic itself does not go through those. Where the placeholder's file id lives: not in `FileStoreState` (local mode never has placeholders, and `file_ids`/`user_files`/`bin` stay placeholder-free). The cloud backend's `load()` runs the raw listing (after `applyPendingStructure`, so a still-queued create-folder shows at once, also after a reload) through `classify_cloud_listing`, drops every placeholder row (active or trashed) from the file list, sets `FileStoreState.folders` from the active ones, and keeps a `folder -> { fileId, trashed }` map inside the backend (`createPlaceholders`). `createFolder` queues `CreateFile` `<folder>/.keep`; folder rename/move queues one `RenameFiles` batch covering the moved files and the explicit-folder placeholder moves (`moveFolder` in `cloudBackendFolders.ts`; `rename()` in `cloudBackendPlaceholders.ts` returns the placeholder's `RenameMove`); `deleteFolder` queues `TrashFile` for every explicit folder removed. Because names are unique across trashed rows too, re-creating a deleted folder restores its trashed placeholder, and renaming a folder onto a deleted folder's name trashes the old placeholder and restores that one. A placeholder stays when real files are later added to the folder (harmless; the folder is explicit from then on). A `name_taken` answer for a placeholder create/rename (another device made the same folder) counts as delivered instead of becoming a visible `.keep 2.poentaro`.
 - Sorting compares names case-insensitively (lowercased), falling back to a plain comparison for a deterministic total order; this approximates the TS `localeCompare` it replaces.
 - `unique_path` mirrors the old `fileStore.ts` `uniqueName`: only siblings of `desired` (same parent folder) count as taken; a collision becomes `stem 2.ext`, `stem 3.ext`, ...; a name with no extension (or only a leading dot) gets `.poentaro`.
-- `path_after_collision(rejected: &TreePath) -> Result<TreePath, PathError>` (also in `unique_name.rs`) is the cloud outbox's retry name when the worker answers `name_taken` and only the rejected path is known: it steps over a trailing ` N` on the stem (`a.poentaro` -> `a 2.poentaro`, `a 2.poentaro` -> `a 3.poentaro`), keeps the folder prefix, and goes through `unique_path`. Exposed as the WIT export `file-store-name-after-collision` (`guest_file_store.rs`); `web/src/storage/outbox/sendMessage.ts` calls it for a `create-file`/`rename-file`/`restore-file` `name_taken` answer. The old TS `suggestNameAfterCollision` is deleted. A folder move is one `rename-files` batch (see Cloud outbox): when the worker answers `names_taken`, `sendMessage.ts` maps each listed name to a `NameAdjustment { rejected, replacement }` through the same export (`replacement` is none for a `.keep` placeholder path, whose move is dropped), and the outbox rewrites the matching moves and resends the whole batch.
+- `path_after_collision(rejected: &TreePath) -> Result<TreePath, PathError>` (also in `unique_name.rs`) is the cloud outbox's retry name when the worker answers `name_taken` and only the rejected path is known: it steps over a trailing ` N` on the stem (`a.poentaro` -> `a 2.poentaro`, `a 2.poentaro` -> `a 3.poentaro`), keeps the folder prefix, and goes through `unique_path`. `folder_after_collision(rejected)` is the same for a folder (`New` -> `New 2`), for a `folders/move` whose destination folder exists. Exposed as the WIT exports `file-store-name-after-collision` and `file-store-folder-after-collision` (`guest_file_store.rs`); `web/src/storage/outbox/sendMessage.ts` calls it for a `create-file`/`rename-file`/`restore-file` `name_taken` answer. The old TS `suggestNameAfterCollision` is deleted. A folder move is one `rename-files` batch (see Cloud outbox): when the worker answers `names_taken`, `sendMessage.ts` maps each listed name to a `NameAdjustment { rejected, replacement }` through the same export (`replacement` is none for a `.keep` placeholder path, whose move is dropped), and the outbox rewrites the matching moves and resends the whole batch.
 
 ### Source editing
 
@@ -739,8 +739,9 @@ An account owner's AI agent reads and edits the owner's own scores over the
 **anyx protocol** (anyx's `anyx-protocol`): requests and responses are anyx
 text, and the methods are declared in a schema.
 
-- Schema and generated code: `crates/poentaro-protocol`. The schema is the
-  folder `schema/`, a file per **scope**: `protocol.anyx` holds only the
+- Schema and generated code: `crates/poentaro-protocol`. Each audience has
+  its own schema folder in `schemas/` (`agent`, `app`, `public`, `test`).
+  The agent's is `schemas/agent/`, a file per **scope**: `protocol.anyx` holds only the
   `PROTOCOL` header, `files.anyx` is the scope `files`,
   `files/export.anyx` the scope `files/export` and `score.anyx` the scope
   `score`. A method is called by its
@@ -756,22 +757,20 @@ text, and the methods are declared in a schema.
   `already exists at revision _`, `invalid path _`), or in a group that
   methods join with `+`. A type or error group is private to its scope
   unless `PUBLIC`, and another scope names it by full path
-  (`files/diagnostic`, `files/file errors`). `src/generated.rs` is what anyx's
-  `anyx-protocol-generate` writes from it, a module per scope
-  (`poentaro_protocol::files::export`): the record structs, a
+  (`files/diagnostic`, `files/file errors`). `build.rs` runs anyx's
+  `anyx-protocol-generate` on each schema folder at build time and writes a
+  module per audience into `OUT_DIR`, with a module per scope inside
+  (`poentaro_protocol::agent::files::export`): the record structs, a
   `{Method}Error` enum per method, a `Server` trait per scope (the root one
   holds `type Error`), `handle(server, request, on_internal_error) ->
   String`, a `Client` (`client.files().export().svg(path)`), and
-  `SCHEMA_FILES`/`schema()`. `tests/generated.rs` lists the schema's files
-  and fails when one is missing from that list.
-  `just generate-protocol` rewrites it, and a test fails when it is stale.
-  Like `poentaro-grammar`, the crate is outside the workspace lints and its
-  `generated.rs` is exempt from the 400-line limit.
+  `SCHEMA_FILES`/`schema()`. Nothing generated is checked in. Like
+  `poentaro-grammar`, the crate is outside the workspace lints.
 - Route (`src/handlers/agent.rs`): `POST /agent` runs a request sent with
   `Authorization: Bearer poe_…`; any other method is a `405`. Everything
   the agent reads comes through it: anyx's built-in `SCHEMA` call answers
   the guide (how to write a request and read a response, then the schema
-  with its docs), and `score/syntax` (`schema/score.anyx`) answers
+  with its docs), and `score/syntax` (`schemas/agent/score.anyx`) answers
   `syntax.md`. A missing, unknown, revoked or
   expired key is a plain-text `401`; the per-key `AGENT_RATE_LIMITER`
   (`cloudflare.config.ts`, 60 requests a minute) a `429`.
@@ -826,6 +825,51 @@ text, and the methods are declared in a schema.
   `REVISION_POLL_MILLIS` (5 s) while the tab is in view
   (`useFocusRevisionCheck`), so an agent's save shows up; unsaved edits are
   never replaced, and their save goes through the outbox's conflict flow.
+
+### Web app protocols (`/public`, `/app`, `/test`)
+
+The web app is moving off the REST routes onto three anyx protocols, each
+generated from its folder in `crates/poentaro-protocol/schemas`. The REST
+routes stay served until no old tab calls them.
+
+- Route (`src/handlers/protocols.rs`, `handlers::protocol_endpoint` /
+  `serve_protocol`): `POST /public` needs no credential; `POST /app` needs a
+  session token as `Authorization: Bearer`, and a token that names no live
+  session is a `401` before any method runs; `POST /test` exists only when
+  `SYNCED_SHARE_E2E_RESET_EMAILS` is set. A client that sends a
+  `Poentaro-Schema` hash other than the schema's own (`SCHEMA_HASH`) gets a
+  `409`, and the web app asks to reload.
+- Servers: `PublicServer` (`protocols/public.rs`), `AppServer`
+  (`protocols/app.rs`, with `app/files.rs` and `app/links.rs`) and
+  `TestServer` (`protocols/test.rs`). They call the same cores as the REST
+  handlers: `handlers::file_store` for file writes, `shares::start_file_link`
+  and friends, `api_keys::create_key`/`revoke_key`, `auth::create_account`,
+  `start_session`, `end_session`, `replace_password`.
+- The app addresses files by id. `files/list` returns summaries without
+  content (`db::list_file_summaries`, `naming::FileSummaryRow`); content
+  comes from `files/read`.
+- Paths the server picks are in `crate::naming`: `restored_path` (a restored
+  file whose path was taken comes back as `stem 2.ext`) and
+  `plan_folder_move` (`FolderMovePlan`), property-tested against
+  `poentaro::file_tree::move_folder`.
+- Logging: `LogEvent::Protocol(ProtocolEvent)`: `Called` with every method
+  name of the request and whether one failed, or `Refused` with the status.
+- Web: the generated clients (`web/src/generated/protocol/`) go through
+  `web/src/protocol/` (`clients.ts`: `publicClient`, `appClient`,
+  `testClient`; `transport.ts`: `codecFor`, `sendTo`), with the text encoded
+  and decoded in Rust (WIT `protocol-encode-request` takes every call of a
+  request, `protocol-decode-response` gives an outcome per call). A
+  client's `batch(build)` sends every call `build` makes as one request;
+  `cloudBackendListing.ts` reads all files listed by `files/list` in one
+  batch, leaving out a file gone since. The cloud backend and its outbox
+  take `AppFileCalls` (the client's `files`/`folders` calls and `batch`),
+  which the unit tests replace with `createFakeAppFiles`
+  (`web/src/storage/fakeAppFiles.ts`, an in-memory server).
+- E2e: `web/e2e/protocolClients.ts` gives the Node side the same clients.
+  `web/e2e/appCalls.ts` matches the page's `POST /app` requests by method,
+  decoding them in Rust (WIT `protocol-decode-request`), and answers or
+  rewrites them with an outcome encoded in Rust (`protocol-encode-response`):
+  `routeAppCall`, `answerCall`, `refuseCall`, `rewriteAnswers`.
 
 ### Version history
 
@@ -1146,7 +1190,7 @@ away from the wasm build both times:
 | **static folder link** | A `#share-folder=<payload>` link carrying a compressed `FolderSnapshot` of a folder at one moment; works for local and cloud folders, never updates, and is not offered above `MAX_STATIC_FOLDER_LINK_CHARS` (the dialog suggests a synced link instead). |
 | **API key** | A `poe_…` key an account owner creates in the account menu's **AI agents** dialog, for their AI agent to send to `POST /agent` as `Authorization: Bearer`. It acts as its owner on the owner's own files only, for 30 days; only its hash is stored, and its `prefix` names it. See "AI agents". |
 | **agent** | An AI agent (Claude Code, Codex, …) that the account owner sets up with the AI agents dialog's prompt: it saves the API key and installs the `poentaro` skill, then sends `SCHEMA` to `POST /agent` for the guide and the schema, and reads and edits the owner's scores through the same route. |
-| **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result repeats the call, with long arguments cut short with `…`, then says what came of it: `RETURNS <value>`, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro's schema is the folder `crates/poentaro-protocol/schema`, a file per scope. |
+| **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result repeats the call, with long arguments cut short with `…`, then says what came of it: `RETURNS <value>`, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro has a schema per audience, each a folder in `crates/poentaro-protocol/schemas` with a file per scope. |
 | **`SCHEMA`** (anyx protocol) | The call every anyx-protocol server answers without declaring it: the guide to its schema (how to write a request and read a response, then the schema as written). Generated clients call it as `client.schema()`. |
 | **scope** (anyx protocol) | A file of an anyx-protocol schema folder other than `protocol.anyx`, named by its path without `.anyx` (`files/export`). Its methods are called by full name (`files/export/svg _`), and its types and errors are private to it unless `PUBLIC`. |
 | **share overview** | `file_tree::ShareOverview`, the owner's live file and folder links as `POST /shares/overview` reports them; everything the share UI shows (markers, "via X" tags, warnings) is derived from it in Rust. |
@@ -1199,10 +1243,11 @@ camelCase, enums are tagged with `kind`.
   The head message is index 0.
 - `QueuedMessage { message_id, created_at_ms, message: Message, attempts: Vec<Attempt> }`.
 - `Message`: `CreateFile { name, content }`, `SaveContent { content }`,
-  `RenameFile { to }`, `TrashFile`, `RestoreFile`, `RenameFiles { moves: Vec<RenameMove { file_id, to }> }`. The file id lives on the lane, except for `RenameFiles` (a folder move): it sits alone on a synthetic lane `batch:<message_id>` (`BATCH_LANE_PREFIX`) so a half-delivered move cannot exist; no revision is recorded for that lane and it is removed once the batch is delivered.
+  `RenameFile { to }`, `TrashFile`, `RestoreFile`, `RenameFiles { moves: Vec<RenameMove { file_id, to }>, folder: Option<FolderMove { from, to }> }` (`folder` is set when the batch is one folder move, which `sendMessage.ts` sends as a single `folders/move _ to _`; without it each move is sent as `files/move _ to _`). The file id lives on the lane, except for `RenameFiles` (a folder move): it sits alone on a synthetic lane `batch:<message_id>` (`BATCH_LANE_PREFIX`) so a half-delivered move cannot exist; no revision is recorded for that lane and it is removed once the batch is delivered.
   Ordering (`scheduling::is_blocked`): a batch is not sent before a pending `CreateFile` (placeholder creates included) of any member file, nor before an earlier rename/trash/restore of a member file or an earlier batch sharing a file; a later per-file rename/trash/restore of a member waits for the batch. `SaveContent` is never blocked. `applyPendingStructure` (`cloudBackendOutbox.ts`) replays pending messages in `createdAtMs` order, including batch moves.
 - `Attempt { at_ms, outcome: AttemptOutcome }`; `AttemptOutcome`: `Succeeded`,
   `Transient`, `Unauthorized`, `RevisionConflict`, `NameTaken`, `NamesTaken { adjustments }`, `Permanent`.
+  On `NamesTaken`, `batch_adjust::adjust_batch` rewrites the head message: an adjustment naming `folder.to` (the destination folder exists) moves the whole batch into the replacement folder and keeps `folder`; otherwise each taken move is renamed or dropped and `folder` is cleared.
   A delivered message's log (kept in its `sent:` record) ends in `Succeeded`;
   that is what makes a history row "Sent".
 - `LaneStatus`: `Idle`, `Draining`, `Waiting { retry_at_ms }`, `NeedsSignIn`,
@@ -1238,8 +1283,9 @@ The shell only does I/O, timers and rendering; every decision is a wasm call.
 - Existing: `outboxStore.ts` (persists `StoredRecord`s), `memoryOutboxStore.ts`
   (in-memory store), `outboxLock.ts` (single-tab lock), `outboxScheduler.ts`
   (timer driven by `next_wake_ms`).
-- `sendMessage.ts` (performs a `SendRequest` over HTTP and maps the
-  response to a `SendResult`), `outboxLooper.ts` (the Looper; runs on the
+- `sendMessage.ts` (performs a `SendRequest` through `poentaro app`'s file
+  calls and maps each method error to a `SendResult`; an error the outbox
+  can't fix is `Permanent { status, reason: <error kind> }`), `outboxLooper.ts` (the Looper; runs on the
   leader tab only), `baseSnapshots.ts` (Base snapshot storage under
   `base:<fileId>`), `conflictFlow.ts` (drives `NeedsMerge` through
   `merge_three_way`: a clean merge is saved at once, a conflicting one is kept

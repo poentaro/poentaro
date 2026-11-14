@@ -3,13 +3,14 @@ name = "poentaro-protocol"
 version = "0.1.0"
 edition = "2021"
 publish = false
-description = "The methods an AI agent calls on Poentaro, as an anyx-protocol schema, and the server and client generated from it"
+description = "Poentaro's anyx protocols, a schema per audience, and the servers and clients generated from them"
 
 # No `[lints] workspace = true`: the code here is generated, and the
 # workspace lints are for code people write.
 
 [dependencies]
-anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "de017324fe42cb7faefad998442d6c843a4e6717" }
+anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "2edb20a79c697a382219c016b1ace899f91fac7e" }
 
-[dev-dependencies]
-anyx-protocol-generate = { git = "https://github.com/wongjiahau/anyx", rev = "de017324fe42cb7faefad998442d6c843a4e6717" }
+[build-dependencies]
+anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "2edb20a79c697a382219c016b1ace899f91fac7e" }
+anyx-protocol-generate = { git = "https://github.com/wongjiahau/anyx", rev = "2edb20a79c697a382219c016b1ace899f91fac7e" }

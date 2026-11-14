@@ -14,9 +14,11 @@
 //! writes live in the crate-private `db::app_log`.
 
 mod agent;
+mod protocol;
 mod request;
 
 pub use agent::{AgentEvent, Called, KeyEvent, KeyRejected};
+pub use protocol::{ProtocolCalled, ProtocolEvent, ProtocolRefused};
 pub use request::{RequestEvent, RequestFailed};
 
 use std::cell::RefCell;
@@ -66,6 +68,7 @@ pub enum LogEvent {
     Auth(AuthEvent),
     Request(RequestEvent),
     Agent(AgentEvent),
+    Protocol(ProtocolEvent),
 }
 
 /// An account's life cycle: created, signed in (or refused), locked out,
@@ -330,6 +333,7 @@ impl LogEvent {
             LogEvent::Auth(event) => event.outcome(),
             LogEvent::Request(event) => event.outcome(),
             LogEvent::Agent(event) => event.outcome(),
+            LogEvent::Protocol(event) => event.outcome(),
         }
     }
 
@@ -342,6 +346,7 @@ impl LogEvent {
             LogEvent::Auth(event) => event.subject(),
             LogEvent::Request(_) => None,
             LogEvent::Agent(event) => event.subject(),
+            LogEvent::Protocol(_) => None,
         }
     }
 

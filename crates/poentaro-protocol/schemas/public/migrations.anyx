@@ -1,0 +1,18 @@
+# Hands what an old origin kept in the browser to the new origin. The server
+# never reads `payload`.
+METHOD upload (payload: TEXT)
+    RETURNS (id: TEXT)
+    ERRORS [
+        # The payload is over the limit; `message` says by how much.
+        too large (message: TEXT),
+        # Too many handoffs from this address in the last minute.
+        too many requests,
+    ],
+
+# The payload as it was uploaded. A handoff can be claimed once.
+METHOD claim (id: TEXT)
+    RETURNS (payload: TEXT)
+    ERRORS [
+        # No handoff has this id, or it was claimed already.
+        missing,
+    ],

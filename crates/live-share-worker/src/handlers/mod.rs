@@ -35,18 +35,21 @@ mod agent;
 mod api_keys;
 mod auth;
 mod e2e_reset;
+mod file_store;
 mod files;
 mod origin_migrations;
+mod protocols;
 pub(crate) mod routes;
 mod shares;
 
-use worker::{console_error, D1Database, Env, Response, RouteContext};
+use worker::{console_error, D1Database, Env, Response};
 
 use crate::api_error::{ApiError, ApiErrorBody};
 use crate::app_log::{LogEvent, RequestEvent, RequestFailed, RequestMeta};
 use crate::db;
 use crate::identity::resolve_verified_user_id;
 pub(crate) use agent::{serve as serve_agent, serves as serves_agent};
+pub(crate) use protocols::{endpoint as protocol_endpoint, serve as serve_protocol, SCHEMA_HEADER};
 pub(crate) use routes::{request_meta, TRACE_ID_HEADER};
 use routes::{HandlerResult, Routes};
 
@@ -152,7 +155,7 @@ fn now_millis() -> i64 {
 /// Refuses the request once `binding`'s per-IP limit is spent. Requests
 /// with no `CF-Connecting-IP` (only local runs) share one bucket.
 async fn check_rate_limit(
-    ctx: &RouteContext<()>,
+    env: &Env,
     binding: &str,
     request_meta: &RequestMeta,
 ) -> HandlerResult<()> {
@@ -160,7 +163,7 @@ async fn check_rate_limit(
         .client_ip
         .clone()
         .unwrap_or_else(|| "unknown".to_string());
-    let outcome = ctx.rate_limiter(binding)?.limit(key).await?;
+    let outcome = env.rate_limiter(binding)?.limit(key).await?;
     if outcome.success {
         Ok(())
     } else {

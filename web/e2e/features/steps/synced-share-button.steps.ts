@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test'
 import { fileSwitcherTrigger, openFileActions } from '../../fileSwitcherHelpers'
+import { answersCall } from '../../protocolClients'
 import {
   ACCOUNT_AUTH_STORAGE_KEY,
   seedSignedInSession,
@@ -327,11 +328,10 @@ When(
 When("the owner's autosave debounce interval elapses", async ({ page }) => {
   // Waits for the save itself to land, not just the timer -- the viewer
   // reads whatever the worker has stored, so reloading it before the
-  // `POST /files/:id/content` response would race the write.
+  // `files/write` answer would race the write.
   await Promise.all([
     page.waitForResponse(
-      (response) =>
-        /\/files\/[^/]+\/content$/.test(response.url()) && response.ok(),
+      (response) => answersCall(response, 'files/write') && response.ok(),
     ),
     page.clock.fastForward(AUTOSAVE_DEBOUNCE_MS),
   ])

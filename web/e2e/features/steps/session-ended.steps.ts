@@ -13,6 +13,7 @@ import {
   openFileList,
   typeAtEditorEnd,
 } from '../../fileSwitcherHelpers'
+import { appClient, valueOrFail } from '../../protocolClients'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { gotoCloudApp, lastSeededSessionToken } from './cloud-account-helpers'
 import { Given, Then, When } from './fixtures'
@@ -59,10 +60,10 @@ When('the app loads with cloud storage', async ({ page }) => {
 // Ends the page's session the way a sign-out on another device would: the
 // page is not told, it only finds out from its next request.
 When('the session is ended on the worker', async () => {
-  const { response } = await worker.POST('/auth/sign-out', {
-    body: { identityToken: lastSeededSessionToken() },
-  })
-  expect(response.ok).toBe(true)
+  await valueOrFail(
+    'sign-out',
+    (await appClient(lastSeededSessionToken())).account.signOut(),
+  )
 })
 
 // Cmd/Ctrl+S hands the edit to the outbox at once instead of waiting out

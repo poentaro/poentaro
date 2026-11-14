@@ -1,0 +1,30 @@
+RECORD shared file { name: TEXT, content: TEXT, revision: INTEGER },
+
+RECORD folder file {
+    # Relative to the shared folder, such as `Advent/O Come.poentaro`.
+    path: TEXT,
+    content: TEXT,
+    revision: INTEGER,
+},
+
+RECORD shared folder {
+    name: TEXT,
+    files: LIST folder file,
+    # Folders with no file in them.
+    empty folders: LIST: TEXT,
+},
+
+CHOICE shared {
+    # The link was stopped, the file is in the trash, or no link has this id.
+    ended,
+    file (file: shared file),
+    folder (folder: shared folder),
+},
+
+# What a link shows. Open it again to see the owner's later saves.
+METHOD open (share id: TEXT)
+    RETURNS (shared: shared)
+    ERRORS [
+        # The folder holds too much to show; `message` says how much.
+        too large (message: TEXT),
+    ],

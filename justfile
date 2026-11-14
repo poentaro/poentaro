@@ -142,9 +142,3 @@ mutants-lyrics:
 # Cargo.toml pins.
 generate-parser:
     UPDATE_GENERATED=1 cargo test -p poentaro-grammar --test generated
-
-# Writes crates/poentaro-protocol/src/generated.rs again from the schema,
-# crates/poentaro-protocol/schema/, with the
-# anyx-protocol-generate its Cargo.toml pins.
-generate-protocol:
-    UPDATE_GENERATED=1 cargo test -p poentaro-protocol --test generated

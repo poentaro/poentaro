@@ -1,8 +1,5 @@
 import type { SendRequest } from '../poentaroWasm'
-import {
-  callWorker,
-  type createWorkerClient,
-} from '../syncedShare/workerClient'
+import type { AppFileCalls, ClientOptions } from '../protocol/clients'
 import type { CloudBackendError } from './cloudBackendTypes'
 import { type BaseSnapshots, createBaseSnapshots } from './outbox/baseSnapshots'
 import { createMemoryOutboxStore } from './outbox/memoryOutboxStore'
@@ -22,12 +19,10 @@ import { sendMessage } from './outbox/sendMessage'
 import type { SaveStatus } from './types'
 
 export interface CloudOutboxConfig {
-  client: ReturnType<typeof createWorkerClient>
-  identityToken: string
+  /** `poentaro app`'s file calls, as the signed-in account. */
+  app(options: ClientOptions): Promise<AppFileCalls>
   /** Signed-in account; scopes the on-device outbox. */
   account: string
-  /** The file's current local name, for a `RestoreFile` message. */
-  restoreName(fileId: string): string
 }
 
 /** The looper hooks that keep `bases` equal to the last text the server has. */
@@ -92,23 +87,10 @@ export interface CloudOutbox {
 function createCloudOutboxLooper(config: CloudOutboxConfig): CloudOutbox {
   const store: OutboxStore = createIndexedDbOutboxStore(config.account)
   const bases = createBaseSnapshots(store)
-  const { client, identityToken, restoreName } = config
-  const fetchServerContent = async (fileId: string): Promise<string> => {
-    const response = await callWorker(
-      client.POST('/files/list', { body: { identityToken } }),
-    )
-    return response.files.find((file) => file.id === fileId)?.content ?? ''
-  }
   const looper = createOutboxLooper({
     ...baseSnapshotHooks(bases),
     store,
-    sendMessage: (request) =>
-      sendMessage(request, {
-        client,
-        identityToken,
-        fetchServerContent,
-        restoreName,
-      }),
+    sendMessage: (request) => sendMessage(request, { app: config.app }),
     createScheduler: (onWake) =>
       createScheduler({
         now: () => Date.now(),

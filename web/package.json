@@ -7,7 +7,8 @@
   "scripts": {
     "build:wasm-component": "cargo component build --manifest-path ../crates/poentaro-wasm/Cargo.toml --profile release-wasm --no-default-features --features wav,mp3,pdf,midi --target wasm32-unknown-unknown && jco transpile ../target/wasm32-unknown-unknown/release-wasm/poentaro_wasm.wasm --instantiation async -o ../crates/poentaro-wasm/pkg-component && pnpm run build:wasm-singer",
     "build:wasm-singer": "cargo component build --manifest-path ../crates/poentaro-singer-wasm/Cargo.toml --profile release-wasm --target wasm32-unknown-unknown && jco transpile ../target/wasm32-unknown-unknown/release-wasm/poentaro_singer_wasm.wasm --instantiation async -o ../crates/poentaro-singer-wasm/pkg-component",
-    "build:worker-types": "rm -rf src/generated/live-share-worker && cargo test -q -p live-share-worker --test export_openapi && openapi-typescript src/generated/live-share-worker/openapi.json -o src/generated/live-share-worker/schema.ts",
+    "build:worker-types": "rm -rf src/generated/live-share-worker && cargo test -q -p live-share-worker --test export_openapi && openapi-typescript src/generated/live-share-worker/openapi.json -o src/generated/live-share-worker/schema.ts && pnpm run build:protocol",
+    "build:protocol": "rm -rf src/generated/protocol && cargo run -q -p poentaro-protocol --bin poentaro-protocol-typescript -- src/generated/protocol",
     "predev": "pnpm run build:wasm-component && pnpm run build:worker-types",
     "dev": "vite",
     "prebuild": "pnpm run build:wasm-component && pnpm run build:worker-types",

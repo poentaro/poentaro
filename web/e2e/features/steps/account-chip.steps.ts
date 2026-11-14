@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test'
-import { workerRouteGlob } from '../../cloudFileHelpers'
 import { fileTabByExactName, openFileList } from '../../fileSwitcherHelpers'
+import { answersCall } from '../../protocolClients'
 import { attemptEditAndForceSave } from './account-sign-in.steps'
 import { Given, Then, When } from './fixtures'
 
@@ -177,9 +177,10 @@ When(
   'the app loads the cloud-backed file list for the account chip flow',
   async ({ page }) => {
     contentSaveRequests = []
-    await page.route(workerRouteGlob('/files/{id}/content'), async (route) => {
-      contentSaveRequests.push(route.request().url())
-      await route.continue()
+    page.on('request', (request) => {
+      if (answersCall(request, 'files/write')) {
+        contentSaveRequests.push(request.postData() ?? '')
+      }
     })
     await page.goto('/')
     await openFileList(page)

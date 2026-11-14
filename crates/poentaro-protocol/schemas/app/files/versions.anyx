@@ -1,0 +1,17 @@
+# An earlier version of a file.
+RECORD version {
+    revision: INTEGER,
+    # In milliseconds since 1970.
+    saved at: INTEGER,
+},
+
+# The file's earlier versions, newest first. The current score isn't one
+# of them.
+METHOD list (id: TEXT) RETURNS (versions: LIST version) ERRORS files/lookup errors,
+
+METHOD read (id: TEXT) at revision (revision: INTEGER)
+    RETURNS (content: TEXT)
+    ERRORS [
+        # The file has no earlier version at this revision.
+        no such version,
+    ] + files/lookup errors,

@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { AppEntry } from './appEntry.tsx'
+import { SchemaOutdatedToast } from './components/SchemaOutdatedToast.tsx'
 import { hasLegacyLocalStorage } from './legacyStorage/legacyStorageNames.ts'
 import { MIGRATE_QUERY_PARAM } from './originMigration/originMigrationPayload.ts'
 
@@ -14,6 +15,7 @@ function render(container: HTMLElement) {
   createRoot(container).render(
     <StrictMode>
       <AppEntry />
+      <SchemaOutdatedToast />
     </StrictMode>,
   )
 }

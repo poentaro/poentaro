@@ -1,0 +1,30 @@
+# A key an agent signs in with. Only its start is ever shown again.
+RECORD key {
+    id: TEXT,
+    # The start of the key, such as `poe_AbCd1234`.
+    prefix: TEXT,
+    # In milliseconds since 1970, like every time here.
+    created at: INTEGER,
+    last used at: OPTIONAL: INTEGER,
+    expires at: INTEGER,
+    # Whether it had stopped working when it was listed.
+    expired: BOOLEAN,
+},
+
+RECORD created key {
+    key: key,
+    # What the owner pastes into their agent. It holds the whole key.
+    prompt: TEXT,
+},
+
+# The account's keys, newest first.
+METHOD list RETURNS (keys: LIST key),
+
+METHOD create RETURNS (created: created key),
+
+METHOD revoke (id: TEXT)
+    RETURNS NOTHING
+    ERRORS [
+        # No key of this account has this id.
+        missing key,
+    ],

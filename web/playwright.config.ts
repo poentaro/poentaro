@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 import { defineBddConfig } from 'playwright-bdd'
 import { CHROMIUM_CACHE_DIR_PREFIX } from './e2e/chromiumCachePrefix'
-import { E2E_EMAILS } from './e2e/e2eAccounts.ts'
+import { E2E_EMAILS } from './e2e/e2eEmails.ts'
 import e2eWorkerConfig from './src/generated/live-share-worker/e2eWorkerConfig.json' with {
   type: 'json',
 }

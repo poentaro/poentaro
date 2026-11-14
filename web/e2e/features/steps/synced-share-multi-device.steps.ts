@@ -1,5 +1,6 @@
 import { type BrowserContext, expect, type Page } from '@playwright/test'
 import { seedCloudFile } from '../../cloudFileHelpers'
+import { answersCall } from '../../protocolClients'
 import { seedSignedInSession } from './cloud-account-helpers'
 import { AfterScenario, Given, Then, When } from './fixtures'
 import {
@@ -99,7 +100,7 @@ When('the owner signs out on device {string}', async ({}, name: string) => {
   // later steps on other devices can't race ahead of it.
   await Promise.all([
     page.waitForResponse((response) =>
-      response.url().endsWith('/auth/sign-out'),
+      answersCall(response, 'account/sign out'),
     ),
     page
       .getByTestId('account-popover')

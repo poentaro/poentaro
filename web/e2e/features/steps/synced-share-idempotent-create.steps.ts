@@ -1,6 +1,7 @@
 import type { Browser, Page } from '@playwright/test'
 import { expect } from '@playwright/test'
-import { seedCloudFile, workerRouteGlob } from '../../cloudFileHelpers'
+import { answerCall, routeAppCall } from '../../appCalls'
+import { seedCloudFile } from '../../cloudFileHelpers'
 import { DEFAULT_E2E_EMAIL } from '../../e2eAccounts.ts'
 import {
   fileSwitcherTrigger,
@@ -89,7 +90,7 @@ When(
   },
 )
 
-/** Injects a synthetic `/files/list` entry carrying *another* account's
+/** Answers `files/list` and `files/read` with a synthetic entry carrying *another* account's
  * real D1 file id -- see `loadSecondContextOnCloudFile`'s doc comment for
  * why this is the only way to send a share request for someone else's file
  * through the real worker: D1's `files.id` is a globally unique primary
@@ -99,22 +100,20 @@ async function mockCloudFileListWithForeignFile(
   fileId: string,
   tabName: string,
 ): Promise<void> {
-  await page.route(workerRouteGlob('/files/list'), async (route) => {
-    await route.fulfill({
-      status: 200,
-      json: {
-        files: [
-          {
-            id: fileId,
-            name: `${actualNameFor(tabName)}.poentaro`,
-            content: idempotentSharingSource(tabName),
-            revision: 0,
-            trashedAt: null,
-          },
-        ],
-      },
-    })
-  })
+  const summary = {
+    id: fileId,
+    path: `${actualNameFor(tabName)}.poentaro`,
+    revision: 0,
+  }
+  await routeAppCall(page, 'files/list', (route) =>
+    answerCall(route, { kind: 'value', value: [summary] }),
+  )
+  await routeAppCall(page, 'files/read _', (route) =>
+    answerCall(route, {
+      kind: 'value',
+      value: { summary, content: idempotentSharingSource(tabName) },
+    }),
+  )
 }
 
 /** Seeds a second browser context's `localStorage` the same way "a cloud

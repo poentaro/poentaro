@@ -2,27 +2,29 @@ import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import createClient from 'openapi-fetch'
 import type { paths } from '../../../src/generated/live-share-worker/schema'
-import {
-  CLOUD_WORKER_ORIGIN,
-  seedTokenFor,
-  workerRouteGlob,
-} from '../../cloudFileHelpers'
+import { answerOf, appCallTo, routeAppCall } from '../../appCalls'
+import { CLOUD_WORKER_ORIGIN, seedTokenFor } from '../../cloudFileHelpers'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { Given, Then, When } from './fixtures'
 
 const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
-const BATCH_ROUTE = workerRouteGlob('/files/rename-batch')
+const FOLDER_MOVE = 'folders/move _ to _'
 const DELIVERY_TIMEOUT_MS = 25_000
 
-/** The statuses the worker answered batch renames with, per page. */
-const batchAnswers = new WeakMap<Page, number[]>()
+/** What the worker answered folder moves with, per page: `returned`,
+ * or the method error in words. */
+const batchAnswers = new WeakMap<Page, string[]>()
+
+/** Removes the route that keeps folder moves from the cloud, per page. */
+const unrouteFolderMoves = new WeakMap<Page, () => Promise<void>>()
 
 Given('I record the batch renames the cloud answers', async ({ page }) => {
-  const answers: number[] = []
+  const answers: string[] = []
   batchAnswers.set(page, answers)
-  page.on('response', (response) => {
-    if (response.url() === `${CLOUD_WORKER_ORIGIN}/files/rename-batch`) {
-      answers.push(response.status())
+  page.on('response', async (response) => {
+    if (await appCallTo(response.request(), FOLDER_MOVE)) {
+      const answer = await answerOf(FOLDER_MOVE, response)
+      answers.push(answer === 'value' ? 'moved' : answer)
     }
   })
 })
@@ -39,11 +41,16 @@ Then(
 )
 
 When('folder moves cannot reach the cloud', async ({ page }) => {
-  await page.route(BATCH_ROUTE, (route) => route.abort('connectionrefused'))
+  unrouteFolderMoves.set(
+    page,
+    await routeAppCall(page, FOLDER_MOVE, (route) =>
+      route.abort('connectionrefused'),
+    ),
+  )
 })
 
 When('folder moves can reach the cloud again', async ({ page }) => {
-  await page.unroute(BATCH_ROUTE)
+  await unrouteFolderMoves.get(page)?.()
   await page.evaluate(() => window.dispatchEvent(new Event('online')))
 })
 

@@ -1,6 +1,4 @@
-import createClient from 'openapi-fetch'
-import type { paths } from '../src/generated/live-share-worker/schema'
-import { CLOUD_WORKER_ORIGIN } from './cloudFileHelpers.ts'
+import { testClient, valueOrFail } from './protocolClients.ts'
 
 // Wipes the synthetic e2e accounts (`E2E_EMAILS` in `e2eAccounts.ts`) and
 // everything they own from the local D1 before every run.
@@ -16,27 +14,18 @@ import { CLOUD_WORKER_ORIGIN } from './cloudFileHelpers.ts'
 // ...) and the next run's "the active tab becomes 'source 2'" expectation
 // would fall further behind until it fails outright.
 //
-// The delete itself is the worker's test-only `POST /e2e/reset` route
+// The delete itself is `poentaro test`'s `accounts/reset`
 // (`crates/live-share-worker/src/e2e_reset.rs`), which owns the SQL and
 // only touches the accounts `playwright.config.ts` allowlists for it -- so
-// nothing here knows the D1 schema, and any failure (including the route
+// nothing here knows the D1 schema, and any failure (including `/test`
 // being missing because a worker started without that config is being
 // reused) fails the run instead of silently resetting nothing.
 export default async function globalSetup() {
-  const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
-  const { data, error, response } = await worker.POST('/e2e/reset', {
-    body: {},
-  })
-  if (!data) {
-    const hint =
-      response.status === 404
-        ? ' -- the worker on this port was started without the e2e reset var; stop it so Playwright starts its own'
-        : ''
-    throw new Error(
-      `e2e reset failed with status ${response.status}${hint}: ${JSON.stringify(error)}`,
-    )
-  }
+  const deleted = await valueOrFail(
+    'e2e reset',
+    (await testClient()).accounts.reset([]),
+  )
   console.log(
-    `e2e reset: deleted ${data.deletedAccounts} accounts, ${data.deletedFiles} files and ${data.deletedShares} shares`,
+    `e2e reset: deleted ${deleted.accounts} accounts, ${deleted.files} files and ${deleted.shares} shares`,
   )
 }

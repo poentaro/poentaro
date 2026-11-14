@@ -97,12 +97,12 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "anyx"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyx?rev=de017324fe42cb7faefad998442d6c843a4e6717#de017324fe42cb7faefad998442d6c843a4e6717"
+source = "git+https://github.com/wongjiahau/anyx?rev=2edb20a79c697a382219c016b1ace899f91fac7e#2edb20a79c697a382219c016b1ace899f91fac7e"
 
 [[package]]
 name = "anyx-generator"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyx?rev=de017324fe42cb7faefad998442d6c843a4e6717#de017324fe42cb7faefad998442d6c843a4e6717"
+source = "git+https://github.com/wongjiahau/anyx?rev=2edb20a79c697a382219c016b1ace899f91fac7e#2edb20a79c697a382219c016b1ace899f91fac7e"
 dependencies = [
  "anyx",
  "regex",
@@ -112,16 +112,17 @@ dependencies = [
 [[package]]
 name = "anyx-protocol"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyx?rev=de017324fe42cb7faefad998442d6c843a4e6717#de017324fe42cb7faefad998442d6c843a4e6717"
+source = "git+https://github.com/wongjiahau/anyx?rev=2edb20a79c697a382219c016b1ace899f91fac7e#2edb20a79c697a382219c016b1ace899f91fac7e"
 dependencies = [
  "anyx",
  "base64",
+ "serde_json",
 ]
 
 [[package]]
 name = "anyx-protocol-generate"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyx?rev=de017324fe42cb7faefad998442d6c843a4e6717#de017324fe42cb7faefad998442d6c843a4e6717"
+source = "git+https://github.com/wongjiahau/anyx?rev=2edb20a79c697a382219c016b1ace899f91fac7e#2edb20a79c697a382219c016b1ace899f91fac7e"
 dependencies = [
  "anyx-generator",
  "anyx-protocol",
@@ -2025,10 +2026,12 @@ dependencies = [
 name = "poentaro-wasm"
 version = "0.1.0"
 dependencies = [
+ "anyx-protocol",
  "brotli",
  "cloud-outbox",
  "itertools 0.13.0",
  "poentaro",
+ "poentaro-protocol",
  "proptest",
  "serde",
  "wit-bindgen",

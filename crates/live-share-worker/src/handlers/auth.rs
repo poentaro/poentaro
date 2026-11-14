@@ -7,7 +7,7 @@
 //! only ever reaches `crate::crypto::pbkdf2_sha256`, and a session is stored
 //! and logged by its hash (`auth::session::hash_token`).
 
-use worker::{D1Database, RouteContext};
+use worker::{D1Database, Env, RouteContext};
 
 use super::routes::{HandlerResult, Json, NoContent, NoPathParams};
 use super::{
@@ -57,34 +57,47 @@ fn new_session() -> HandlerResult<NewSession> {
     Ok(NewSession { token, token_hash })
 }
 
-/// `POST /auth/sign-up` -- creates an account and signs it in.
+/// `POST /auth/sign-up`.
 pub(super) async fn sign_up(
     ctx: RouteContext<()>,
     _path: NoPathParams,
     body: CredentialsRequest,
     request_meta: RequestMeta,
 ) -> HandlerResult<Json<SessionResponse>> {
-    check_rate_limit(&ctx, SIGN_UP_RATE_LIMITER, &request_meta).await?;
-    let email = normalize_email(&body.email).ok_or(ApiError::InvalidEmail)?;
-    if let Some(message) = password_weakness(&body.password) {
+    let d1 = ctx.d1(D1_BINDING)?;
+    create_account(&ctx.env, &d1, &body.email, &body.password, &request_meta)
+        .await
+        .map(Json)
+}
+
+/// Creates an account and signs it in.
+pub(super) async fn create_account(
+    env: &Env,
+    d1: &D1Database,
+    email: &str,
+    password: &str,
+    request_meta: &RequestMeta,
+) -> HandlerResult<SessionResponse> {
+    check_rate_limit(env, SIGN_UP_RATE_LIMITER, request_meta).await?;
+    let email = normalize_email(email).ok_or(ApiError::InvalidEmail)?;
+    if let Some(message) = password_weakness(password) {
         return Err(ApiError::WeakPassword { message });
     }
-    let d1 = ctx.d1(D1_BINDING)?;
     let now = now_millis();
     let credentials = PasswordCredentials {
         user_id: crypto::new_user_id()?,
         email,
-        password_hash: hash_new_password(&body.password).await?,
+        password_hash: hash_new_password(password).await?,
     };
     let session = new_session()?;
     let first_session = db::insert_session_statement(
-        &d1,
+        d1,
         &session.token_hash,
         &credentials.user_id,
         now,
         now + SESSION_LIFETIME_MILLIS,
     )?;
-    match db::insert_account(&d1, &credentials, now, vec![first_session]).await {
+    match db::insert_account(d1, &credentials, now, vec![first_session]).await {
         Ok(()) => {}
         Err(error) if is_unique_constraint_violation(&error) => return Err(ApiError::EmailTaken),
         Err(error) => return Err(error.into()),
@@ -93,11 +106,11 @@ pub(super) async fn sign_up(
         email: credentials.email.clone(),
         token_tag: app_log::token_tag(&session.token_hash),
     });
-    log(&d1, event, Some(&credentials.user_id), &request_meta).await;
-    Ok(Json(SessionResponse {
+    log(d1, event, Some(&credentials.user_id), request_meta).await;
+    Ok(SessionResponse {
         session_token: session.token,
         email: credentials.email,
-    }))
+    })
 }
 
 /// Checks `password` against `credentials` (the account of `email`, or
@@ -187,23 +200,35 @@ async fn check_password(
     }
 }
 
-/// `POST /auth/sign-in` -- starts a session for an email and its password.
+/// `POST /auth/sign-in`.
 pub(super) async fn sign_in(
     ctx: RouteContext<()>,
     _path: NoPathParams,
     body: CredentialsRequest,
     request_meta: RequestMeta,
 ) -> HandlerResult<Json<SessionResponse>> {
-    check_rate_limit(&ctx, SIGN_IN_RATE_LIMITER, &request_meta).await?;
-    let email = normalize_email(&body.email).ok_or(ApiError::InvalidEmail)?;
     let d1 = ctx.d1(D1_BINDING)?;
-    let credentials = db::get_password_credentials_by_email(&d1, &email).await?;
-    let credentials =
-        check_password(&d1, &email, credentials, &body.password, &request_meta).await?;
+    start_session(&ctx.env, &d1, &body.email, &body.password, &request_meta)
+        .await
+        .map(Json)
+}
+
+/// Starts a session for an email and its password.
+pub(super) async fn start_session(
+    env: &Env,
+    d1: &D1Database,
+    email: &str,
+    password: &str,
+    request_meta: &RequestMeta,
+) -> HandlerResult<SessionResponse> {
+    check_rate_limit(env, SIGN_IN_RATE_LIMITER, request_meta).await?;
+    let email = normalize_email(email).ok_or(ApiError::InvalidEmail)?;
+    let credentials = db::get_password_credentials_by_email(d1, &email).await?;
+    let credentials = check_password(d1, &email, credentials, password, request_meta).await?;
     let now = now_millis();
     let session = new_session()?;
     db::insert_session(
-        &d1,
+        d1,
         &session.token_hash,
         &credentials.user_id,
         now,
@@ -214,15 +239,14 @@ pub(super) async fn sign_in(
         email: credentials.email.clone(),
         token_tag: app_log::token_tag(&session.token_hash),
     });
-    log(&d1, event, Some(&credentials.user_id), &request_meta).await;
-    Ok(Json(SessionResponse {
+    log(d1, event, Some(&credentials.user_id), request_meta).await;
+    Ok(SessionResponse {
         session_token: session.token,
         email: credentials.email,
-    }))
+    })
 }
 
-/// `POST /auth/sign-out` -- ends one session (this device's). Answers the
-/// same whether or not the session still existed.
+/// `POST /auth/sign-out`.
 pub(super) async fn sign_out(
     ctx: RouteContext<()>,
     _path: NoPathParams,
@@ -230,19 +254,27 @@ pub(super) async fn sign_out(
     request_meta: RequestMeta,
 ) -> HandlerResult<NoContent> {
     let d1 = ctx.d1(D1_BINDING)?;
-    let token_hash = hash_token(&body.identity_token);
-    db::delete_session(&d1, &token_hash).await?;
-    let event = AuthEvent::SignedOut(SignedOut {
-        token_tag: app_log::token_tag(&token_hash),
-    });
-    log(&d1, event, None, &request_meta).await;
+    end_session(&d1, &body.identity_token, &request_meta).await?;
     Ok(NoContent)
 }
 
-/// `POST /auth/change-password` -- replaces the signed-in account's password
-/// and ends every other session it has; the caller's own session survives.
-/// A wrong current password counts toward the email's lockout, like a
-/// wrong password at sign-in.
+/// Ends one session (this device's). Answers the same whether or not the
+/// session still existed.
+pub(super) async fn end_session(
+    d1: &D1Database,
+    token: &str,
+    request_meta: &RequestMeta,
+) -> HandlerResult<()> {
+    let token_hash = hash_token(token);
+    db::delete_session(d1, &token_hash).await?;
+    let event = AuthEvent::SignedOut(SignedOut {
+        token_tag: app_log::token_tag(&token_hash),
+    });
+    log(d1, event, None, request_meta).await;
+    Ok(())
+}
+
+/// `POST /auth/change-password`.
 pub(super) async fn change_password(
     ctx: RouteContext<()>,
     _path: NoPathParams,
@@ -251,27 +283,61 @@ pub(super) async fn change_password(
 ) -> HandlerResult<NoContent> {
     let d1 = ctx.d1(D1_BINDING)?;
     let user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
-    if let Some(message) = password_weakness(&body.new_password) {
+    let session = SignedInSession {
+        token: &body.identity_token,
+        user_id: &user_id,
+    };
+    let passwords = PasswordChange {
+        current: &body.current_password,
+        new: &body.new_password,
+    };
+    replace_password(&d1, session, passwords, &request_meta).await?;
+    Ok(NoContent)
+}
+
+/// A session that resolved to its account.
+#[derive(Clone, Copy)]
+pub(super) struct SignedInSession<'a> {
+    pub(super) token: &'a str,
+    pub(super) user_id: &'a str,
+}
+
+pub(super) struct PasswordChange<'a> {
+    pub(super) current: &'a str,
+    pub(super) new: &'a str,
+}
+
+/// Replaces the signed-in account's password and ends every other session
+/// it has; `session` survives. A wrong current password counts toward the
+/// email's lockout, like a wrong password at sign-in.
+pub(super) async fn replace_password(
+    d1: &D1Database,
+    session: SignedInSession<'_>,
+    passwords: PasswordChange<'_>,
+    request_meta: &RequestMeta,
+) -> HandlerResult<()> {
+    let user_id = session.user_id;
+    if let Some(message) = password_weakness(passwords.new) {
         return Err(ApiError::WeakPassword { message });
     }
-    let credentials = db::get_password_credentials_by_user(&d1, &user_id)
+    let credentials = db::get_password_credentials_by_user(d1, user_id)
         .await?
         .ok_or(ApiError::NotFound)?;
     let email = credentials.email.clone();
     let credentials = check_password(
-        &d1,
+        d1,
         &email,
         Some(credentials),
-        &body.current_password,
-        &request_meta,
+        passwords.current,
+        request_meta,
     )
     .await?;
-    let password_hash = hash_new_password(&body.new_password).await?;
-    let token_hash = hash_token(&body.identity_token);
+    let password_hash = hash_new_password(passwords.new).await?;
+    let token_hash = hash_token(session.token);
     let results = d1
         .batch(vec![
-            db::update_password_hash_statement(&d1, &user_id, &password_hash, now_millis())?,
-            db::delete_other_sessions_statement(&d1, &user_id, &token_hash)?,
+            db::update_password_hash_statement(d1, user_id, &password_hash, now_millis())?,
+            db::delete_other_sessions_statement(d1, user_id, &token_hash)?,
         ])
         .await?;
     let ended_sessions = results
@@ -286,6 +352,6 @@ pub(super) async fn change_password(
         token_tag: app_log::token_tag(&token_hash),
         ended_sessions,
     });
-    log(&d1, event, Some(&user_id), &request_meta).await;
-    Ok(NoContent)
+    log(d1, event, Some(user_id), request_meta).await;
+    Ok(())
 }

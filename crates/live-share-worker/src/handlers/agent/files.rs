@@ -1,4 +1,4 @@
-//! The methods of Poentaro's schema (`crates/poentaro-protocol/schema`), over
+//! The methods of Poentaro's schema (`crates/poentaro-protocol/schemas/agent`), over
 //! D1, acting as the key's
 //! owner on the owner's own files. Files are addressed by path; a write is
 //! the same compare-and-swap as the web app's save, and goes into the file's
@@ -6,8 +6,8 @@
 
 use std::cell::RefCell;
 
-use poentaro_protocol::files::export::{MidiError, SvgError};
-use poentaro_protocol::files::{
+use poentaro_protocol::agent::files::export::{MidiError, SvgError};
+use poentaro_protocol::agent::files::{
     CreateContentError, File, FileSummary, ReadError, Saved, WriteAtRevisionContentError,
 };
 use poentaro_protocol::{IntoValue, Value};
@@ -16,7 +16,7 @@ use worker::D1Database;
 use crate::agent::{export_midi, export_svg, file_id, new_file_path_problem, score_diagnostics};
 use crate::db;
 use crate::files::{self, ContentWriteAttempt, StoredFile};
-use crate::handlers::files::{proposed_name, record_version};
+use crate::handlers::file_store::{proposed_name, record_version};
 use crate::handlers::{is_unique_constraint_violation, now_millis};
 
 /// The score syntax, which `score/syntax` answers.
@@ -193,11 +193,11 @@ fn random_id_bytes() -> worker::Result<[u8; 16]> {
         .map_err(|_| worker::Error::RustError("expected 16 random bytes".to_string()))
 }
 
-impl poentaro_protocol::Server for AgentFiles<'_> {
+impl poentaro_protocol::agent::Server for AgentFiles<'_> {
     type Error = worker::Error;
 }
 
-impl poentaro_protocol::files::Server for AgentFiles<'_> {
+impl poentaro_protocol::agent::files::Server for AgentFiles<'_> {
     async fn list(&self) -> worker::Result<Vec<FileSummary>> {
         let listed = db::list_files_by_owner(self.d1, &self.user_id).await;
         let ending = match &listed {
@@ -247,7 +247,7 @@ impl poentaro_protocol::files::Server for AgentFiles<'_> {
     }
 }
 
-impl poentaro_protocol::files::export::Server for AgentFiles<'_> {
+impl poentaro_protocol::agent::files::export::Server for AgentFiles<'_> {
     async fn svg(&self, path: String) -> Outcome<Vec<String>, SvgError> {
         let outcome =
             self.content_to_export(&path)
@@ -277,7 +277,7 @@ impl poentaro_protocol::files::export::Server for AgentFiles<'_> {
     }
 }
 
-impl poentaro_protocol::score::Server for AgentFiles<'_> {
+impl poentaro_protocol::agent::score::Server for AgentFiles<'_> {
     async fn syntax(&self) -> worker::Result<String> {
         self.calls.borrow_mut().push("score/syntax: ok".to_string());
         Ok(SYNTAX.to_string())

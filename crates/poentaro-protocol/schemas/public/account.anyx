@@ -1,0 +1,31 @@
+RECORD session {
+    # Send as `Authorization: Bearer <token>` to `poentaro app`.
+    token: TEXT,
+    # The account's name, trimmed and lowercased.
+    email: TEXT,
+},
+
+ERRORS credential errors [
+    # This isn't shaped like an email.
+    invalid email,
+    # Too many sign-ins or sign-ups from this address in the last minute.
+    too many requests,
+],
+
+METHOD sign up (email: TEXT) password (password: TEXT)
+    RETURNS (session: session)
+    ERRORS [
+        # This email already has an account. Sign in instead.
+        email taken,
+        # The password isn't strong enough; `message` says why.
+        weak password (message: TEXT),
+    ] + credential errors,
+
+METHOD sign in (email: TEXT) password (password: TEXT)
+    RETURNS (session: session)
+    ERRORS [
+        # The email has no account, or the password is wrong.
+        incorrect,
+        # Too many wrong passwords for this email.
+        locked for (duration: INTEGER) seconds,
+    ] + credential errors,
