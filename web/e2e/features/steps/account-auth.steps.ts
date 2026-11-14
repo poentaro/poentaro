@@ -1,21 +1,17 @@
 import { expect, type Page } from '@playwright/test'
-import createClient from 'openapi-fetch'
-import type { paths } from '../../../src/generated/live-share-worker/schema'
-import { CLOUD_WORKER_ORIGIN } from '../../cloudFileHelpers'
 import {
   E2E_PASSWORD,
   isSessionTokenAccepted,
   resetE2eAccounts,
   signInE2eAccount,
 } from '../../e2eAccounts.ts'
+import { answersCall, publicClient, valueOrFail } from '../../protocolClients'
 import { lastSeededSessionToken } from './cloud-account-helpers'
 import { BeforeScenario, Given, Then, When } from './fixtures'
 
 // Covers the account dialog (sign in / create account), the change
 // password dialog and signing out (account-auth.feature). The account
 // dialog steps are shared with every feature that signs in through the UI.
-
-const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 
 // The session of "another device" in the change password scenario: a
 // sign-in made straight against the worker, never seen by the page.
@@ -112,7 +108,7 @@ When(
       await dialog.getByLabel('Password', { exact: true }).fill(password)
       await Promise.all([
         page.waitForResponse((response) =>
-          response.url().endsWith('/auth/sign-in'),
+          answersCall(response, 'account/sign in'),
         ),
         dialog.getByRole('button', { name: 'Sign in', exact: true }).click(),
       ])
@@ -161,11 +157,14 @@ Then("the account dialog's sign-in button is disabled", async ({ page }) => {
 Then(
   'the worker refuses the right password for {string} while it is locked',
   async ({}, email: string) => {
-    const { error, response } = await worker.POST('/auth/sign-in', {
-      body: { email, password: E2E_PASSWORD },
+    const outcome = await (await publicClient()).account.signInPassword(
+      email,
+      E2E_PASSWORD,
+    )
+    expect(outcome).toMatchObject({
+      kind: 'error',
+      error: { kind: 'lockedFor' },
     })
-    expect(response.status).toBe(429)
-    expect(error?.code).toBe('sign_in_locked')
   },
 )
 
@@ -208,11 +207,11 @@ Then('the signed-out session is no longer accepted', async () => {
 Then(
   '{string} can sign in with the password {string}',
   async ({}, email: string, password: string) => {
-    const { data, response } = await worker.POST('/auth/sign-in', {
-      body: { email, password },
-    })
-    expect(response.status).toBe(200)
-    expect(data?.email).toBe(email)
+    const session = await valueOrFail(
+      `sign-in for ${email}`,
+      (await publicClient()).account.signInPassword(email, password),
+    )
+    expect(session.email).toBe(email)
   },
 )
 

@@ -6,6 +6,7 @@ import {
   seedCloudFile,
   seedTokenFor,
 } from '../../cloudFileHelpers'
+import { appClient, valueOrFail } from '../../protocolClients'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { BeforeScenario, Given, Then, When } from './fixtures'
 
@@ -94,18 +95,14 @@ async function writeAsAgent(path: string, content: string): Promise<void> {
 
 Given('the signed-in account has an API key', async () => {
   const identityToken = await seedTokenFor(currentSignedInEmail())
-  const { data, error, response } = await worker.POST('/api-keys', {
-    body: { identityToken },
-  })
-  if (!data) {
-    throw new Error(
-      `POST /api-keys failed with ${response.status}: ${JSON.stringify(error)}`,
-    )
-  }
+  const created = await valueOrFail(
+    'creating an API key',
+    (await appClient(identityToken)).keys.create(),
+  )
   key = {
-    id: data.key.id,
-    secret: keyInPrompt(data.prompt),
-    prefix: data.key.prefix,
+    id: created.key.id,
+    secret: keyInPrompt(created.prompt),
+    prefix: created.key.prefix,
   }
 })
 

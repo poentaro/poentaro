@@ -1,0 +1,5 @@
+{
+  "//": "jco writes pkg-component/ as ES modules; this lets Node (the e2e suite) load them.",
+  "private": true,
+  "type": "module"
+}
