@@ -26,3 +26,6 @@ mod tests_lyric_click_targets;
 
 #[path = "tests_lone_resting_row_label.rs"]
 mod tests_lone_resting_row_label;
+
+#[path = "tests_lyric_highlight_properties.rs"]
+mod tests_lyric_highlight_properties;

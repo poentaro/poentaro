@@ -145,8 +145,12 @@ fn push_lyric_click_targets_for_row(
         // `compute_all_playback_cursor_targets` snaps the first note's own
         // click target — otherwise the box starts a whole column short of
         // (or past) where the bar line is actually drawn.
-        let column_start = if pos.block_idx == 0 && Some(el.column) == row_min_col {
-            LABEL_COLS as f32
+        let column_start = if Some(el.column) == row_min_col {
+            if pos.block_idx == 0 {
+                LABEL_COLS as f32
+            } else {
+                (pos.col_offset - 1) as f32 + 0.5
+            }
         } else {
             (pos.col_offset + el.column) as f32
         };
@@ -165,8 +169,31 @@ fn push_lyric_click_targets_for_row(
                     bar_line_col + 0.5
                 }
             }
-            Some(&max_col) => (pos.col_offset + max_col + 1) as f32,
-            None => column_start + 1.0,
+            Some(&max_col) => note_max_cols
+                .keys()
+                .copied()
+                .filter(|&column| column > el.column)
+                .min()
+                .map_or((pos.col_offset + max_col + 1) as f32, |next| {
+                    (pos.col_offset + next) as f32
+                }),
+            None => pos
+                .part_row
+                .elements
+                .iter()
+                .filter(|next| matches!(&next.content, ElementContent::Lyric { text, .. } if !text.is_empty()))
+                .map(|next| next.column)
+                .filter(|&column| column > el.column)
+                .min()
+                .map(|next| (pos.col_offset + next) as f32)
+                .unwrap_or_else(|| {
+                    let end = (pos.col_offset + pos.col_w) as f32;
+                    if pos.has_bar_line && pos.block_idx != pos.last_block_idx {
+                        end - 0.5
+                    } else {
+                        end
+                    }
+                }),
         };
         results.push((
             page_idx,
@@ -187,8 +214,9 @@ fn push_lyric_click_targets_for_row(
 /// `column_end` is widened to match its own note's full written column span
 /// (attack plus any dash-continuation columns, via `group_elements_by_note_id`
 /// on the paired note row) so a multi-beat note's hover/click box covers its
-/// whole duration rather than stopping after the first beat. Both edges are
-/// then snapped to a system's leading/trailing bar line where relevant
+/// whole duration rather than stopping after the first beat.
+/// For a chord-targeting or unpaired row, the next syllable bounds the
+/// target instead. Both edges are snapped to the bar lines where relevant
 /// (`column_start` for the first syllable, `column_end` for the last),
 /// exactly like `compute_all_playback_cursor_targets` snaps a note's own
 /// click target.
@@ -236,7 +264,7 @@ pub(crate) fn compute_all_lyric_click_targets(
                     // carries its own timing there, so a bracketed syllable
                     // widened to its chord's whole span would overlap the
                     // unbracketed syllables spread inside that span. Every
-                    // syllable keeps its own single-column box instead.
+                    // syllable extends only to the next syllable instead.
                     let note_max_cols: HashMap<u32, u32> = owner_note_row_indices
                         .get(part_idx)
                         .copied()
