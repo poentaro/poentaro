@@ -126,3 +126,11 @@ Rules:
 - Remove any existing instance you touch rather than adding another occurrence.
 - If none of the options above fits (e.g. values fixed by an external deploy platform), stop and ask the user before settling for less.
 - `TODO-cross-boundary-invariants.md` tracks the known instances and how each was fixed.
+
+## Shared agent skills
+
+Repository skills live in `.claude/skills/`. `.agents/skills` is a relative
+symlink to that directory so Codex and Claude Code discover the same files.
+Add or edit skills in `.claude/skills/<name>/SKILL.md`; do not duplicate them
+in a separate Codex directory. Keep shared instructions usable with either
+agent, describing the operation rather than requiring agent-specific tool names.

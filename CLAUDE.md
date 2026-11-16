@@ -84,3 +84,11 @@ pnpm exec wrangler d1 execute jianpu-live-share --remote --command="$(cat querie
 - Keep the `--command=` form: the saved queries start with a `-- ` comment, which a space-separated `--command` would read as a flag. `--file` returns no rows for a remote `SELECT`.
 - This uses wrangler's stored login (`pnpm exec wrangler whoami`). `cf d1 query <database-id> --sql="..."` also works, but needs `CLOUDFLARE_API_TOKEN` or `cf auth login`.
 - Against a local `cf dev` database, use `sqlite3 .wrangler/state/v3/d1/miniflare-D1DatabaseObject/<hash>.sqlite ".read queries/observability/recent.sql"`. `wrangler d1 execute --local` can't find the database, because the D1 binding lives in `cloudflare.config.ts`.
+
+## Shared agent skills
+
+Repository skills live in `.claude/skills/`. `.agents/skills` is a relative
+symlink to that directory so Codex and Claude Code discover the same files.
+Add or edit skills in `.claude/skills/<name>/SKILL.md`; do not duplicate them
+in a separate Codex directory. Keep shared instructions usable with either
+agent, describing the operation rather than requiring agent-specific tool names.
