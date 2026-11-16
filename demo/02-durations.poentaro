@@ -11,6 +11,9 @@ score """
     [M] 1. 2_ 1_. 2= 0
     [Mv1] _
 
+    label="Dotted eighth rest (0_.)"
+    [M] 0_. 1_ 2_. 3 4
+
     label="Extension (-)"
     [M] 1 - - -
 

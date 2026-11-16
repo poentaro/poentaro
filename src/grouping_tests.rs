@@ -94,12 +94,31 @@ fn accepts_dotted_eighth_with_sixteenth_tail() {
 }
 
 #[test]
-fn recovers_dotted_eighth_rest_without_tail_group() {
+fn accepts_dotted_eighth_rest_without_sixteenth_tail() {
     let output = parse_score("0_. 1_ 2_ 3_ 4_ 5_ 6_ 0=\n").unwrap();
-    assert!(output
+    assert!(!output
         .diagnostics
         .iter()
         .any(|e| e.message().contains("dotted eighth")));
+}
+
+#[test]
+fn dotted_eighth_rest_keeps_following_beat_positions() {
+    // The rest and following eighth total five quarter-beats. The next dotted
+    // eighth starts off the beat, so it must not trigger the tail rule either.
+    let output = parse_score("0_. 1_ 2_. 3 4\n").unwrap();
+    assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
+}
+
+#[test]
+fn dotted_eighth_rest_still_allows_validation_on_later_beats() {
+    let output = parse_score("0_. 1= 2_. 3_ 4_ 5_ 6_ 0=\n").unwrap();
+    let errors: Vec<_> = output
+        .diagnostics
+        .iter()
+        .filter(|e| e.message().contains("dotted eighth"))
+        .collect();
+    assert_eq!(errors.len(), 1);
 }
 
 #[test]
