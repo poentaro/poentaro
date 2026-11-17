@@ -33,8 +33,9 @@ pub mod e2e_worker_config;
 pub mod file_history;
 pub mod files;
 pub mod folder_share;
+pub mod model;
+pub mod naming;
 pub mod origin_migration;
-pub mod protocol;
 pub mod share;
 pub mod share_id;
 
@@ -56,7 +57,7 @@ fn cors_config() -> Cors {
     Cors::new()
         .with_origins(["*"])
         .with_methods([Method::Get, Method::Post, Method::Options])
-        .with_allowed_headers(["Content-Type", "Authorization"])
+        .with_allowed_headers(["Content-Type", "Authorization", handlers::SCHEMA_HEADER])
         .with_exposed_headers([handlers::TRACE_ID_HEADER])
 }
 
@@ -72,20 +73,15 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         return handlers::serve_agent(req, &env).await?.with_cors(&cors);
     }
 
-    let e2e_reset_enabled = env.var(e2e_reset::EMAILS_VAR).is_ok();
+    if let Some(endpoint) = handlers::protocol_endpoint(&req.path(), &env) {
+        return handlers::serve_protocol(req, &env, endpoint)
+            .await?
+            .with_cors(&cors);
+    }
+
     let route = format!("{} {}", req.method(), req.path());
     let request_meta = handlers::request_meta(&req);
-    let outcome = handlers::routes(e2e_reset_enabled)?
-        .into_router()
-        .run(req, env.clone())
-        .await;
-    let response = match outcome {
-        Ok(response) if response.headers().has(handlers::TRACE_ID_HEADER)? => response,
-        // No route matched: the router's own plain-text 404/405.
-        Ok(_) => handlers::fail(&env, &route, ApiError::NotFound, &request_meta).await?,
-        // The router itself failed, outside any route's `fail`.
-        Err(error) => handlers::fail(&env, &route, error.into(), &request_meta).await?,
-    };
+    let response = handlers::fail(&env, &route, ApiError::NotFound, &request_meta).await?;
     response.with_cors(&cors)
 }
 
@@ -122,15 +118,4 @@ async fn prune_app_log(env: &Env) -> Result<()> {
         }
     }
     Ok(())
-}
-
-/// The OpenAPI spec of every route this worker serves, built from the same
-/// `handlers::routes()` list the `fetch` handler above serves from -- see
-/// `handlers::routes`. `tests/export_openapi.rs` writes it out for `web/`'s
-/// generated client.
-pub fn openapi_json() -> Result<String> {
-    handlers::routes(false)?
-        .into_openapi()
-        .to_pretty_json()
-        .map_err(|error| worker::Error::RustError(error.to_string()))
 }

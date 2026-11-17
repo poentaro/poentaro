@@ -295,6 +295,10 @@ const QUERIES: &[(&str, &str)] = &[
         "get_file_by_name.sql",
         include_str!("../queries/get_file_by_name.sql"),
     ),
+    (
+        "list_file_summaries.sql",
+        include_str!("../queries/list_file_summaries.sql"),
+    ),
 ];
 
 #[tokio::test]

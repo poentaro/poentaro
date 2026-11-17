@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import type { FileStoreState } from '../fileStore'
 import { activeFileLabel, fileTreeView } from '../fileStoreQueries'
 import type {
@@ -6,7 +5,7 @@ import type {
   FileTreeViewRow,
   ShareOverview,
 } from '../poentaroWasm'
-import { ensureWasmInit } from '../wasmInit'
+import { useWasmReady } from './useWasmReady'
 
 export interface FileTreeView {
   rows: FileTreeViewRow[]
@@ -24,19 +23,7 @@ export function useFileTreeView(
   query: string,
   selected: string[],
 ): FileTreeView {
-  const [wasmReady, setWasmReady] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    void ensureWasmInit().then(() => {
-      if (!cancelled) setWasmReady(true)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  return wasmReady
+  return useWasmReady()
     ? {
         rows: fileTreeView(store, expanded, shares, query, selected),
         activeLabel: activeFileLabel(activeName),

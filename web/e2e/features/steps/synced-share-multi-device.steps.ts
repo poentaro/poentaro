@@ -1,5 +1,6 @@
 import { type BrowserContext, expect, type Page } from '@playwright/test'
 import { seedCloudFile } from '../../cloudFileHelpers'
+import { answersCall } from '../../protocolClients'
 import { seedSignedInSession } from './cloud-account-helpers'
 import { AfterScenario, Given, Then, When } from './fixtures'
 import {
@@ -98,9 +99,7 @@ When('the owner signs out on device {string}', async ({}, name: string) => {
   // Sign-out tells the worker without awaiting it -- wait for it here, so
   // later steps on other devices can't race ahead of it.
   await Promise.all([
-    page.waitForResponse((response) =>
-      response.url().endsWith('/auth/sign-out'),
-    ),
+    page.waitForResponse((response) => answersCall(response, 'sign out')),
     page
       .getByTestId('account-popover')
       .getByRole('button', { name: 'Sign out' })

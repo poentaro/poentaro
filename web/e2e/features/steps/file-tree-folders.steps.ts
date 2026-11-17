@@ -7,7 +7,10 @@ function dialog(page: Page, name: string) {
 }
 
 function folderMenuButton(page: Page, folder: string) {
-  return page.getByRole('button', { name: `Actions for folder ${folder}` })
+  return page.getByRole('button', {
+    name: `Actions for folder ${folder}`,
+    exact: true,
+  })
 }
 
 async function openFolderMenu(page: Page, folder: string) {

@@ -38,7 +38,7 @@ source (&str)
 ### Parser
 - Module: `src/parser/`
 - Entry: `parser::parse(source: &str, filename: &str) -> Result<ParsedDocument, IrrecoverableError>`
-- Anyx surface syntax (see `syntax.md`): `parser::read_document(input: &str, instruments: &[InstrumentInfo]) -> ReadDocument` reads a document's text through `parser::anyx::read(source, instruments)` (`src/parser/anyx/read/`), which decodes `anyx`'s tree with the decoder that `crates/poentaro-grammar` generates from its grammar `poentaro.anyx` (anyx's `anyx-generator`; `just generate-parser` regenerates `src/generated.rs`, and a test fails when it is stale). The grammar only says which shapes are allowed; `parser::anyx::decoded` says what they mean (`decode(source) -> Decoded { document, errors }`, where the grammar's `ANY ORDER` entry gives the generated `Document` its sections as fields and keeps a repeated section or a stray node in its `errors`, and the extension traits `FieldName`, `ValueText`, `WordsText` and `AbbreviationText` on the generated types), and `parser::parse` builds on it. The generated crate is its own workspace member, outside the workspace lints, because generated code carries `#![allow(dead_code)]`. Text in any other form is read the same way and comes back with syntax errors, so it still opens. `ReadDocument { metadata, metadata_parse_errors, declarations, parts_parse_errors, section_structure_errors, score: ScoreText, presets, sequence, sequence_parse_errors }` is what it produces, and `ScoreText { text, offset }` is the score body the score parser reads, so every span is a span in the file. `document::anyx_errors(text, instruments) -> Vec<RecoverableError>` lists what doesn't fit a document's shape (`RecoverableErrorKind::AnyxInvalid`): anything that writes a file from it stops on them, while a render keeps going so a typo doesn't blank the preview. `format_anyx::format_anyx(source) -> String` formats a document, and returns it unchanged when `anyx_errors` finds anything. `source_edit`'s edits go through `source_edit/anyx_edit.rs`, which rewrites the node it changes and formats that section only, keeping other sections' comments and layout; `parser::anyx::write` spells the fields and part kinds they write. `symbols::rename_edits_in_text` spells a renamed symbol for where it sits. In the wasm crate, `crates/poentaro-wasm/src/opened_document.rs` has `open_checked`, which turns `anyx_errors` into diagnostics. A comment starts with `##`; a single `#` starts an anyx line string, which a document doesn't take, so `decode` reports each `#` line as an error and reads the text as if those lines were blank. See **Anyx document** in the glossary.
+- Anyx surface syntax (see `syntax.md`): `parser::read_document(input: &str, instruments: &[InstrumentInfo]) -> ReadDocument` reads a document's text through `parser::anyx::read(source, instruments)` (`src/parser/anyx/read/`), which decodes `anyx`'s tree with the decoder that `crates/poentaro-grammar` generates from its grammar `poentaro.grammar.protocol.anyx` (anyx's `anyx-generator`; `just generate-parser` regenerates `src/generated.rs`, and a test fails when it is stale). The grammar only says which shapes are allowed; `parser::anyx::decoded` says what they mean (`decode(source) -> Decoded { document, errors }`, where the grammar's `ANY ORDER` entry gives the generated `Document` its sections as fields and keeps a repeated section or a stray node in its `errors`, and the extension traits `FieldName`, `ValueText`, `WordsText` and `AbbreviationText` on the generated types), and `parser::parse` builds on it. The generated crate is its own workspace member, outside the workspace lints, because generated code carries `#![allow(dead_code)]`. Text in any other form is read the same way and comes back with syntax errors, so it still opens. `ReadDocument { metadata, metadata_parse_errors, declarations, parts_parse_errors, section_structure_errors, score: ScoreText, presets, sequence, sequence_parse_errors }` is what it produces, and `ScoreText { text, offset }` is the score body the score parser reads, so every span is a span in the file. `document::anyx_errors(text, instruments) -> Vec<RecoverableError>` lists what doesn't fit a document's shape (`RecoverableErrorKind::AnyxInvalid`): anything that writes a file from it stops on them, while a render keeps going so a typo doesn't blank the preview. `format_anyx::format_anyx(source) -> String` formats a document, and returns it unchanged when `anyx_errors` finds anything. `source_edit`'s edits go through `source_edit/anyx_edit.rs`, which rewrites the node it changes and formats that section only, keeping other sections' comments and layout; `parser::anyx::write` spells the fields and part kinds they write. `symbols::rename_edits_in_text` spells a renamed symbol for where it sits. In the wasm crate, `crates/poentaro-wasm/src/opened_document.rs` has `open_checked`, which turns `anyx_errors` into diagnostics. A comment starts with `##`; a single `#` starts an anyx line string, which a document doesn't take, so `decode` reports each `#` line as an error and reads the text as if those lines were blank. See **Anyx document** in the glossary.
 - Presets: `parser::preset_parser::collect_presets(sections, name_of, read) -> ParsedPresets`, called from the anyx reader with one `finish_preset` per section, fills `ParsedDocument::presets: Vec<ParsedPreset>` and `preset_diagnostics: Vec<Diagnostic>`. `ParsedPreset { name, name_span, header_span, overrides: ParsedMetadata, visible_parts: Option<Vec<AbbreviationReference>>, soloed_parts: Vec<AbbreviationReference>, notation: Option<Notation> }` (`src/ast/parsed/preset.rs`). `ParsedDocument::with_preset(name)` overlays `metadata` with that preset's overrides (`ParsedMetadata::overlaid_with`, field by field; an unknown name changes nothing); `compile_with_preset(source, filename, instruments, preset_name: Option<&str>)` is `compile` with that overlay. See **Preset** in the glossary.
 - Key types: `ParsedDocument` (also carries `sequence: Option<SequenceSection>` and `sequence_parse_errors: Vec<RecoverableError>` from the optional `sequence` section — see **Sequence resolution** in the glossary; also carries `abbreviation_references: Vec<AbbreviationReference>` — every `[Abbrev]` key-prefix reference found in `score`, in file order, each `{ abbreviation, span }` with `span` covering just the trimmed abbreviation text (excluding brackets/whitespace) — see **Rename-symbol support**), `ParsedTimedTrack` (also carries `slur_groups: Vec<ParsedSlurGroup>` — every closed `(…)` group on the track, recorded by `GroupStack::close` as each `)` is parsed), `ParsedSlurGroup` (`{ open_paren_span, close_paren_span }` — lets source edits locate a group's delimiters, see **Source editing**), `ParsedScore`, `ScoreEvent` (includes `PercussionHit(ParsedPercussionHit)`; `LabelChange(String)`'s `Spanned` wrapper carries a span narrowed to just the quoted label text, not the whole `label="..."` token), `ParsedNote` (carries `Accidental` for melody notes; tie intent via `tie_to_next_span: Option<Span>` with `tie_to_next()` accessor; also carries `tuplet: Option<TupletInfo>` — see **Tuplet** in the glossary), `ParsedRest` (carries `implicit_fill: bool` — true when this rest was synthesized by `desugar::implicit_fill` to stand in for a declaration absent from this measure group, rather than written by the composer as an explicit `0`; copied through `GroupedRest`/`ElementContent::Rest`/`GridContent::Rest`/`PostArcGridContent::Rest`/`AbsoluteContent::Rest` to `SvgVariant::OmittedPartRest`, which `render_omitted_part_rest` draws as a vector glyph — mirroring the conventional Western "whole rest": a thin horizontal cap line, wider than and sitting flush above, a short solid block — instead of `render_rest`'s ordinary `0` text — see **Omitted-part rest** in the glossary), `ParsedChordNote` (also carries `Accidental` and `tie_to_next_span`), `ParsedPercussionHit` (`ParsedNote` minus pitch/accidental — carries duration, dotted, group membership, tie/slur fields), `TupletInfo` (`{ num, den }` — see **Tuplet** in the glossary), `ParsedMetadata` (key-addressed via `style`/`style_mut`/`number`/`number_mut`/`flag`/`flag_mut`/`text`/`text_mut` — see **Metadata keyword enum** in the glossary), `NumberedPitch`, `Accidental` (`Sharp`/`Flat`/`Natural`; applies to both melody notes and chord notes), `Syllable`, `Soundfont` (vocal/piano/string; selects MIDI channel+program — on a `PartKind::Percussion` part, the number is instead a fixed GM percussion key rather than a GM program number, and is not validated against the melodic instrument catalog), `PartDecl` (carries `soundfont`, `volume`, `octave_offset`, `range_instrument: Option<RangeInstrument>` and `written_range: Option<PitchRange>` — see **Range instrument** in the glossary, `kind: PartKind`, `abbreviation_span: Span` — the abbreviation token's own byte span on its declaration line, used by rename-symbol — `PartKind::Percussion` reuses `&[ScoreLineRole::Notes]` for its score line roles), `SequenceSection` (decoded by `src/parser/anyx/read/sequence.rs` — a list of section-label references, each a `SequenceEntry { label, label_span, part_filter, span }` where `part_filter: Option<PartFilter>` comes from an optional `WITHOUT [...]` or `ONLY [...]` suffix; `PartFilter { kind, parts, part_spans }` with `kind: PartFilterKind` either `Omit` (a `(-abbrev -abbrev ...)` suffix naming part abbreviations to omit from that occurrence's playback, e.g. `Chorus(-S -A2)`) or `Only` (an `(abbrev abbrev ...)` suffix, no leading `-`, naming the only parts to keep for that occurrence — every other declared part is omitted — e.g. `Chorus(S A2)`); a suffix mixing `-abbrev` and `abbrev` tokens is a recoverable error, resolving to `part_filter: None`; `label_span`/`part_spans` are the byte spans of just the label text and each filtered abbreviation (used by rename-symbol) — see **Sequence resolution** in the glossary).
 
@@ -133,7 +133,7 @@ source (&str)
 | Term | Definition |
 |------|-----------|
 | **System** | A horizontal row of measures that fit on one line of a page, packed greedily: `grid_layout::layout_systems::pack_into_systems(blocks, config, usable_music_width_pt)` groups measures into chunks of up to `config.max_measures_per_system`, ending a chunk early when adding the next measure would push the padded candidate system's summed column rods (see **Rod and spring**) past `usable_music_width_pt` — so a view with wider note heads (guitar, letter names) wraps earlier instead of overflowing; a lone measure wider than the page still gets its own system and a `MeasureOverflow` warning. It never breaks early because measures have differently-shaped rows (differing parts, lyric parts, `hide_resting_parts` suppression). Each system's rows are the union of every row across its own measures, in `parts` declaration order, each lyric part right after its target (`union_row_order`); a measure missing a row its system has gets it filled in by `pad_chunk_to_union`, in priority order: if some other row in that same block absorbed it (recorded in that row's `MeasureRow::absorbed_rows` — see Consolidator), the absorbed row's own original content is re-rendered here on its own — it's genuinely this part's real notes (real `note_id`s, real click/playback targets), just also drawn merged into another row elsewhere in the system, so the part isn't misreported as resting or silent; only when the `RowId` is genuinely absent from the block does it get synthesized as a full-measure rest or blank lyric row, carrying no note identity (`make_padding_row` — see **Note identity**). Every resolved row's `label` is then (re)computed by `pad_chunk_to_union`'s `resolve_label`, which folds the row's own identity together with whichever of its `absorbed_rows` never get their own separate row anywhere in this system (i.e. aren't themselves a `RowId` in the union) — an absorbed row that *does* need its own row elsewhere only matched by coincidence in this one measure, so it's excluded from the fold rather than tainting the surviving row's label (this is what `consolidator`'s per-measure-only merge decision, above, can't itself know). The one exception that still forces an early system break is a `merge_duplicate_measures_across_parts` change between measures: that setting changes whether two parts merge into one shared row within a measure, so a mismatch means the row sets aren't just missing rows relative to each other, they're shaped incompatibly. |
-| **Anyx document** | A Poentaro document in anyx expressions (`syntax.md`). Its metadata, parts, sequence and presets are anyx data, decoded from `anyx`'s tree by the decoder generated from `crates/poentaro-grammar/poentaro.anyx` (`parser::anyx::read`), and its score is one raw string holding the `score` body verbatim, directive lines and `//` comments included, which the score parser reads in place. |
+| **Anyx document** | A Poentaro document in anyx expressions (`syntax.md`). Its metadata, parts, sequence and presets are anyx data, decoded from `anyx`'s tree by the decoder generated from `crates/poentaro-grammar/poentaro.grammar.protocol.anyx` (`parser::anyx::read`), and its score is one raw string holding the `score` body verbatim, directive lines and `//` comments included, which the score parser reads in place. |
 | **Measure** | One bar of music. The score is a flat sequence of `MultiPartMeasure`s. |
 | **Part** | A single instrument or voice track (e.g. soprano, bass). Declared in `parts`. |
 | **Part Slice** | One part's content for a single measure (`PartSlice`): a notes/chords/percussion part's events, or a lyric part's `LyricsSlice`. |
@@ -255,7 +255,7 @@ The React app (`web/`) runs the compiler in a dedicated worker (`web/src/worker/
 - Placeholder files (`placeholder.rs`, `cloudBackendPlaceholders.ts`): the cloud (worker + D1) knows only files, so an explicit empty folder `A/B` is persisted as the file `A/B/.keep` with empty content; the worker and schema are unaware of folders. Rust owns the convention: `PLACEHOLDER_LEAF`, `is_placeholder_path(path)`, `placeholder_path(folder) -> Result<TreePath, PathError>`, and `classify_cloud_listing(&[ListedEntry { id, name, trashed }]) -> ListingClassification { folders, trashed_folders, hidden_file_ids }` (`FolderPlaceholder { folder, file_id }`), exposed as WIT `file-store-classify-cloud-listing`, `-placeholder-path`, `-is-placeholder-path`. Users cannot create the reserved leaf: `rename_file`, `rename_error` and `move_folder` fail with `FileStoreError::ReservedName` (WIT kind `reserved-name`); the placeholder logic itself does not go through those. Where the placeholder's file id lives: not in `FileStoreState` (local mode never has placeholders, and `file_ids`/`user_files`/`bin` stay placeholder-free). The cloud backend's `load()` runs the raw listing (after `applyPendingStructure`, so a still-queued create-folder shows at once, also after a reload) through `classify_cloud_listing`, drops every placeholder row (active or trashed) from the file list, sets `FileStoreState.folders` from the active ones, and keeps a `folder -> { fileId, trashed }` map inside the backend (`createPlaceholders`). `createFolder` queues `CreateFile` `<folder>/.keep`; folder rename/move queues one `RenameFiles` batch covering the moved files and the explicit-folder placeholder moves (`moveFolder` in `cloudBackendFolders.ts`; `rename()` in `cloudBackendPlaceholders.ts` returns the placeholder's `RenameMove`); `deleteFolder` queues `TrashFile` for every explicit folder removed. Because names are unique across trashed rows too, re-creating a deleted folder restores its trashed placeholder, and renaming a folder onto a deleted folder's name trashes the old placeholder and restores that one. A placeholder stays when real files are later added to the folder (harmless; the folder is explicit from then on). A `name_taken` answer for a placeholder create/rename (another device made the same folder) counts as delivered instead of becoming a visible `.keep 2.poentaro`.
 - Sorting compares names case-insensitively (lowercased), falling back to a plain comparison for a deterministic total order; this approximates the TS `localeCompare` it replaces.
 - `unique_path` mirrors the old `fileStore.ts` `uniqueName`: only siblings of `desired` (same parent folder) count as taken; a collision becomes `stem 2.ext`, `stem 3.ext`, ...; a name with no extension (or only a leading dot) gets `.poentaro`.
-- `path_after_collision(rejected: &TreePath) -> Result<TreePath, PathError>` (also in `unique_name.rs`) is the cloud outbox's retry name when the worker answers `name_taken` and only the rejected path is known: it steps over a trailing ` N` on the stem (`a.poentaro` -> `a 2.poentaro`, `a 2.poentaro` -> `a 3.poentaro`), keeps the folder prefix, and goes through `unique_path`. Exposed as the WIT export `file-store-name-after-collision` (`guest_file_store.rs`); `web/src/storage/outbox/sendMessage.ts` calls it for a `create-file`/`rename-file`/`restore-file` `name_taken` answer. The old TS `suggestNameAfterCollision` is deleted. A folder move is one `rename-files` batch (see Cloud outbox): when the worker answers `names_taken`, `sendMessage.ts` maps each listed name to a `NameAdjustment { rejected, replacement }` through the same export (`replacement` is none for a `.keep` placeholder path, whose move is dropped), and the outbox rewrites the matching moves and resends the whole batch.
+- `path_after_collision(rejected: &TreePath) -> Result<TreePath, PathError>` (also in `unique_name.rs`) is the cloud outbox's retry name when the worker answers `name_taken` and only the rejected path is known: it steps over a trailing ` N` on the stem (`a.poentaro` -> `a 2.poentaro`, `a 2.poentaro` -> `a 3.poentaro`), keeps the folder prefix, and goes through `unique_path`. `folder_after_collision(rejected)` is the same for a folder (`New` -> `New 2`), for a `folders/move` whose destination folder exists. Exposed as the WIT exports `file-store-name-after-collision` and `file-store-folder-after-collision` (`guest_file_store.rs`); `web/src/storage/outbox/sendMessage.ts` calls it for a `create-file`/`rename-file`/`restore-file` `name_taken` answer. The old TS `suggestNameAfterCollision` is deleted. A folder move is one `rename-files` batch (see Cloud outbox): when the worker answers `names_taken`, `sendMessage.ts` maps each listed name to a `NameAdjustment { rejected, replacement }` through the same export (`replacement` is none for a `.keep` placeholder path, whose move is dropped), and the outbox rewrites the matching moves and resends the whole batch.
 
 ### Source editing
 
@@ -540,40 +540,12 @@ migrations (see "Storage" below), nothing else.
   (observability)" below — and then expired `origin_migrations` rows.
 - File names are slash paths: `files.name` holds the whole path (`Hymns/Advent/O Come.poentaro`) and `idx_files_owner_name` (unique on `(owner_user_id, name)`) is therefore a uniqueness constraint on the full path; the schema has no length cap or character filter. The worker depends on the root `poentaro` crate (`default-features = false`, same as `crates/poentaro-wasm`), and `files::validate_file_name` runs `file_tree::TreePath::parse` on the name of every `POST /files`, `/files/{id}/rename` and `/files/{id}/restore` before touching D1, so the web app and the worker share one rule set (no empty segments, no `.`/`..`, at most 1024 UTF-8 bytes for the whole path). A violation answers `ApiError::InvalidName` (400). `POST /files/rename-batch` (`{identityToken, moves:[{id,name}]}`, `RenameBatchRequest`) validates every name, then `files::plan_batch_rename` over the current rows decides `Apply`, `AlreadyApplied` (an ack-lost retry succeeds), `NotFound`, `Invalid` or `NamesTaken`; the move itself is one `UPDATE ... json_each(?1)` statement (`queries/rename_files_batch.sql`), atomic by statement semantics and free of D1's per-invocation query limit. Create, rename, restore and batch rename also enforce that a path is not both a file and a folder: the handler loads the owner's live file names (`queries/list_live_file_names.sql`) and `files::find_file_folder_conflict` judges the final state (a batch is evaluated as a whole; `<folder>/.keep` is an ordinary file, so it only conflicts with a file named `<folder>`). A violation answers `ApiError::FileFolderConflict { path }` (409), which the outbox treats as a permanent failure. The check is read-then-write, not atomic, so two concurrent writes can still race past it. `share::to_public_doc` returns only the last path segment as `filename`, so a viewer of one shared file never sees the owner's folder names.
 - Folder shares (`src/folder_share.rs`, pure; handlers in `handlers/shares.rs`; migration `0005_folder_shares.sql`): a `shares` row is either a file share (`file_id`) or a folder share (`folder_prefix`, the folder path without trailing slash), exactly one (CHECK), and now carries its own `owner_user_id` (file shares used to derive it from the file). A folder has at most one row per owner (unique `(owner_user_id, folder_prefix)`), so stop-then-start reuses the `share_id`. The worker still knows nothing about folders as entities: a folder share covers every active, non-binned file whose name starts with `<prefix>/` at read time (matched with `substr`, whole segments, so `Hymns` never covers `Hymns 2/...`; `%`/`_` are literal), so files added, edited, moved in or out and deleted show on the viewer's next load (no push, no polling). Shared folders are read-only for viewers. Routes: `POST /folders/share` (`FolderShareRequest {identityToken, folder}` -> `{shareId}`; `folder` validated with `TreePath` rules plus "no `.keep` segment" -> `invalid_name`; `not_found` when the folder has no active file, a `.keep` placeholder counts; `shared_folder_too_large` (413) over the limits), `/folders/share/stop` (204, or `not_found` if never shared; works on a folder that has since emptied), `/folders/share/status` (`{share: {shareId, ended} | null}`, same shape as the file status). `POST /shares/overview` (`{identityToken}` -> `{files: [{shareId, fileId, name}], folders: [{shareId, folder}]}`, live links only, binned files excluded) is the one read the share UI derives everything from: own-link markers, "shared via <ancestor>" (a `folders` entry that is a path-segment prefix of the file/folder) and the "this folder contains files with their own link" warning. Viewer: `GET /shares/{share_id}` falls through from the file-share view to `get_folder_share_header`; for a folder share `SyncedDoc.folder` (`SharedFolder {name, files: [{path (relative to the shared folder), content, revision}], emptyFolders}`) holds the tree, `filename` repeats the folder name, `content` is `""` and `revision` 0; `.keep` rows are never files, and `emptyFolders` are placeholder folders with no file under them. `folder` is absent (skipped, not `null`) for file shares, ended shares and unknown ids, so those responses are unchanged. A stopped share answers `ended: true` with nothing else; a live folder with no files is an empty live tree (trashing every file does not end the share). Size limit: `folder_share::MAX_SHARED_FOLDER_FILES` (300 files, placeholders included) and `MAX_SHARED_FOLDER_BYTES` (10 MiB of content), checked by `get_folder_files_stats.sql` both when starting and when a viewer loads; over it answers `ApiError::SharedFolderTooLarge`, never a truncated tree. Renames: `POST /files/rename-batch` reads the owner's folder-share prefixes (live or stopped), and `folder_share::plan_prefix_rewrites` treats a prefix as moved when the batch moves every active file under it to one common new folder keeping the rest of each path (a folder rename/move); nested shared folders get their own rewrite, partial moves leave the share alone (it follows the prefix, not file ids). The file renames and `rewrite_folder_share_prefix.sql` updates go out in one D1 `batch` (one transaction), so the link keeps its `share_id`; a rewrite onto a folder that already has its own share hits the unique index and answers `name_taken`.
-- Route list and generated client: `handlers::routes()` is the one list of
-  routes. Each `.get(path, handler)`/`.post(path, handler)` call on
-  `handlers::routes::Routes` registers the route into both the
-  `worker::Router` and an OpenAPI spec, deriving every part of the spec
-  from the handler's signature — path params from an `IntoParams` struct
-  (`protocol::FileIdPath`/`ShareIdPath`, checked against the path
-  template's `{name}` segments when the list is built), the request body
-  from a `ToSchema` type, the success response from its `Reply` type
-  (`Json<T>` → `200`, `NoContent` → `204`), and `api_error::ApiError` as
-  every route's `default` response. `openapi_json()` (`src/lib.rs`) serializes
-  that spec; `tests/export_openapi.rs` writes it to
-  `web/src/generated/live-share-worker/openapi.json`, and `web`'s
-  `build:worker-types` script turns it into `schema.ts` with
-  `openapi-typescript` (pinned to TypeScript 5 by `web/.pnpmfile.cjs`, since
-  it needs the TS 5 compiler API). The same test also writes
-  `shareIdFormat.json` there (`share_id::share_id_format()`: a `share_id`'s
-  length and anchored regex), a runtime value rather than a type, which
-  `web/src/syncedShareUrl.ts` and the Pages Function `web/functions/index.ts`
-  import to parse share links — so neither restates the id shape — and
-  `e2eWorkerConfig.json` (`e2e_worker_config::e2e_worker_config()`: the `--var`
-  name `web/playwright.config.ts` sets to enable `POST /e2e/reset`) and
-  `deployConfig.json` (the public host out of `deploy.json`, which
-  `web/vite.config.ts` and `web/functions/index.ts` read). All five
-  files are gitignored and regenerated by `build:worker-types` (run by
-  `predev`/`prebuild` and the `web-typecheck` pre-commit job), so they
-  can't go stale against the Rust source. `web/src/syncedShare/workerClient.ts`'s
-  `createWorkerClient(host)` is an `openapi-fetch` client over those types,
-  and `callWorker` turns each call's result into its success body or a
-  `NetworkFailure`/`UnreadableResponse`/`WorkerRequestError` (the latter
-  carrying the parsed `ApiError`) — every web call site and e2e helper
-  (`web/e2e/cloudFileHelpers.ts`) goes through it, and the Pages Function
-  `web/functions/index.ts` builds its own `openapi-fetch` client over the same
-  `paths` type (keeping SPA code out of its edge bundle), so no path, method,
-  body shape or error literal is restated by hand in TS.
+- Protocol clients: AnyX schemas generate Rust servers and TypeScript clients,
+  with Rust wasm codecs. The worker serves `/public`, `/app`, `/agent`, and
+  test-only `/test`; former REST URLs return 404. `build:worker-types` runs
+  `tests/export_web_config.rs` for share-id format, deployment settings and
+  test-worker configuration, then generates the AnyX clients. It produces no
+  OpenAPI spec or REST client. Pages previews and Node e2e helpers use AnyX.
 - Storage: D1 (SQLite), not the old KV namespace. Schema in
   `live-share-worker/migrations/0001_init.sql` (shared, as plain `.sql`,
   between real D1 migrations and a local shadow SQLite database
@@ -739,46 +711,36 @@ An account owner's AI agent reads and edits the owner's own scores over the
 **anyx protocol** (anyx's `anyx-protocol`): requests and responses are anyx
 text, and the methods are declared in a schema.
 
-- Schema and generated code: `crates/poentaro-protocol`. The schema is the
-  folder `schema/`, a file per **scope**: `protocol.anyx` holds only the
-  `PROTOCOL` header, `files.anyx` is the scope `files`,
-  `files/export.anyx` the scope `files/export` and `score.anyx` the scope
-  `score`. A method is called by its
-  full name, its scope's path then its shape: `files/list`,
-  `files/read _`, `files/write _ at revision _ content _`,
-  `files/create _ content _`, `files/export/svg _`,
-  `files/export/midi _` and `score/syntax`. `files` declares the records (`file summary`,
-  `file`, `diagnostic`, `saved`) and two error groups, `file errors`
-  (`trashed`, `missing`) and `score errors` (`rejected _`); `files/export`
-  declares `export errors` (`unreadable _` plus `files/file errors`). An
-  error is written in full where it is used: in its method's `ERRORS [ … ]`
-  when only that method answers it (`conflict at revision _ content _`,
-  `already exists at revision _`, `invalid path _`), or in a group that
-  methods join with `+`. A type or error group is private to its scope
-  unless `PUBLIC`, and another scope names it by full path
-  (`files/diagnostic`, `files/file errors`). `src/generated.rs` is what anyx's
-  `anyx-protocol-generate` writes from it, a module per scope
-  (`poentaro_protocol::files::export`): the record structs, a
-  `{Method}Error` enum per method, a `Server` trait per scope (the root one
-  holds `type Error`), `handle(server, request, on_internal_error) ->
-  String`, a `Client` (`client.files().export().svg(path)`), and
-  `SCHEMA_FILES`/`schema()`. `tests/generated.rs` lists the schema's files
-  and fails when one is missing from that list.
-  `just generate-protocol` rewrites it, and a test fails when it is stale.
-  Like `poentaro-grammar`, the crate is outside the workspace lints and its
-  `generated.rs` is exempt from the 400-line limit.
+- Schema and generated code: `crates/poentaro-protocol`. Each audience
+  (`agent`, `app`, `public`, `test`) has an entry file
+  `schemas/<audience>/protocol.protocol.anyx`. It declares the protocol and explicit
+  relative `USE` imports. Each protocol has one flat namespace; moving a
+  method between files does not change its API. The agent calls `list files`,
+  `read file _`, `write file _ at revision _ content _`,
+  `create file _ content _`, `export svg _`, `export midi _` and `score syntax`.
+  Records include `File Summary`, `File`, `Diagnostic` and `Saved`.
+  Errors are defined once, in a method or shared `ERRORS` group; other files
+  directly import public types and groups by their plain names. Imports do
+  not re-export declarations, and circular imports are invalid.
+  `build.rs` uses `Schema::load` to follow each entry's imports and generates
+  one Rust module per audience into `OUT_DIR`: record structs, a
+  `{Method}Error` enum per method, one `Server` trait, `handle`, a flat
+  `Client` (`client.export_svg(path)`), and `SCHEMA_FILES`/`schema()`.
+  The schema hash covers exactly those loaded files, with relative paths
+  so it is independent of checkout location. Nothing generated is checked
+  in. Like `poentaro-grammar`, this crate is outside the workspace lints.
 - Route (`src/handlers/agent.rs`): `POST /agent` runs a request sent with
   `Authorization: Bearer poe_…`; any other method is a `405`. Everything
   the agent reads comes through it: anyx's built-in `SCHEMA` call answers
   the guide (how to write a request and read a response, then the schema
-  with its docs), and `score/syntax` (`schema/score.anyx`) answers
+  with its docs), and `score syntax` (`schemas/agent/score.protocol.anyx`) answers
   `syntax.md`. A missing, unknown, revoked or
   expired key is a plain-text `401`; the per-key `AGENT_RATE_LIMITER`
   (`cloudflare.config.ts`, 60 requests a minute) a `429`.
 - Methods (`src/handlers/agent/files.rs`, `AgentFiles`, an implementation of
   `Server`, `files::Server`, `files::export::Server` and `score::Server`
   over D1): files are
-  addressed by path (`db::get_file_by_name`). `files/list` lists the live
+  addressed by path (`db::get_file_by_name`). `list files` lists the live
   files; `read`/`write` answer `trashed` for a
   binned file and `missing` for none. `write` is the same compare-and-swap
   as `POST /files/{id}/content` and records version history the same way
@@ -790,7 +752,7 @@ text, and the methods are declared in a schema.
   `create` wants a valid path ending in `.poentaro`
   (`agent::new_file_path_problem`) that is not also a folder, and gives the
   file a version 4 UUID (`agent::file_id`), the id form the web app uses.
-  `files/export/svg` and `files/export/midi`
+  `export svg` and `export midi`
   (`agent::export_svg`/`export_midi`) answer
   a live file's SVG pages and Standard MIDI File (a `BYTES` value, base64
   on the wire), or `unreadable` with the same errors that would stop a
@@ -819,13 +781,56 @@ text, and the methods are declared in a schema.
 - Logging: `LogEvent::Agent(AgentEvent)`, flow `agent`: `key_created`,
   `key_revoked`, `key_rejected`, `key_expired` and one `called` row per `POST /agent`
   listing each call as its full method name and ending
-  (`files/read _: ok`,
-  `files/write _ at revision _ content _: conflict at revision _ content _`),
+  (`read file _: ok`,
+  `write file _ at revision _ content _: conflict at revision _ content _`),
   subject `key:<prefix>`.
 - Live edits: the web app checks the open cloud file's revision every
   `REVISION_POLL_MILLIS` (5 s) while the tab is in view
   (`useFocusRevisionCheck`), so an agent's save shows up; unsaved edits are
   never replaced, and their save goes through the outbox's conflict flow.
+
+### Web app protocols (`/public`, `/app`, `/test`)
+
+The web app uses three AnyX protocols generated from
+`crates/poentaro-protocol/schemas`. The REST routes have been removed.
+
+- Route (`src/handlers/protocols.rs`, `handlers::protocol_endpoint` /
+  `serve_protocol`): `POST /public` needs no credential; `POST /app` needs a
+  session token as `Authorization: Bearer`, and a token that names no live
+  session is a `401` before any method runs; `POST /test` exists only when
+  `SYNCED_SHARE_E2E_RESET_EMAILS` is set. A client that sends a
+  `Poentaro-Schema` hash other than the schema's own (`SCHEMA_HASH`) gets a
+  `409`, and the web app asks to reload.
+- Servers: `PublicServer` (`protocols/public.rs`), `AppServer`
+  (`protocols/app.rs`, with `app/server.rs` delegating to `app/files.rs` and `app/links.rs`) and
+  `TestServer` (`protocols/test.rs`). They call the service cores: `handlers::file_store` for file writes, `shares::start_file_link`
+  and friends, `api_keys::create_key`/`revoke_key`, `auth::create_account`,
+  `start_session`, `end_session`, `replace_password`.
+- The app addresses files by id. `list files` returns summaries without
+  content (`db::list_file_summaries`, `naming::FileSummaryRow`); content
+  comes from `read file`.
+- Paths the server picks are in `crate::naming`: `restored_path` (a restored
+  file whose path was taken comes back as `stem 2.ext`) and
+  `plan_folder_move` (`FolderMovePlan`), property-tested against
+  `poentaro::file_tree::move_folder`.
+- Logging: `LogEvent::Protocol(ProtocolEvent)`: `Called` with every method
+  name of the request and whether one failed, or `Refused` with the status.
+- Web: the generated clients (`web/src/generated/protocol/`) go through
+  `web/src/protocol/` (`clients.ts`: `publicClient`, `appClient`,
+  `testClient`; `transport.ts`: `codecFor`, `sendTo`), with the text encoded
+  and decoded in Rust (WIT `protocol-encode-request` takes every call of a
+  request, `protocol-decode-response` gives an outcome per call). A
+  client's `batch(build)` sends every call `build` makes as one request;
+  `cloudBackendListing.ts` reads all files listed by `list files` in one
+  batch, leaving out a file gone since. The cloud backend and its outbox
+  take `AppFileCalls` (the client's file and folder methods and `batch`),
+  which the unit tests replace with `createFakeAppFiles`
+  (`web/src/storage/fakeAppFiles.ts`, an in-memory server).
+- E2e: `web/e2e/protocolClients.ts` gives the Node side the same clients.
+  `web/e2e/appCalls.ts` matches the page's `POST /app` requests by method,
+  decoding them in Rust (WIT `protocol-decode-request`), and answers or
+  rewrites them with an outcome encoded in Rust (`protocol-encode-response`):
+  `routeAppCall`, `answerCall`, `refuseCall`, `rewriteAnswers`.
 
 ### Version history
 
@@ -1140,15 +1145,15 @@ away from the wasm build both times:
 | **token tag** | `app_log::token_tag`: the first 12 hex chars of a session token's SHA-256 hash (`auth::session::hash_token`). Enough to tell tokens apart in `app_log`, never the token or full hash. |
 | **VerificationFailure** | `auth::session::VerificationFailure { reason, failed_at, attempts }`: why a request's token was refused (no live session), returned as `ApiError::Unauthorized` (a `401` body with `code: "unauthorized"` beside these fields). `attempts` is always 1, kept from the GitHub era so the web reads it unchanged. Never carries the token or its hash. |
 | **ApiError** | `api_error::ApiError`: the `code`-tagged union every Synced Share worker route answers a failure with; its HTTP status is derived from the variant. `web/` switches on the generated `code` literals (`WorkerRequestError.apiError`), never on raw statuses. |
-| **Worker client** | The typed `openapi-fetch` client for the Synced Share worker (`web/src/syncedShare/workerClient.ts`), generated from the OpenAPI spec that `handlers::routes()` builds from the Rust handlers' own signatures — see "Route list and generated client". |
+| **Worker client** | The generated AnyX clients and Rust wasm codecs, used by the browser, Pages previews and e2e helpers. |
 | **owner_user_id** | A file's owner (`files.owner_user_id`, an internal `users.id`), and so also the owner of that file's share — `shares` has no owner column of its own. Replaced the old KV model's bearer `ownerToken`, which any first writer could claim. |
 | **Account** | An email + password (`password_credentials`) on a `users` row, signing in to **both** cloud file storage and Synced Share ownership. Held in the browser as `accountAuth.ts`'s `{ token, email }` under `poentaro:account-auth:v2`. See "Accounts (email + password)". |
 | **static folder link** | A `#share-folder=<payload>` link carrying a compressed `FolderSnapshot` of a folder at one moment; works for local and cloud folders, never updates, and is not offered above `MAX_STATIC_FOLDER_LINK_CHARS` (the dialog suggests a synced link instead). |
 | **API key** | A `poe_…` key an account owner creates in the account menu's **AI agents** dialog, for their AI agent to send to `POST /agent` as `Authorization: Bearer`. It acts as its owner on the owner's own files only, for 30 days; only its hash is stored, and its `prefix` names it. See "AI agents". |
 | **agent** | An AI agent (Claude Code, Codex, …) that the account owner sets up with the AI agents dialog's prompt: it saves the API key and installs the `poentaro` skill, then sends `SCHEMA` to `POST /agent` for the guide and the schema, and reads and edits the owner's scores through the same route. |
-| **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result repeats the call, with long arguments cut short with `…`, then says what came of it: `RETURNS <value>`, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro's schema is the folder `crates/poentaro-protocol/schema`, a file per scope. |
+| **anyx protocol** | anyx's request/response protocol (`anyx-protocol`): an app declares its methods in a schema written in anyx, a request is calls in each method's shape, and each call's result is matched by position and says what came of it: `RETURNS <value>`, `ERROR <error>`, `INTERNAL ERROR` or `NOT RUN`. Poentaro has a schema per audience, each an entry in `crates/poentaro-protocol/schemas` with explicit imports and one flat namespace. |
 | **`SCHEMA`** (anyx protocol) | The call every anyx-protocol server answers without declaring it: the guide to its schema (how to write a request and read a response, then the schema as written). Generated clients call it as `client.schema()`. |
-| **scope** (anyx protocol) | A file of an anyx-protocol schema folder other than `protocol.anyx`, named by its path without `.anyx` (`files/export`). Its methods are called by full name (`files/export/svg _`), and its types and errors are private to it unless `PUBLIC`. |
+| **schema library** (anyx protocol) | A headerless `.anyx` file included through a relative `USE` import. Its methods join the protocol’s flat namespace; direct importers may use its `PUBLIC` types and error groups by plain name. |
 | **share overview** | `file_tree::ShareOverview`, the owner's live file and folder links as `POST /shares/overview` reports them; everything the share UI shows (markers, "via X" tags, warnings) is derived from it in Rust. |
 | **selection unit** | `file_tree::SelectionUnit`: one thing a multi-select action applies to — a file, or a folder whose files are all ticked (moved and deleted as a folder, so its structure survives). Folders inside a ticked folder are not listed again. |
 | **shared via** | `file_tree::SharedVia`: the innermost shared folder strictly above a file or folder, shown as a "via <name>" tag and "Shared via <name>" menu item. |
@@ -1199,10 +1204,11 @@ camelCase, enums are tagged with `kind`.
   The head message is index 0.
 - `QueuedMessage { message_id, created_at_ms, message: Message, attempts: Vec<Attempt> }`.
 - `Message`: `CreateFile { name, content }`, `SaveContent { content }`,
-  `RenameFile { to }`, `TrashFile`, `RestoreFile`, `RenameFiles { moves: Vec<RenameMove { file_id, to }> }`. The file id lives on the lane, except for `RenameFiles` (a folder move): it sits alone on a synthetic lane `batch:<message_id>` (`BATCH_LANE_PREFIX`) so a half-delivered move cannot exist; no revision is recorded for that lane and it is removed once the batch is delivered.
+  `RenameFile { to }`, `TrashFile`, `RestoreFile`, `RenameFiles { moves: Vec<RenameMove { file_id, to }>, folder: Option<FolderMove { from, to }> }` (`folder` is set when the batch is one folder move, which `sendMessage.ts` sends as a single `move folder _ to _`; without it each move is sent as `move file _ to _`). The file id lives on the lane, except for `RenameFiles` (a folder move): it sits alone on a synthetic lane `batch:<message_id>` (`BATCH_LANE_PREFIX`) so a half-delivered move cannot exist; no revision is recorded for that lane and it is removed once the batch is delivered.
   Ordering (`scheduling::is_blocked`): a batch is not sent before a pending `CreateFile` (placeholder creates included) of any member file, nor before an earlier rename/trash/restore of a member file or an earlier batch sharing a file; a later per-file rename/trash/restore of a member waits for the batch. `SaveContent` is never blocked. `applyPendingStructure` (`cloudBackendOutbox.ts`) replays pending messages in `createdAtMs` order, including batch moves.
 - `Attempt { at_ms, outcome: AttemptOutcome }`; `AttemptOutcome`: `Succeeded`,
   `Transient`, `Unauthorized`, `RevisionConflict`, `NameTaken`, `NamesTaken { adjustments }`, `Permanent`.
+  On `NamesTaken`, `batch_adjust::adjust_batch` rewrites the head message: an adjustment naming `folder.to` (the destination folder exists) moves the whole batch into the replacement folder and keeps `folder`; otherwise each taken move is renamed or dropped and `folder` is cleared.
   A delivered message's log (kept in its `sent:` record) ends in `Succeeded`;
   that is what makes a history row "Sent".
 - `LaneStatus`: `Idle`, `Draining`, `Waiting { retry_at_ms }`, `NeedsSignIn`,
@@ -1238,8 +1244,9 @@ The shell only does I/O, timers and rendering; every decision is a wasm call.
 - Existing: `outboxStore.ts` (persists `StoredRecord`s), `memoryOutboxStore.ts`
   (in-memory store), `outboxLock.ts` (single-tab lock), `outboxScheduler.ts`
   (timer driven by `next_wake_ms`).
-- `sendMessage.ts` (performs a `SendRequest` over HTTP and maps the
-  response to a `SendResult`), `outboxLooper.ts` (the Looper; runs on the
+- `sendMessage.ts` (performs a `SendRequest` through `poentaro app`'s file
+  calls and maps each method error to a `SendResult`; an error the outbox
+  can't fix is `Permanent { status, reason: <error kind> }`), `outboxLooper.ts` (the Looper; runs on the
   leader tab only), `baseSnapshots.ts` (Base snapshot storage under
   `base:<fileId>`), `conflictFlow.ts` (drives `NeedsMerge` through
   `merge_three_way`: a clean merge is saved at once, a conflicting one is kept
@@ -1274,3 +1281,22 @@ The shell only does I/O, timers and rendering; every decision is a wasm call.
 | **Looper** | The TS loop (`outboxLooper.ts`) that repeatedly calls `begin_send`, performs the request, and feeds the `SendResult` to `on_result`, sleeping until `next_wake_ms`. |
 | **Halt** | A lane stopping instead of retrying: `NeedsSignIn`, `NeedsMerge` or `Failed`. It stays halted until a `Resolution` (or `resolve_signed_in`) moves it back to `Draining`. |
 | **Base snapshot** | The last content known to match the server for a file (kept by `baseSnapshots.ts`); the `base` input of `merge_three_way` when a revision conflict needs merging. |
+
+### AnyX protocol types and effects
+
+The schemas use the built-in `Text`, `Integer`, `Boolean`, `Bytes`,
+`Instant` and `Duration` types. Timestamps cross the protocol as `Instant`
+(Rust `SystemTime`, RFC 3339 strings in wasm JSON, revived to `Date` by the generated TypeScript client), while D1 and the cloud outbox
+keep their existing millisecond timestamps. Lockout lengths are `Duration`
+(Rust `Duration`, milliseconds in JSON); account dialogs convert them to
+seconds for their countdown. `Key Id` and `Migration Id` generate distinct
+Rust wrappers and branded TypeScript types, constructed at the application
+boundary. Account error handling uses the generated unions.
+
+`READ ONLY` methods may be called freely. `IDEMPOTENT` sign-out, key
+revocation and trash methods may be retried without adding an effect.
+Other writes retain the conservative unmarked effect. Sharing declares no
+undo operation: ending a link cannot retract content already disclosed.
+Checked `EXAMPLES` document calls and outcomes, including annotations for
+named IDs and empty lists. Responses contain outcomes only, never echoed
+arguments such as passwords. Each protocol is loaded through explicit `USE` imports; generated APIs have no file-based namespaces.

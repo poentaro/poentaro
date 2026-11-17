@@ -9,7 +9,7 @@ name = "migrate-comments"
 path = "src/main.rs"
 
 [dependencies]
-anyx = { git = "https://github.com/wongjiahau/anyx", rev = "de017324fe42cb7faefad998442d6c843a4e6717" }
+anyx = { git = "https://github.com/wongjiahau/anyx", rev = "e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4" }
 poentaro = { path = "../..", default-features = false }
 # Its `file_history` writes the reverse patch, so History can read it back.
 live-share-worker = { path = "../../crates/live-share-worker" }

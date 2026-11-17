@@ -61,14 +61,6 @@ export function createPlaceholders(
       }
     },
 
-    /** The current path of a trashed placeholder, for its `RestoreFile`. */
-    nameOf(fileId: string): string | undefined {
-      const folder = [...rowByFolder].find(
-        ([, row]) => row.fileId === fileId,
-      )?.[0]
-      return folder === undefined ? undefined : placeholderPath(folder)
-    },
-
     async create(folder: string): Promise<void> {
       const row = rowByFolder.get(folder)
       if (row && !row.trashed) return

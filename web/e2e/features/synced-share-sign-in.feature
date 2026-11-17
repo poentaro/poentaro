@@ -54,7 +54,7 @@ Feature: Synced Share sign-in
     And the Synced Share worker rejects the next start-share request with a verification failure
     When the owner loads the app and clicks "Sync"
     Then the synced share error dialog is shown with a "file a GitHub issue" link
-    And the synced share error dialog shows the reason "session expired"
+    And the synced share error dialog shows the reason "Your session has ended."
     When the owner dismisses the synced share error dialog
     Then the synced share error dialog is gone
     When the owner reopens the share modal

@@ -65,7 +65,7 @@ jobs:
 
       - uses: jdx/mise-action@v2
         with:
-          install_args: rust node pnpm
+          install_args: rust node pnpm cargo-binstall cargo:cargo-component
 
       - uses: actions/cache@v4
         with:

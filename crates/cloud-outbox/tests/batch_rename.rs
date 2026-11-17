@@ -41,6 +41,7 @@ fn batch(moves: &[(&str, &str)]) -> Message {
                 to: (*to).into(),
             })
             .collect(),
+        folder: None,
     }
 }
 
@@ -184,7 +185,7 @@ fn names_taken(queue: Queue, adjustments: Vec<NameAdjustment>) -> Queue {
 fn moves_of(queue: &Queue) -> Vec<RenameMove> {
     match queue.lanes.first().and_then(|lane| lane.messages.first()) {
         Some(QueuedMessage {
-            message: Message::RenameFiles { moves },
+            message: Message::RenameFiles { moves, .. },
             ..
         }) => moves.clone(),
         _ => vec![],
@@ -285,6 +286,51 @@ fn a_collision_that_matches_no_move_fails_the_batch_instead_of_looping() -> Test
         }),
     )?;
     check(moves_of(&queue).len(), 1)
+}
+
+fn head_message(queue: &Queue) -> Option<Message> {
+    queue
+        .lanes
+        .first()
+        .and_then(|lane| lane.messages.first())
+        .map(|queued| queued.message.clone())
+}
+
+#[test]
+fn a_taken_destination_folder_moves_the_whole_batch_to_the_replacement() -> TestResult {
+    let folder_move = Message::RenameFiles {
+        moves: vec![RenameMove {
+            file_id: "a".into(),
+            to: "New/a".into(),
+        }],
+        folder: Some(FolderMove {
+            from: "Old".into(),
+            to: "New".into(),
+        }),
+    };
+    let queue = enqueue(empty(), "", folder_move, "move", 7);
+    let (queue, _) = send_and_get(queue)?;
+    let queue = names_taken(
+        queue,
+        vec![NameAdjustment {
+            rejected: "New".into(),
+            replacement: Some("New 2".into()),
+        }],
+    );
+
+    check(
+        head_message(&queue),
+        Some(Message::RenameFiles {
+            moves: vec![RenameMove {
+                file_id: "a".into(),
+                to: "New 2/a".into(),
+            }],
+            folder: Some(FolderMove {
+                from: "Old".into(),
+                to: "New 2".into(),
+            }),
+        }),
+    )
 }
 
 #[test]

@@ -115,7 +115,6 @@ Then(
     const shareId = new URL(link).searchParams.get('s')?.slice(0, 11)
     if (!shareId) throw new Error(`not a synced share link: ${link}`)
     const doc = await fetchSyncedDoc(shareId)
-    expect(doc.filename).toBe('')
-    expect(doc.content).toBe('')
+    expect(doc.kind).toBe('ended')
   },
 )

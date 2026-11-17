@@ -1,18 +1,15 @@
 import { expect, type Locator, type Page } from '@playwright/test'
-import createClient from 'openapi-fetch'
-import type { paths } from '../../../src/generated/live-share-worker/schema'
 import {
   CLOUD_WORKER_ORIGIN,
   seedCloudFile,
   seedTokenFor,
 } from '../../cloudFileHelpers'
+import { appClient, valueOrFail } from '../../protocolClients'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { BeforeScenario, Given, Then, When } from './fixtures'
 
 // `agent-protocol.feature`: the signed-in owner's API key, used from Node
 // the way an AI agent uses it, by sending anyx requests to `POST /agent`.
-
-const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 
 interface CreatedKey {
   id: string
@@ -67,10 +64,11 @@ function withLastLine(lastLine: string): string {
 
 async function ownersFile(path: string) {
   const identityToken = await seedTokenFor(currentSignedInEmail())
-  const { data } = await worker.POST('/files/list', {
-    body: { identityToken },
-  })
-  const file = data?.files.find((listed) => listed.name === path)
+  const files = await valueOrFail(
+    'list files',
+    (await appClient(identityToken)).listFiles(),
+  )
+  const file = files.find((listed) => listed.path === path)
   if (!file) throw new Error(`the signed-in account has no file ${path}`)
   return file
 }
@@ -88,24 +86,20 @@ async function firstSeenRevision(path: string): Promise<number> {
 async function writeAsAgent(path: string, content: string): Promise<void> {
   const revision = await firstSeenRevision(path)
   await sendAsAgent(
-    `files/write ${JSON.stringify(path)} at revision ${revision} content ${JSON.stringify(content)}`,
+    `write file ${JSON.stringify(path)} at revision ${revision} content ${JSON.stringify(content)}`,
   )
 }
 
 Given('the signed-in account has an API key', async () => {
   const identityToken = await seedTokenFor(currentSignedInEmail())
-  const { data, error, response } = await worker.POST('/api-keys', {
-    body: { identityToken },
-  })
-  if (!data) {
-    throw new Error(
-      `POST /api-keys failed with ${response.status}: ${JSON.stringify(error)}`,
-    )
-  }
+  const created = await valueOrFail(
+    'creating an API key',
+    (await appClient(identityToken)).createAgentKey(),
+  )
   key = {
-    id: data.key.id,
-    secret: keyInPrompt(data.prompt),
-    prefix: data.key.prefix,
+    id: created.key.id,
+    secret: keyInPrompt(created.prompt),
+    prefix: created.key.prefix,
   }
 })
 

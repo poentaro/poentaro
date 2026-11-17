@@ -1,11 +1,6 @@
 import { expect, type Page } from '@playwright/test'
-import createClient from 'openapi-fetch'
-import type { paths } from '../../../src/generated/live-share-worker/schema'
-import {
-  CLOUD_WORKER_ORIGIN,
-  matchWorkerRoute,
-  seedTokenFor,
-} from '../../cloudFileHelpers'
+import { appCallTo } from '../../appCalls'
+import { CLOUD_WORKER_ORIGIN, seedTokenFor } from '../../cloudFileHelpers'
 import {
   fileSwitcherTrigger,
   fileTabByExactName,
@@ -13,6 +8,7 @@ import {
   openFileActions,
   openFileList,
 } from '../../fileSwitcherHelpers'
+import { appClient, valueOrFail } from '../../protocolClients'
 import {
   currentSeededFileDisplayName,
   currentSignedInEmail,
@@ -20,7 +16,6 @@ import {
 import { gotoCloudApp } from './cloud-account-helpers'
 import { Given, Then, When } from './fixtures'
 
-const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 const WORKER_ROUTES = `${CLOUD_WORKER_ORIGIN}/**`
 /** The longest retry delay (Appendix A.2: backoff capped at 60 s). */
 const OUTBOX_RETRY_CAP_MS = 65_000
@@ -42,12 +37,12 @@ Given('the cloud is unreachable', async ({ page }) => {
   await expect(
     fileSwitcherTrigger(page).locator('.file-tab-bar-spinner'),
   ).toHaveCount(0, { timeout: 15_000 })
-  await page.route(WORKER_ROUTES, (route) =>
+  await page.route(WORKER_ROUTES, async (route) =>
     // The share-status lookup the owner hook fires for every newly active
     // cloud file is unrelated to the outbox, yet raises a full-screen
     // "failed to sync" dialog when it fails (an app discrepancy reported
     // with this test); let it through so the dialog does not cover the page.
-    matchWorkerRoute('/files/{id}/share/status', route.request().url())
+    (await appCallTo(route.request(), 'sharing status of file _'))
       ? route.continue()
       : route.abort('connectionrefused'),
   )
@@ -121,13 +116,12 @@ Then(
     await expect
       .poll(
         async () => {
-          const { data } = await worker.POST('/files/list', {
-            body: { identityToken },
-          })
-          return (
-            data?.files.some(
-              (file) => file.name === fileName && file.trashedAt === null,
-            ) ?? false
+          const files = await valueOrFail(
+            'list files',
+            (await appClient(identityToken)).listFiles(),
+          )
+          return files.some(
+            (file) => file.path === fileName && file.trashedAt === undefined,
           )
         },
         { timeout: DELIVERY_TIMEOUT_MS },

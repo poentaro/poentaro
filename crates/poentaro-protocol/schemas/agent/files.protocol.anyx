@@ -1,0 +1,61 @@
+# A file in the account's tree.
+RECORD File Summary {
+    # A slash path, such as `Hymns/hymn.poentaro`.
+    path: Text,
+    revision: Integer,
+},
+
+RECORD File { path: Text, revision: Integer, content: Text },
+
+# One problem in a score.
+PUBLIC RECORD Diagnostic {
+    # Counted from 1, in the content you sent.
+    line: Integer,
+    # Counted from 1, in characters.
+    column: Integer,
+    message: Text,
+},
+
+# A score that was saved, and what may still be wrong with it. Warnings
+# never stop a save, but each is worth a look.
+RECORD Saved { revision: Integer, warnings: LIST Diagnostic },
+
+PUBLIC ERRORS file errors [
+    # The owner moved this file to the trash. Ask them to restore it.
+    trashed,
+    # No file has this path. It may have been renamed: run `list files` to
+    # see the exact paths.
+    missing,
+],
+
+ERRORS score errors [
+    # The score has errors, so nothing was saved. Fix them and send it again.
+    rejected (diagnostics: LIST Diagnostic),
+],
+
+# Every file this account owns.
+READ ONLY METHOD list files RETURNS files: LIST File Summary,
+
+READ ONLY METHOD read file (path: Text) RETURNS (file: File) ERRORS file errors,
+
+# Saves the score, if the file is still at `revision`.
+METHOD write file (path: Text) at revision (revision: Integer) content (content: Text)
+    RETURNS (saved: Saved)
+    ERRORS [
+        # Someone saved first. Apply your change to `content`, then write at
+        # `revision`.
+        conflict at revision (revision: Integer) content (content: Text),
+    ] + score errors + file errors
+    EXAMPLES [
+        write file "hymn.poentaro" at revision 3 content "new score" ERROR conflict at revision 4 content "current score",
+    ],
+
+# Makes a new file, and its folders if they don't exist.
+METHOD create file (path: Text) content (content: Text)
+    RETURNS (saved: Saved)
+    ERRORS [
+        # A file already has this path. Read it, or create under another path.
+        already exists at revision (revision: Integer),
+        # The path isn't valid, such as an empty folder name or a `..`.
+        invalid path (message: Text),
+    ] + score errors,

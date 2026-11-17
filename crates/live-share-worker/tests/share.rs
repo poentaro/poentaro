@@ -2,7 +2,7 @@
 //! share that points at a cloud `files` row.
 #![allow(clippy::disallowed_macros)]
 
-use live_share_worker::protocol::SyncedDoc;
+use live_share_worker::model::SyncedDoc;
 use live_share_worker::share::{empty_doc, to_public_doc, ShareView};
 
 fn live_view() -> ShareView {

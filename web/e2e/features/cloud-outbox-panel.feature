@@ -15,7 +15,7 @@ Feature: Cloud outbox panel: queued work is visible and every halt has a way out
 
   Scenario: C2 A permanently failing file offers download and discard
     Given a cloud file named "outbox-c2.poentaro" is seeded for the signed-in account
-    And every content-save request for "outbox-c2.poentaro" will fail with a 400 response
+    And every content-save request for "outbox-c2.poentaro" will be refused as "trashed"
     And I open and edit "outbox-c2" with suffix " 5"
     When I open the sync panel
     Then the sync panel lists "outbox-c2.poentaro" as "couldn't sync"
@@ -24,7 +24,7 @@ Feature: Cloud outbox panel: queued work is visible and every halt has a way out
 
   Scenario: C3 Discarding reverts the file to the server version after confirmation
     Given a cloud file named "outbox-c3.poentaro" is seeded for the signed-in account
-    And every content-save request for "outbox-c3.poentaro" will fail with a 400 response
+    And every content-save request for "outbox-c3.poentaro" will be refused as "trashed"
     And I open and edit "outbox-c3" with suffix " 5"
     When I open the sync panel
     And I click "Discard" in the sync panel
@@ -35,9 +35,9 @@ Feature: Cloud outbox panel: queued work is visible and every halt has a way out
 
   Scenario: C4 The details layer shows the attempt history
     Given a cloud file named "outbox-c4.poentaro" is seeded for the signed-in account
-    And every content-save request for "outbox-c4.poentaro" will fail with a 400 response
+    And every content-save request for "outbox-c4.poentaro" will be refused as "trashed"
     And I open and edit "outbox-c4" with suffix " 5"
     When I open the sync panel
     And I expand the details for "outbox-c4.poentaro"
     Then the details show 1 queued "SaveContent" message
-    And the details show an attempt with outcome "400"
+    And the details show an attempt with outcome "trashed"

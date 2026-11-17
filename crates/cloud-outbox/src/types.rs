@@ -50,6 +50,14 @@ pub struct RenameMove {
     pub to: String,
 }
 
+/// The folder a `RenameFiles` batch moves, delivered as one folder move the
+/// server plans itself.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FolderMove {
+    pub from: String,
+    pub to: String,
+}
+
 /// The file id lives on the lane, except for `RenameFiles`, which names its
 /// files itself and lives on a `batch:` lane.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -66,8 +74,13 @@ pub enum Message {
         to: String,
     },
     /// Renames every listed file, or none of them (one folder move).
+    /// `moves` orders the batch against the files' other messages. A batch
+    /// with `folder` is sent as that folder move; one queued before folders
+    /// were recorded (or adjusted after `NamesTaken`) moves each file.
     RenameFiles {
         moves: Vec<RenameMove>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        folder: Option<FolderMove>,
     },
     TrashFile,
     RestoreFile,

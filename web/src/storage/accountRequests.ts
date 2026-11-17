@@ -1,18 +1,28 @@
 import {
-  callWorker,
-  createWorkerClient,
-  NetworkFailure,
-  traceIdOf,
-  WorkerRequestError,
-  type WorkerSchemas,
-} from '../syncedShare/workerClient'
+  type ChangePasswordFromToError,
+  type CreatedKey,
+  type Key,
+  KeyId,
+} from '../generated/protocol/app'
+import type {
+  SignInPasswordError,
+  SignUpPasswordError,
+} from '../generated/protocol/public'
+import {
+  appClient,
+  type ClientOptions,
+  publicClient,
+} from '../protocol/clients'
+import { type CallOutcome, expectValue, settled } from '../protocol/outcome'
+import { SessionEnded } from '../protocol/transport'
+import { NetworkFailure, traceIdOf } from '../syncedShare/workerClient'
 import type { StoredAccountAuth } from './accountAuth'
 
 /**
- * The account routes of the worker (`POST /auth/*`), with each failure
- * turned into what the account dialogs show. Every rule -- what counts as
- * an email, the password length, the lockout -- is the worker's; this only
- * words its answers.
+ * The account methods of `poentaro public` and `poentaro app`, with each
+ * failure turned into what the account dialogs show. Every rule -- what
+ * counts as an email, the password length, the lockout -- is the worker's;
+ * this only words its answers.
  */
 
 /** Why an account request was refused, as the dialog shows it. */
@@ -34,113 +44,152 @@ export type AccountResult<T> =
   | { ok: true; value: T }
   | { ok: false; failure: AccountFailure; traceId: string | null }
 
-function workerClient() {
-  return createWorkerClient(import.meta.env.VITE_SYNCED_SHARE_HOST ?? '')
+/** Every error an account method can answer, by `kind`. */
+type AccountError =
+  | ChangePasswordFromToError
+  | SignInPasswordError
+  | SignUpPasswordError
+
+const SOMETHING_WENT_WRONG: AccountFailure = {
+  kind: 'message',
+  message: 'Something went wrong. Please try again.',
 }
 
-function toFailure(error: unknown): AccountFailure {
+function errorFailure(error: AccountError): AccountFailure {
+  switch (error.kind) {
+    case 'emailTaken':
+      return { kind: 'email-taken' }
+    case 'lockedFor':
+      return {
+        kind: 'locked',
+        retryAfterSeconds: Math.ceil(error.duration / 1000),
+      }
+    case 'invalidEmail':
+      return { kind: 'message', message: 'Enter a valid email address.' }
+    case 'weakPassword':
+      return { kind: 'message', message: error.message }
+    case 'incorrect':
+    case 'incorrectPassword':
+      return { kind: 'incorrect-credentials' }
+    case 'tooManyRequests':
+      return {
+        kind: 'message',
+        message: 'Too many attempts from this network. Wait a minute.',
+      }
+  }
+}
+
+function thrownFailure(error: unknown): AccountFailure {
   if (error instanceof NetworkFailure) {
     return {
       kind: 'message',
       message: "Couldn't reach the server. Check your connection and retry.",
     }
   }
-  const apiError =
-    error instanceof WorkerRequestError ? error.apiError : undefined
-  switch (apiError?.code) {
-    case 'email_taken':
-      return { kind: 'email-taken' }
-    case 'sign_in_locked':
-      return { kind: 'locked', retryAfterSeconds: apiError.retryAfterSeconds }
-    case 'unauthorized':
-      return { kind: 'session-ended' }
-    case 'invalid_email':
-      return { kind: 'message', message: 'Enter a valid email address.' }
-    case 'weak_password':
-      return { kind: 'message', message: apiError.message }
-    case 'incorrect_credentials':
-      return { kind: 'incorrect-credentials' }
-    case 'rate_limited':
-      return {
-        kind: 'message',
-        message: 'Too many attempts from this network. Wait a minute.',
-      }
-    default:
-      return {
-        kind: 'message',
-        message: 'Something went wrong. Please try again.',
-      }
-  }
+  if (error instanceof SessionEnded) return { kind: 'session-ended' }
+  return SOMETHING_WENT_WRONG
 }
 
-async function attempt<T>(send: () => Promise<T>): Promise<AccountResult<T>> {
+/** Runs `call` with client options that record its response's trace ID,
+ * turning its method's errors and anything thrown into what the dialogs
+ * show. */
+async function attempt<T, E extends AccountError>(
+  call: (options: ClientOptions) => Promise<CallOutcome<T, E>>,
+): Promise<AccountResult<T>> {
+  let traceId: string | null = null
+  const options: ClientOptions = {
+    onTraceId: (id) => {
+      traceId = id
+    },
+  }
   try {
-    return { ok: true, value: await send() }
+    const outcome = settled(await call(options))
+    return outcome.kind === 'value'
+      ? { ok: true, value: outcome.value }
+      : { ok: false, failure: errorFailure(outcome.error), traceId }
   } catch (error) {
-    return { ok: false, failure: toFailure(error), traceId: traceIdOf(error) }
+    return {
+      ok: false,
+      failure: thrownFailure(error),
+      traceId: traceIdOf(error) ?? traceId,
+    }
   }
 }
 
-async function startSession(
-  path: '/auth/sign-up' | '/auth/sign-in',
+function stored(session: { token: string; email: string }): StoredAccountAuth {
+  return { token: session.token, email: session.email }
+}
+
+export async function signUp(
   email: string,
   password: string,
 ): Promise<AccountResult<StoredAccountAuth>> {
-  return attempt(async () => {
-    const session = await callWorker(
-      workerClient().POST(path, { body: { email, password } }),
-    )
-    return { token: session.sessionToken, email: session.email }
-  })
+  const result = await attempt(async (options) =>
+    (await publicClient(options)).signUpPassword(email, password),
+  )
+  return result.ok ? { ok: true, value: stored(result.value) } : result
 }
 
-export function signUp(email: string, password: string) {
-  return startSession('/auth/sign-up', email, password)
-}
-
-export function signIn(email: string, password: string) {
-  return startSession('/auth/sign-in', email, password)
+export async function signIn(
+  email: string,
+  password: string,
+): Promise<AccountResult<StoredAccountAuth>> {
+  const result = await attempt(async (options) =>
+    (await publicClient(options)).signInPassword(email, password),
+  )
+  return result.ok ? { ok: true, value: stored(result.value) } : result
 }
 
 /** Sets a new password. The worker keeps this session and ends the
  * account's others. */
-export function changePassword(
+export async function changePassword(
   identityToken: string,
   currentPassword: string,
   newPassword: string,
 ): Promise<AccountResult<null>> {
-  return attempt(async () => {
-    await callWorker(
-      workerClient().POST('/auth/change-password', {
-        body: { identityToken, currentPassword, newPassword },
-      }),
-    )
-    return null
-  })
+  const result = await attempt(async (options) =>
+    (await appClient(identityToken, options)).changePasswordFromTo(
+      currentPassword,
+      newPassword,
+    ),
+  )
+  return result.ok ? { ok: true, value: null } : result
 }
 
 /** Ends the session on the worker. Fire-and-forget: the caller discards the
  * token either way, so a failed request only leaves the session to expire
  * on its own. */
 export function signOutSession(identityToken: string): void {
-  void workerClient()
-    .POST('/auth/sign-out', { body: { identityToken } })
+  void appClient(identityToken)
+    .then((client) => expectValue(client.signOut()))
     .catch(() => {})
 }
 
-export type ApiKeySummary = WorkerSchemas['ApiKeySummary']
-export type CreatedApiKey = WorkerSchemas['CreatedApiKey']
+export type ApiKeySummary = Key
+export type CreatedApiKey = CreatedKey
+
+/** Runs a call whose method has no errors of its own. */
+async function attemptValue<T>(
+  call: () => Promise<T>,
+): Promise<AccountResult<T>> {
+  try {
+    return { ok: true, value: await call() }
+  } catch (error) {
+    return {
+      ok: false,
+      failure: thrownFailure(error),
+      traceId: traceIdOf(error),
+    }
+  }
+}
 
 /** The account's API keys, newest first. */
 export function listApiKeys(
   identityToken: string,
 ): Promise<AccountResult<ApiKeySummary[]>> {
-  return attempt(async () => {
-    const response = await callWorker(
-      workerClient().POST('/api-keys/list', { body: { identityToken } }),
-    )
-    return response.keys
-  })
+  return attemptValue(async () =>
+    expectValue((await appClient(identityToken)).listAgentKeys()),
+  )
 }
 
 /** A new API key, with the prompt that carries it: the only time either is
@@ -148,23 +197,19 @@ export function listApiKeys(
 export function createApiKey(
   identityToken: string,
 ): Promise<AccountResult<CreatedApiKey>> {
-  return attempt(() =>
-    callWorker(workerClient().POST('/api-keys', { body: { identityToken } })),
+  return attemptValue(async () =>
+    expectValue((await appClient(identityToken)).createAgentKey()),
   )
 }
 
-/** Stops the key `id` working at once. */
+/** Stops the key `id` working at once. A key that is already gone counts as
+ * revoked. */
 export function revokeApiKey(
   identityToken: string,
   id: string,
 ): Promise<AccountResult<null>> {
-  return attempt(async () => {
-    await callWorker(
-      workerClient().POST('/api-keys/{id}/revoke', {
-        params: { path: { id } },
-        body: { identityToken },
-      }),
-    )
+  return attemptValue(async () => {
+    settled(await (await appClient(identityToken)).revokeAgentKey(KeyId(id)))
     return null
   })
 }

@@ -12,9 +12,14 @@ import {
   restoreFile as pureRestoreFile,
   updateActiveContent as pureUpdateActiveContent,
 } from '../fileStore'
-import { callWorker, createWorkerClient } from '../syncedShare/workerClient'
+import {
+  type AppFileCalls,
+  appClient,
+  type ClientOptions,
+} from '../protocol/clients'
 import { ensureWasmInit } from '../wasmInit'
 import { createFolderOperations } from './cloudBackendFolders'
+import { createServerReads } from './cloudBackendListing'
 import { addedName } from './cloudBackendNaming'
 import {
   applyPendingStructure,
@@ -46,8 +51,8 @@ export type {
 } from './cloudBackendTypes'
 
 /**
- * `StorageBackend` implementation backed by `crates/live-share-worker`'s
- * `/files/*` routes (D1-backed). Every structural op calls the matching pure
+ * `StorageBackend` implementation backed by `poentaro app`'s `files/*` and
+ * `folders/*` (D1-backed). Every structural op calls the matching pure
  * transform from `fileStore.ts`, applies it to local state at once and queues
  * the HTTP call in the outbox (`outbox/`), which delivers it in the
  * background; the transform's resulting `FileStoreState` is returned
@@ -58,6 +63,8 @@ export type {
  * and `cloudBackendPlaceholders.ts` (empty folders).
  */
 export interface CloudBackendDependencies {
+  /** `poentaro app`'s file calls; the worker at `workerHost` by default. */
+  app?: (options: ClientOptions) => Promise<AppFileCalls>
   looper?: OutboxLooper
   bases?: BaseSnapshots
   ensureWasm?: () => Promise<void>
@@ -67,8 +74,10 @@ export function createCloudBackend(
   config: CloudBackendConfig,
   dependencies: CloudBackendDependencies = {},
 ): CloudBackend {
-  const identityToken = config.token
-  const client = createWorkerClient(config.workerHost)
+  const app =
+    dependencies.app ??
+    ((options: ClientOptions) =>
+      appClient(config.token, { host: config.workerHost, ...options }))
 
   const renameListeners = new Set<(change: LocalRename) => void>()
   // `FileStoreState.fileIds` is one flat map keyed by display name, shared
@@ -92,21 +101,8 @@ export function createCloudBackend(
     return trashedIdByName.get(name) ?? fileIdForName(state, name)
   }
 
-  /** The current local name of `fileId`, for a `RestoreFile` message. */
-  function trashedNameOf(fileId: string): string {
-    const named = [...activeIdByName, ...trashedIdByName].find(
-      ([, id]) => id === fileId,
-    )
-    return named?.[0] ?? placeholders.nameOf(fileId) ?? ''
-  }
-
   const { looper, bases } = createCloudOutbox(
-    {
-      client,
-      identityToken,
-      account: config.account,
-      restoreName: trashedNameOf,
-    },
+    { app, account: config.account },
     dependencies,
   )
   const ensureWasm = dependencies.ensureWasm ?? ensureWasmInit
@@ -121,13 +117,7 @@ export function createCloudBackend(
     activeIdByName,
     trashedIdByName,
   })
-  async function fetchServerFile(fileId: string) {
-    const response = await callWorker(
-      client.POST('/files/list', { body: { identityToken } }),
-    )
-    const file = response.files.find(({ id }) => id === fileId)
-    return file && { revision: file.revision, content: file.content }
-  }
+  const { fetchServerFile, listFiles } = createServerReads(() => app({}))
 
   const noticeListeners = new Set<(message: string) => void>()
   let conflictFlow: ConflictFlow | null = null
@@ -234,9 +224,7 @@ export function createCloudBackend(
       // listing is in flight leaves the queue, yet the listing may still carry
       // the older text, so the edit must be laid over it from this snapshot.
       const pendingSnapshot = looper.snapshot()
-      const response = await callWorker(
-        client.POST('/files/list', { body: { identityToken } }),
-      )
+      const response = { files: await listFiles() }
       const userFiles: Record<string, string> = {}
       const bin: Record<string, string> = {}
       const fileIds: Record<string, string> = {}
@@ -346,7 +334,7 @@ export function createCloudBackend(
 
     fetchServerFile,
 
-    ...createVersionCalls(client, identityToken),
+    ...createVersionCalls(() => app({})),
 
     conflicts: () => conflictFlow,
 

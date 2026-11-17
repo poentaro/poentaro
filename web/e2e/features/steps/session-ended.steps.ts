@@ -1,26 +1,19 @@
 import { expect } from '@playwright/test'
-import createClient from 'openapi-fetch'
-import type { paths } from '../../../src/generated/live-share-worker/schema'
-import {
-  CLOUD_WORKER_ORIGIN,
-  fulfillWithApiError,
-  seedTokenFor,
-  workerRouteGlob,
-} from '../../cloudFileHelpers'
+import { routeAppCall } from '../../appCalls'
+import { seedTokenFor } from '../../cloudFileHelpers'
 import {
   fileSwitcherTrigger,
   fileTabByExactName,
   openFileList,
   typeAtEditorEnd,
 } from '../../fileSwitcherHelpers'
+import { appClient, valueOrFail } from '../../protocolClients'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { gotoCloudApp, lastSeededSessionToken } from './cloud-account-helpers'
 import { Given, Then, When } from './fixtures'
 
 // Covers session-ended.feature: a session that ends while the page still
 // holds it signs the browser out at the first refused request.
-
-const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 
 Given(
   'I open {string} from the cloud file list',
@@ -41,14 +34,9 @@ Given(
 Given(
   'the worker refuses the share overview as unauthorized',
   async ({ page }) => {
-    await page.route(workerRouteGlob('/shares/overview'), async (route) => {
-      await fulfillWithApiError(route, 401, {
-        code: 'unauthorized',
-        reason: 'Your session has ended. Sign in again.',
-        failedAt: Date.now(),
-        attempts: 1,
-      })
-    })
+    await routeAppCall(page, 'list shared links', (route) =>
+      route.fulfill({ status: 401, body: 'Your session has ended.' }),
+    )
   },
 )
 
@@ -59,10 +47,10 @@ When('the app loads with cloud storage', async ({ page }) => {
 // Ends the page's session the way a sign-out on another device would: the
 // page is not told, it only finds out from its next request.
 When('the session is ended on the worker', async () => {
-  const { response } = await worker.POST('/auth/sign-out', {
-    body: { identityToken: lastSeededSessionToken() },
-  })
-  expect(response.ok).toBe(true)
+  await valueOrFail(
+    'sign-out',
+    (await appClient(lastSeededSessionToken())).signOut(),
+  )
 })
 
 // Cmd/Ctrl+S hands the edit to the outbox at once instead of waiting out
@@ -84,10 +72,12 @@ Then(
     await expect
       .poll(
         async () => {
-          const { data } = await worker.POST('/files/list', {
-            body: { identityToken },
-          })
-          return data?.files.find((file) => file.name === name)?.content
+          const client = await appClient(identityToken)
+          const files = await valueOrFail('list files', client.listFiles())
+          const file = files.find((file) => file.path === name)
+          return file
+            ? (await valueOrFail('read file', client.readFile(file.id))).content
+            : undefined
         },
         { timeout: 15_000 },
       )

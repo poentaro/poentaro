@@ -43,8 +43,27 @@ const MAX_COLLISION_SUFFIX: u32 = 10_000;
 /// becomes `a 2.poentaro` and `a 2.poentaro` becomes `a 3.poentaro`, not `a 2 2`.
 /// Computed through [`unique_path`] with `a` and `a 2` ... `a N` marked taken.
 pub fn path_after_collision(rejected: &TreePath) -> Result<TreePath, PathError> {
-    let parent = rejected.parent();
     let (stem, extension) = split_extension(rejected.name());
+    let (desired, taken) = numbered_after(rejected, stem, extension)?;
+    unique_path(&desired, &taken)
+}
+
+/// The folder counterpart of [`path_after_collision`]: `New` becomes
+/// `New 2` and `New 2` becomes `New 3`, with no extension added.
+pub fn folder_after_collision(rejected: &TreePath) -> Result<TreePath, PathError> {
+    let (desired, taken) = numbered_after(rejected, rejected.name(), "")?;
+    unique_folder_path(&desired, &taken)
+}
+
+/// The base of `stem` (its trailing ` N` stripped) as a sibling of
+/// `rejected`, and every numbered sibling up to the rejected one, marked
+/// taken.
+fn numbered_after(
+    rejected: &TreePath,
+    stem: &str,
+    extension: &str,
+) -> Result<(TreePath, HashSet<TreePath>), PathError> {
+    let parent = rejected.parent();
     let (base_stem, rejected_number) = stem
         .rsplit_once(' ')
         .and_then(|(base, digits)| Some((base, digits.parse::<u32>().ok()?)))
@@ -55,7 +74,7 @@ pub fn path_after_collision(rejected: &TreePath) -> Result<TreePath, PathError> 
         .map(|taken_stem| TreePath::child(parent.as_ref(), &format!("{taken_stem}{extension}")))
         .collect::<Result<_, _>>()?;
     let desired = TreePath::child(parent.as_ref(), &format!("{base_stem}{extension}"))?;
-    unique_path(&desired, &taken)
+    Ok((desired, taken))
 }
 
 /// `desired` if free, else `name 2`, `name 3`, ... among the siblings of

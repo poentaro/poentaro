@@ -13,10 +13,11 @@
 // with no way to run this, so share links opened there keep the generic
 // preview.
 
-import createClient from 'openapi-fetch'
+import core from '../../crates/poentaro-wasm/pkg-component/poentaro_wasm.core.wasm'
+import { instantiate } from '../../crates/poentaro-wasm/pkg-component/poentaro_wasm.js'
 import deployConfig from '../src/generated/live-share-worker/deployConfig.json'
-import type { paths } from '../src/generated/live-share-worker/schema'
 import shareIdFormat from '../src/generated/live-share-worker/shareIdFormat.json'
+import { Client, SCHEMA_HASH } from '../src/generated/protocol/public'
 import { SHARE_QUERY_PARAM } from '../src/shareQueryParam'
 
 // Generated from `crates/live-share-worker/src/share_id.rs`
@@ -25,14 +26,7 @@ import { SHARE_QUERY_PARAM } from '../src/shareQueryParam'
 const SHARE_ID_LENGTH = shareIdFormat.length
 const SHARE_ID_PATTERN = new RegExp(shareIdFormat.pattern)
 
-// Typed from the worker's own OpenAPI spec (`build:worker-types`), so the
-// route, its path param and the `SyncedDoc` response body all come from the
-// Rust handler's signature. Only the types are imported from the generated
-// schema; the client itself is `openapi-fetch`, not the SPA's
-// `workerClient.ts`, to keep this edge bundle free of SPA code.
-const workerClient = createClient<paths>({
-  baseUrl: `https://${deployConfig.workerHost}`,
-})
+const root = instantiate(() => core, {})
 
 export const onRequestGet: PagesFunction = async (context) => {
   const response = await context.next()
@@ -44,16 +38,34 @@ export const onRequestGet: PagesFunction = async (context) => {
   const shareId = payload.slice(0, SHARE_ID_LENGTH)
   if (!SHARE_ID_PATTERN.test(shareId)) return response
 
-  const doc = await workerClient
-    .GET('/shares/{share_id}', {
-      params: { path: { share_id: shareId } },
-      cache: 'no-store',
-    })
-    .then((result) => result.data)
-    .catch(() => undefined)
-  if (!doc || doc.ended || !doc.filename) return response
-
-  const title = `${doc.filename.replace(/\.poentaro$/, '')} - Poentaro`
+  const wasm = await root
+  const codec = wasm
+  const client = new Client(
+    {
+      encodeRequest: (calls) => codec.protocolEncodeRequest('public', calls),
+      decodeResponse: (methods, response) =>
+        codec.protocolDecodeResponse('public', methods, response),
+    },
+    async (body) => {
+      const result = await fetch(`https://${deployConfig.workerHost}/public`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+          'Poentaro-Schema': SCHEMA_HASH,
+        },
+        body,
+        cache: 'no-store',
+      })
+      if (!result.ok) throw new Error(`share preview: ${result.status}`)
+      return result.text()
+    },
+  )
+  const outcome = await client.openSharedLink(shareId).catch(() => undefined)
+  if (outcome?.kind !== 'value' || outcome.value.kind === 'ended')
+    return response
+  const shared = outcome.value
+  const name = shared.kind === 'file' ? shared.file.name : shared.folder.name
+  const title = `${name.replace(/\.poentaro$/, '')} - Poentaro`
 
   // Rewrites the static shell's existing tags in place rather than
   // appending new ones: per the Open Graph spec, a parser takes the first

@@ -47,6 +47,9 @@ Then('the active tab becomes {string}', async ({ page }, name: string) => {
 // would be an ambiguous step definition at collection time.
 When('I reload the page and reopen the file list', async ({ page }) => {
   await page.reload()
+  // Let Monaco finish its initial focus before opening the modal; a later
+  // editor focus otherwise dismisses the freshly opened file browser.
+  await page.waitForSelector('.monaco-editor .view-lines', { timeout: 15_000 })
   await openFileList(page)
 })
 

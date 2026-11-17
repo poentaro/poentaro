@@ -45,5 +45,8 @@ fn refuses_a_requested_email_outside_the_allowlist() {
         "real@example.com".to_string(),
     ];
 
-    assert!(emails_to_reset(&allowed(), Some(&requested)).is_err());
+    assert_eq!(
+        emails_to_reset(&allowed(), Some(&requested)),
+        Err("real@example.com".to_string())
+    );
 }

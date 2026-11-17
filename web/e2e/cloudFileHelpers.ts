@@ -1,81 +1,19 @@
-import type { Route } from '@playwright/test'
-import createClient from 'openapi-fetch'
 import type {
-  components,
-  paths,
-} from '../src/generated/live-share-worker/schema'
+  CreateFileAtContentError,
+  MoveFileToError,
+} from '../src/generated/protocol/app'
+import { settled } from '../src/protocol/outcome'
 import { signInE2eAccount } from './e2eAccounts.ts'
+import { appClient, publicClient, valueOrFail } from './protocolClients'
 
-export type WorkerSchemas = components['schemas']
-type PublicFile = WorkerSchemas['PublicFile']
-type ApiError = WorkerSchemas['ApiError']
-type WorkerPath = keyof paths
-
-// Seeds/mutates real rows in the local `cf dev` worker's D1 database
-// (see `playwright.config.ts`'s `webServer` array) by calling its `/files/*`
-// routes directly from Node -- the e2e equivalent of "this file already
-// existed in the cloud before the page under test ever loaded". Unlike the
-// deleted `github-contents-mock.ts`, there is no `page.route()` interception
-// here at all: `/files/*` is entirely worker+D1 mediated, so calling the
-// real worker (through the same generated client the app uses) is both
-// simpler and more faithful. Also home to the helpers every step file
-// uses to intercept a worker route (`workerRouteGlob`/`matchWorkerRoute`)
-// or fake its failure (`fulfillWithApiError`), so route paths and error
-// bodies are always the generated ones, never hand-typed.
+// Seeds and mutates real rows through the same generated AnyX clients as
+// the app. Calls from Node bypass browser interception while exercising
+// the worker's session verification and D1 writes.
 
 /** Same origin `playwright.config.ts` points the app's own `VITE_SYNCED_SHARE_HOST`
  * at -- see that file's `webServer` entry for `cf dev --port 8797`
  * (deliberately not `just dev`'s 8787, see that entry's comment). */
 export const CLOUD_WORKER_ORIGIN = 'http://localhost:8797'
-
-const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
-
-/** A `page.route` glob for one of the worker's routes, each `{param}` as
- * `*`. */
-export function workerRouteGlob(path: WorkerPath): string {
-  return `${CLOUD_WORKER_ORIGIN}${path.replace(/\{[^}]+\}/g, '*')}`
-}
-
-/** `url`'s path params if it's a request to `path`, else `null`. */
-export function matchWorkerRoute(
-  path: WorkerPath,
-  url: string,
-): Record<string, string> | null {
-  const names = [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1])
-  const pattern = new RegExp(
-    `^${CLOUD_WORKER_ORIGIN}${path.replace(/\{[^}]+\}/g, '([^/]+)')}$`,
-  )
-  const values = pattern.exec(new URL(url).href.replace(/\?.*$/, ''))
-  if (!values) return null
-  return Object.fromEntries(
-    names.map((name, index) => [name, values[index + 1] ?? '']),
-  )
-}
-
-/** Fakes a worker failure, its body checked against the generated
- * `ApiError` union. */
-export async function fulfillWithApiError(
-  route: Route,
-  status: number,
-  error: ApiError,
-): Promise<void> {
-  await route.fulfill({ status, json: error })
-}
-
-/** Unwraps a worker call made from Node, failing the step loudly on any
- * error response. */
-async function expectOk<Data>(
-  what: string,
-  pending: Promise<{ data?: Data; error?: unknown; response: Response }>,
-): Promise<Data> {
-  const { data, error, response } = await pending
-  if (!response.ok) {
-    throw new Error(
-      `cloudFileHelpers: ${what} failed with ${response.status}: ${JSON.stringify(error)}`,
-    )
-  }
-  return data as Data
-}
 
 // One session per account for the seeding calls below, signed in on first
 // use. Cleared before every scenario (`clearSeedTokens`, from
@@ -130,18 +68,22 @@ export async function seedCloudFile(
   email: string,
   name: string,
   content: string = DEFAULT_CLOUD_FILE_CONTENT,
-): Promise<PublicFile> {
-  const identityToken = await seedTokenFor(email)
-  const { data, error, response } = await worker.POST('/files', {
-    body: { identityToken, id: crypto.randomUUID(), name, content },
-  })
-  if (data) return data
-  if (error?.code === 'name_taken') {
-    return await reseedExistingFile(email, name, content)
-  }
-  throw new Error(
-    `cloudFileHelpers: POST /files failed with ${response.status}: ${JSON.stringify(error)}`,
+) {
+  const client = await appClient(await seedTokenFor(email))
+  const result = settled(
+    await client.createFileAtContent(crypto.randomUUID(), name, content),
   )
+  if (result.kind === 'value')
+    return {
+      id: result.value.id,
+      name: result.value.path,
+      content,
+      revision: result.value.revision,
+      trashedAt: null,
+    }
+  if (result.error.kind === 'taken')
+    return reseedExistingFile(email, name, content)
+  throw new Error(`seedCloudFile: ${JSON.stringify(result.error)}`)
 }
 
 /** Reuses a pre-existing row already sitting under `name` for this account
@@ -152,126 +94,78 @@ async function reseedExistingFile(
   email: string,
   name: string,
   content: string,
-): Promise<PublicFile> {
-  const identityToken = await seedTokenFor(email)
-  const listed = await expectOk(
-    'POST /files/list',
-    worker.POST('/files/list', { body: { identityToken } }),
+) {
+  const client = await appClient(await seedTokenFor(email))
+  const files = await valueOrFail('list files', client.listFiles())
+  const existing = files.find((file) => file.path === name)
+  if (!existing) throw new Error(`No existing file at ${name}`)
+  if (existing.trashedAt !== undefined)
+    await valueOrFail('restore file', client.restoreFile(existing.id))
+  const revision = await valueOrFail(
+    'write file',
+    client.writeFileAtRevisionContent(existing.id, existing.revision, content),
   )
-  const existing = listed.files.find((file) => file.name === name)
-  if (!existing) {
-    throw new Error(
-      `cloudFileHelpers: seedCloudFile got name_taken for ${JSON.stringify(name)} but /files/list has no matching row`,
-    )
-  }
-  if (existing.trashedAt !== null) {
-    await expectOk(
-      'POST /files/{id}/restore',
-      worker.POST('/files/{id}/restore', {
-        params: { path: { id: existing.id } },
-        body: { identityToken, name },
-      }),
-    )
-  }
-  const updated = await expectOk(
-    'POST /files/{id}/content',
-    worker.POST('/files/{id}/content', {
-      params: { path: { id: existing.id } },
-      body: { identityToken, content, expectedRevision: existing.revision },
-    }),
-  )
-  return {
-    id: existing.id,
-    name,
-    content,
-    revision: updated.revision,
-    trashedAt: null,
-  }
+  return { id: existing.id, name, content, revision, trashedAt: null }
 }
 
 /** What the worker answered a write: `ok`, or the `ApiError` code. */
-export type CloudWriteOutcome = 'ok' | ApiError['code']
+export type CloudWriteOutcome =
+  | 'ok'
+  | CreateFileAtContentError['kind']
+  | MoveFileToError['kind']
 
-/** Tries to create a cloud file and reports the worker's verdict instead of
- * failing the step -- for scenarios about refused writes. */
 export async function tryCreateCloudFile(
   email: string,
   name: string,
 ): Promise<CloudWriteOutcome> {
-  const { error } = await worker.POST('/files', {
-    body: {
-      identityToken: await seedTokenFor(email),
-      id: crypto.randomUUID(),
+  const client = await appClient(await seedTokenFor(email))
+  const result = settled(
+    await client.createFileAtContent(
+      crypto.randomUUID(),
       name,
-      content: DEFAULT_CLOUD_FILE_CONTENT,
-    },
-  })
-  return error ? error.code : 'ok'
+      DEFAULT_CLOUD_FILE_CONTENT,
+    ),
+  )
+  return result.kind === 'error' ? result.error.kind : 'ok'
 }
-
-/** Tries to rename a cloud file and reports the worker's verdict. */
 export async function tryRenameCloudFile(
   email: string,
   id: string,
   name: string,
 ): Promise<CloudWriteOutcome> {
-  const { error } = await worker.POST('/files/{id}/rename', {
-    params: { path: { id } },
-    body: { identityToken: await seedTokenFor(email), name },
-  })
-  return error ? error.code : 'ok'
+  const client = await appClient(await seedTokenFor(email))
+  const result = settled(await client.moveFileTo(id, name))
+  return result.kind === 'error' ? result.error.kind : 'ok'
 }
-
-/** Moves a previously seeded file to the bin, by its real D1 id. */
 export async function trashCloudFile(email: string, id: string): Promise<void> {
-  await expectOk(
-    'POST /files/{id}/delete',
-    worker.POST('/files/{id}/delete', {
-      params: { path: { id } },
-      body: { identityToken: await seedTokenFor(email) },
-    }),
+  await valueOrFail(
+    'trash file',
+    (await appClient(await seedTokenFor(email))).trashFile(id),
   )
 }
-
-/** Renames (or moves) a previously seeded file to `name`, by its real D1 id. */
 export async function renameCloudFile(
   email: string,
   id: string,
   name: string,
 ): Promise<void> {
-  await expectOk(
-    'POST /files/{id}/rename',
-    worker.POST('/files/{id}/rename', {
-      params: { path: { id } },
-      body: { identityToken: await seedTokenFor(email), name },
-    }),
+  await valueOrFail(
+    'move file',
+    (await appClient(await seedTokenFor(email))).moveFileTo(id, name),
   )
 }
-
-/** Restores a previously trashed file out of the bin under `name`, by its
- * real D1 id. */
 export async function restoreCloudFile(
   email: string,
   id: string,
   name: string,
 ): Promise<void> {
-  await expectOk(
-    'POST /files/{id}/restore',
-    worker.POST('/files/{id}/restore', {
-      params: { path: { id } },
-      body: { identityToken: await seedTokenFor(email), name },
-    }),
-  )
+  const client = await appClient(await seedTokenFor(email))
+  const restored = await valueOrFail('restore file', client.restoreFile(id))
+  if (restored !== name)
+    await valueOrFail('move restored file', client.moveFileTo(id, name))
 }
-
-/** Fetches a share the way an anonymous viewer would. */
-export async function fetchSyncedDoc(
-  shareId: string,
-): Promise<WorkerSchemas['SyncedDoc']> {
-  return await expectOk(
-    'GET /shares/{share_id}',
-    worker.GET('/shares/{share_id}', {
-      params: { path: { share_id: shareId } },
-    }),
+export async function fetchSyncedDoc(shareId: string) {
+  return valueOrFail(
+    'open shared link',
+    (await publicClient()).openSharedLink(shareId),
   )
 }

@@ -8,13 +8,11 @@ When(
   async ({ page }, path: string) => {
     await openFileList(page)
     const segments = path.split('/')
-    const folders = segments.slice(0, -1)
-    for (const folder of folders) {
-      const row = page.getByRole('button', { name: folder, exact: true })
-      if ((await row.getAttribute('aria-expanded')) === 'false') {
-        await row.click()
-      }
-    }
+    // Filter to this folder before selecting a leaf: other scenarios can
+    // seed the same leaf name in other folders of the shared account. Search
+    // expands matching folders automatically.
+    const search = page.getByRole('searchbox', { name: 'Search files' })
+    await search.fill(segments[0] ?? path)
     const fileName = segments.at(-1) ?? path
     await page
       .locator('.file-tab-name', { hasText: new RegExp(`^${fileName}$`) })
@@ -23,5 +21,6 @@ When(
       timeout: 15_000,
     })
     await openFileList(page)
+    await search.clear()
   },
 )

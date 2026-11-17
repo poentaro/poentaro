@@ -1,0 +1,11 @@
+RECORD Deleted { accounts: Integer, shares: Integer, files: Integer },
+
+# Deletes these test accounts and everything they own. With no emails, every
+# test account the worker allows.
+METHOD reset test accounts (emails: LIST Text)
+    RETURNS (deleted: Deleted)
+    ERRORS [(email: Text) is not a test account]
+    EXAMPLES [
+        reset test accounts ([] AS: LIST Text) RETURNS { accounts 0, shares 0, files 0 },
+        reset test accounts ["owner@example.com"] ERROR "owner@example.com" is not a test account,
+    ],

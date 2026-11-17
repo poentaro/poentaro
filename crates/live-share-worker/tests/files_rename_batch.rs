@@ -3,7 +3,7 @@
 #![allow(clippy::disallowed_macros)]
 
 use live_share_worker::files::{plan_batch_rename, BatchRenamePlan, FileNameRow};
-use live_share_worker::protocol::RenameBatchMove;
+use live_share_worker::model::RenameBatchMove;
 
 fn moves(pairs: &[(&str, &str)]) -> Vec<RenameBatchMove> {
     pairs

@@ -3,11 +3,8 @@ import {
   isEmptyPayload,
   ORIGIN_MIGRATED_KEY,
 } from '../originMigration/originMigrationPayload'
-import {
-  callWorker,
-  createWorkerClient,
-  WorkerRequestError,
-} from '../syncedShare/workerClient'
+import { publicClient } from '../protocol/clients'
+import { settled } from '../protocol/outcome'
 import { bridgeRedirectUrl } from './bridgeUrl'
 import { collectSavedData } from './collectSavedData'
 
@@ -48,10 +45,7 @@ function alreadyMigrated(): boolean {
 }
 
 function failureMessage(error: unknown): string {
-  if (
-    error instanceof WorkerRequestError &&
-    error.apiError?.code === 'origin_migration_too_large'
-  ) {
+  if (error === 'tooLarge') {
     return 'Your saved files are too large to move automatically.'
   }
   return "We couldn't move your saved files. Check your connection and try again."
@@ -91,12 +85,14 @@ async function run(): Promise<void> {
     return
   }
   try {
-    const { id } = await callWorker(
-      createWorkerClient(import.meta.env.VITE_SYNCED_SHARE_HOST ?? '').POST(
-        '/origin-migrations',
-        { body: { payload: JSON.stringify(payload) } },
-      ),
+    const result = settled(
+      await (await publicClient()).uploadOriginHandoff(JSON.stringify(payload)),
     )
+    if (result.kind === 'error') {
+      showFailure(result.error.kind)
+      return
+    }
+    const id = result.value
     markMigrated()
     redirect(id)
   } catch (error) {

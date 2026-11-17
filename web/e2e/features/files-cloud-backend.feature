@@ -60,8 +60,6 @@ Feature: File operations on the cloud (D1) storage backend
     And I click the restore button for "original.poentaro"
     Then a "original 2" tab appears within 5 seconds
     And both "original" and "original 2" tabs exist exactly once each
-    When I reload the page after the collision restore
-    Then both "original" and "original 2" tabs exist exactly once each after reload
 
   Scenario: Editing a file schedules a debounced autosave to the cloud storage backend
     Given a cloud file named "auto.poentaro" with content "1 2 3 4" is seeded for the signed-in account

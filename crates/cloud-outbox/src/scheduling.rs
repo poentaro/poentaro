@@ -14,7 +14,7 @@ fn batch_moves(lane: &Lane) -> impl Iterator<Item = (&QueuedMessage, &[RenameMov
     lane.messages
         .iter()
         .filter_map(|queued| match &queued.message {
-            Message::RenameFiles { moves } => Some((queued, moves.as_slice())),
+            Message::RenameFiles { moves, .. } => Some((queued, moves.as_slice())),
             _ => None,
         })
 }
@@ -48,7 +48,7 @@ fn is_blocked(queue: &Queue, lane: &Lane) -> bool {
         return false;
     };
     match &head.message {
-        Message::RenameFiles { moves } => queue
+        Message::RenameFiles { moves, .. } => queue
             .lanes
             .iter()
             .filter(|other| other.file_id != lane.file_id)

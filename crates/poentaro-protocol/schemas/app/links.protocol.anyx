@@ -1,0 +1,52 @@
+USE "./files.protocol.anyx",
+USE "./folders.protocol.anyx",
+USE "./paths.protocol.anyx",
+
+CHOICE Status {
+    # No link was ever made.
+    never shared,
+    # Anyone with the link sees the score as it changes.
+    live (share id: Text),
+    # The link shows nothing until it's started again.
+    stopped (share id: Text),
+},
+
+RECORD File Link { share id: Text, file id: Text, name: Text },
+
+RECORD Folder Link { share id: Text, folder: Text },
+
+# Every live link. A file or folder is also shared through any shared
+# folder it's in.
+RECORD Links { files: LIST File Link, folders: LIST Folder Link },
+
+ERRORS never shared [
+    # There is no link to stop.
+    never shared,
+],
+
+# Starts the file's link. A file has one link for good, so it's the same
+# link every time.
+METHOD start sharing file (id: Text) RETURNS (share id: Text) ERRORS file errors,
+
+METHOD stop sharing file (id: Text) RETURNS NOTHING ERRORS never shared,
+
+READ ONLY METHOD sharing status of file (id: Text)
+    RETURNS (status: Status)
+    EXAMPLES [
+        sharing status of file "file-a" RETURNS never shared,
+        sharing status of file "file-a" RETURNS live "share-a",
+    ],
+
+# Starts the folder's link. Like a file's, it's the same link every time.
+METHOD start sharing folder (path: Text)
+    RETURNS (share id: Text)
+    ERRORS [
+        # The folder holds too much to share; `message` says how much.
+        too large (message: Text),
+    ] + folder lookup errors + bad path,
+
+METHOD stop sharing folder (path: Text) RETURNS NOTHING ERRORS never shared + bad path,
+
+READ ONLY METHOD sharing status of folder (path: Text) RETURNS (status: Status) ERRORS bad path,
+
+READ ONLY METHOD list shared links RETURNS links: Links,

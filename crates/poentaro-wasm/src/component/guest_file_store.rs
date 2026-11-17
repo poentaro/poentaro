@@ -79,6 +79,13 @@ pub(super) fn file_store_name_after_collision(rejected: String) -> Option<String
         .map(|path| path.as_str().to_string())
 }
 
+pub(super) fn file_store_folder_after_collision(rejected: String) -> Option<String> {
+    let rejected = tree::TreePath::parse(&rejected).ok()?;
+    tree::folder_after_collision(&rejected)
+        .ok()
+        .map(|path| path.as_str().to_string())
+}
+
 pub(super) fn file_store_rename_error(
     state: FileStoreState,
     from_path: String,

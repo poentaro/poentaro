@@ -226,7 +226,7 @@ fn size_of(message: &Message) -> u32 {
         Message::CreateFile { name, content } => name.len() + content.len(),
         Message::SaveContent { content } => content.len(),
         Message::RenameFile { to } => to.len(),
-        Message::RenameFiles { moves } => moves.iter().map(|rename| rename.to.len()).sum(),
+        Message::RenameFiles { moves, .. } => moves.iter().map(|rename| rename.to.len()).sum(),
         Message::TrashFile | Message::RestoreFile => 0,
     };
     u32::try_from(bytes).unwrap_or(u32::MAX)

@@ -25,7 +25,7 @@ Feature: Cloud content saves go through the local outbox
   Scenario: A3 A file that cannot sync does not block another file
     Given a cloud file named "outbox-a3-bad.poentaro" is seeded for the signed-in account
     And a cloud file named "outbox-a3-good.poentaro" is seeded for the signed-in account
-    And every content-save request for "outbox-a3-bad.poentaro" will fail with a 400 response
+    And every content-save request for "outbox-a3-bad.poentaro" will be refused as "trashed"
     When I open and edit "outbox-a3-bad" with suffix " 5"
     And I open and edit "outbox-a3-good" with suffix " 6"
     Then the content save lands for "outbox-a3-good.poentaro" containing "1 2 3 4 6"
@@ -41,7 +41,7 @@ Feature: Cloud content saves go through the local outbox
 
   Scenario: A5 Closing the tab warns while any file still has unsynced changes
     Given a cloud file named "outbox-a5.poentaro" is seeded for the signed-in account
-    And every content-save request for "outbox-a5.poentaro" will fail with a 400 response
+    And every content-save request for "outbox-a5.poentaro" will be refused as "trashed"
     And I open and edit "outbox-a5" with suffix " 5"
     When I close the page without letting the save land
     Then a beforeunload dialog is shown

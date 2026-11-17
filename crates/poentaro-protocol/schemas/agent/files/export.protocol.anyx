@@ -1,0 +1,19 @@
+USE "../files.protocol.anyx",
+
+ERRORS export errors [
+    # The score has errors, so it can't be exported. Fix them, then write
+    # the score again.
+    unreadable (diagnostics: LIST Diagnostic),
+] + file errors,
+
+# The score as numbered notation: one SVG document per page. Text widths
+# are estimated, so a system may break slightly differently than in the app.
+READ ONLY METHOD export svg (path: Text)
+    RETURNS (pages: LIST Text)
+    ERRORS export errors,
+
+# The score as a Standard MIDI File, to hear or inspect what it plays.
+# Decode the base64 to get the `.mid` file.
+READ ONLY METHOD export midi (path: Text)
+    RETURNS (midi: Bytes)
+    ERRORS export errors,

@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { fulfillWithApiError, workerRouteGlob } from '../../cloudFileHelpers'
+import { routeAppCall } from '../../appCalls'
 import { Given, Then, When } from './fixtures'
 import {
   openSyncedTab,
@@ -38,26 +38,14 @@ Then(
   },
 )
 
-// The owner's browser-side fetch straight to the Synced Share worker's
-// `POST /files/:id/share` (see `useSyncedShareOwner.ts`'s `startSync`) --
-// matched exactly, so the `/share/status` lookup on load isn't rejected
-// too. It runs in the browser itself, so `page.route` can intercept it
-// directly without needing the real worker involved at all.
+// Reject only the start call; the initial sharing-status lookup still reaches
+// the worker, so the failure is triggered by the owner's Sync action.
 Given(
   'the Synced Share worker rejects the next start-share request with a verification failure',
   async ({ page }) => {
-    await page.route(workerRouteGlob('/files/{id}/share'), async (route) => {
-      if (route.request().method() !== 'POST') {
-        await route.continue()
-        return
-      }
-      await fulfillWithApiError(route, 401, {
-        code: 'unauthorized',
-        reason: 'session expired',
-        failedAt: Date.now(),
-        attempts: 1,
-      })
-    })
+    await routeAppCall(page, 'start sharing file _', (route) =>
+      route.fulfill({ status: 401, body: 'Your session has ended.' }),
+    )
   },
 )
 

@@ -57,7 +57,9 @@ pub use selection::{
 pub use shared_folder::{import_shared_folder, shared_folder_first_file, shared_folder_view};
 pub use store_state::{DemoFile, FileOperationContext, FileStoreError, FileStoreState};
 pub use tree::{FileNode, FileTree, FileTreeError, FolderContents, FolderNode, TreeRow};
-pub use unique_name::{path_after_collision, unique_folder_path, unique_path};
+pub use unique_name::{
+    folder_after_collision, path_after_collision, unique_folder_path, unique_path,
+};
 pub use view::{
     active_label, ActiveLabel, NameMatch, TreeViewInput, TreeViewRow, TreeViewRowKind,
     DEMO_EXPANSION_KEY,

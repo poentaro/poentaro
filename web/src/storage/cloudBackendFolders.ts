@@ -102,7 +102,10 @@ export function createFolderOperations({
       }
       if (moves.length > 0) {
         // The batch lives on a lane of its own; its id is chosen in Rust.
-        await looper.enqueue('', { tag: 'rename-files', val: { moves } })
+        await looper.enqueue('', {
+          tag: 'rename-files',
+          val: { moves, folder: { from, to } },
+        })
       }
       return result.state
     },

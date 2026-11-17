@@ -1,4 +1,4 @@
-//! The shapes a `.poentaro` document is made of: `poentaro.anyx` is the
+//! The shapes a `.poentaro` document is made of: `poentaro.grammar.anyx` is the
 //! grammar, and `generated.rs` is the decoder anyx-generator writes from it.
 //! `just generate-parser` writes it again after the grammar changes.
 //!

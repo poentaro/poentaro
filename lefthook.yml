@@ -34,7 +34,6 @@ pre-commit:
             glob: "**/*.{rs,ts,tsx,js,jsx,py,css,html}"
             exclude:
               - "crates/poentaro-grammar/src/generated.rs"
-              - "crates/poentaro-protocol/src/generated.rs"
               - "crates/poentaro-wasm/pkg/**"
               - "target/**"
               - "vendor/**"

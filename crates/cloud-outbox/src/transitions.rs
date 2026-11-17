@@ -1,9 +1,10 @@
 //! State transitions applied on send results and user resolutions.
 
 use crate::backoff::backoff_ms;
+use crate::batch_adjust::adjust_batch;
 use crate::types::{
     Attempt, AttemptOutcome, FileRevision, Lane, LaneStatus, Message, NameAdjustment, Queue,
-    QueuedMessage, RenameMove, Resolution, SendResult, BATCH_LANE_PREFIX,
+    QueuedMessage, Resolution, SendResult, BATCH_LANE_PREFIX,
 };
 
 fn with_lane(queue: Queue, file_id: &str, update: impl FnOnce(Lane) -> Lane) -> Queue {
@@ -83,31 +84,6 @@ fn rename_head(lane: &mut Lane, suggested_name: &str) -> bool {
     }
 }
 
-/// The moves with each adjusted destination replaced (or the move dropped).
-/// `None` when no adjustment applies to any move, so a resend could not
-/// change the outcome.
-fn adjust_moves(moves: &[RenameMove], adjustments: &[NameAdjustment]) -> Option<Vec<RenameMove>> {
-    let adjusted: Vec<RenameMove> = moves
-        .iter()
-        .filter_map(
-            |rename| match adjustments.iter().find(|entry| entry.rejected == rename.to) {
-                None => Some(rename.clone()),
-                Some(NameAdjustment {
-                    replacement: Some(to),
-                    ..
-                }) => Some(RenameMove {
-                    file_id: rename.file_id.clone(),
-                    to: to.clone(),
-                }),
-                Some(NameAdjustment {
-                    replacement: None, ..
-                }) => None,
-            },
-        )
-        .collect();
-    (adjusted != moves).then_some(adjusted)
-}
-
 /// A batch refused as a whole is resent with the rejected destinations
 /// adjusted: all of it or none of it is ever applied. A batch left with no
 /// move is done.
@@ -118,17 +94,17 @@ fn apply_names_taken(
     jitter_unit: f64,
 ) -> Lane {
     let mut lane = lane;
-    let adjusted = match lane.messages.first().map(|head| &head.message) {
-        Some(Message::RenameFiles { moves }) => adjust_moves(moves, &adjustments),
-        _ => None,
-    };
+    let adjusted = lane
+        .messages
+        .first()
+        .and_then(|head| adjust_batch(&head.message, &adjustments));
     match adjusted {
-        Some(moves) if moves.is_empty() => {
+        Some(Message::RenameFiles { moves, .. }) if moves.is_empty() => {
             apply_result(lane, SendResult::Ok { revision: 0 }, now_ms, jitter_unit)
         }
-        Some(moves) => {
+        Some(message) => {
             if let Some(head) = lane.messages.first_mut() {
-                head.message = Message::RenameFiles { moves };
+                head.message = message;
             }
             halt_with_attempt(
                 lane,

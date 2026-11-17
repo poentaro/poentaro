@@ -133,3 +133,17 @@ fn after_collision_fails_when_the_suffix_would_exceed_the_limit() {
     );
     assert!(path_after_collision(&path(&long)).is_err());
 }
+
+fn folder_after(rejected: &str) -> String {
+    folder_after_collision(&path(rejected))
+        .unwrap()
+        .as_str()
+        .to_string()
+}
+
+#[test]
+fn folder_after_collision_numbers_without_an_extension() {
+    assert_eq!(folder_after("New"), "New 2");
+    assert_eq!(folder_after("New 2"), "New 3");
+    assert_eq!(folder_after("Hymns/Advent"), "Hymns/Advent 2");
+}

@@ -8,7 +8,7 @@ use live_share_worker::folder_share::{
     FolderFileRow, FolderShareHeader, FolderStats, PrefixRewrite, MAX_SHARED_FOLDER_BYTES,
     MAX_SHARED_FOLDER_FILES,
 };
-use live_share_worker::protocol::{RenameBatchMove, SharedFolder, SharedFolderFile, SyncedDoc};
+use live_share_worker::model::{RenameBatchMove, SharedFolder, SharedFolderFile, SyncedDoc};
 use live_share_worker::share::empty_doc;
 
 fn header(ended_at: Option<i64>) -> FolderShareHeader {
