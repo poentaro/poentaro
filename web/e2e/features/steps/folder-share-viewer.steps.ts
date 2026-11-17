@@ -8,12 +8,13 @@ import {
   trashCloudFile,
 } from '../../cloudFileHelpers'
 import { openFileList } from '../../fileSwitcherHelpers'
+import { appClient, valueOrFail } from '../../protocolClients'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { seedSignedInSession } from './cloud-account-helpers'
 import { Given, Then, When } from './fixtures'
 import { syncedShareButtonState as state } from './synced-share-button-state'
 
-/** Releases the viewer's held-back `/files/list` requests; set while they are
+/** Releases the viewer's held-back `list files` requests; set while they are
  * held. */
 let releaseViewerFileList: (() => void) | undefined
 
@@ -339,32 +340,20 @@ Then("the viewer's import button is after the export button", async () => {
   )
 })
 
-Then(
-  'the cloud account holds the file {string}',
-  async ({ page }, name: string) => {
-    await expect
-      .poll(
-        async () => {
-          const response = await page.request.post(
-            'http://localhost:8797/files/list',
-            {
-              data: {
-                identityToken: await seedTokenFor(currentSignedInEmail()),
-              },
-            },
-          )
-          const body = (await response.json()) as {
-            files: { name: string; trashedAt: string | null }[]
-          }
-          return body.files.some(
-            (file) => file.name === name && file.trashedAt === null,
-          )
-        },
-        { timeout: 20_000 },
-      )
-      .toBe(true)
-  },
-)
+Then('the cloud account holds the file {string}', async ({}, name: string) => {
+  const client = await appClient(await seedTokenFor(currentSignedInEmail()))
+  await expect
+    .poll(
+      async () => {
+        const files = await valueOrFail('list files', client.listFiles())
+        return files.some(
+          (file) => file.path === name && file.trashedAt === undefined,
+        )
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true)
+})
 
 Then(
   "the viewer's folder list has the folder {string}",
