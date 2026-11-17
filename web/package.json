@@ -13,7 +13,7 @@
     "dev": "vite",
     "prebuild": "pnpm run build:wasm-component && pnpm run build:worker-types",
     "build": "tsc -b && vite build",
-    "build:bridge": "pnpm run build:worker-types && vite build --config vite.bridge.config.ts",
+    "build:bridge": "pnpm run build:wasm-component && pnpm run build:worker-types && vite build --config vite.bridge.config.ts",
     "check": "knip --include files,dependencies",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

@@ -1,14 +1,16 @@
 import { FILE_STORE_KEY, mergeMigratedFileStore } from '../fileStore'
 import { parseStoredFileStore } from '../fileStorePersistence'
+import { MigrationId } from '../generated/protocol/public'
 import {
   currentLocalStorageKey,
   currentOutboxDatabaseName,
 } from '../legacyStorage/legacyStorageNames'
+import { publicClient } from '../protocol/clients'
+import { expectValue } from '../protocol/outcome'
 import {
   OUTBOX_DATABASE_PREFIX,
   openIndexedDbOutboxStore,
 } from '../storage/outbox/outboxStore'
-import { callWorker, createWorkerClient } from '../syncedShare/workerClient'
 import { ensureWasmInit } from '../wasmInit'
 import {
   MIGRATE_QUERY_PARAM,
@@ -38,11 +40,8 @@ export async function importOriginMigration(): Promise<void> {
   window.history.replaceState(window.history.state, '', url)
 
   try {
-    const { payload } = await callWorker(
-      createWorkerClient(import.meta.env.VITE_SYNCED_SHARE_HOST ?? '').POST(
-        '/origin-migrations/claim',
-        { body: { id } },
-      ),
+    const payload = await expectValue(
+      (await publicClient()).claimOriginHandoff(MigrationId(id)),
     )
     const carried = JSON.parse(payload) as OriginMigrationPayload
     await saveLocalStorage(carried.localStorage)

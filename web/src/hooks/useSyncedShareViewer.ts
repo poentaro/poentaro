@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FileStoreState } from '../fileStore'
 import type { FolderSnapshot } from '../poentaroWasm'
+import { publicClient } from '../protocol/clients'
+import { settled } from '../protocol/outcome'
 import type { SharePayload } from '../shareUrl'
 import type { StorageBackend } from '../storage/types'
-import {
-  callWorker,
-  createWorkerClient,
-  traceIdOf,
-  WorkerRequestError,
-} from '../syncedShare/workerClient'
 import { clearSyncedShare, parseSyncedShare } from '../syncedShareUrl'
 import { useImportToStorage } from './useImportToStorage'
 
@@ -109,20 +105,29 @@ export function useSyncedShareViewer(
     setEditorCollapsed(true)
 
     let cancelled = false
-    void callWorker(
-      createWorkerClient(host).GET('/shares/{share_id}', {
-        params: { path: { share_id: parsed.shareId } },
-        cache: 'no-store',
-      }),
-    )
-      .then((doc) => {
+    let traceId: string | null = null
+    void publicClient({
+      host,
+      onTraceId: (id) => {
+        traceId = id
+      },
+    })
+      .then((client) => client.openSharedLink(parsed.shareId))
+      .then((response) => {
         if (cancelled || leftRef.current) return
-        if (doc.ended) {
+        const outcome = settled(response)
+        if (outcome.kind === 'error') {
+          setSyncedShareViewerStatus('too-large')
+          setSyncedShareViewerTraceId(traceId)
+          return
+        }
+        const doc = outcome.value
+        if (doc.kind === 'ended') {
           setSyncedShareViewerPreview(null)
           setSyncedShareViewerStatus('ended')
           return
         }
-        if (doc.folder) {
+        if (doc.kind === 'folder') {
           setSyncedFolder({
             folder: doc.folder.name,
             files: doc.folder.files.map(({ path, content }) => ({
@@ -133,16 +138,16 @@ export function useSyncedShareViewer(
           })
         } else {
           setSyncedShareViewerPreview({
-            filename: doc.filename,
-            content: doc.content,
+            filename: doc.file.name,
+            content: doc.file.content,
           })
         }
         setSyncedShareViewerStatus('synced')
       })
-      .catch((error: unknown) => {
+      .catch(() => {
         if (cancelled || leftRef.current) return
-        setSyncedShareViewerStatus(failureStatus(error))
-        setSyncedShareViewerTraceId(traceIdOf(error))
+        setSyncedShareViewerStatus('unreachable')
+        setSyncedShareViewerTraceId(traceId)
       })
 
     return () => {
@@ -158,14 +163,4 @@ export function useSyncedShareViewer(
     syncedShareViewerTraceId,
     handleImportSyncedShare,
   }
-}
-
-/** What a failed `GET /shares/{id}` means for the viewer: an oversized folder
- * says so, anything else is a connection problem worth retrying. (An unknown
- * or stopped share is not a failure: the worker answers `ended: true`.) */
-function failureStatus(error: unknown): SyncedShareViewerStatus {
-  if (error instanceof WorkerRequestError) {
-    if (error.apiError?.code === 'shared_folder_too_large') return 'too-large'
-  }
-  return 'unreachable'
 }
