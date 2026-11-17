@@ -1,5 +1,5 @@
 import { generateFileId } from '../fileStore'
-import { jianpuWasm, type RenameMove } from '../jianpuWasm'
+import { poentaroWasm, type RenameMove } from '../poentaroWasm'
 import type { OutboxLooper } from './outbox/outboxLooper'
 
 /**
@@ -32,7 +32,7 @@ export function createPlaceholders(
   const rowByFolder = new Map<string, PlaceholderRow>()
 
   const placeholderPath = (folder: string): string =>
-    jianpuWasm().fileStorePlaceholderPath(folder) ?? ''
+    poentaroWasm().fileStorePlaceholderPath(folder) ?? ''
 
   return {
     /** Splits the placeholder rows out of a listing: the real files, and the
@@ -40,7 +40,7 @@ export function createPlaceholders(
     classify<Row extends ListedRow>(
       rows: Row[],
     ): { files: Row[]; folders: string[] } {
-      const classification = jianpuWasm().fileStoreClassifyCloudListing(
+      const classification = poentaroWasm().fileStoreClassifyCloudListing(
         rows.map(({ id, name, trashedAt }) => ({
           id,
           name,

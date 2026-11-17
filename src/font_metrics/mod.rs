@@ -39,7 +39,7 @@ const SYNTHETIC_BOLD_WIDTH_RATIO: f32 = 1.08;
 const FALLBACK_ADVANCE_WIDTH_RATIO: f32 = 0.6;
 
 /// Fallback vertical extent (as a fraction of `font_size`) used only if the
-/// pinned lyric font fails to parse or isn't loaded yet — mirrors
+/// pinned font fails to parse or isn't loaded yet — mirrors
 /// `FALLBACK_ADVANCE_WIDTH_RATIO`'s role for horizontal measurement.
 const FALLBACK_VERTICAL_EXTENT_RATIO: f32 = 1.0;
 
@@ -98,13 +98,13 @@ pub(crate) fn cjk_glyph_left_bearing(c: char, font_size: f32) -> f32 {
     )
 }
 
-/// Real vertical extent (in points, ascender to descender) of the pinned
-/// `FontFamily::Serif` (lyric) font at the given font size — used to size a
-/// lyric syllable's click-target row tall enough for its actual glyph
-/// height instead of a hardcoded ratio (see `grid_layout::layout_heights::
-/// lyric_row_height`).
-pub(crate) fn lyric_vertical_extent(font_size: f32) -> f32 {
-    face_vertical_extent(font_source::face_for_family(FontFamily::Serif), font_size)
+/// Real vertical extent (in points, ascender to descender) of `family`'s
+/// pinned font at the given font size — used to size a text row tall enough
+/// for its actual glyph height instead of a hardcoded multiple of
+/// `row_height` (see `grid_layout::layout_heights::lyric_row_height` and the
+/// header rows in `grid_layout::layout_decoration`).
+pub(crate) fn text_vertical_extent(family: FontFamily, font_size: f32) -> f32 {
+    face_vertical_extent(font_source::face_for_family(family), font_size)
 }
 
 /// Whether `c` falls in the CJK Unified Ideographs block, the single check
@@ -126,6 +126,22 @@ pub(crate) fn lyric_font_size(text: &str, base: f32, cjk: f32) -> f32 {
     } else {
         base
     }
+}
+
+/// Font size of the pinyin printed above a lyric's Chinese character.
+pub(crate) fn lyric_ruby_font_size(cjk: f32) -> f32 {
+    cjk * 0.5
+}
+
+/// How much taller a lyric row grows to fit pinyin above its characters.
+pub(crate) fn lyric_ruby_band_pt(cjk: f32) -> f32 {
+    let ruby = lyric_ruby_font_size(cjk);
+    text_vertical_extent(FontFamily::Serif, ruby) + lyric_ruby_gap_pt(cjk)
+}
+
+/// The space between the pinyin and the top of its character.
+pub(crate) fn lyric_ruby_gap_pt(cjk: f32) -> f32 {
+    lyric_ruby_font_size(cjk) * 0.4
 }
 
 /// Real advance width (in points) of one character at the given font size,

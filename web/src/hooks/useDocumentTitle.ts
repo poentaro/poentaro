@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { displayFileName } from '../fileStore'
 
 export function documentTitleFor(activeFileName: string): string {
-  return `${displayFileName(activeFileName)} · 簡譜`
+  return `${displayFileName(activeFileName)} · Poentaro`
 }
 
 /** Keeps the browser tab title in sync with the active file's display name,

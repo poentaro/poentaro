@@ -8,13 +8,15 @@ import {
 } from '@radix-ui/react-icons'
 import { type ReactNode, useRef, useState } from 'react'
 import { displayFileName } from '../fileStore'
+import type { CloudLoadFailure } from '../hooks/useCloudStoreLoader'
 import type { FileSelection } from '../hooks/useFileSelection'
-import type { FileTreeViewRow } from '../jianpuWasm'
+import type { FileTreeViewRow } from '../poentaroWasm'
 import './file-browser.css'
 import { FileTreeList, type FileTreeListProps } from './FileTreeList'
 import { ImportButton } from './ImportButton'
 import { ResponsiveMenuContainerContext } from './ResponsiveMenu'
 import { SpinnerLabel } from './SpinnerLabel'
+import { TraceId } from './TraceId'
 
 export interface FileBrowserModalProps {
   open: boolean
@@ -28,6 +30,7 @@ export interface FileBrowserModalProps {
   /** Rows for the current `query`, computed in Rust. */
   rows: FileTreeViewRow[]
   isLoadingCloud: boolean
+  cloudLoadFailure: CloudLoadFailure | null
   /** The store has no files at all (as opposed to no search match). */
   storeIsEmpty: boolean
   treeProps: Omit<FileTreeListProps, 'rows'>
@@ -55,6 +58,7 @@ export function FileBrowserModal({
   onQueryChange,
   rows,
   isLoadingCloud,
+  cloudLoadFailure,
   storeIsEmpty,
   treeProps,
   creating,
@@ -188,7 +192,12 @@ export function FileBrowserModal({
           {selection.selecting ? selectionBar : null}
           <div className="file-browser-body" ref={bodyRef}>
             <div className="file-browser-body-inner">
-              {isLoadingCloud ? (
+              {isLoadingCloud && cloudLoadFailure ? (
+                <p className="file-browser-hint">
+                  Couldn't load files from the cloud. Retrying…
+                  <TraceId traceId={cloudLoadFailure.traceId} />
+                </p>
+              ) : isLoadingCloud ? (
                 <p className="file-browser-hint">
                   Loading files from the cloud…
                 </p>

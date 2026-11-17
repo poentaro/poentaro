@@ -71,7 +71,7 @@ describe('computeSequenceSelectionLineRanges', () => {
 
   // A repeated label (e.g. a chain opening and closing on the same
   // section, `Intro, A, B, Intro`) resolves every occurrence to the same
-  // written measure — and therefore the same line range — since `# sequence`
+  // written measure — and therefore the same line range — since `sequence`
   // replays already-written measures rather than duplicating them in the
   // source. Both occurrences must still come back as their own entry in the
   // result, not be deduplicated away.

@@ -45,34 +45,30 @@ Given(
 
 function buildSource(): string {
   const lines: string[] = [
-    '# metadata',
-    'title = "omitted part rest glyph test"',
-    `hide_resting_parts = ${state.hideRestingParts ? 'yes' : 'no'}`,
+    `metadata { title "omitted part rest glyph test", hide resting parts: ${state.hideRestingParts ? 'yes' : 'no'} },`,
     '',
-    '# parts',
-    'Melody [M] = notes',
-    'Harmony [H] = notes',
+    'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
     '',
-    '# score',
+    'score """',
     `[M] ${state.melodyNotes}`,
   ]
   if (state.harmonyNotes !== null) {
     lines.push(`[H] ${state.harmonyNotes}`)
   }
-  return lines.join('\n')
+  return [...lines, '""",'].join('\n')
 }
 
 When('the omitted-part-rest-glyph score is laid out', async ({ page }) => {
   const source = buildSource()
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'omitted-part-rest-glyph-test.jianpu',
-        userFiles: { 'omitted-part-rest-glyph-test.jianpu': src },
+        active: 'omitted-part-rest-glyph-test.poentaro',
+        userFiles: { 'omitted-part-rest-glyph-test.poentaro': src },
         bin: {},
         fileIds: {
-          'omitted-part-rest-glyph-test.jianpu':
+          'omitted-part-rest-glyph-test.poentaro':
             'omitted-part-rest-glyph-test-id-001',
         },
       }),

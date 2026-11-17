@@ -66,6 +66,17 @@ pub enum IrrecoverableErrorKind {
         span: Span,
         detail: String,
     },
+    /// An `.anyx` document that can't be read.
+    /// `report` lists every problem, one `path:line:column: message` per line.
+    AnyxSourceInvalid {
+        span: Span,
+        report: String,
+    },
+    /// The CLI's `--preset` names no `preset` section in the file.
+    UnknownPreset {
+        span: Span,
+        name: String,
+    },
 }
 
 impl IrrecoverableErrorKind {

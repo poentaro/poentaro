@@ -1,7 +1,7 @@
 import type { Monaco } from '@monaco-editor/react'
 import type { editor, IDisposable, languages } from 'monaco-editor'
-import { jianpuWasm, type SectionKind } from './jianpuWasm'
-import { JIANPU_LANGUAGE_ID } from './monacoJianpuLanguage'
+import { POENTARO_LANGUAGE_ID } from './monacoPoentaroLanguage'
+import { poentaroWasm, type SectionKind } from './poentaroWasm'
 import { spanPositions } from './semanticTokens'
 import { ensureWasmInit } from './wasmInit'
 
@@ -18,11 +18,11 @@ export function registerSectionCodeLensProvider(
   monacoApi: Monaco,
   commands: SectionCodeLensCommands,
 ): IDisposable {
-  return monacoApi.languages.registerCodeLensProvider(JIANPU_LANGUAGE_ID, {
+  return monacoApi.languages.registerCodeLensProvider(POENTARO_LANGUAGE_ID, {
     async provideCodeLenses(model: editor.ITextModel) {
       await ensureWasmInit()
       const source = model.getValue(monacoApi.editor.EndOfLinePreference.LF)
-      const headers = jianpuWasm().sectionHeaders(source)
+      const headers = poentaroWasm().sectionHeaders(source)
       const positions = spanPositions(
         source,
         headers.map(({ span }) => span),

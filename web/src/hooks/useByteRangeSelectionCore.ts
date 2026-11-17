@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EditorHandle } from '../types'
+import { distinctPartAbbreviations } from '../utils/partAbbreviations'
 
 /** A single Monaco multicursor range, in byte offsets into the source. */
 export interface ByteRange {
@@ -76,8 +77,9 @@ export interface ByteRangeSelectionCore<Cell, Run> {
  * @param editorRef The mounted editor, if any — `null` in Synced/shared views.
  * @param groupSelectedCellsIntoRuns Groups selected cells into contiguous
  *   byte runs (the wasm `group_note_selection`/`group_lyric_selection` call).
- * @param cellFromSpan Builds a `Cell` from one span — used by
- *   `handleEditorSelectionChange`'s byte-overlap filter below.
+ * @param selectCellsInByteRanges Selects the cells whose source text
+ *   overlaps the given byte ranges, and their runs (the wasm
+ *   `select_notes_in_byte_ranges`/`select_lyrics_in_byte_ranges` call).
  * @param runByteRange Extracts a `Run`'s byte range, for pushing into Monaco.
  * @param onNoMountedEditor Called with the freshly-grouped runs when no
  *   editor is mounted, instead of pushing a Monaco selection — e.g.
@@ -87,13 +89,16 @@ export interface ByteRangeSelectionCore<Cell, Run> {
  */
 export function useByteRangeSelectionCore<
   Cell,
-  Span extends { start?: number; end?: number },
+  Span extends { partAbbreviation?: string },
   Run,
 >(
   spans: Span[],
   editorRef: RefObject<EditorHandle | null>,
   groupSelectedCellsIntoRuns: (cells: Cell[], spans: Span[]) => Promise<Run[]>,
-  cellFromSpan: (span: Span) => Cell,
+  selectCellsInByteRanges: (
+    ranges: ByteRange[],
+    spans: Span[],
+  ) => Promise<{ cells: Cell[]; runs: Run[] }>,
   runByteRange: (run: Run) => ByteRange,
   onNoMountedEditor?: (runs: Run[]) => void,
 ): ByteRangeSelectionCore<Cell, Run> {
@@ -112,10 +117,40 @@ export function useByteRangeSelectionCore<
   // boolean would only swallow the first of those, leaving the rest to
   // re-derive from stale `spans` anyway.
   const suppressNextEditorSelectionSyncCountRef = useRef(0)
+  // The source byte ranges behind `selectedCells`, so the selection can be
+  // re-derived when `spans` change underneath it (see the effect below).
+  const selectedByteRangesRef = useRef<ByteRange[]>([])
+
+  const deriveSelection = useCallback(
+    async (ranges: ByteRange[]) => {
+      selectedByteRangesRef.current = ranges
+      const selection = await selectCellsInByteRanges(ranges, spans)
+      setSelectedCells(selection.cells)
+      setRuns(selection.runs)
+    },
+    [spans, selectCellsInByteRanges],
+  )
+
+  // Hiding or showing a part re-lists `spans` without that part, which
+  // renumbers every cell's part index, while the selected source text stays
+  // the same. Re-derive the cells from that text, so the highlight and "play
+  // selection" follow the parts that are visible now. Only on a change of
+  // visible parts: after a source edit the stored ranges point into the old
+  // text.
+  const visiblePartsKey = distinctPartAbbreviations(spans).join('\n')
+  const previousVisiblePartsKeyRef = useRef(visiblePartsKey)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-derive only when the visible parts change
+  useEffect(() => {
+    if (previousVisiblePartsKeyRef.current === visiblePartsKey) return
+    previousVisiblePartsKeyRef.current = visiblePartsKey
+    if (selectedByteRangesRef.current.length === 0) return
+    void deriveSelection(selectedByteRangesRef.current)
+  }, [visiblePartsKey])
 
   const handleRangeSelect = useCallback(
     async (cells: Cell[]) => {
       const newRuns = await groupSelectedCellsIntoRuns(cells, spans)
+      selectedByteRangesRef.current = newRuns.map(runByteRange)
       if (!editorRef.current) {
         // No mounted editor (e.g. a Synced/shared view): a caller supplying
         // `onNoMountedEditor` handles this case entirely itself (see
@@ -154,37 +189,23 @@ export function useByteRangeSelectionCore<
         suppressNextEditorSelectionSyncCountRef.current -= 1
         return
       }
-      const nonEmptyRanges = ranges.filter((range) => range.start !== range.end)
-      const cells: Cell[] =
-        nonEmptyRanges.length === 0
-          ? []
-          : spans
-              .filter(
-                (span): span is typeof span & { start: number; end: number } =>
-                  span.start !== undefined && span.end !== undefined,
-              )
-              .filter((span) =>
-                nonEmptyRanges.some(
-                  (range) => span.start < range.end && span.end > range.start,
-                ),
-              )
-              .map(cellFromSpan)
-      setSelectedCells(cells)
-      setRuns(await groupSelectedCellsIntoRuns(cells, spans))
+      await deriveSelection(ranges.filter((range) => range.start !== range.end))
     },
-    [spans, groupSelectedCellsIntoRuns, cellFromSpan],
+    [deriveSelection],
   )
 
   const applySelectionSilently = useCallback(
     (cells: Cell[], newRuns: Run[], pendingEditorEchoes = 1) => {
+      selectedByteRangesRef.current = newRuns.map(runByteRange)
       setSelectedCells(cells)
       setRuns(newRuns)
       suppressNextEditorSelectionSyncCountRef.current = pendingEditorEchoes
     },
-    [],
+    [runByteRange],
   )
 
   const clearSelection = useCallback(() => {
+    selectedByteRangesRef.current = []
     setSelectedCells([])
     setRuns([])
   }, [])

@@ -12,7 +12,7 @@ import { Given, Then, When } from './fixtures'
  * *after* a currently-hidden part.
  *
  * Root cause: `noteSpans` (fetched via the `listNoteSpans` worker message,
- * see `jianpu.worker.ts`) comes from `list_note_spans_from_source`, which
+ * see `poentaro.worker.ts`) comes from `list_note_spans_from_source`, which
  * used to compile the score with no track filter at all — so each span's
  * `sourcePartIndex` was the event's raw index into `MultiPartMeasure::parts`,
  * i.e. every declared part counted, including hidden ones.
@@ -23,7 +23,7 @@ import { Given, Then, When } from './fixtures'
  * so every part declared after a hidden one is compacted down by one index
  * in the SVG's `data-part-index` attributes.
  *
- * `usePreviewClickSelection.ts`'s 'measure' mode (`noteCellsInMeasureRange`)
+ * `usePreviewClickSelection.ts`'s 'measure' mode (`resolveMeasureSelection`)
  * resolves a range-select's selected cells straight from `noteSpans` and then marks
  * the matching `data-part-index`/`data-note-id` DOM groups
  * (`applyPersistedNoteHighlights`) — so once those two "part index"
@@ -37,7 +37,7 @@ import { Given, Then, When } from './fixtures'
  * walking the score, so their indices always match whatever the renderer
  * used for the same `enabledTracks`. The frontend now threads the current
  * `enabledTracks` through the `listNoteSpans`/`listLyricSpans` worker
- * messages (see `useJianpuWorkerRenderRequests.ts`) instead of omitting it.
+ * messages (see `usePoentaroWorkerRenderRequests.ts`) instead of omitting it.
  *
  * Fixture: three parts, Melody / Harmony / Bass, two systems (one measure
  * each). Harmony (the middle part) is hidden, which compacts Bass from
@@ -52,35 +52,31 @@ import { Given, Then, When } from './fixtures'
  * next one.
  */
 const source = [
-  '# metadata',
-  'title = "measure range-select hidden part index mismatch"',
-  'max_measures_per_system = 1',
+  'metadata { title "measure range-select hidden part index mismatch", max measures per system 1 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
-  'Bass [B] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes, "Bass" [B]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0 — system 0
-  '[H] 5', // 1 note/measure
-  '[B] 3 4', // 2 notes/measure
+  'score """',
+  '[M] 1 2',
+  '[H] 5',
+  '[B] 3 4',
   '',
-  '[M] 3 4', // measure 1 — system 1
+  '[M] 3 4',
   '[H] 7',
   '[B] 5 6',
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'measure-range-hidden-part-test.jianpu',
-        userFiles: { 'measure-range-hidden-part-test.jianpu': src },
+        active: 'measure-range-hidden-part-test.poentaro',
+        userFiles: { 'measure-range-hidden-part-test.poentaro': src },
         bin: {},
         fileIds: {
-          'measure-range-hidden-part-test.jianpu':
+          'measure-range-hidden-part-test.poentaro':
             'measure-range-hidden-part-test-id-001',
         },
       }),

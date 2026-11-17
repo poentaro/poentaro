@@ -19,7 +19,7 @@ pub fn shift_part_octave(source: &str, abbreviation: &str, delta: i8) -> String 
         return source.to_string();
     }
 
-    let Ok(document) = parser::parse(source, "input.jianpu", &[]) else {
+    let Ok(document) = parser::parse(source, "input.poentaro", &[]) else {
         return source.to_string();
     };
 
@@ -62,7 +62,7 @@ pub fn shift_range_octave(source: &str, ranges: &[ByteRange], delta: i8) -> Rang
         return RangeEditResult::unchanged(source);
     }
 
-    let Ok(document) = parser::parse(source, "input.jianpu", &[]) else {
+    let Ok(document) = parser::parse(source, "input.poentaro", &[]) else {
         return RangeEditResult::unchanged(source);
     };
 
@@ -127,7 +127,7 @@ fn collect_octave_shift_edits<'a>(
 /// preserving every other suffix character (duration/tie/dot) and their
 /// relative order. The marker is re-inserted immediately after the
 /// pitch+accidental head, matching the convention used throughout this
-/// codebase's `.jianpu` sources (octave marker before duration/tie suffixes).
+/// codebase's `.poentaro` sources (octave marker before duration/tie suffixes).
 fn rewrite_octave_marker(text: &str, new_octave: i8) -> String {
     let split_at = text
         .char_indices()

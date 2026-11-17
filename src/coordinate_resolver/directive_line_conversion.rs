@@ -175,19 +175,16 @@ fn build_directive_line_spans(
     (bar_number_span, spans)
 }
 
-/// Builds the text spans for the `# sequence` header line: a plain
+/// Builds the text spans for the `sequence` header line: a plain
 /// "Sequence: " prefix, each label styled per `Metadata::sequence` (built via
 /// the shared [`section_label_span`] helper) — followed by a plain, non-bold/italic
-/// `(-abbrev -abbrev ...)` (omit) or `(abbrev abbrev ...)` (only) span when
-/// that entry's suffix restricts that occurrence's MIDI/WAV playback —
-/// joined by a plain " › ".
+/// `(w 2, -S, -A2)` span listing the entry's `WITH` / `WITHOUT` / `ONLY`
+/// modifiers, if any — joined by a plain " › ".
 pub(super) fn sequence_line_content(
     entries: &[crate::grid_layout::types::SequenceEntryInfo],
     font_size: f32,
     directive_font_sizes: DirectiveLineFontSizes,
 ) -> Vec<TextSpan> {
-    use crate::parser::sequence_parser::PartFilterKind;
-
     let mut spans = vec![TextSpan {
         content: "Sequence: ".to_string(),
         bold: false,
@@ -212,25 +209,28 @@ pub(super) fn sequence_line_content(
             directive_font_sizes.sequence_italic,
             directive_font_sizes.sequence_underline,
         ));
-        if let Some(filter) = &entry.part_filter {
-            let content = match filter.kind {
-                PartFilterKind::Omit => format!(" (-{})", filter.parts.join(" -")),
-                PartFilterKind::Only => format!(" ({})", filter.parts.join(" ")),
-            };
-            spans.push(TextSpan {
-                content,
-                bold: false,
-                italic: false,
-                underline: false,
-                font_size,
-            });
-        }
+        let filter = entry
+            .part_filter
+            .as_ref()
+            .map(|filter| crate::ast::grouped::part_filter_items(filter.kind, &filter.parts))
+            .unwrap_or_default();
+        spans.extend(
+            crate::ast::grouped::sequence_entry_suffix(&entry.lines, filter).map(|content| {
+                TextSpan {
+                    content,
+                    bold: false,
+                    italic: false,
+                    underline: false,
+                    font_size,
+                }
+            }),
+        );
     }
     spans
 }
 
 /// Builds the `AbsoluteContent::DirectiveLine` variant for an actual
-/// directive line (as opposed to the `# sequence` summary header — see
+/// directive line (as opposed to the `sequence` summary header — see
 /// `grid_text_to_absolute`'s `PostArcGridContent::SequenceLine` arm, which
 /// builds its own directly since it has no label/box to compute). Split out
 /// of `grid_text_to_absolute` to keep that function under the repo's

@@ -2,23 +2,26 @@
 
 use crate::ast::parsed::TextStyleKind;
 
-/// Default `row_height` in points, used when unset in `# metadata`.
+/// Default `row_height` in points, used when unset in `metadata`.
 pub const DEFAULT_ROW_HEIGHT: u32 = 24;
-/// Default `max_measures_per_system`, used when unset in `# metadata`.
+/// Default `max_measures_per_system`, used when unset in `metadata`.
 pub const DEFAULT_MAX_MEASURES_PER_SYSTEM: u32 = 4;
-/// Default `note_number_width` in points, used when unset in `# metadata`.
+/// Default `note_number_width` in points, used when unset in `metadata`.
 pub const DEFAULT_NOTE_NUMBER_WIDTH: u32 = 8;
-/// Default `part_label_width_pt`, used when unset in `# metadata`.
+/// Default `part_label_width_pt`, used when unset in `metadata`.
 pub const DEFAULT_PART_LABEL_WIDTH_PT: u32 = 40;
-/// Default `parts_list_columns`, used when unset in `# metadata`.
+
+/// Default `page_margin_pt`, used when unset in `metadata`.
+pub const DEFAULT_PAGE_MARGIN_PT: u32 = 25;
+/// Default `parts_list_columns`, used when unset in `metadata`.
 pub const DEFAULT_PARTS_LIST_COLUMNS: u32 = 4;
-/// Default `merge_duplicate_measures_across_parts`, used when unset in `# metadata`.
+/// Default `merge_duplicate_measures_across_parts`, used when unset in `metadata`.
 pub const DEFAULT_MERGE_DUPLICATE_MEASURES_ACROSS_PARTS: bool = true;
-/// Default `hide_resting_parts`, used when unset in `# metadata`.
+/// Default `hide_resting_parts`, used when unset in `metadata`.
 pub const DEFAULT_HIDE_RESTING_PARTS: bool = true;
-/// Default `hide_system_dividers`, used when unset in `# metadata`.
+/// Default `hide_system_dividers`, used when unset in `metadata`.
 pub const DEFAULT_HIDE_SYSTEM_DIVIDERS: bool = false;
-/// Default `directive_row_offset`, used when unset in `# metadata`.
+/// Default `directive_row_offset`, used when unset in `metadata`.
 pub const DEFAULT_DIRECTIVE_ROW_OFFSET: crate::ast::parsed::Offset =
     crate::ast::parsed::Offset { x: 0, y: 0 };
 
@@ -43,9 +46,11 @@ impl TextStyleKind {
         match self {
             Self::Title => RowHeightPercent { percent: 150 },
             Self::Subtitle => RowHeightPercent { percent: 80 },
-            Self::Author | Self::PartLegend | Self::PageNumber | Self::Lyrics => {
-                RowHeightPercent { percent: 60 }
-            }
+            Self::Author
+            | Self::PartLegend
+            | Self::PageNumber
+            | Self::RunningTitle
+            | Self::Lyrics => RowHeightPercent { percent: 60 },
             Self::Sequence | Self::SectionLabel | Self::PartLabel => Fixed { points: 12 },
             Self::MeasureNumber => Fixed { points: 10 },
             Self::Notes | Self::Chords => SameAs { kind: Self::Lyrics },
@@ -72,17 +77,22 @@ pub(crate) fn default_font_size(
     }
 }
 
+/// Default `vertical_padding_pt` of `title`, `subtitle`, `author`
+/// and `part_legend`, used when unset in `metadata`. A header row is one
+/// font size tall plus this padding above and below, so `0` is the tightest.
+pub const DEFAULT_HEADER_VERTICAL_PADDING_PT: u32 = 4;
+
 /// Default `lyrics.vertical_padding_pt` (formerly `lyric_click_target_padding_pt`),
-/// used when unset in `# metadata`.
+/// used when unset in `metadata`.
 pub const DEFAULT_LYRIC_CLICK_TARGET_PADDING_PT: u32 = 12;
 
-/// Default `notes.horizontal_padding_pt`, used when unset in `# metadata`.
+/// Default `notes.horizontal_padding_pt`, used when unset in `metadata`.
 pub const DEFAULT_NOTES_HORIZONTAL_PADDING_PT: u32 = 4;
-/// Default `chords.horizontal_padding_pt`, used when unset in `# metadata`.
+/// Default `chords.horizontal_padding_pt`, used when unset in `metadata`.
 pub const DEFAULT_CHORDS_HORIZONTAL_PADDING_PT: u32 = 4;
-/// Default `lyrics.horizontal_padding_pt`, used when unset in `# metadata`.
+/// Default `lyrics.horizontal_padding_pt`, used when unset in `metadata`.
 pub const DEFAULT_LYRICS_HORIZONTAL_PADDING_PT: u32 = 4;
-/// Default `note_dash.horizontal_padding_pt`, used when unset in `# metadata`.
+/// Default `note_dash.horizontal_padding_pt`, used when unset in `metadata`.
 pub const DEFAULT_NOTE_DASH_HORIZONTAL_PADDING_PT: u32 = 4;
 
 /// Fully-resolved (all components defaulted) per-kind text style: font size plus
@@ -178,6 +188,7 @@ impl super::Metadata {
             TextStyleKind::SectionLabel => &self.section_label,
             TextStyleKind::PartLabel => &self.part_label,
             TextStyleKind::PageNumber => &self.page_number,
+            TextStyleKind::RunningTitle => &self.running_title,
             TextStyleKind::Lyrics => &self.lyrics,
             TextStyleKind::Notes => &self.notes,
             TextStyleKind::Chords => &self.chords,
@@ -196,6 +207,7 @@ impl super::Metadata {
             TextStyleKind::SectionLabel => &mut self.section_label,
             TextStyleKind::PartLabel => &mut self.part_label,
             TextStyleKind::PageNumber => &mut self.page_number,
+            TextStyleKind::RunningTitle => &mut self.running_title,
             TextStyleKind::Lyrics => &mut self.lyrics,
             TextStyleKind::Notes => &mut self.notes,
             TextStyleKind::Chords => &mut self.chords,

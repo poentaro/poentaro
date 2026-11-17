@@ -15,8 +15,8 @@ fn with_path_attaches_path() {
         span: Span::new(0, 1),
         detail: "oops".to_string(),
     })
-    .with_path("/tmp/test.jianpu");
-    assert_eq!(e.path.unwrap().to_str().unwrap(), "/tmp/test.jianpu");
+    .with_path("/tmp/test.poentaro");
+    assert_eq!(e.path.unwrap().to_str().unwrap(), "/tmp/test.poentaro");
 }
 
 #[test]

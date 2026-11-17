@@ -24,7 +24,7 @@ export type {
   SectionRange,
   SequenceEntry,
   Span as ByteSpan,
-} from './jianpuWasm'
+} from './poentaroWasm'
 
 export interface EditorSelection {
   start: number
@@ -76,7 +76,7 @@ export interface EditorHandle {
   /**
    * Select a disjoint set of whole-line ranges (Monaco multicursor) by
    * 1-indexed line numbers — the line-range analogue of `setSelections`,
-   * for callers (e.g. a `# sequence` chain selection spanning out-of-order
+   * for callers (e.g. a `sequence` chain selection spanning out-of-order
    * sections) that resolve to lines rather than byte offsets. Reveals
    * `revealStartLine` (defaulting to the first range's start) — two
    * disjoint ranges can sit too far apart in the source to both fit on
@@ -92,3 +92,11 @@ export interface EditorHandle {
   focus: () => void
   getEditor: () => import('monaco-editor').editor.IStandaloneCodeEditor | null
 }
+
+/** The calls the preview makes to select in the editor, as the part focus
+ * editor answers them: it takes draft source offsets and lines, and selects
+ * the matching text in its part stream. */
+export type PartFocusSelectionHandle = Pick<
+  EditorHandle,
+  'setSelections' | 'setSelectionByLines' | 'setSelectionsByLines' | 'focus'
+>

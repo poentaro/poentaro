@@ -15,7 +15,10 @@ import { useLyricSelection } from './useLyricSelection'
 import { useMeasureRangeSelection } from './useMeasureRangeSelection'
 import { useNoteSelection } from './useNoteSelection'
 import { useSectionNavigation } from './useSectionNavigation'
-import { useSequenceNavigation } from './useSequenceNavigation'
+import {
+  type SelectedSequenceRange,
+  useSequenceNavigation,
+} from './useSequenceNavigation'
 
 /** Wires together section/sequence jump navigation and note/lyric/measure
  * range selection — the editor-selection half of `useAppController`. Split
@@ -33,12 +36,7 @@ export function useAppSelectionAndNavigation(
   ) => void,
   sequenceEntries: SequenceEntry[],
   measureSpans: MeasureSpan[],
-  selectedSequenceRangeRef: RefObject<{
-    start: number
-    end: number
-    entryStartIndex: number
-    entryEndIndex: number
-  } | null>,
+  selectedSequenceRangeRef: RefObject<SelectedSequenceRange | null>,
   noteSpans: NoteSpan[],
   lyricSpans: LyricSpan[],
   playNoteSelection: (
@@ -58,7 +56,7 @@ export function useAppSelectionAndNavigation(
   handleSourceChange: (value: string) => void,
   /** Owned by the caller (`useAppController`), same reasoning as
    * `selectedSequenceRangeRef` above — `useMeasureAudioPlayback` (built
-   * inside `useJianpuWorker`, ahead of this hook) needs it, but this hook is
+   * inside `usePoentaroWorker`, ahead of this hook) needs it, but this hook is
    * the one that derives it. Synced via a `useEffect` below rather than
    * threaded back as a return value, since `playSelectedMeasures` reads it
    * at click time, not render time. */
@@ -102,7 +100,7 @@ export function useAppSelectionAndNavigation(
   // `measureRangeSelectedPartNames` is only read at click time by
   // `useMeasureAudioPlayback.playSelectedMeasures` (via this ref) — synced
   // the same way `selectedSequenceRangeRef` is (see that param's doc
-  // comment in `useJianpuWorker.ts`), since `useMeasureAudioPlayback` is
+  // comment in `usePoentaroWorker.ts`), since `useMeasureAudioPlayback` is
   // built earlier in the hook tree than this hook runs.
   useEffect(() => {
     measureRangeSelectedPartNamesRef.current =
@@ -189,7 +187,7 @@ export function useAppSelectionAndNavigation(
   // and would normally re-derive the SVG's selected note cells by
   // overlap-testing the *new* byte ranges against `noteSpans` — but `noteSpans`
   // is only refreshed later, via the debounced `listNoteSpans` worker
-  // round-trip (`useJianpuWorkerRenderRequests.ts`), so at this point it's
+  // round-trip (`usePoentaroWorkerRenderRequests.ts`), so at this point it's
   // still the *old* source's spans. Overlap-testing new-source ranges against
   // old-source spans produces garbage (the SVG selection collapsing/shifting
   // to the wrong notes). Since an octave shift only rewrites `'`/`,` marker

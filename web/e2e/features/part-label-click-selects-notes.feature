@@ -3,11 +3,10 @@ Feature: Clicking or click-and-click selecting part labels selects notes
   # Clicking (or click-and-click range-selecting vertically across) a part
   # label — the abbreviation drawn once per system at the label region's left
   # edge — is a shortcut for selecting every note/rest that part sounds
-  # across the whole system the label sits in (see `Preview.tsx`'s
-  # `getPartLabelAtPoint`/`noteCellsForPartLabels`). It reuses the same note
-  # range-select highlight (`[data-note-range-selected]`) and Monaco
-  # multicursor pathway (`onNoteRangeSelect`) that click-and-click sweeping a
-  # marquee over individual notes uses.
+  # across the whole system the label sits in (resolved in wasm by
+  # `resolve_selection_range_response`). It reuses the same note range-select
+  # highlight (`[data-note-range-selected]`) and Monaco multicursor pathway
+  # (`onNoteRangeSelect`) that click-and-click across individual notes uses.
 
   Scenario: Clicking a part label selects every note that part sounds across the system
     Given the two-part click-test fixture is loaded

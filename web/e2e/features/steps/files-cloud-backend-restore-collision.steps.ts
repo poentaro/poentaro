@@ -18,38 +18,36 @@ import { Given, Then, When } from './fixtures'
 // `files-cloud-backend.steps.ts` to stay under this repo's 400-line cap.
 
 const COLLISION_ACTIVE_CONTENT = [
-  '# metadata',
-  'title = "Existing Active File"',
+  'metadata { title "Existing Active File" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '5 6 7 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    5 6 7 1',
+  '    """,',
 ].join('\n')
 
 const COLLISION_RESTORED_CONTENT = [
-  '# metadata',
-  'title = "Restored From Bin"',
+  'metadata { title "Restored From Bin" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 Given(
-  'the signed-in account has "original.jianpu" active and "original.jianpu" binned via a separate delete, for a restore collision',
+  'the signed-in account has "original.poentaro" active and "original.poentaro" binned via a separate delete, for a restore collision',
   async ({ page }) => {
     const email = currentSignedInEmail()
-    await seedCloudFile(email, 'original.jianpu', COLLISION_ACTIVE_CONTENT)
+    await seedCloudFile(email, 'original.poentaro', COLLISION_ACTIVE_CONTENT)
     // The real schema enforces one globally-unique name per owner across
     // *both* active and trashed files (`idx_files_owner_name` in migration
-    // 0003) -- unlike the deleted GitHub backend, where `scores/original.jianpu`
-    // and `trash/original.jianpu` were genuinely different paths, a trashed
+    // 0003) -- unlike the deleted GitHub backend, where `scores/original.poentaro`
+    // and `trash/original.poentaro` were genuinely different paths, a trashed
     // and an active row can never really share a name here. This file is
     // seeded under a distinct real name and trashed for real, then the
     // `/files/list` response the client's own `load()` receives is
@@ -57,10 +55,10 @@ Given(
     // pure `restoreFile` needs to exercise its own local collision-avoidance
     // (picking "original 2") without lying to the database itself. The
     // restore the client then issues targets this row's real id with the
-    // client-computed "original 2.jianpu" name, which lands for real.
+    // client-computed "original 2.poentaro" name, which lands for real.
     const trashSource = await seedCloudFile(
       email,
-      'original-collision-source.jianpu',
+      'original-collision-source.poentaro',
       COLLISION_RESTORED_CONTENT,
     )
     await trashCloudFile(email, trashSource.id)
@@ -72,14 +70,14 @@ Given(
         // Only while still trashed -- this route stays registered across
         // the post-restore reload too (`page.route` handlers are
         // page-scoped, not one-shot), and by then the restore has for
-        // real renamed this row to "original 2.jianpu" server-side.
-        // Relabelling it back to "original.jianpu" unconditionally would
+        // real renamed this row to "original 2.poentaro" server-side.
+        // Relabelling it back to "original.poentaro" unconditionally would
         // clobber that real name every time the list is re-fetched,
         // colliding with the *other*, still-genuinely-active
-        // "original.jianpu" row and losing "original 2" from the list
+        // "original.poentaro" row and losing "original 2" from the list
         // entirely.
         if (file.id === trashSource.id && file.trashedAt !== null) {
-          file.name = 'original.jianpu'
+          file.name = 'original.poentaro'
         }
       }
       await route.fulfill({ response, json })
@@ -149,7 +147,7 @@ Then(
   'both {string} and {string} tabs exist exactly once each',
   async ({ page }, nameA: string, nameB: string) => {
     await openFileList(page)
-    // Exact-text match for `nameA` -- display names drop the `.jianpu`
+    // Exact-text match for `nameA` -- display names drop the `.poentaro`
     // suffix, so "original" is a substring of "original 2"; a plain
     // substring match would match both tabs.
     await expect(

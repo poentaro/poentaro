@@ -11,7 +11,7 @@ const CARGO_COMPONENT_ARGS = [
   'component',
   'build',
   '--manifest-path',
-  '../crates/jianpu-wasm/Cargo.toml',
+  '../crates/poentaro-wasm/Cargo.toml',
   '--profile',
   'release-wasm',
   '--no-default-features',
@@ -23,16 +23,16 @@ const CARGO_COMPONENT_ARGS = [
 
 const JCO_TRANSPILE_ARGS = [
   'transpile',
-  '../target/wasm32-unknown-unknown/release-wasm/jianpu_wasm.wasm',
+  '../target/wasm32-unknown-unknown/release-wasm/poentaro_wasm.wasm',
   '--instantiation',
   'async',
   '-o',
-  '../crates/jianpu-wasm/pkg-component',
+  '../crates/poentaro-wasm/pkg-component',
 ] as const
 
 const WASM_COMPONENT_JS = path.resolve(
   __dirname,
-  '../crates/jianpu-wasm/pkg-component/jianpu_wasm.js',
+  '../crates/poentaro-wasm/pkg-component/poentaro_wasm.js',
 )
 
 function isRustSource(file: string): boolean {
@@ -104,10 +104,10 @@ function wasmDevPlugin(): Plugin {
 
     building = true
     try {
-      console.log('[jianpu-wasm] Rebuilding...')
+      console.log('[poentaro-wasm] Rebuilding...')
       await runCargoComponentBuild()
       await runJcoTranspile()
-      console.log('[jianpu-wasm] Rebuild complete')
+      console.log('[poentaro-wasm] Rebuild complete')
 
       const wasmModule = server?.moduleGraph.getModuleById(WASM_COMPONENT_JS)
       if (wasmModule) {
@@ -115,7 +115,7 @@ function wasmDevPlugin(): Plugin {
       }
       server?.ws.send({ type: 'full-reload' })
     } catch (error) {
-      console.error('[jianpu-wasm] Rebuild failed:', error)
+      console.error('[poentaro-wasm] Rebuild failed:', error)
     } finally {
       building = false
       if (queued) {
@@ -137,7 +137,7 @@ function wasmDevPlugin(): Plugin {
   }
 
   return {
-    name: 'jianpu-wasm-dev',
+    name: 'poentaro-wasm-dev',
     apply: 'serve',
     configureServer(devServer) {
       server = devServer
@@ -150,10 +150,10 @@ function wasmDevPlugin(): Plugin {
       })
 
       const watchPaths = [
-        path.join(repoRoot, 'crates/jianpu-wasm/src'),
+        path.join(repoRoot, 'crates/poentaro-wasm/src'),
         path.join(repoRoot, 'src'),
         path.join(repoRoot, 'Cargo.toml'),
-        path.join(repoRoot, 'crates/jianpu-wasm/Cargo.toml'),
+        path.join(repoRoot, 'crates/poentaro-wasm/Cargo.toml'),
       ]
 
       for (const watchPath of watchPaths) {
@@ -256,7 +256,7 @@ const LOCAL_WORKER_HOST = 'localhost:8787'
  * one. An explicitly set value (e2e's, or a personal
  * `.env.local`) still wins.
  */
-function workerDeployConfigPlugin(): Plugin {
+export function workerDeployConfigPlugin(): Plugin {
   return {
     name: 'worker-deploy-config',
     config(_, { mode, command }) {

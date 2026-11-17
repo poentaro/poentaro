@@ -3,9 +3,11 @@ import { Given, Then, When } from './fixtures'
 import {
   CHORD_BOUND_LYRICS_SOURCE,
   EXPECTED_SOURCES,
+  HELD_NOTE_MELODY_SOURCE,
   OVER_BRACKETED_CHORD_LYRICS_SOURCE,
   OVERFLOWING_MELODY_SOURCE,
   SOURCE,
+  UNWRITTEN_LYRICS_SOURCE,
 } from './part-stream-editor-sources'
 
 declare global {
@@ -20,12 +22,12 @@ const FOCUS_EDITOR = '[data-testid="part-focus-editor"]'
 async function loadSource(page: Page, source: string) {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'stream.jianpu',
-        userFiles: { 'stream.jianpu': src },
+        active: 'stream.poentaro',
+        userFiles: { 'stream.poentaro': src },
         bin: {},
-        fileIds: { 'stream.jianpu': crypto.randomUUID() },
+        fileIds: { 'stream.poentaro': crypto.randomUUID() },
       }),
     )
   }, source)
@@ -132,6 +134,14 @@ Given('the chord-bound lyrics fixture is loaded instead', async ({ page }) => {
 
 Given('the overflowing melody fixture is loaded instead', async ({ page }) => {
   await loadSource(page, OVERFLOWING_MELODY_SOURCE)
+})
+
+Given('the held note melody fixture is loaded instead', async ({ page }) => {
+  await loadSource(page, HELD_NOTE_MELODY_SOURCE)
+})
+
+Given('the unwritten lyrics fixture is loaded instead', async ({ page }) => {
+  await loadSource(page, UNWRITTEN_LYRICS_SOURCE)
 })
 
 Given(

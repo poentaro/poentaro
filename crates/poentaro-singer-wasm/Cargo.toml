@@ -1,0 +1,56 @@
+[package]
+name = "poentaro-singer-wasm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# The singing voice as its own wasm component, so the main app module
+# (`poentaro-wasm`) stays small and the voice loads only when a score sings.
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+poentaro-singer = { path = "../poentaro-singer", features = ["render"] }
+wit-bindgen = "0.44.0"
+
+[package.metadata.component]
+package = "poentaro:singer"
+
+[package.metadata.component.target]
+path = "wit"
+
+# Same lints as `poentaro-wasm`, relaxed the same way for wit-bindgen's
+# generated code (see the note in that crate's Cargo.toml).
+[lints.rust]
+unsafe_code = "allow"
+unreachable_pub = "allow"
+unused_qualifications = "allow"
+dead_code = "deny"
+unused_variables = "deny"
+unused_imports = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+disallowed_macros = "deny"
+mem_forget = "deny"
+panic = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+wildcard_imports = "deny"
+exit = "deny"
+len_zero = "deny"
+cognitive_complexity = "deny"
+too_many_lines = "deny"
+too_many_arguments = "deny"
+type_complexity = "deny"
+uninlined_format_args = "deny"
+redundant_clone = "deny"
+needless_pass_by_value = "deny"
+match_wildcard_for_single_variants = "deny"
+indexing_slicing = "deny"
+no_effect_underscore_binding = "deny"
+let_underscore_untyped = "deny"

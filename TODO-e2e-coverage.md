@@ -23,7 +23,7 @@ helper used by the `*-github.spec.ts` files.
 - [x] **GitHub OAuth connect/disconnect device flow**
       (`StorageSettingsModal.tsx:228` `handleConnect`, `:254`
       `handleDisconnect`). Every existing `*-github.spec.ts` test seeds
-      `jianpu:github-auth:v1` via `page.addInitScript`, so `handleConnect`'s
+      `poentaro:github-auth:v1` via `page.addInitScript`, so `handleConnect`'s
       device-code flow (`connectWithDeviceFlow`, `GITHUB_OAUTH_PROXY_URL`)
       has never run through the UI. Mock the device-flow proxy + GitHub's
       `users.getAuthenticated`/`repos.get` endpoints via `page.route` and
@@ -33,13 +33,13 @@ helper used by the `*-github.spec.ts` files.
         `data-testid="device-verification"` with the `user_code`.
       - Once the mocked proxy resolves, `data-testid="github-connected"`
         appears with the right `@username`.
-      - Clicking "Disconnect" clears `jianpu:github-auth:v1` and reverts to
+      - Clicking "Disconnect" clears `poentaro:github-auth:v1` and reverts to
         the local backend (assert via `switchBackend`'s visible effect, e.g.
         the radio selection and that a subsequent edit doesn't hit
         `API_PREFIX`).
 
 - [x] **PDF export** (`Preview.tsx:359` `canExportPdf`/`onExportPdf`,
-      `useJianpuWorker.ts:490` `exportPdf`, `:526` `exportSplitPdf`,
+      `usePoentaroWorker.ts:490` `exportPdf`, `:526` `exportSplitPdf`,
       `workerHelpers.ts:41` `downloadPdf`). Zero e2e coverage on a primary
       output button. Using Playwright's download event
       (`page.waitForEvent('download')`), assert:
@@ -62,7 +62,7 @@ helper used by the `*-github.spec.ts` files.
       fires immediately rather than waiting for autosave's debounce).
 
 - [x] **Playback actually plays** (`Preview.tsx`'s `playMeasureRef` /
-      `playSelectedMeasures` in `useJianpuWorker.ts`). Existing
+      `playSelectedMeasures` in `usePoentaroWorker.ts`). Existing
       `cmd-enter-play.spec.ts` only asserts the no-op case (no measure
       selected). Add a case with a valid `selectedMeasureRange` and
       `soundfontReady`, and assert the "playing" state actually engages
@@ -80,7 +80,7 @@ helper used by the `*-github.spec.ts` files.
       `TODO-e2e-github-storage.md`'s import entry) tend to hide.
 
 - [x] **Generate/Regenerate full-score audio** (`Preview.tsx:404`
-      `onGenerateAudio` button, `useJianpuWorker.ts:282` `generateFullAudio`,
+      `onGenerateAudio` button, `usePoentaroWorker.ts:282` `generateFullAudio`,
       `:125` `setNextWavUrl`). Full synthesis pipeline parallel in risk to
       PDF export and per-measure playback but previously uncovered. Added
       `web/e2e/export-audio.spec.ts`, asserting:
@@ -93,7 +93,7 @@ helper used by the `*-github.spec.ts` files.
         revoke-then-set logic).
       - Editing the source in place (no file switch) does not clear the
         existing player or reset the button back to "Generate audio",
-        matching `useJianpuWorker.ts`'s `[activeFile]`-only clear effect.
+        matching `usePoentaroWorker.ts`'s `[activeFile]`-only clear effect.
 
 - [x] **SoundfontSearchModal fuzzy search, tag filters, and instrument
       preview** (`SoundfontSearchModal.tsx:24` `fuzzyScore`/
@@ -123,7 +123,7 @@ helper used by the `*-github.spec.ts` files.
       - The spinner clears and the button reverts to "New" afterward
         (`finally`'s `setPending(false)` ran on the error path, not just
         success — otherwise the button would spin forever).
-      - No phantom `untitled.jianpu` tab appears and the active tab is
+      - No phantom `untitled.poentaro` tab appears and the active tab is
         unchanged (`setStore` is never called on failure).
       - Closing the modal and retrying "New" succeeds normally, proving the
         user can actually recover from the failure.

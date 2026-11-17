@@ -15,10 +15,17 @@ use super::*;
 /// grouper.
 #[test]
 fn measure_with_a_triplet_groups_with_correctly_rescaled_durations() {
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n[Melody] 3:{1_1_1_} 2_ 3_ 4_ 5_ 6_ 7_\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 3:{1_1_1_} 2_ 3_ 4_ 5_ 6_ 7_
+    """,
+"#,
+    );
     assert_eq!(score.measures.len(), 1);
     assert!(
         score.measures[0].diagnostics.is_empty(),

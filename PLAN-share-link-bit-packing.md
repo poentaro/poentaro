@@ -3,10 +3,10 @@
 ## Status
 
 Implemented. `compress_share_payload`/`decompress_share_payload` added to
-`crates/jianpu-wasm`, `web/src/shareUrl.ts` now compresses with brotli and
+`crates/poentaro-wasm`, `web/src/shareUrl.ts` now compresses with brotli and
 base64url-encodes for the URL hash, falling back to `lz-string` then plain
 JSON for old links. Round-trip tested against the fixtures from the
-measurement table (`crates/jianpu-wasm/src/tests.rs`) and the e2e share-link
+measurement table (`crates/poentaro-wasm/src/tests.rs`) and the e2e share-link
 suite (`web/e2e/share.spec.ts` and friends).
 
 Supersedes the original domain-specific bit-packing plan below. Kept the old
@@ -31,18 +31,18 @@ codec spot-checks).
 
 | File | payload bytes | lz-string (current) | brotli + base64url | bit-packing (plan v1, w/ headroom) | bit-packing (order-0 entropy ideal) |
 |---|---|---|---|---|---|
-| new_file_template.jianpu | 146 | 173 | 148 | — | — |
-| simple.jianpu | 208 | 255 | 198 | — | — |
-| fixtures/follow_and_key.jianpu | 923 | 762 | 459 | — | — |
-| reference.jianpu | 1803 | 1365 | 932 | — | — |
-| 彌勒淨土鄉.jianpu (real song, 813 note-stream tokens) | 2723 | 1992 | **1444** | ~3600 (+81%) | ~1633 (−18%) |
+| new_file_template.poentaro | 146 | 173 | 148 | — | — |
+| simple.poentaro | 208 | 255 | 198 | — | — |
+| fixtures/follow_and_key.poentaro | 923 | 762 | 459 | — | — |
+| reference.poentaro | 1803 | 1365 | 932 | — | — |
+| 彌勒淨土鄉.poentaro (real song, 813 note-stream tokens) | 2723 | 1992 | **1444** | ~3600 (+81%) | ~1633 (−18%) |
 
 Brotli at max quality beats lz-string on every fixture tested, by a growing
 margin as files get larger (−14% on a 146-byte file, −27% on the real song,
 −40% on a mid-size fixture) — even after paying the full 33% base64url tax.
 It also beats the *theoretical best case* for domain-specific bit-packing
 (the order-0 entropy lower bound), while requiring no custom codec, no
-`.jianpu`-grammar coupling, and no forward-compat/versioning scheme.
+`.poentaro`-grammar coupling, and no forward-compat/versioning scheme.
 
 **Decision: do brotli-over-wasm instead of bit-packing.** Bit-packing's
 realistic win (~15-25%, and only once a real entropy/Huffman coder is built —
@@ -64,16 +64,16 @@ libraries and fixtures are sitting right there — measure it.
 ## Implementation location: Rust/WASM, not a JS brotli lib
 
 Same rationale as the original plan: the web app already compiles
-`crates/jianpu-wasm` and calls into it from the browser
-(`web/src/worker/jianpu.worker.ts`, `web/package.json` `build:wasm` scripts).
+`crates/poentaro-wasm` and calls into it from the browser
+(`web/src/worker/poentaro.worker.ts`, `web/package.json` `build:wasm` scripts).
 Add brotli compress/decompress there rather than pulling in a separate JS
 brotli package, keeping one dependency surface instead of two.
 
 - Add a `brotli` (or similar pure-Rust) crate dependency to
-  `crates/jianpu-wasm/Cargo.toml`.
+  `crates/poentaro-wasm/Cargo.toml`.
 - Expose `#[wasm_bindgen] pub fn compress_share_payload(payload: &str) ->
   Vec<u8>` and `pub fn decompress_share_payload(bytes: &[u8]) -> String` in
-  `crates/jianpu-wasm/src/lib.rs`, following the existing pattern used by
+  `crates/poentaro-wasm/src/lib.rs`, following the existing pattern used by
   `render`, `generate_wav`, etc. in that file.
 - JS side (`web/src/shareUrl.ts`) only needs to base64url the resulting
   bytes for the URL hash (e.g. via a small helper, or reuse
@@ -93,7 +93,7 @@ brotli package, keeping one dependency surface instead of two.
    `lz-string` decode path (`decodeShareHashSuffix` already has a similar
    fallback chain for legacy plain-JSON links, so this is a small addition,
    not a new pattern).
-4. Round-trip test using `reference.jianpu`, `彌勒淨土鄉.jianpu`, and the
+4. Round-trip test using `reference.poentaro`, `彌勒淨土鄉.poentaro`, and the
    other fixtures used in the measurement table above.
 5. Remove `lz-string` from `web/package.json` once the old-link fallback
    period (if any) ends.
@@ -130,7 +130,7 @@ time:
 
 ### Chosen direction (superseded): domain-specific bit-packing
 
-Rationale: general compressors have zero foreknowledge of `.jianpu` grammar.
+Rationale: general compressors have zero foreknowledge of `.poentaro` grammar.
 We already own the parser/AST, so we can encode semantic tokens directly
 (small fixed-cardinality fields) instead of ASCII text, then still lz-string
 the result for any residual repetition.
@@ -149,8 +149,8 @@ Key files:
 - Chord head: `src/parser/score/timed_parser/chord_head/mod.rs`
 - Duration/octave suffixes: `src/parser/score/timed_parser/duration.rs`
 - Groups/slurs: `src/parser/score/timed_parser/groups.rs`
-- AST types: `src/ast/parsed.rs` (`JianPuPitch`, `Accidental`, `ParsedNote`, `ParsedRest`, `ScoreEvent`, `TriadQuality`, `Extension`, `BassDegree`)
-- Fixtures to use for round-trip testing: `reference.jianpu` (exercises every token type), `simple.jianpu`, `彌勒淨土鄉.jianpu` (real-world edge cases), `fixtures/follow_and_key.jianpu`
+- AST types: `src/ast/parsed.rs` (`NumberedPitch`, `Accidental`, `ParsedNote`, `ParsedRest`, `ScoreEvent`, `TriadQuality`, `Extension`, `BassDegree`)
+- Fixtures to use for round-trip testing: `reference.poentaro` (exercises every token type), `simple.poentaro`, `彌勒淨土鄉.poentaro` (real-world edge cases), `fixtures/follow_and_key.poentaro`
 
 Corrections vs initial assumptions:
 - **No barlines/repeat markers exist at all** — measures are blank-line-separated text blocks, not an in-stream token. Nothing to encode.
@@ -175,7 +175,7 @@ Corrections vs initial assumptions:
 | chord degree/accidental/triad/extension/bass | closed enum, ~1900 combinations total |
 
 Measured field-level entropy (bits/occurrence, real distribution from
-彌勒淨土鄉.jianpu — see table above for context): `accidental` ~0,
+彌勒淨土鄉.poentaro — see table above for context): `accidental` ~0,
 `octave` 0.28, `group_membership` 0.38, `group_continuation` 0.25, `triad`
 0.87, `duration` 1.97, `pitch` 2.62, `kind` 1.48. The skew (most fields
 almost always take their default value) is exactly why fixed-width packing

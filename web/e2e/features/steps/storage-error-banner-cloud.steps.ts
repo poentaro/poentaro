@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { fulfillWithApiError, workerRouteGlob } from '../../cloudFileHelpers'
+import { workerRouteGlob } from '../../cloudFileHelpers'
 import {
   fileSwitcherTrigger,
   fileTabByExactName,
@@ -28,28 +28,6 @@ Given(
       contentSaveCount += 1
       if (contentSaveCount === 1) {
         await route.abort('failed')
-        return
-      }
-      await route.continue()
-    })
-  },
-)
-
-Given(
-  'the first content-save request will fail with a 401 response',
-  async ({ page }) => {
-    // Same one-shot pattern, but a `401` -- the token-revoked/expired shape
-    // `classifyError` maps to `{kind: 'auth'}`.
-    let contentSaveCount = 0
-    await page.route(workerRouteGlob('/files/{id}/content'), async (route) => {
-      contentSaveCount += 1
-      if (contentSaveCount === 1) {
-        await fulfillWithApiError(route, 401, {
-          code: 'unauthorized',
-          reason: 'Your session has ended. Sign in again.',
-          failedAt: Date.now(),
-          attempts: 3,
-        })
         return
       }
       await route.continue()

@@ -1,6 +1,6 @@
 use super::EventAttrs;
 use super::{ParseHeadError, TimedUnitHead};
-use crate::ast::parsed::{Accidental, JianPuPitch, ParsedNote, ParsedRest, ScoreEvent};
+use crate::ast::parsed::{Accidental, NumberedPitch, ParsedNote, ParsedRest, ScoreEvent};
 use crate::error::{Diagnostic, RecoverableError, RecoverableErrorKind, Span};
 
 #[path = "note_head_tests.rs"]
@@ -9,7 +9,7 @@ mod tests;
 
 #[derive(Debug)]
 pub struct NoteHead {
-    pitch: JianPuPitch,
+    pitch: NumberedPitch,
     accidental: Accidental,
     is_rest: bool,
 }
@@ -39,9 +39,9 @@ impl TimedUnitHead for NoteHead {
         }
         let is_rest = pitch_char == '0';
         let pitch = if is_rest {
-            JianPuPitch::One
+            NumberedPitch::One
         } else {
-            match pitch_char_to_jianpu(pitch_char) {
+            match pitch_char_to_numbered_pitch(pitch_char) {
                 Some(p) => p,
                 None => {
                     let pos = span.start + byte_offset_at_char_index_from_chars(chars, start);
@@ -122,15 +122,15 @@ impl TimedUnitHead for NoteHead {
     }
 }
 
-fn pitch_char_to_jianpu(pitch_char: char) -> Option<JianPuPitch> {
+fn pitch_char_to_numbered_pitch(pitch_char: char) -> Option<NumberedPitch> {
     match pitch_char {
-        '1' => Some(JianPuPitch::One),
-        '2' => Some(JianPuPitch::Two),
-        '3' => Some(JianPuPitch::Three),
-        '4' => Some(JianPuPitch::Four),
-        '5' => Some(JianPuPitch::Five),
-        '6' => Some(JianPuPitch::Six),
-        '7' => Some(JianPuPitch::Seven),
+        '1' => Some(NumberedPitch::One),
+        '2' => Some(NumberedPitch::Two),
+        '3' => Some(NumberedPitch::Three),
+        '4' => Some(NumberedPitch::Four),
+        '5' => Some(NumberedPitch::Five),
+        '6' => Some(NumberedPitch::Six),
+        '7' => Some(NumberedPitch::Seven),
         _ => None,
     }
 }

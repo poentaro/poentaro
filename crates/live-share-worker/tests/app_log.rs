@@ -5,9 +5,10 @@
 
 use live_share_worker::app_log::{
     prune_cutoff_millis, token_tag, AuthEvent, LockedOut, LogEvent, LogRow, Outcome,
-    PasswordChanged, SessionRejected, SignInFailed, SignInFailureReason, SignedIn, SignedOut,
-    SignedUp, TokenExchangeFailed, TokenIssued, TokenRejected, TokenRevokeFailed, TokenRevoked,
-    TokenVerified, VerificationUnavailable, APP_LOG_RETENTION_MILLIS,
+    PasswordChanged, RequestEvent, RequestFailed, SessionRejected, SignInFailed,
+    SignInFailureReason, SignedIn, SignedOut, SignedUp, TokenExchangeFailed, TokenIssued,
+    TokenRejected, TokenRevokeFailed, TokenRevoked, TokenVerified, VerificationUnavailable,
+    APP_LOG_RETENTION_MILLIS,
 };
 use serde_json::{json, Value};
 
@@ -338,4 +339,52 @@ fn prune_cutoff_is_retention_before_now() {
     let now = 1_760_000_000_000;
 
     assert_eq!(prune_cutoff_millis(now), now - 2_592_000_000);
+}
+
+fn request_failed(status: u16, code: &str, message: Option<&str>) -> LogEvent {
+    LogEvent::Request(RequestEvent::RequestFailed(RequestFailed {
+        route: "POST /files/{id}/content".to_string(),
+        status,
+        code: code.to_string(),
+        message: message.map(str::to_owned),
+    }))
+}
+
+#[test]
+fn a_failed_request_is_a_request_failed_row() -> Result<(), serde_json::Error> {
+    let row = request_failed(500, "internal", Some("D1_ERROR: no such table")).to_row()?;
+
+    assert_eq!(
+        row,
+        LogRow {
+            flow: "request".to_string(),
+            kind: "request_failed".to_string(),
+            outcome: Outcome::Error,
+            subject: None,
+            detail_json: json!({
+                "route": "POST /files/{id}/content",
+                "status": 500,
+                "code": "internal",
+                "message": "D1_ERROR: no such table",
+            })
+            .to_string(),
+        }
+    );
+    Ok(())
+}
+
+#[test]
+fn a_refused_request_is_rejected_not_an_error() -> Result<(), serde_json::Error> {
+    let row = request_failed(409, "revision_conflict", None).to_row()?;
+
+    assert_eq!(row.outcome, Outcome::Rejected);
+    Ok(())
+}
+
+#[test]
+fn a_request_failed_row_decodes_back() -> Result<(), serde_json::Error> {
+    let event = request_failed(404, "not_found", None);
+
+    assert_eq!(LogEvent::try_from(&event.to_row()?)?, event);
+    Ok(())
 }

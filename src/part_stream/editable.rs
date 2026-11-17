@@ -60,6 +60,7 @@ impl StreamGrammar {
                         )
                     })
                     .collect_vec();
+                split.blocks_rebarring |= !follows_past_the_end.is_empty();
                 split.diagnostics.extend(follows_past_the_end);
                 split
             }
@@ -198,9 +199,11 @@ fn stream_grammar(
         .get(target_part_index)
         .map(|target| target.kind);
     match target_kind {
-        Some(PartKind::Notes) => lyric_slot_counts(document, target_part_index)
-            .map(|slot_counts| StreamGrammar::Lyrics { slot_counts })
-            .map_err(ineligible),
+        Some(PartKind::Notes) => {
+            lyric_slot_counts(document, &declaration.lyric_targets, target_part_index)
+                .map(|slot_counts| StreamGrammar::Lyrics { slot_counts })
+                .map_err(ineligible)
+        }
         Some(PartKind::Chords) => chord_attacks_per_measure(document, target_part_index)
             .map(|attacks| StreamGrammar::ChordLyrics { attacks })
             .map_err(ineligible),

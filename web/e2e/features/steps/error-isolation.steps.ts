@@ -2,24 +2,21 @@ import { expect } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE_WITH_UNDERFLOW_IN_MEASURE_1 = [
-  '# metadata',
-  'title="t"',
-  'author="a"',
+  'metadata { title "t", author "a" },',
   '',
-  '# parts',
-  'Melody = notes',
-  'Melody lyrics [Melodyv1] = lyrics[Melody]',
+  'parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],',
   '',
-  '# score',
-  '(time=4/4 key=C4 bpm=120)',
-  '[Melody] 1 2 3 4',
-  '[Melodyv1] a b',
+  'score """',
+  '    (time=4/4 key=C4 bpm=120)',
+  '    [Melody] 1 2 3 4',
+  '    [Melodyv1] a b',
   '',
-  '[Melody] 5 6 7 1',
-  '[Melodyv1] do re mi fa',
+  '    [Melody] 5 6 7 1',
+  '    [Melodyv1] do re mi fa',
+  '    """,',
 ].join('\n')
 
-const FILE_STORE_KEY = 'jianpu:files:v1'
+const FILE_STORE_KEY = 'poentaro:files:v1'
 
 Given(
   'a user file with lyric underflow in measure 1 but valid lyrics in measure 2',
@@ -29,10 +26,10 @@ Given(
     await page.addInitScript(
       ({ key, source }: { key: string; source: string }) => {
         const store = {
-          active: 'test.jianpu',
-          userFiles: { 'test.jianpu': source },
+          active: 'test.poentaro',
+          userFiles: { 'test.poentaro': source },
           bin: {},
-          fileIds: { 'test.jianpu': 'test-file-id' },
+          fileIds: { 'test.poentaro': 'test-file-id' },
         }
         localStorage.setItem(key, JSON.stringify(store))
       },

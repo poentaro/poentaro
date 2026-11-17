@@ -257,7 +257,7 @@ fn underline_depth(row: &MeasureRow, column: u32) -> u32 {
 }
 
 /// A below-octave note head. Without underlines its dots are drawn inline
-/// under the digit, as usual. With underlines, jianpu convention puts the
+/// under the digit, as usual. With underlines, numbered-notation convention puts the
 /// dots beneath the underlines instead, so they're split out into a
 /// `LowOctaveDots` element in the lowest underline's sub-row, and the head
 /// itself is pushed with no octave dots of its own.

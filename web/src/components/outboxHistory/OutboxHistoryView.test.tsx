@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
-import type { HistoryRow } from '../../jianpuWasm'
+import type { HistoryRow } from '../../poentaroWasm'
 import { EMPTY_FILTER_STATE } from './historyFilterState'
 import { buildRowReport } from './historyLabels'
 import { OutboxHistoryView } from './OutboxHistoryView'
@@ -9,7 +9,7 @@ function row(overrides: Partial<HistoryRow> = {}): HistoryRow {
   return {
     messageId: 'm1',
     fileId: 'f1',
-    fileName: 'Ode to Joy.jianpu',
+    fileName: 'Ode to Joy.poentaro',
     kind: 'edit',
     status: 'sent',
     sizeBytes: 2048,
@@ -27,7 +27,7 @@ function render(rows: HistoryRow[], query = ''): string {
     <OutboxHistoryView
       rows={rows}
       totalCount={5}
-      files={[{ fileId: 'f1', name: 'Ode to Joy.jianpu' }]}
+      files={[{ fileId: 'f1', name: 'Ode to Joy.poentaro' }]}
       filter={{ ...EMPTY_FILTER_STATE, query }}
       onFilterChange={vi.fn()}
     />,
@@ -37,7 +37,7 @@ function render(rows: HistoryRow[], query = ''): string {
 describe('OutboxHistoryView', () => {
   it('lists each message with its status, size and a per-row copy button', () => {
     const html = render([row()])
-    expect(html).toContain('Ode to Joy.jianpu')
+    expect(html).toContain('Ode to Joy.poentaro')
     expect(html).toContain('Sent')
     expect(html).toContain('2.0 KB')
     expect(html).toContain('Copy report')

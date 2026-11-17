@@ -6,7 +6,7 @@
 // `ARCHITECTURE.md`). These tests exercise that floor directly, distinct
 // from `tests_measure_spacing.rs`'s proportional (spring-only) invariants.
 
-use crate::ast::parsed::{JianPuPitch, Offset};
+use crate::ast::parsed::{NumberedPitch, Offset};
 use crate::compiler::types::{ColumnElement, ElementContent, MeasureBlock, MeasureRow, RowId};
 use crate::coordinate_resolver::LyricFontSizes;
 use crate::grid_layout::expand::expand_system_to_rows;
@@ -47,7 +47,7 @@ fn make_block_with_notes(row_id: &str, note_count: u32, bar_col: u32) -> Measure
         .map(|col| ColumnElement {
             column: col,
             content: ElementContent::NoteHead {
-                pitch: JianPuPitch::One,
+                pitch: NumberedPitch::One,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
                 dotted: false,

@@ -1,10 +1,10 @@
 Feature: Creating, nesting and moving files and folders from the file actions menu
 
   Background:
-    Given the file tree is seeded with files "Hymns/Advent/O Come.jianpu", "Hymns/Amazing.jianpu" and "Scratch.jianpu" and an empty folder "Empty" with "Scratch.jianpu" active
+    Given the file tree is seeded with files "Hymns/Advent/O Come.poentaro", "Hymns/Amazing.poentaro" and "Scratch.poentaro" and an empty folder "Empty" with "Scratch.poentaro" active
 
   Scenario: New creates the file next to the open file
-    Given the file tree active file is "Hymns/Advent/O Come.jianpu"
+    Given the file tree active file is "Hymns/Advent/O Come.poentaro"
     When the file tree app loads
     And I choose "New" from the file actions menu
     And I name the new file "untitled"
@@ -47,7 +47,7 @@ Feature: Creating, nesting and moving files and folders from the file actions me
     Then the file tree shows no folder "New folder"
 
   Scenario: New folder is created next to the open file and shown expanded
-    Given the file tree active file is "Hymns/Amazing.jianpu"
+    Given the file tree active file is "Hymns/Amazing.poentaro"
     When the file tree app loads
     And I choose "New folder" from the file actions menu
     And I name the new folder "Psalms"
@@ -73,7 +73,7 @@ Feature: Creating, nesting and moving files and folders from the file actions me
     Then the new folder dialog cannot be confirmed
 
   Scenario: A folder can be created inside a folder
-    Given the file tree active file is "Hymns/Advent/O Come.jianpu"
+    Given the file tree active file is "Hymns/Advent/O Come.poentaro"
     When the file tree app loads
     And I choose "New folder" from the file actions menu
     And I name the new folder "Psalms"
@@ -90,7 +90,7 @@ Feature: Creating, nesting and moving files and folders from the file actions me
     Then the file switcher toolbar button shows the folder prefix "Hymns / Advent /" and the file name "Scratch"
 
   Scenario: Move to the top level
-    Given the file tree active file is "Hymns/Amazing.jianpu"
+    Given the file tree active file is "Hymns/Amazing.poentaro"
     When the file tree app loads
     And I choose "Move to…" from the file actions menu
     And I pick the folder "Top level" in the move dialog
@@ -98,7 +98,7 @@ Feature: Creating, nesting and moving files and folders from the file actions me
     Then the file switcher toolbar button shows no folder prefix and the file name "Amazing"
 
   Scenario: Moving into a folder that already has a file of that name shows a clash message
-    Given the file tree also has the file "Empty/Scratch.jianpu"
+    Given the file tree also has the file "Empty/Scratch.poentaro"
     When the file tree app loads
     And I choose "Move to…" from the file actions menu
     And I pick the folder "Empty" in the move dialog
@@ -109,7 +109,7 @@ Feature: Creating, nesting and moving files and folders from the file actions me
     And the move dialog can be confirmed
 
   Scenario: Demo files cannot be moved or renamed
-    Given the file tree active file is "01-pitches.jianpu"
+    Given the file tree active file is "01-pitches.poentaro"
     When the file tree app loads
     And I open the file actions menu
     Then the file action "Move to…" is disabled
@@ -122,7 +122,7 @@ Feature: Creating, nesting and moving files and folders from the file actions me
     Then the file switcher toolbar button shows the folder prefix "Archive / Old /" and the file name "Scratch"
 
   Scenario: Renaming from the menu shows the whole path and accepts a slash
-    Given the file tree active file is "Hymns/Amazing.jianpu"
+    Given the file tree active file is "Hymns/Amazing.poentaro"
     When the file tree app loads
     And I choose "Rename" from the file actions menu
     Then the rename dialog holds "Hymns/Amazing"
@@ -130,7 +130,7 @@ Feature: Creating, nesting and moving files and folders from the file actions me
     Then the file switcher toolbar button shows the folder prefix "Elsewhere /" and the file name "Amazing"
 
   Scenario: Rename explains an empty segment, a clash and a relative segment instead of doing nothing
-    Given the file tree also has the file "Empty/Scratch.jianpu"
+    Given the file tree also has the file "Empty/Scratch.poentaro"
     When the file tree app loads
     And I choose "Rename" from the file actions menu
     And I type "Hymns//Scratch" in the rename dialog

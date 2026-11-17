@@ -13,7 +13,7 @@ fn sample_file() -> StoredFile {
     StoredFile {
         id: "file-1".to_string(),
         owner_user_id: "owner-1".to_string(),
-        name: "song.jianpu".to_string(),
+        name: "song.poentaro".to_string(),
         content: "1 2 3".to_string(),
         revision: 4,
         trashed_at: None,

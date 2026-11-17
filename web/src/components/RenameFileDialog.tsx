@@ -8,7 +8,7 @@ export interface RenameFileDialogProps {
   onOpenChange: (open: boolean) => void
   /** Full path of the file or folder being renamed. */
   path: string
-  /** A folder is shown with its whole path as is; a file without `.jianpu`. */
+  /** A folder is shown with its whole path as is; a file without `.poentaro`. */
   kind?: 'file' | 'folder'
   onRename: (from: string, to: string) => void
   /** Rust's reason a rename/move would be rejected, if it would. */

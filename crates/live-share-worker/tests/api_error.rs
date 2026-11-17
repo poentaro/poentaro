@@ -2,7 +2,7 @@
 //! body every route answers with.
 #![allow(clippy::disallowed_macros)]
 
-use live_share_worker::api_error::ApiError;
+use live_share_worker::api_error::{ApiError, ApiErrorBody};
 use live_share_worker::auth::session::VerificationFailure;
 
 #[test]
@@ -143,4 +143,35 @@ fn serializes_a_sign_in_lockout_with_a_camel_case_retry_after() -> Result<(), se
         r#"{"code":"sign_in_locked","retryAfterSeconds":900}"#
     );
     Ok(())
+}
+
+#[test]
+fn a_failure_body_carries_its_trace_id_next_to_the_code() -> Result<(), serde_json::Error> {
+    let body = ApiErrorBody {
+        error: ApiError::RevisionConflict {
+            current_revision: 7,
+        },
+        trace_id: "0123456789abcdef".to_string(),
+    };
+
+    assert_eq!(
+        serde_json::to_string(&body)?,
+        r#"{"code":"revision_conflict","currentRevision":7,"traceId":"0123456789abcdef"}"#
+    );
+    Ok(())
+}
+
+#[test]
+fn code_is_the_serialized_tag() {
+    assert_eq!(ApiError::NamesTaken { names: vec![] }.code(), "names_taken");
+}
+
+#[test]
+fn message_is_the_free_text_of_the_variants_that_have_one() {
+    let internal = ApiError::Internal {
+        message: "D1_ERROR".to_string(),
+    };
+
+    assert_eq!(internal.message(), Some("D1_ERROR"));
+    assert_eq!(ApiError::NotFound.message(), None);
 }

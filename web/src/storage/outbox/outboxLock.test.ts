@@ -76,7 +76,7 @@ describe('runAsLeader', () => {
     runAsLeader(neverEndingTask(started, 'a'))
     await flush()
     expect(started).toEqual(['a'])
-    expect(requestedNames).toEqual(['jianpu-outbox-looper'])
+    expect(requestedNames).toEqual(['poentaro-outbox-looper'])
   })
 
   it('aborts the signal and releases the lock on stop', async () => {

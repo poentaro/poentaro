@@ -2,15 +2,14 @@ import { expect } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 /**
- * The default demo file (demo/01-pitches.jianpu, opened on first load) has
+ * The default demo file (demo/01-pitches.poentaro, opened on first load) has
  * the following Monaco line numbers (1-based):
  *
- *   1  # metadata
- *   2  title = "Pitches"
+ *   1  metadata { title "Pitches", max measures per system 1 },
  *   ...
- *   8  # score
- *   9  label="Scale degrees & rest"
- *  10  [M] 1 2 3 0    ← first note line → measure 1
+ *   5  score """
+ *   6      label="Scale degrees & rest"
+ *   7      [M] 1 2 3 0    ← first note line → measure 1
  */
 
 Given(
@@ -21,41 +20,38 @@ Given(
      * a multi-byte-UTF-8 (CJK) lyric line that is also the last line of the
      * measure.
      *
-     * The lyric line "白陽旗旛在大道盛宏" is line 16 (1-based) in the source
+     * The lyric line "白陽旗旛在大道盛宏" is line 13 (1-based) in the source
      * below. Pressing End places the cursor after "宏" (3-byte UTF-8 char).
      */
     const source = [
-      '# metadata',
-      'title = "abc"',
-      'author = "author"',
+      'metadata { title "abc", author "author" },',
       '',
-      '# parts',
-      'Chord [C] = chords',
-      'Alto 1 & Tenor [A1,T] = notes',
-      'Alto 1 & Tenor lyrics [A1,Tv1] = lyrics[A1,T]',
+      'parts [',
+      '    "Chord" [C]: chords,',
+      '    "Alto 1 & Tenor" ["A1,T"]: notes,',
+      '    "Alto 1 & Tenor lyrics" ["A1,Tv1"]: lyrics ["A1,T"],',
+      '],',
       '',
+      'score """',
+      '    bpm=80 key=C4 time=4/4 label="Verse 1"',
+      '    [C] 1 - - -',
+      '    [A1,T] 5_ 5_ 5_ 5= 5= 5_ 3_ 2_ (3_',
+      '    [A1,Tv1] 白陽旗旛在大道盛宏',
       '',
-      '# score',
-      '',
-      '',
-      'bpm=80 key=C4 time=4/4 label="Verse 1"',
-      '[C] 1 - - -',
-      '[A1,T] 5_ 5_ 5_ 5= 5= 5_ 3_ 2_ (3_',
-      '[A1,Tv1] 白陽旗旛在大道盛宏',
-      '',
-      '[C] 6m/3',
-      '[A1,T] 3_) (1_1-) 0_ 1= 1=',
-      '[A1,Tv1] 昌花花',
+      '    [C] 6m/3',
+      '    [A1,T] 3_) (1_1-) 0_ 1= 1=',
+      '    [A1,Tv1] 昌花花',
+      '    """,',
     ].join('\n')
 
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'chinese-test.jianpu',
-          userFiles: { 'chinese-test.jianpu': src },
+          active: 'chinese-test.poentaro',
+          userFiles: { 'chinese-test.poentaro': src },
           bin: {},
-          fileIds: { 'chinese-test.jianpu': crypto.randomUUID() },
+          fileIds: { 'chinese-test.poentaro': crypto.randomUUID() },
         }),
       )
     }, source)

@@ -15,34 +15,30 @@ import { Given, Then, When } from './fixtures'
  * should select every syllable that verse sings in between, exactly like
  * `Note ↔ Note` already does across a system boundary (see
  * `resolve_selection_range_response` in `selection_range.rs`), with no
- * Cmd/Ctrl modifier required. Today `LyricLabel ↔ LyricLabel` is only
- * ID-resolved for a same-system pair (guarded on matching
- * `measure_index_start`/`measure_index_end`); a cross-system pair falls
- * through to the pixel-marquee fallback (`lyricLabelsInMarquee`), which
- * restricts to the *anchor's own system* — so today's plain click-and-click
- * only selects the first system's syllables, dropping the second system's
- * entirely.
+ * Cmd/Ctrl modifier required. `LyricLabel ↔ LyricLabel` used to be
+ * ID-resolved only for a same-system pair (guarded on matching
+ * `measure_index_start`/`measure_index_end`); a cross-system pair fell
+ * through to a pixel-marquee fallback (since removed), which restricted to
+ * the *anchor's own system* — so a plain click-and-click only selected the
+ * first system's syllables, dropping the second system's entirely.
  *
  * `break` forces measure 1 onto its own system regardless of
  * `max_measures_per_system`, so this fixture needs no filler content to
  * reproduce the boundary.
  */
 const source = [
-  '# metadata',
-  'title = "cross system lyric label range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "cross system lyric label range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0 — system 0
-  '[Mv1] do re', // verse 0
+  'score """',
+  '[M] 1 2',
+  '[Mv1] do re',
   '',
   'break',
-  '[M] 3 4', // measure 1 — system 1
-  '[Mv1] la ti', // verse 0
+  '[M] 3 4',
+  '[Mv1] la ti',
+  '""",',
 ].join('\n')
 
 function verseLabelInSystem(
@@ -63,13 +59,13 @@ Given(
   async ({ page }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'cross-system-lyric-label-range-test.jianpu',
-          userFiles: { 'cross-system-lyric-label-range-test.jianpu': src },
+          active: 'cross-system-lyric-label-range-test.poentaro',
+          userFiles: { 'cross-system-lyric-label-range-test.poentaro': src },
           bin: {},
           fileIds: {
-            'cross-system-lyric-label-range-test.jianpu':
+            'cross-system-lyric-label-range-test.poentaro':
               'cross-system-lyric-label-range-test-id-001',
           },
         }),

@@ -5,25 +5,23 @@ import { Given, Then } from './fixtures'
  * `B` is written after `A` but played first, and the sequence ends on `B`
  * again — so resolving Play All by written-measure occurrence (first
  * occurrence of measure 1 → last occurrence of measure 2) would skip the
- * leading `B` entirely. Play All must instead name the whole `# sequence`
+ * leading `B` entirely. Play All must instead name the whole `sequence [...]`
  * entry range.
  */
 const source = [
-  '# metadata',
-  'title = "test"',
+  'metadata { title "test" },',
   '',
-  '# parts',
-  'M = notes',
+  'parts ["M": notes],',
   '',
-  '# sequence',
-  'B, A, B',
+  'sequence ["B", "A", "B"],',
   '',
-  '# score',
-  'time=4/4 key=C4 bpm=120 label="A"',
-  '1 2 3 4',
+  'score """',
+  '    time=4/4 key=C4 bpm=120 label="A"',
+  '    1 2 3 4',
   '',
-  'label="B"',
-  "5 6 7 1'",
+  '    label="B"',
+  "    5 6 7 1'",
+  '    """,',
 ].join('\n')
 
 interface RecordedWorkerRequest {
@@ -45,12 +43,12 @@ Given(
 
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'sequence-test.jianpu',
-          userFiles: { 'sequence-test.jianpu': src },
+          active: 'sequence-test.poentaro',
+          userFiles: { 'sequence-test.poentaro': src },
           bin: {},
-          fileIds: { 'sequence-test.jianpu': crypto.randomUUID() },
+          fileIds: { 'sequence-test.poentaro': crypto.randomUUID() },
         }),
       )
       window.__recordedWorkerRequests = []

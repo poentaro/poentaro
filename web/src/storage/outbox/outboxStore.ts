@@ -16,8 +16,11 @@ export interface OutboxStore {
   apply(changes: OutboxChanges): Promise<void>
 }
 
-const DATABASE_NAME = 'jianpu-outbox'
-const OBJECT_STORE_NAME = 'records'
+const DATABASE_NAME = 'poentaro-outbox'
+export const OUTBOX_OBJECT_STORE_NAME = 'records'
+
+/** Every account's outbox database is named this plus the account. */
+export const OUTBOX_DATABASE_PREFIX = `${DATABASE_NAME}:`
 
 interface OutboxSchema extends DBSchema {
   records: { key: string; value: string }
@@ -34,20 +37,25 @@ export function assertStoredRecord(record: StoredRecord): void {
 /** One database per account, so edits queued by one account are never sent
  * with another account's token. */
 export function createIndexedDbOutboxStore(account: string): OutboxStore {
-  const databasePromise = openDB<OutboxSchema>(
-    `${DATABASE_NAME}:${account}`,
-    1,
-    {
-      upgrade(database) {
-        database.createObjectStore(OBJECT_STORE_NAME)
-      },
+  return openIndexedDbOutboxStore(`${OUTBOX_DATABASE_PREFIX}${account}`)
+}
+
+/** The outbox database named `name` in full, e.g. one saved under the
+ * legacy name before the rename to Poentaro. */
+export function openIndexedDbOutboxStore(name: string): OutboxStore {
+  const databasePromise = openDB<OutboxSchema>(name, 1, {
+    upgrade(database) {
+      database.createObjectStore(OUTBOX_OBJECT_STORE_NAME)
     },
-  )
+  })
 
   return {
     async loadAll() {
       const database = await databasePromise
-      const transaction = database.transaction(OBJECT_STORE_NAME, 'readonly')
+      const transaction = database.transaction(
+        OUTBOX_OBJECT_STORE_NAME,
+        'readonly',
+      )
       const [keys, values] = await Promise.all([
         transaction.store.getAllKeys(),
         transaction.store.getAll(),
@@ -56,7 +64,10 @@ export function createIndexedDbOutboxStore(account: string): OutboxStore {
     },
     async apply(changes) {
       const database = await databasePromise
-      const transaction = database.transaction(OBJECT_STORE_NAME, 'readwrite')
+      const transaction = database.transaction(
+        OUTBOX_OBJECT_STORE_NAME,
+        'readwrite',
+      )
       // Requests queued before an abort reject too; `transaction.done` reports the failure.
       const settled = (request: Promise<unknown>) => {
         request.catch(() => undefined)

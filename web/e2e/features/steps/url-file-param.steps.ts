@@ -3,15 +3,14 @@ import { fileSwitcherTrigger, openFileList } from '../../fileSwitcherHelpers'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE_A = [
-  '# metadata',
-  'title = "File A"',
+  'metadata { title "File A" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 const SOURCE_B = SOURCE_A.replace('File A', 'File B')
@@ -22,7 +21,7 @@ Given(
     await page.addInitScript(
       ({ a, b, fileNameA, fileNameB }) => {
         localStorage.setItem(
-          'jianpu:files:v1',
+          'poentaro:files:v1',
           JSON.stringify({
             active: fileNameA,
             userFiles: { [fileNameA]: a, [fileNameB]: b },
@@ -70,7 +69,7 @@ Then(
 When(
   'the app loads with the URL param {string}',
   async ({ page }, param: string) => {
-    // Stored `active` is a.jianpu, but the URL names b.jianpu — the URL should win.
+    // Stored `active` is a.poentaro, but the URL names b.poentaro — the URL should win.
     await page.goto(`/?${param}`)
     await page.waitForSelector('.preview-page', { timeout: 15_000 })
   },

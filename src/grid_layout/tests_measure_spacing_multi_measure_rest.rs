@@ -53,7 +53,7 @@ fn make_block_with_notes(row_id: &str, note_count: u32, bar_col: u32) -> Measure
         .map(|col| ColumnElement {
             column: col,
             content: ElementContent::NoteHead {
-                pitch: crate::ast::parsed::JianPuPitch::One,
+                pitch: crate::ast::parsed::NumberedPitch::One,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
                 dotted: false,

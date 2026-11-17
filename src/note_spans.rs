@@ -31,6 +31,20 @@ pub struct NoteSourceSpan {
     pub start: Option<usize>,
     /// Exclusive end byte of this event's token in the original source.
     pub end: Option<usize>,
+    /// Where this event sounds within its measure, so a selection can be
+    /// bounded by time across parts with different rhythms.
+    pub timing: MeasureTiming,
+}
+
+/// When an event sounds within its measure, in the measure's quarter-beat
+/// units (every part of one measure shares them, so offsets compare across
+/// parts of the same measure; across measures, compare `measure_index` first).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct MeasureTiming {
+    /// Quarter-beats from the start of the measure to the event's onset.
+    pub offset: u32,
+    /// How long the event lasts, in quarter-beats.
+    pub duration: u32,
 }
 
 /// Result of [`list_note_spans_from_source`].
@@ -88,7 +102,13 @@ pub fn list_note_spans_from_source(
             let Some(state) = states.get_mut(part_idx) else {
                 continue;
             };
-            for event in &part_row.slice().notes.events {
+            let events = &part_row.slice().notes.events;
+            let offsets = events.iter().scan(0, |offset, event| {
+                let start = *offset;
+                *offset += event.duration();
+                Some(start)
+            });
+            for (event, offset) in events.iter().zip(offsets) {
                 let tentative_id = state.next_note_id;
                 state.next_note_id += 1;
 
@@ -112,6 +132,10 @@ pub fn list_note_spans_from_source(
                     measure_index,
                     start: span.map(|s| s.start),
                     end: span.map(|s| s.end),
+                    timing: MeasureTiming {
+                        offset,
+                        duration: event.duration(),
+                    },
                 });
 
                 state.prev_tie = tie_to_next;

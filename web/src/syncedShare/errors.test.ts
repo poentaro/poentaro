@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { buildSyncedShareFailure, redactSecrets } from './errors'
 import {
-  type ApiError,
   NetworkFailure,
   WorkerRequestError,
+  type WorkerSchemas,
 } from './workerClient'
+
+const TRACE_ID = '0123456789abcdef'
 
 describe('redactSecrets', () => {
   it('redacts a session-token-shaped value', () => {
@@ -33,11 +35,15 @@ describe('redactSecrets', () => {
 function workerError(
   status: number,
   statusText: string,
-  body: ApiError | string,
+  body: WorkerSchemas['ApiError'] | string,
 ): WorkerRequestError {
   return new WorkerRequestError(
-    new Response(null, { status, statusText }),
-    body,
+    new Response(null, {
+      status,
+      statusText,
+      headers: { 'X-Trace-Id': TRACE_ID },
+    }),
+    typeof body === 'string' ? body : { ...body, traceId: TRACE_ID },
   )
 }
 
@@ -59,6 +65,7 @@ describe('buildSyncedShareFailure: worker failure responses', () => {
       attempts: 3,
       httpStatus: 401,
       httpStatusText: 'Unauthorized',
+      traceId: TRACE_ID,
       authRejected: true,
     })
   })
@@ -97,6 +104,14 @@ describe('buildSyncedShareFailure: worker failure responses', () => {
     expect(failure.rawResponseBody).toContain('[redacted]')
     expect(failure.rawResponseBody).not.toContain('b'.repeat(40))
   })
+
+  it("keeps the trace ID from the header when the body isn't the worker's", () => {
+    const failure = buildSyncedShareFailure(
+      'stop',
+      workerError(502, 'Bad Gateway', '<html>bad gateway</html>'),
+    )
+    expect(failure.traceId).toBe(TRACE_ID)
+  })
 })
 
 describe('buildSyncedShareFailure: network failures', () => {
@@ -109,6 +124,7 @@ describe('buildSyncedShareFailure: network failures', () => {
     expect(failure.reason).toContain('Failed to fetch')
     expect(failure.attempts).toBeUndefined()
     expect(failure.authRejected).toBe(false)
+    expect(failure.traceId).toBeUndefined()
   })
 
   it('redacts a token-shaped value from a network failure message', () => {

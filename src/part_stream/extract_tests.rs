@@ -2,26 +2,25 @@ use crate::part_stream::{
     extract_part_stream, list_streamable_parts, PartStreamError, StreamablePartKind,
 };
 
-const TWO_PARTS: &str = r"# parts
-Melody [M] = notes
-Bass [B] = notes
+const TWO_PARTS: &str = r#"parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-[M] 1 2
-[B] 1 1 1 1
+score """
+    [M] 1 2
+    [B] 1 1 1 1
 
-[B] 1 1 1 1
+    [B] 1 1 1 1
 
-time=3/4
-[M]   5   6 7
-[B] 1 1 1
+    time=3/4
+    [M]   5   6 7
+    [B] 1 1 1
 
-[M] 1 - -
-[B] 1 1 1
+    [M] 1 - -
+    [B] 1 1 1
 
-[M] 2 - -
-[B] 1 1 1
-";
+    [M] 2 - -
+    [B] 1 1 1
+    """,
+"#;
 
 #[test]
 fn materializes_implicit_padding_and_rest_fills_unwritten_measures() {
@@ -32,14 +31,13 @@ fn materializes_implicit_padding_and_rest_fills_unwritten_measures() {
 
 #[test]
 fn rest_fills_a_compound_meter_by_its_beat_capacity() {
-    let source = r"# parts
-Melody [M] = notes
-Bass [B] = notes
+    let source = r#"parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=6/8
-[B] 1_1_1_1_1_1_
-";
+score """
+    time=6/8
+    [B] 1_1_1_1_1_1_
+    """,
+"#;
     assert_eq!(extract_part_stream(source, "M").unwrap().text, "0 0 0");
 }
 
@@ -55,14 +53,14 @@ fn unknown_part_is_an_error() {
 
 #[test]
 fn beat_overflow_is_kept_as_written() {
-    let source = r"# parts
-Melody [M] = notes
+    let source = r#"parts ["Melody" [M]: notes],
 
-# score
-[M] 1 2 3 4   5
+score """
+    [M] 1 2 3 4   5
 
-[M] 6 7 1 2
-";
+    [M] 6 7 1 2
+    """,
+"#;
     assert_eq!(list_streamable_parts(source)[0].ineligible_reason, None);
     assert_eq!(
         extract_part_stream(source, "M").unwrap().text,
@@ -72,14 +70,14 @@ Melody [M] = notes
 
 #[test]
 fn unpaddable_beat_underflow_is_kept_as_written() {
-    let source = r"# parts
-Melody [M] = notes
+    let source = r#"parts ["Melody" [M]: notes],
 
-# score
-[M] 1 2 3_
+score """
+    [M] 1 2 3_
 
-[M] 4_ 5 6 7
-";
+    [M] 4_ 5 6 7
+    """,
+"#;
     assert_eq!(list_streamable_parts(source)[0].ineligible_reason, None);
     assert_eq!(
         extract_part_stream(source, "M").unwrap().text,
@@ -89,27 +87,26 @@ Melody [M] = notes
 
 #[test]
 fn a_misbarred_measure_whose_re_barring_errors_is_still_eligible() {
-    let source = r"# parts
-Melody [M] = notes
+    let source = r#"parts ["Melody" [M]: notes],
 
-# score
-[M] 1 2 3 4_ 5 -
-";
+score """
+    [M] 1 2 3 4_ 5 -
+    """,
+"#;
     assert_eq!(list_streamable_parts(source)[0].ineligible_reason, None);
 }
 
 #[test]
 fn inline_directive_makes_the_part_ineligible() {
-    let source = r"# parts
-Melody [M] = notes
-Bass [B] = notes
+    let source = r#"parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-[M] 1 2 3 4
+score """
+    [M] 1 2 3 4
 
-[B] 1 1 1 1
-[M] 1 2 bpm=90 3 4
-";
+    [B] 1 1 1 1
+    [M] 1 2 bpm=90 3 4
+    """,
+"#;
     let reason = list_streamable_parts(source)[0]
         .ineligible_reason
         .clone()
@@ -120,12 +117,12 @@ Bass [B] = notes
 
 #[test]
 fn a_measure_starting_with_an_extension_makes_the_part_ineligible() {
-    let source = r"# parts
-Melody [M] = notes
+    let source = r#"parts ["Melody" [M]: notes],
 
-# score
-[M] - 1 2 3
-";
+score """
+    [M] - 1 2 3
+    """,
+"#;
     let reason = list_streamable_parts(source)[0]
         .ineligible_reason
         .clone()
@@ -138,19 +135,21 @@ Melody [M] = notes
 
 #[test]
 fn lists_every_part_with_its_kind_and_eligibility() {
-    let source = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
-Harmony [H] = chords
-Drums [D] = percussion
-Echo [E] = follow[M]
+    let source = r#"parts [
+    "Melody" [M]: notes,
+    "Words" [W]: lyrics [M],
+    "Harmony" [H]: chords,
+    "Drums" [D]: percussion,
+    "Echo" [E]: follow [M],
+],
 
-# score
-[M] 1 2 3 4
-[W] a b c d
-[H] 1 4 5 1
-[D] x x x x
-";
+score """
+    [M] 1 2 3 4
+    [W] a b c d
+    [H] 1 4 5 1
+    [D] x x x x
+    """,
+"#;
     let parts = list_streamable_parts(source);
     let summary: Vec<(&str, StreamablePartKind, bool)> = parts
         .iter()

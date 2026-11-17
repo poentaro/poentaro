@@ -8,16 +8,14 @@ fn note_ons_of(input: &str) -> Vec<u8> {
 
 #[test]
 fn first_chord_sounds_bass_plus_root_position() {
-    let input = r#"# metadata
-title=""
-author=""
+    let input = r#"metadata { title "", author "" },
 
-# parts
-C = chords
+parts ["C": chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[C] 1
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 1
+    """,
 "#;
     assert_eq!(
         note_ons_of(input),
@@ -28,16 +26,14 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn next_chord_uses_the_nearest_inversion() {
-    let input = r#"# metadata
-title=""
-author=""
+    let input = r#"metadata { title "", author "" },
 
-# parts
-C = chords
+parts ["C": chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[C] 1 5
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 1 5
+    """,
 "#;
     assert_eq!(
         note_ons_of(input),
@@ -48,16 +44,14 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn slash_chord_bass_replaces_the_root_in_the_bass() {
-    let input = r#"# metadata
-title=""
-author=""
+    let input = r#"metadata { title "", author "" },
 
-# parts
-C = chords
+parts ["C": chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[C] 1/5
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 1/5
+    """,
 "#;
     assert_eq!(
         note_ons_of(input),
@@ -68,16 +62,14 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn seventh_chord_sounds_bass_plus_four_upper_voices() {
-    let input = r#"# metadata
-title=""
-author=""
+    let input = r#"metadata { title "", author "" },
 
-# parts
-C = chords
+parts ["C": chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[C] 57
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 57
+    """,
 "#;
     assert_eq!(
         note_ons_of(input),
@@ -88,18 +80,16 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn voice_leading_carries_across_measures_and_rests() {
-    let input = r#"# metadata
-title=""
-author=""
+    let input = r#"metadata { title "", author "" },
 
-# parts
-C = chords
+parts ["C": chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[C] 1 - - 0
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 1 - - 0
 
-[C] 5 - - -
+    [C] 5 - - -
+    """,
 "#;
     assert_eq!(
         note_ons_of(input),
@@ -112,22 +102,20 @@ time=4/4 key=C4 bpm=120
 fn voice_leading_stays_within_a_fixed_range() {
     // A cycle of fourths would keep drifting downward forever if every chord just took
     // the nearest inversion with no range limit.
-    let input = r#"# metadata
-title=""
-author=""
+    let input = r#"metadata { title "", author "" },
 
-# parts
-C = chords
+parts ["C": chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[C] 1 4 7b 3b
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 1 4 7b 3b
 
-[C] 6b 2b 5b 7
+    [C] 6b 2b 5b 7
 
-[C] 3 6 2 5
+    [C] 3 6 2 5
 
-[C] 1 4 7b 3b
+    [C] 1 4 7b 3b
+    """,
 "#;
     let notes = note_ons_of(input);
     assert_eq!(notes.len(), 16 * 4);

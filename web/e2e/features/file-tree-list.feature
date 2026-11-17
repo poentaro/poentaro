@@ -1,7 +1,7 @@
 Feature: The file list is a collapsible folder tree
 
   Background:
-    Given the file tree is seeded with files "Hymns/Advent/O Come.jianpu", "Hymns/Amazing.jianpu" and "Scratch.jianpu" and an empty folder "Empty" with "Scratch.jianpu" active
+    Given the file tree is seeded with files "Hymns/Advent/O Come.poentaro", "Hymns/Amazing.poentaro" and "Scratch.poentaro" and an empty folder "Empty" with "Scratch.poentaro" active
 
   Scenario: Folders start collapsed and show how many files they hold
     When the file tree app loads
@@ -35,7 +35,7 @@ Feature: The file list is a collapsible folder tree
     Then the file switcher toolbar button shows no folder prefix and the file name "Scratch"
 
   Scenario: Folders holding the active file are open when the list opens
-    Given the file tree active file is "Hymns/Advent/O Come.jianpu"
+    Given the file tree active file is "Hymns/Advent/O Come.poentaro"
     When the file tree app loads
     And I open the file tree list
     Then the file tree shows the file "O Come"

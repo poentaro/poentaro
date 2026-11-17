@@ -24,12 +24,18 @@ fn resolve_test_score(input: &str) -> Vec<compositor::types::AbsolutePage> {
     };
     let compile_result = compiler::compile(&score);
     let compile_result = consolidator::consolidate(compile_result);
-    let grid_pages =
-        grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None).pages;
+    let grid_pages = grid_layout::layout(
+        &compile_result,
+        &config,
+        &header,
+        grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     coordinate_resolver::resolve(
         &grid_pages,
         config.note_number_width as f32,
-        config.part_label_width_pt as f32,
+        config.page_frame(),
         coordinate_resolver::ResolveFontSizes {
             lyric: config.lyric_font_sizes(),
             notes: config.notes_font_size(),
@@ -49,21 +55,17 @@ fn resolve_test_score(input: &str) -> Vec<compositor::types::AbsolutePage> {
     .expect("coordinate resolver should not fail in tests")
 }
 
-const TWO_VERSE_INPUT: &str = concat!(
-    "# metadata\n",
-    "title = \"t\"\n",
-    "\n",
-    "# parts\n",
-    "Melody [M] = notes\n",
-    "Melody verse 1 [Mv1] = lyrics[M]\n",
-    "Melody verse 2 [Mv2] = lyrics[M]\n",
-    "\n",
-    "# score\n",
-    "time=4/4 key=C4 bpm=120\n",
-    "[M] 1 2 3 4\n",
-    "[Mv1] do re mi fa\n",
-    "[Mv2] la ti da di\n",
-);
+const TWO_VERSE_INPUT: &str = r#"metadata { title "t" },
+
+parts ["Melody" [M]: notes, "Melody verse 1" [Mv1]: lyrics [M], "Melody verse 2" [Mv2]: lyrics [M]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 2 3 4
+    [Mv1] do re mi fa
+    [Mv2] la ti da di
+    """,
+"#;
 
 #[test]
 fn each_verse_row_renders_its_own_label_text() {

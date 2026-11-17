@@ -31,7 +31,7 @@ export type MeasureSpec = {
 /** Per-scenario accumulated fixture state, reset at the start of every
  * scenario's first `Given` step (see `resetState`). Subsequent `Given`
  * steps mutate it; `When the score is laid out` renders it into a
- * `.jianpu` source string and loads it. */
+ * `.poentaro` source string and loads it. */
 export let state: {
   maxMeasuresPerSystem: number
   hideRestingParts: boolean | null
@@ -64,7 +64,7 @@ const NOTE_TOKENS: Record<string, string> = {
 }
 export const NOTE_TOKEN_COUNT = 4
 
-/** Builds the `.jianpu` source from accumulated state. Also returns the
+/** Builds the `.poentaro` source from accumulated state. Also returns the
  * 1-based line number of the first measure's first content line, so the
  * "go to line" priming dance (see `primeMeasureSpans`) can put the cursor
  * somewhere guaranteed to fall inside a real measure span — a fixed line
@@ -72,22 +72,26 @@ export const NOTE_TOKEN_COUNT = 4
  * where the score content starts) varies with `hide_resting_parts`. */
 function buildSource(): { source: string; firstMeasureLine: number } {
   const lines: string[] = [
-    '# metadata',
-    'title = "system part union packing test"',
-    `max_measures_per_system = ${state.maxMeasuresPerSystem}`,
+    'metadata {',
+    '  title "system part union packing test",',
+    `  max measures per system ${state.maxMeasuresPerSystem},`,
   ]
   if (state.hideRestingParts !== null) {
-    lines.push(`hide_resting_parts = ${state.hideRestingParts ? 'yes' : 'no'}`)
+    lines.push(
+      `  hide resting parts: ${state.hideRestingParts ? 'yes' : 'no'},`,
+    )
   }
+  lines.push('},')
   lines.push('')
-  lines.push('# parts')
-  lines.push('Melody [M] = notes')
-  lines.push('Melody verse 1 [Mv1] = lyrics[M]')
-  lines.push('Melody verse 2 [Mv2] = lyrics[M]')
-  lines.push('Harmony [H] = notes')
-  lines.push('Bass [B] = notes')
+  lines.push('parts [')
+  lines.push('  "Melody" [M]: notes,')
+  lines.push('  "Melody verse 1" [Mv1]: lyrics [M],')
+  lines.push('  "Melody verse 2" [Mv2]: lyrics [M],')
+  lines.push('  "Harmony" [H]: notes,')
+  lines.push('  "Bass" [B]: notes,')
+  lines.push('],')
   lines.push('')
-  lines.push('# score')
+  lines.push('score """')
 
   const firstMeasureLine = lines.length + 1
 
@@ -117,6 +121,7 @@ function buildSource(): { source: string; firstMeasureLine: number } {
   })
 
   lines.push(groups.join('\n\n'))
+  lines.push('""",')
   return { source: lines.join('\n'), firstMeasureLine }
 }
 
@@ -126,13 +131,13 @@ export async function loadFixture(
   const { source, firstMeasureLine } = buildSource()
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'system-part-union-packing-test.jianpu',
-        userFiles: { 'system-part-union-packing-test.jianpu': src },
+        active: 'system-part-union-packing-test.poentaro',
+        userFiles: { 'system-part-union-packing-test.poentaro': src },
         bin: {},
         fileIds: {
-          'system-part-union-packing-test.jianpu':
+          'system-part-union-packing-test.poentaro':
             'system-part-union-packing-test-id-001',
         },
       }),

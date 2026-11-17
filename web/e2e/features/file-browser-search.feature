@@ -1,7 +1,7 @@
 Feature: The file browser can be searched
 
   Background:
-    Given the file tree is seeded with files "Hymns/Advent/O Come.jianpu", "Hymns/Amazing.jianpu" and "Scratch.jianpu" and an empty folder "Empty" with "Scratch.jianpu" active
+    Given the file tree is seeded with files "Hymns/Advent/O Come.poentaro", "Hymns/Amazing.poentaro" and "Scratch.poentaro" and an empty folder "Empty" with "Scratch.poentaro" active
 
   Scenario: Typing filters the tree and keeps the folders leading to a match
     When the file tree app loads

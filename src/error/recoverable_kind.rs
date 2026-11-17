@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use super::DocumentSection;
 use crate::parser::parts_parser::{PartSettingRange, PART_SETTING_LIMITS};
 
@@ -12,6 +14,9 @@ pub enum RecoverableErrorKind {
     TimedPartMeasureMissing,
     /// Generic recoverable error with a free-form message.
     General { message: String },
+    /// Text that doesn't read as an anyx document: a syntax error, or an
+    /// expression of the wrong shape. That expression is left out.
+    AnyxInvalid { message: String },
     /// A note has both octave-up (`'`) and octave-down (`,`) markers — octave shift is zeroed.
     DurationMixedOctaveMarkers,
     /// An unexpected character was encountered while lexing a notes line — the line is dropped.
@@ -26,29 +31,9 @@ pub enum RecoverableErrorKind {
     ChordInvalidToken { message: String },
     /// An unexpected character in a note duration suffix — note is emitted with default duration.
     DurationUnexpectedChar { ch: char },
-    /// A metadata line does not contain `=` — the line is skipped.
-    MetadataMalformedLine { line: String },
-    /// A metadata field name is not recognized — the line is skipped.
-    MetadataUnknownField { field: String },
-    /// A metadata integer field could not be parsed — the field keeps its default.
-    MetadataInvalidInteger { field: String, value: String },
-    /// A metadata integer field parsed to zero — the field keeps its default.
-    MetadataMustBePositive { field: String },
-    /// A metadata boolean field is not `yes` or `no` — the field keeps its default.
-    MetadataInvalidBoolean { field: String, value: String },
-    /// A metadata `x y` integer-pair field is malformed — the field keeps its default.
-    MetadataInvalidIntegerPair { field: String, value: String },
-    /// A metadata enum field's value isn't one of its allowed literals — the field keeps its default.
-    MetadataInvalidEnum {
-        field: String,
-        value: String,
-        allowed: String,
-    },
-    /// A parts declaration line does not contain `=` — the line is skipped.
-    PartsMalformedLine { line: String },
     /// A parts abbreviation is used by more than one declaration — the duplicate is skipped.
     PartsDuplicateAbbreviation { abbrev: String },
-    /// The `# parts` section contains no valid declarations — document renders empty.
+    /// The `parts` section contains no valid declarations — document renders empty.
     PartsEmptySection,
     /// A display name before `(` is empty — the declaration is skipped.
     PartsEmptyDisplayName,
@@ -58,18 +43,22 @@ pub enum RecoverableErrorKind {
     PartsEmptyTrackName,
     /// The RHS of a parts declaration is not a recognized column spec — the declaration is skipped.
     PartsInvalidColumns { rhs: String },
-    /// A section header `# name` is not one of the three known sections — the section is skipped.
-    SectionUnknown { name: String },
-    /// A section appears more than once — the duplicate is skipped, first occurrence is used.
-    SectionDuplicate { section: DocumentSection },
     /// A required section is absent — an empty default is used.
     SectionMissing { section: DocumentSection },
+    /// Two `preset` sections share a name — the later one is skipped.
+    PresetDuplicateName { name: String },
+    /// A `preset` is named `"Default"`, which the preset menu uses for "no preset" — the section is skipped.
+    PresetReservedName { name: String },
+    /// A preset's `visible_parts` or `soloed_parts` names an abbreviation not declared in `parts` — the entry is ignored.
+    PresetUnknownPart { abbreviation: String },
     /// A lyrics line is empty — treated as `_` (no lyrics for this measure).
     LyricsLineEmpty,
     /// A lyrics slot has no paired notes track — lyrics are skipped.
     LyricsNoNotesTrack { abbrev: String },
     /// A bracketed lyric item holds zero or several syllables instead of exactly one.
     LyricsBracketNotOneSyllable { found: usize },
+    /// `字(…)` whose parentheses don't hold one pinyin syllable.
+    LyricsPinyinInvalid { text: String },
     /// A lyric bracket `(` / `（` has no closing bracket.
     LyricsBracketUnclosed,
     /// A closing lyric bracket `)` / `）` has no opening bracket.
@@ -82,6 +71,9 @@ pub enum RecoverableErrorKind {
         attacks: usize,
         first_syllable_takes_beat_one: bool,
     },
+    /// A part one lyric part is sung on doesn't take its syllables at the
+    /// times the part they're paired with (`paired`) does.
+    LyricsTargetsDiffer { paired: String, other: String },
     /// A part has a different number of measures than the first part.
     PartMeasureCountMismatch {
         part: String,
@@ -129,6 +121,27 @@ pub enum RecoverableErrorKind {
     PartsVolumeOutOfRange { volume: u16 },
     /// Per-part octave offset outside `PART_SETTING_LIMITS.octave_offset` — clamped to the valid range.
     PartsOctaveOffsetOutOfRange { offset: i16 },
+    /// A bare word on a `parts` line that isn't a known instrument — ignored.
+    PartsUnknownInstrument { name: String },
+    /// An instrument on a part that isn't `notes` or `follow[X]` — ignored.
+    PartsInstrumentOnNonNotesPart,
+    /// A voice on a lyric part under a `chords` part, whose syllables have no
+    /// A part that sings (its sound is a Chimera voice) with no lyric part
+    /// sung on it.
+    PartsSingingPartWithoutLyrics { part: String },
+    /// A part that sings with more than one lyric part sung on it.
+    PartsSingingPartWithSeveralLyrics {
+        part: String,
+        lyric_parts: Vec<String>,
+    },
+    /// A `range` option that isn't two pitches joined by `to` — ignored.
+    PartsMalformedRange,
+    /// A `range` bound that isn't a pitch like `C3` — the range is ignored.
+    PartsMalformedRangePitch { pitch: String },
+    /// A `range` whose low bound is above its high bound — ignored.
+    PartsRangeLowAboveHigh { lowest: String, highest: String },
+    /// A `range` on a part that isn't `notes` or `follow[X]` — ignored.
+    PartsRangeOnNonNotesPart,
     /// `r`/bare `_`/`=` used with no prior pitched note/chord to repeat — token ignored.
     RepeatNoPriorNote,
     /// A `{N:...}` tuplet has no standard implied ratio and no explicit `{N:M:...}` override.
@@ -143,35 +156,30 @@ impl RecoverableErrorKind {
             Self::MeasureDirectivesMissing => "internal invariant: measure_directives shorter than measure count".to_string(),
             Self::SourceSpanMissing { index } => format!("internal invariant: source_span missing for measure {index}"),
             Self::TimedPartMeasureMissing => "internal invariant: timed part measure missing".to_string(),
-            Self::General { message } => message.clone(),
+            Self::General { message } | Self::AnyxInvalid { message } => message.clone(),
             Self::LexUnexpectedChar { ch } => format!("unexpected character: {ch}"),
             Self::MeasureNoDataLines => "measure has no data lines; treating all parts as empty".to_string(),
             Self::DottedEighthNeedsSixteenth => "dotted eighth must be followed by a sixteenth note or rest".to_string(),
             Self::ChordExpectedDegreeDigit { ch } => format!("expected chord degree digit (0-7), got: {ch}"),
             Self::ChordInvalidToken { message } => message.clone(),
             Self::DurationUnexpectedChar { ch } => format!("unexpected character in note duration: {ch}"),
-            Self::MetadataMalformedLine { line } => format!("expected key = value, got: {line}"),
-            Self::MetadataUnknownField { field } => format!("unknown metadata field: {field}"),
-            Self::MetadataInvalidInteger { field, value } => format!("{field} must be a positive integer, got: {value}"),
-            Self::MetadataMustBePositive { field } => format!("{field} must be greater than zero"),
-            Self::MetadataInvalidBoolean { field, value } => format!("{field} must be 'yes' or 'no', got: {value}"),
-            Self::MetadataInvalidIntegerPair { field, value } => format!("{field} must be two integers separated by a space, e.g. \"0 0\", got: {value}"),
-            Self::MetadataInvalidEnum { field, value, allowed } => format!("{field} must be one of {allowed}, got: {value}"),
-            Self::PartsMalformedLine { line } => format!("expected track declaration, got: {line}"),
             Self::PartsDuplicateAbbreviation { abbrev } => format!("duplicate abbreviation: {abbrev}"),
-            Self::PartsEmptySection => "expected at least one track in # parts section".to_string(),
+            Self::PartsEmptySection => "expected at least one part in parts [...]".to_string(),
             Self::PartsEmptyDisplayName => "display name cannot be empty".to_string(),
             Self::PartsEmptyAbbreviation => "abbreviation cannot be empty".to_string(),
             Self::PartsEmptyTrackName => "track name cannot be empty".to_string(),
             Self::PartsInvalidColumns { rhs } => format!(
                 "invalid track columns '{rhs}': expected 'chords', 'notes', or 'follow[X]'"
             ),
-            Self::SectionUnknown { name } => format!("unknown section: # {name}"),
-            Self::SectionDuplicate { section } => format!("duplicate {} section", section.header()),
-            Self::SectionMissing { section } => format!("missing {} section", section.header()),
+            Self::SectionMissing { section } => format!("missing {}", section.header()),
+            Self::PresetDuplicateName { name } => format!("duplicate preset \"{name}\""),
+            Self::PresetReservedName { name } => format!("\"{name}\" is reserved for the song without a preset; choose another name"),
+            Self::PresetUnknownPart { abbreviation } => format!("no part with abbreviation '{abbreviation}' in parts [ ... ]"),
             Self::LyricsLineEmpty => "lyrics line cannot be empty; use '_' for no lyrics".to_string(),
             Self::LyricsNoNotesTrack { abbrev } => format!("lyrics line for '{abbrev}' has no matching notes track"),
             Self::LyricsBracketNotOneSyllable { found } => format!("a lyric bracket must hold exactly one syllable, found {found}"),
+            Self::LyricsPinyinInvalid { text } => format!("`{text}` is not a pinyin syllable"),
+            Self::LyricsTargetsDiffer { paired, other } => format!("[{other}] doesn't take its syllables at the same times as [{paired}] in this measure; the parts a lyric part is sung on must share their rhythm"),
             Self::LyricsBracketUnclosed => "lyric bracket is never closed".to_string(),
             Self::LyricsBracketUnmatched => "closing lyric bracket has no opening bracket".to_string(),
             Self::LyricsBracketCountMismatch { brackets, attacks, first_syllable_takes_beat_one } => format!(
@@ -195,26 +203,23 @@ impl RecoverableErrorKind {
             Self::TieOnRest => "~ cannot be applied to a rest; ~ ignored".to_string(),
             Self::DanglingTie => "~ has no following note to tie to; ~ ignored".to_string(),
             Self::TiePitchMismatch { expected, got } => format!("tied notes must have the same pitch and octave; expected {expected}, got {got}; ~ ignored"),
-            Self::PartsFollowUnknownTarget { target } => {
-                format!(
-                    "no part with abbreviation '{target}'; follow targets must match a part declared earlier in #parts"
-                )
-            }
-            Self::PartsLyricsInvalidTarget { target } => {
-                format!(
-                    "lyrics[{target}] must name a notes or chords part declared earlier in #parts"
-                )
-            }
-            Self::PartsFirstPartCannotFollow => {
-                "the first declared part cannot use follow[...]".to_string()
-            }
-            Self::PartsUnknownSoundfont { soundfont, suggestions } => {
-                Self::parts_unknown_soundfont_message(soundfont, suggestions)
-            }
+            Self::PartsFollowUnknownTarget { target } => format!("no part with abbreviation '{target}'; follow targets must match a part declared earlier in parts"),
+            Self::PartsLyricsInvalidTarget { target } => format!("lyrics [{target}] must name a notes or chords part declared earlier in parts; a lyric part sung on several parts names notes parts only"),
+            Self::PartsFirstPartCannotFollow => "the first declared part cannot use follow[...]".to_string(),
+            Self::PartsUnknownSoundfont { soundfont, suggestions } => Self::parts_unknown_soundfont_message(soundfont, suggestions),
             Self::PartsVolumeOutOfRange { volume } => Self::parts_volume_out_of_range_message(*volume),
-            Self::PartsOctaveOffsetOutOfRange { offset } => {
-                Self::parts_octave_offset_out_of_range_message(*offset)
-            }
+            Self::PartsOctaveOffsetOutOfRange { offset } => Self::parts_octave_offset_out_of_range_message(*offset),
+            Self::PartsUnknownInstrument { name } => format!(
+                "unknown instrument \"{name}\"; expected one of: {}",
+                crate::ast::parsed::RangeInstrument::ALL.iter().map(|instrument| instrument.keyword()).join(", ")
+            ),
+            Self::PartsInstrumentOnNonNotesPart => "only notes parts can name an instrument; ignored".to_string(),
+            Self::PartsSingingPartWithoutLyrics { part } => format!("part [{part}] sings, but no lyric part is sung on it; add one, like `\"Words\" [w] : lyrics [{part}]`, or give it a General MIDI sound, like `sound : 52`"),
+            Self::PartsSingingPartWithSeveralLyrics { part, lyric_parts } => format!("part [{part}] sings, but {} lyric parts are sung on it ({}); keep one, and write each verse as another line of it", lyric_parts.len(), lyric_parts.iter().map(|lyric_part| format!("[{lyric_part}]")).join(", ")),
+            Self::PartsMalformedRange => "a range is two pitches joined by `to`, like `range : C3 to G4`; ignored".to_string(),
+            Self::PartsMalformedRangePitch { pitch } => format!("`{pitch}` is not a pitch; write a letter, an optional `b` for flat and an octave, like `C3` or `Bb4`, or quote a sharp, like `\"F#3\"`; range ignored"),
+            Self::PartsRangeLowAboveHigh { lowest, highest } => format!("the range's low note {lowest} is above its high note {highest}; range ignored"),
+            Self::PartsRangeOnNonNotesPart => "only notes parts can have a range; ignored".to_string(),
             Self::RepeatNoPriorNote => "no prior note/chord to repeat; token ignored".to_string(),
             Self::TupletAmbiguousRatio { num } => format!("tuplet ratio for {num} is ambiguous; use {{{num}:M:...}} to specify explicitly"),
             Self::TupletNoteCountMismatch { expected, got } => format!("tuplet declared {expected} notes but got {got}; note count must match"),

@@ -1,5 +1,5 @@
 use crate::ast::grouped::GroupedChordNote;
-use crate::ast::parsed::{Extension, JianPuPitch, TriadQuality};
+use crate::ast::parsed::{Extension, NumberedPitch, TriadQuality};
 use crate::compiler::types::{ArcKind, SlurSpan};
 
 pub(super) struct PendingSlurOpen {
@@ -48,12 +48,12 @@ impl PartCrossState {
 
 #[derive(Clone, PartialEq)]
 pub(super) enum SlurKey {
-    Pitch(JianPuPitch),
+    Pitch(NumberedPitch),
     Chord {
-        degree: JianPuPitch,
+        degree: NumberedPitch,
         triad: TriadQuality,
         extension: Option<Extension>,
-        bass_degree: Option<JianPuPitch>,
+        bass_degree: Option<NumberedPitch>,
     },
     Rest,
 }

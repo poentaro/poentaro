@@ -148,7 +148,7 @@ Then(
     // `make_padding_row` in `src/grid_layout/layout_systems.rs`), so there's
     // no click-target/playback-cursor group to key off either. So "is there
     // a rest in this measure/row" has to be answered by matching literal
-    // text content `"0"` (jianpu never uses digit 0 for an actual note, only
+    // text content `"0"` (numbered notation never uses digit 0 for an actual note, only
     // for a rest) plus geometry: does any such glyph's center fall inside
     // the intersection of this measure's column (x-range, from the
     // `[data-tag="measure"]` click-target rect) and this part's row

@@ -4,7 +4,7 @@
 # safe to run in the background and tail the log). Ctrl-C / kill stops both.
 #
 # `cf` and `wrangler` are dev dependencies of crates/live-share-worker; run
-# `pnpm install` there once first. Under `vite` dev the web side talks to the
+# `just worktree-setup` once first. Under `vite` dev the web side talks to the
 # local worker on localhost:8787 (see `web/vite.config.ts`).
 dev:
     #!/usr/bin/env bash
@@ -25,12 +25,25 @@ dev-worker:
     #!/usr/bin/env bash
     set -euo pipefail
     cd crates/live-share-worker
-    pnpm exec cf d1 migrations apply "$(jq -r .d1DatabaseId deploy.json)" --local --dir ../../live-share-worker/migrations
+    scripts/apply-local-migrations.sh
     exec pnpm exec cf dev --port 8787
 
 [private]
 dev-web:
     cd web && pnpm dev
+
+# Readies a fresh checkout or worktree for `just dev` and the e2e tests:
+# installs both packages' dependencies, builds the wasm component and the
+# worker's generated types, builds the worker (so `cf dev` starts in
+# seconds rather than compiling first) and applies the local D1 migrations.
+worktree-setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    (cd web && pnpm install && pnpm run predev)
+    cd crates/live-share-worker
+    pnpm install
+    worker-build --release
+    scripts/apply-local-migrations.sh
 
 # Replaces the local D1 database's rows (what `just dev`'s worker serves)
 # with production's, so local dev runs against real accounts and files.
@@ -48,8 +61,7 @@ copy-prod-db force="":
       echo "Production data already copied at $(cat "$marker"); run \`just copy-prod-db force\` to copy again."
       exit 0
     fi
-    # Not `cf d1 migrations apply` here: it can hang after finishing (see
-    # `dev-worker`), and `just dev` already applies the migrations.
+    # `just dev` (or `just worktree-setup`) already applied the migrations.
     db=$(ls .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite 2>/dev/null | grep -v /metadata.sqlite || true)
     if [[ -z "$db" ]]; then
       echo "No local D1 database yet; start \`just dev\` once so it applies the migrations, then rerun." >&2
@@ -68,3 +80,71 @@ copy-prod-db force="":
     } | sqlite3 -bail "$db"
     date -u +%Y-%m-%dT%H:%M:%SZ > "$marker"
     for table in $tables; do echo "$table: $(sqlite3 "$db" "SELECT count(*) FROM \"$table\"")"; done
+
+# Creates the private Backblaze B2 bucket the daily production backup
+# (`.github/workflows/d1-backup.yml`) uploads to, and sets its retention from
+# `backup-lifecycle.json`. Safe to rerun: an existing bucket is left alone and
+# the rules are replaced wholesale. Needs a B2 key with `writeBuckets` in
+# `B2_APPLICATION_KEY_ID` / `B2_APPLICATION_KEY`; delete it afterwards.
+setup-backup-bucket:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd crates/live-share-worker
+    bucket=$(jq -r .backupBucket deploy.json)
+    b2() { uvx b2==5.0.0 "$@"; }
+    b2 bucket get "$bucket" >/dev/null 2>&1 || b2 bucket create --default-server-side-encryption SSE-B2 "$bucket" allPrivate
+    rules=()
+    while read -r rule; do rules+=(--lifecycle-rule "$rule"); done < <(jq -c '.[]' backup-lifecycle.json)
+    b2 bucket update "${rules[@]}" "$bucket" allPrivate
+
+# Replaces the local D1 database (what `just dev`'s worker serves) with a
+# production backup: `just restore-backup 2026-10-28` for a `daily/` dump,
+# `just restore-backup monthly/2026-10-01` for a monthly one. The previous
+# local database is kept next to it as `*.sqlite.before-restore`. Downloads
+# with the read-only B2 key from `B2_APPLICATION_KEY_ID` / `B2_APPLICATION_KEY`,
+# or else from the macOS Keychain (service `jianpu-backup-reader`, accounts
+# `keyID` and `applicationKey`).
+restore-backup key:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd crates/live-share-worker
+    db=$(ls .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite 2>/dev/null | grep -v /metadata.sqlite || true)
+    if [[ -z "$db" ]]; then
+      echo "No local D1 database yet; start \`just dev\` once so it creates one, then rerun." >&2
+      exit 1
+    fi
+    key="{{key}}"
+    [[ "$key" == */* ]] || key="daily/$key"
+    dir=$(mktemp -d)
+    trap 'rm -rf "$dir"' EXIT
+    export B2_APPLICATION_KEY_ID="${B2_APPLICATION_KEY_ID:-$(security find-generic-password -s jianpu-backup-reader -a keyID -w)}"
+    export B2_APPLICATION_KEY="${B2_APPLICATION_KEY:-$(security find-generic-password -s jianpu-backup-reader -a applicationKey -w)}"
+    uvx b2==5.0.0 file download --no-progress "b2://$(jq -r .backupBucket deploy.json)/$key.sql.gz" "$dir/backup.sql.gz"
+    gunzip "$dir/backup.sql.gz"
+    tables=$(sqlite3 "$db" "SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'sqlite_sequence' AND name NOT LIKE '\_cf\_%' ESCAPE '\'")
+    cp "$db" "$db.before-restore"
+    {
+      echo "PRAGMA foreign_keys = OFF; BEGIN;"
+      printf 'DROP TABLE "%s";\n' $tables
+      grep -v '^PRAGMA' "$dir/backup.sql"
+      echo "COMMIT;"
+    } | sqlite3 -bail "$db"
+    for table in $tables; do echo "$table: $(sqlite3 "$db" "SELECT count(*) FROM \"$table\"")"; done
+
+# Mutation-tests how lyric parts follow their target's notes (lyric slots,
+# the lyric cursor, and lyric spans) with cargo-mutants
+# (`cargo install cargo-mutants`). Reports go to ./mutants.out.
+mutants-lyrics:
+    cargo mutants --file src/lyric_slots.rs --file src/compiler/mod.rs --file src/lyric_spans.rs --re "LyricCursor|lyric_target_visible|advance_lyric_cursors|measure_lyric_slots|list_lyric_spans_from_source" -- --lib
+
+# Writes crates/poentaro-grammar/src/generated.rs again from the grammar,
+# crates/poentaro-grammar/poentaro.anyx, with the anyx-generator its
+# Cargo.toml pins.
+generate-parser:
+    UPDATE_GENERATED=1 cargo test -p poentaro-grammar --test generated
+
+# Writes crates/poentaro-protocol/src/generated.rs again from the schema,
+# crates/poentaro-protocol/schema/, with the
+# anyx-protocol-generate its Cargo.toml pins.
+generate-protocol:
+    UPDATE_GENERATED=1 cargo test -p poentaro-protocol --test generated

@@ -1,12 +1,23 @@
 use crate::error::{IrrecoverableError, IrrecoverableErrorKind, Span};
 use hound::{SampleFormat, WavSpec, WavWriter};
+use midly::num::u4;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use oxisynth::{MidiEvent, SoundFont, Synth, SynthDescriptor};
 use std::io::Cursor;
 
-const SAMPLE_RATE: u32 = 44100;
+pub(crate) const SAMPLE_RATE: u32 = 44100;
 /// Target peak level before encoding (0.95 ≈ −0.4 dBFS), matching typical mastered music.
 const TARGET_PEAK: f32 = 0.95;
+
+#[path = "wav_loudness.rs"]
+mod wav_loudness;
+use wav_loudness::balancing_expression;
+
+/// The General MIDI drum channel, whose program picks a kit rather than an
+/// instrument, so it gets no loudness balancing.
+const GM_PERCUSSION_CHANNEL: u8 = 9;
+/// MIDI controller 11 (expression), which the loudness balancing uses.
+const EXPRESSION_CONTROLLER: u8 = 11;
 
 #[path = "wav_trim.rs"]
 mod wav_trim;
@@ -14,6 +25,10 @@ use wav_trim::trim_and_fade;
 pub use wav_trim::TrimWindow;
 
 #[cfg(feature = "mp3")]
+#[path = "wav_vocals.rs"]
+mod wav_vocals;
+use wav_vocals::mix_vocals;
+
 #[path = "wav_mp3.rs"]
 mod wav_mp3;
 #[cfg(feature = "mp3")]
@@ -39,8 +54,8 @@ fn init_synth(sf2_bytes: &[u8]) -> Result<Synth, IrrecoverableError> {
     Ok(synth)
 }
 
-fn handle_midi_message(synth: &mut Synth, channel: u8, message: &MidiMessage) {
-    let ch = channel;
+fn handle_midi_message(synth: &mut Synth, channel: u4, message: &MidiMessage) {
+    let ch = channel.as_int();
     match message {
         MidiMessage::ProgramChange { program } => {
             synth
@@ -49,6 +64,15 @@ fn handle_midi_message(synth: &mut Synth, channel: u8, message: &MidiMessage) {
                     program_id: program.as_int(),
                 })
                 .ok();
+            if ch != GM_PERCUSSION_CHANNEL {
+                synth
+                    .send_event(MidiEvent::ControlChange {
+                        channel: ch,
+                        ctrl: EXPRESSION_CONTROLLER,
+                        value: balancing_expression(program.as_int()),
+                    })
+                    .ok();
+            }
         }
         MidiMessage::NoteOn { key, vel } => {
             synth
@@ -99,7 +123,7 @@ fn render_track(
                 micros_per_beat = t.as_int();
             }
             TrackEventKind::Midi { channel, message } => {
-                handle_midi_message(synth, channel.as_int(), message);
+                handle_midi_message(synth, *channel, message);
             }
             _ => {}
         }
@@ -114,6 +138,7 @@ fn render_score_to_samples(
     midi_bytes: &[u8],
     sf2_bytes: &[u8],
     trim: Option<TrimWindow>,
+    vocals: &[f32],
 ) -> Result<(Vec<f32>, Vec<f32>), IrrecoverableError> {
     let smf = Smf::parse(midi_bytes).map_err(|_| {
         IrrecoverableError::new(IrrecoverableErrorKind::WavInvalidMidiBytes {
@@ -140,6 +165,8 @@ fn render_score_to_samples(
     // Render 1 second of tail so reverb fully decays
     render_samples(&mut synth, SAMPLE_RATE as usize, &mut all_l, &mut all_r);
 
+    mix_vocals(&mut all_l, &mut all_r, vocals);
+
     if let Some(trim) = trim {
         trim_and_fade(&mut all_l, &mut all_r, trim);
     }
@@ -148,12 +175,16 @@ fn render_score_to_samples(
     Ok((all_l, all_r))
 }
 
+/// Synthesize a score to WAV bytes. `vocals` is a mono track at
+/// [`SAMPLE_RATE`] mixed in the centre (see `mix_vocals`); empty when
+/// nothing sings.
 pub fn write_wav(
     midi_bytes: &[u8],
     sf2_bytes: &[u8],
     trim: Option<TrimWindow>,
+    vocals: &[f32],
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    let (all_l, all_r) = render_score_to_samples(midi_bytes, sf2_bytes, trim)?;
+    let (all_l, all_r) = render_score_to_samples(midi_bytes, sf2_bytes, trim, vocals)?;
     encode_wav(&all_l, &all_r)
 }
 
@@ -168,8 +199,9 @@ pub fn write_mp3(
     midi_bytes: &[u8],
     sf2_bytes: &[u8],
     trim: Option<TrimWindow>,
+    vocals: &[f32],
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    let (all_l, all_r) = render_score_to_samples(midi_bytes, sf2_bytes, trim)?;
+    let (all_l, all_r) = render_score_to_samples(midi_bytes, sf2_bytes, trim, vocals)?;
     encode_mp3(&all_l, &all_r)
 }
 
@@ -214,7 +246,7 @@ pub fn write_preview_wav(
 
 /// Percussion channel/program matching [`crate::midi::mod`]'s GM Standard Kit preamble, so
 /// the preview sounds like the same kit that renders in exported audio.
-const PERCUSSION_PREVIEW_CHANNEL: u8 = 9;
+const PERCUSSION_PREVIEW_CHANNEL: u8 = GM_PERCUSSION_CHANNEL;
 const GM_STANDARD_KIT_PROGRAM: u8 = 0;
 
 pub fn write_percussion_preview_wav(
@@ -256,6 +288,10 @@ pub fn write_percussion_preview_wav(
     normalize_peak(&mut all_l, &mut all_r);
     encode_wav(&all_l, &all_r)
 }
+
+#[cfg(test)]
+#[path = "wav_loudness_tests.rs"]
+mod wav_loudness_tests;
 
 #[cfg(test)]
 #[path = "wav_percussion_tests.rs"]
@@ -332,66 +368,5 @@ fn encode_wav(l: &[f32], r: &[f32]) -> Result<Vec<u8>, IrrecoverableError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ticks_to_samples_quarter_note_at_120bpm() {
-        // 120 BPM = 500_000 µs/beat, TPQ = 480
-        // quarter note = 480 ticks = 0.5 s = 22050 samples @ 44100 Hz
-        assert_eq!(ticks_to_samples(480, 480, 500_000), 22050);
-    }
-
-    #[test]
-    fn ticks_to_samples_half_note_at_120bpm() {
-        assert_eq!(ticks_to_samples(960, 480, 500_000), 44100);
-    }
-
-    #[test]
-    fn encode_wav_has_riff_wave_header() {
-        let l = vec![0.0f32; 44100];
-        let r = vec![0.0f32; 44100];
-        let bytes = encode_wav(&l, &r).unwrap();
-        assert_eq!(&bytes[0..4], b"RIFF");
-        assert_eq!(&bytes[8..12], b"WAVE");
-    }
-
-    #[test]
-    fn normalize_peak_scales_to_target() {
-        let mut left = vec![0.1f32, -0.2, 0.05];
-        let mut right = vec![0.15f32, -0.1, 0.3];
-        normalize_peak(&mut left, &mut right);
-        let peak = left
-            .iter()
-            .chain(right.iter())
-            .map(|sample| sample.abs())
-            .fold(0.0f32, f32::max);
-        assert!((peak - TARGET_PEAK).abs() < 1e-6);
-    }
-
-    #[test]
-    fn normalize_peak_leaves_silence_unchanged() {
-        let mut left = vec![0.0f32; 4];
-        let mut right = vec![0.0f32; 4];
-        normalize_peak(&mut left, &mut right);
-        assert!(left.iter().all(|sample| *sample == 0.0));
-        assert!(right.iter().all(|sample| *sample == 0.0));
-    }
-
-    #[test]
-    fn encode_wav_stereo_16bit_44100() {
-        let l = vec![0.0f32; 100];
-        let r = vec![0.0f32; 100];
-        let bytes = encode_wav(&l, &r).unwrap();
-        // WAV spec chunk: channels=2, sample_rate=44100, bits=16
-        // bytes 22-23: channels (little-endian u16)
-        assert_eq!(u16::from_le_bytes([bytes[22], bytes[23]]), 2);
-        // bytes 24-27: sample rate (little-endian u32)
-        assert_eq!(
-            u32::from_le_bytes([bytes[24], bytes[25], bytes[26], bytes[27]]),
-            44100
-        );
-        // bytes 34-35: bits per sample (little-endian u16)
-        assert_eq!(u16::from_le_bytes([bytes[34], bytes[35]]), 16);
-    }
-}
+#[path = "wav_tests.rs"]
+mod tests;

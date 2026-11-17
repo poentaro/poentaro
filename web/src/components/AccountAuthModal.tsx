@@ -45,6 +45,7 @@ export function AccountAuthModal({
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<ShownFailure | null>(null)
+  const [traceId, setTraceId] = useState<string | null>(null)
   const [hadWrongPassword, setHadWrongPassword] = useState(false)
   const lockout = useLockoutCountdown()
 
@@ -55,6 +56,7 @@ export function AccountAuthModal({
     setPassword('')
     setConfirm('')
     setFailure(null)
+    setTraceId(null)
     setHadWrongPassword(false)
   }, [open])
 
@@ -63,6 +65,7 @@ export function AccountAuthModal({
     setPassword('')
     setConfirm('')
     setFailure(null)
+    setTraceId(null)
     setHadWrongPassword(false)
   }
 
@@ -92,6 +95,7 @@ export function AccountAuthModal({
     if (busy || lockout.seconds !== null) return
     if (mode === 'sign-up' && password !== confirm) {
       setFailure({ kind: 'message', message: "The passwords don't match." })
+      setTraceId(null)
       return
     }
     setBusy(true)
@@ -106,6 +110,7 @@ export function AccountAuthModal({
       return
     }
     showFailure(result.failure)
+    setTraceId(result.traceId)
   }
 
   const locked = mode === 'sign-in' && lockout.seconds !== null
@@ -121,7 +126,7 @@ export function AccountAuthModal({
         {locked && lockout.seconds !== null ? (
           <LockoutBanner seconds={lockout.seconds} />
         ) : failure?.kind === 'email-taken' ? (
-          <ErrorBanner>
+          <ErrorBanner traceId={traceId}>
             An account with this email already exists.{' '}
             <button
               type="button"
@@ -132,7 +137,7 @@ export function AccountAuthModal({
             </button>
           </ErrorBanner>
         ) : failure ? (
-          <ErrorBanner>{failure.message}</ErrorBanner>
+          <ErrorBanner traceId={traceId}>{failure.message}</ErrorBanner>
         ) : null}
         <Field
           id="account-email"

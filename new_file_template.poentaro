@@ -1,0 +1,6 @@
+metadata { title "Untitled", author "" },
+
+parts ["Melody": notes],
+
+score """
+    """,

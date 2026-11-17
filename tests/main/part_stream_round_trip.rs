@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use jianpu_generator::part_stream::{
+use poentaro::part_stream::{
     apply_part_stream, extract_part_stream, list_streamable_parts, StreamDiagnosticSeverity,
     StreamablePartKind,
 };
@@ -15,7 +15,7 @@ fn repository_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
-fn jianpu_files_in(directory: &Path, recursive: bool) -> Vec<PathBuf> {
+fn poentaro_files_in(directory: &Path, recursive: bool) -> Vec<PathBuf> {
     let Ok(entries) = std::fs::read_dir(directory) else {
         return Vec::new();
     };
@@ -24,10 +24,10 @@ fn jianpu_files_in(directory: &Path, recursive: bool) -> Vec<PathBuf> {
         .map(|entry| entry.path())
         .flat_map(|path| {
             if path.is_dir() && recursive {
-                jianpu_files_in(&path, true)
+                poentaro_files_in(&path, true)
             } else if path
                 .extension()
-                .is_some_and(|extension| extension == "jianpu")
+                .is_some_and(|extension| extension == "poentaro")
             {
                 vec![path]
             } else {
@@ -41,9 +41,9 @@ fn jianpu_files_in(directory: &Path, recursive: bool) -> Vec<PathBuf> {
 
 fn corpus() -> Vec<PathBuf> {
     let root = repository_root();
-    let mut files = jianpu_files_in(&root, false);
+    let mut files = poentaro_files_in(&root, false);
     for directory in ["fixtures", "scores", "demo"] {
-        files.extend(jianpu_files_in(&root.join(directory), true));
+        files.extend(poentaro_files_in(&root.join(directory), true));
     }
     files
 }
@@ -76,7 +76,7 @@ fn round_trip_failure(source: &str, abbreviation: &str) -> Option<String> {
 #[test]
 fn every_eligible_part_in_the_repository_round_trips_unchanged() {
     let files = corpus();
-    assert!(!files.is_empty(), "no .jianpu files found");
+    assert!(!files.is_empty(), "no .poentaro files found");
     let mut checked_part_count = 0;
     let mut checked_kinds = Vec::new();
     let mut failures = Vec::new();

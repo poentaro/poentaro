@@ -1,4 +1,4 @@
-use super::write_midi_for_measure_range;
+use super::write_midi_for_measure_range_with_metronome;
 use crate::audio_source::MeasureRangeSelection;
 use midly::{MidiMessage, Smf, TrackEventKind};
 
@@ -32,7 +32,7 @@ fn note_on_events(midi_bytes: &[u8]) -> Vec<(u8, u8)> {
         .collect()
 }
 
-/// `# sequence` is `X, Y(-b), Y, X`: part `b`'s note (`5`) is omitted from
+/// `sequence` is `X, Y(-b), Y, X`: part `b`'s note (`5`) is omitted from
 /// the first `Y` occurrence but present on the second. Selecting the
 /// `Y(-b), Y` sequence-entry range's first measure is exactly the occurrence
 /// that omits `b` — regression coverage for the bug where that measure being
@@ -40,20 +40,21 @@ fn note_on_events(midi_bytes: &[u8]) -> Vec<(u8, u8)> {
 /// its note on the *second* `Y` occurrence fell back to GM channel default
 /// (Acoustic Grand Piano).
 fn fixture() -> &'static str {
-    concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\n",
-        "a = notes \"0: Acoustic Grand Piano\"\n",
-        "b = notes \"52: Choir Aahs\"\n\n",
-        "# sequence\n",
-        "X, Y(-b), Y, X\n\n",
-        "# score\n",
-        "label=\"X\"\n",
-        "[a]1\n\n",
-        "label=\"Y\"\n",
-        "[a]2\n",
-        "[b]5\n",
-    )
+    r#"metadata { title "t", author "a" },
+
+parts ["a": notes { sound 0 }, "b": notes { sound 52 }],
+
+sequence ["X", "Y" WITHOUT [b], "Y", "X"],
+
+score """
+    label="X"
+    [a]1
+
+    label="Y"
+    [a]2
+    [b]5
+    """,
+"#
 }
 
 fn write_midi_for_sequence_entry_range(source: &str, start: usize, end: usize) -> Vec<u8> {
@@ -73,7 +74,8 @@ fn write_midi_for_sequence_entry_range(source: &str, start: usize, end: usize) -
         selection.sequence_entry_range,
     )
     .unwrap();
-    write_midi_for_measure_range(&score, resolved_start, resolved_end).unwrap()
+    write_midi_for_measure_range_with_metronome(&score, resolved_start, resolved_end, false)
+        .unwrap()
 }
 
 #[test]

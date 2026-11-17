@@ -7,10 +7,17 @@ fn score_from(source: &str) -> crate::ast::grouped::Score {
     group(doc).unwrap()
 }
 
-/// Minimal one-part (notes) document. `score_content` is everything after `# score\n`.
+/// Minimal one-part (notes) document. `score_content` is everything after `score\n`.
 fn notes_doc(score_content: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nS = notes\n\n# score\n{score_content}"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["S": notes],
+
+score """
+    {score_content}
+    """,
+"#
     )
 }
 
@@ -187,7 +194,16 @@ fn merge_duplicate_measures_across_parts_change_interrupts_a_rest_run() {
 
 #[test]
 fn hiding_a_track_lets_plain_rest_measures_from_hidden_track_collapse() {
-    let source = "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nm = chords\nn = notes\n\n# score\n[n] 1\n\n[n] 1\n";
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["m": chords, "n": notes],
+
+score """
+    [n] 1
+
+    [n] 1
+    """,
+"#;
     let mut score = {
         let doc = parse(source, "test", &[]).unwrap();
         group(doc).unwrap()
@@ -209,7 +225,17 @@ fn soloing_a_part_with_a_labeled_first_measure_still_collapses_its_rest_run() {
     // soloing it (filtering everything else out) turns both measures into
     // plain rests for [a1]. The label on measure 1 is a section marker for the
     // score as a whole, not a reason [a1]'s own rest run shouldn't collapse.
-    let source = "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nAlto 1[a1] = notes\nSnare [sn] = percussion\n\n# score\nlabel=\"Intro\"\n[sn]x\n\n[sn] x\n";
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["Alto 1" [a1]: notes, "Snare" [sn]: percussion],
+
+score """
+    label="Intro"
+    [sn]x
+
+    [sn] x
+    """,
+"#;
     let mut score = {
         let doc = parse(source, "test", &[]).unwrap();
         group(doc).unwrap()
@@ -237,7 +263,19 @@ fn slur_span_measure_indices_are_remapped_after_a_hidden_track_causes_merging() 
     // `SlurSpan` (originally recorded against raw measure index 2) must be
     // remapped to block index 1, not left pointing at the stale pre-merge
     // measure index.
-    let source = "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\na = notes\nb = chords\n\n# score\n[a] 1\n\n[a]1\n\n[a]1\n[b] 6m __~_6m__0_\n";
+    let source = r#"metadata { title "t", author "a" },
+
+parts ["a": notes, "b": chords],
+
+score """
+    [a] 1
+
+    [a]1
+
+    [a]1
+    [b] 6m __~_6m__0_
+    """,
+"#;
     let mut score = {
         let doc = parse(source, "test", &[]).unwrap();
         group(doc).unwrap()

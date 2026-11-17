@@ -3,7 +3,7 @@
 // `src/syncedShareUrl.ts`) rather than in a `#` fragment, because browsers
 // don't send fragments in requests and a link-preview crawler (WhatsApp,
 // Slack, ...) -- which never executes JS -- would otherwise only ever see the
-// static shell's generic "簡譜" title. This function reads the param, fetches
+// static shell's generic "Poentaro" title. This function reads the param, fetches
 // the share's current filename from `live-share-worker`, and rewrites the
 // HTML before it leaves the edge. The client reads the same param.
 // (Legacy `/#synced=` links never reach this code path; they keep the
@@ -53,7 +53,7 @@ export const onRequestGet: PagesFunction = async (context) => {
     .catch(() => undefined)
   if (!doc || doc.ended || !doc.filename) return response
 
-  const title = `${doc.filename.replace(/\.jianpu$/, '')} - 簡譜`
+  const title = `${doc.filename.replace(/\.poentaro$/, '')} - Poentaro`
 
   // Rewrites the static shell's existing tags in place rather than
   // appending new ones: per the Open Graph spec, a parser takes the first
@@ -68,14 +68,6 @@ export const onRequestGet: PagesFunction = async (context) => {
     .on('meta[property="og:title"]', {
       element(element) {
         element.setAttribute('content', title)
-      },
-    })
-    .on('meta[property="og:description"]', {
-      element(element) {
-        element.setAttribute(
-          'content',
-          `${doc.filename} — a jianpu (numbered musical notation) score`,
-        )
       },
     })
     .transform(response)

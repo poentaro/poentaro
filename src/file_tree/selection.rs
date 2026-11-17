@@ -55,7 +55,7 @@ pub struct SelectionMovePlan {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectionDeleteSummary {
     pub units: Vec<SelectionUnit>,
-    /// One line per unit, e.g. `Hymns/Amazing.jianpu` or `Hymns/Advent/ (2 files)`.
+    /// One line per unit, e.g. `Hymns/Amazing.poentaro` or `Hymns/Advent/ (2 files)`.
     pub lines: Vec<String>,
     pub message: String,
     /// What deleting does to the live links involved; `None` when nothing is shared.

@@ -1,4 +1,4 @@
-import type { ClickableElementId } from '../jianpuWasm'
+import type { ClickableElementId } from '../poentaroWasm'
 import type { LyricLabelHit, PartLabelHit } from './previewLabelSelection'
 import {
   getLyricLabelAtPoint,
@@ -75,8 +75,8 @@ export function lyricLabelClickableElementId(
  * `resolve_selection_range_response`'s label-mixed arms in
  * `selection_range.rs`, added per
  * `PLAN-clickable-element-id-selection.md`'s Status section), a second click
- * landing on *any* of them — not just the anchor's own type — reaches wasm
- * instead of falling straight to a mode's pixel-marquee fallback. The order
+ * landing on *any* of them — not just the anchor's own type — reaches wasm.
+ * The order
  * mirrors `handleAnchorClick`'s own hit-test priority (label checks before
  * the plain note/lyric checks), except `Note`/`Lyric` are tried first here
  * since they're both mode's own most common `current` target and cheaper to

@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import type { ClickableElementId } from '../jianpuWasm'
+import type { ClickableElementId } from '../poentaroWasm'
 import type { PreviewAnchorState } from './previewAnchorState'
 import {
   fireCommit,

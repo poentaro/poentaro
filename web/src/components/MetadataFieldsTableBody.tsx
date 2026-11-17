@@ -4,7 +4,7 @@ import type {
   MetadataFlagKey,
   MetadataNumberKey,
   MetadataTextKey,
-} from '../jianpuWasm'
+} from '../poentaroWasm'
 import { metadataFieldHelp } from '../utils/metadataFieldHelp'
 import {
   CheckboxFieldRow,
@@ -16,7 +16,16 @@ export interface MetadataFieldsTableBodyProps {
   metadata: MetadataFields
   showHelp: (label: string, help: string) => void
   onFieldChange: (edit: MetadataEdit) => void
+  /** Editing a preset: unset fields show the song's `metadata` values,
+   * and set ones can be reset to them. */
+  editingPreset: boolean
 }
+
+const flagDefaults = {
+  'merge-duplicate-measures-across-parts': 'mergeDuplicateMeasuresAcrossParts',
+  'hide-resting-parts': 'hideRestingParts',
+  'hide-system-dividers': 'hideSystemDividers',
+} as const satisfies Record<MetadataFlagKey, string>
 
 /** An input's text as an optional value: empty clears the field. */
 export function optionalText(value: string): string | undefined {
@@ -38,6 +47,7 @@ export function MetadataFieldsTableBody({
   metadata,
   showHelp,
   onFieldChange,
+  editingPreset,
 }: MetadataFieldsTableBodyProps) {
   const d = metadata.defaults
   const setText = (key: MetadataTextKey) => (value: string) =>
@@ -47,6 +57,18 @@ export function MetadataFieldsTableBody({
   const setFlag =
     (key: MetadataFlagKey) => (e: React.ChangeEvent<HTMLInputElement>) =>
       onFieldChange({ tag: 'flag', val: { key, value: e.target.checked } })
+  const resetIfSet = (value: unknown, edit: MetadataEdit) =>
+    editingPreset && value != null ? () => onFieldChange(edit) : undefined
+  const resetText = (key: MetadataTextKey, value: string | undefined) =>
+    resetIfSet(value, { tag: 'text', val: { key, value: undefined } })
+  const resetNumber = (key: MetadataNumberKey, value: number | undefined) =>
+    resetIfSet(value, { tag: 'number', val: { key, value: undefined } })
+  const flagRow = (key: MetadataFlagKey, value: boolean | undefined) => ({
+    checked: value ?? d[flagDefaults[key]],
+    inherited: editingPreset && value == null,
+    onReset: resetIfSet(value, { tag: 'flag', val: { key, value: undefined } }),
+    onChange: setFlag(key),
+  })
 
   return (
     <tbody>
@@ -55,6 +77,8 @@ export function MetadataFieldsTableBody({
         help={metadataFieldHelp.title}
         onShowHelp={showHelp}
         value={metadata.title ?? ''}
+        placeholder={d.title}
+        onReset={resetText('title', metadata.title)}
         onChange={setText('title')}
       />
       <TextFieldRow
@@ -62,6 +86,8 @@ export function MetadataFieldsTableBody({
         help={metadataFieldHelp.subtitle}
         onShowHelp={showHelp}
         value={metadata.subtitle ?? ''}
+        placeholder={d.subtitle}
+        onReset={resetText('subtitle', metadata.subtitle)}
         onChange={setText('subtitle')}
       />
       <TextFieldRow
@@ -69,6 +95,8 @@ export function MetadataFieldsTableBody({
         help={metadataFieldHelp.author}
         onShowHelp={showHelp}
         value={metadata.author ?? ''}
+        placeholder={d.author}
+        onReset={resetText('author', metadata.author)}
         onChange={setText('author')}
       />
       <NumberFieldRow
@@ -77,6 +105,7 @@ export function MetadataFieldsTableBody({
         onShowHelp={showHelp}
         value={metadata.rowHeight ?? ''}
         placeholder={String(d.rowHeight)}
+        onReset={resetNumber('row-height', metadata.rowHeight)}
         onChange={setNumber('row-height')}
       />
       <NumberFieldRow
@@ -85,6 +114,10 @@ export function MetadataFieldsTableBody({
         onShowHelp={showHelp}
         value={metadata.maxMeasuresPerSystem ?? ''}
         placeholder={String(d.maxMeasuresPerSystem)}
+        onReset={resetNumber(
+          'max-measures-per-system',
+          metadata.maxMeasuresPerSystem,
+        )}
         onChange={setNumber('max-measures-per-system')}
       />
       <NumberFieldRow
@@ -93,6 +126,7 @@ export function MetadataFieldsTableBody({
         onShowHelp={showHelp}
         value={metadata.noteNumberWidth ?? ''}
         placeholder={String(d.noteNumberWidth)}
+        onReset={resetNumber('note-number-width', metadata.noteNumberWidth)}
         onChange={setNumber('note-number-width')}
       />
       <NumberFieldRow
@@ -101,6 +135,7 @@ export function MetadataFieldsTableBody({
         onShowHelp={showHelp}
         value={metadata.partsListColumns ?? ''}
         placeholder={String(d.partsListColumns)}
+        onReset={resetNumber('parts-list-columns', metadata.partsListColumns)}
         onChange={setNumber('parts-list-columns')}
       />
       <NumberFieldRow
@@ -109,31 +144,38 @@ export function MetadataFieldsTableBody({
         onShowHelp={showHelp}
         value={metadata.partLabelWidthPt ?? ''}
         placeholder={String(d.partLabelWidthPt)}
+        onReset={resetNumber('part-label-width-pt', metadata.partLabelWidthPt)}
         onChange={setNumber('part-label-width-pt')}
+      />
+      <NumberFieldRow
+        label="Page Margin"
+        help={metadataFieldHelp['page-margin-pt']}
+        onShowHelp={showHelp}
+        value={metadata.pageMarginPt ?? ''}
+        placeholder={String(d.pageMarginPt)}
+        onReset={resetNumber('page-margin-pt', metadata.pageMarginPt)}
+        onChange={setNumber('page-margin-pt')}
       />
       <CheckboxFieldRow
         label="Merge Duplicate Measures Across Parts"
         help={metadataFieldHelp['merge-duplicate-measures-across-parts']}
         onShowHelp={showHelp}
-        checked={
-          metadata.mergeDuplicateMeasuresAcrossParts ??
-          d.mergeDuplicateMeasuresAcrossParts
-        }
-        onChange={setFlag('merge-duplicate-measures-across-parts')}
+        {...flagRow(
+          'merge-duplicate-measures-across-parts',
+          metadata.mergeDuplicateMeasuresAcrossParts,
+        )}
       />
       <CheckboxFieldRow
         label="Hide Resting Parts"
         help={metadataFieldHelp['hide-resting-parts']}
         onShowHelp={showHelp}
-        checked={metadata.hideRestingParts ?? d.hideRestingParts}
-        onChange={setFlag('hide-resting-parts')}
+        {...flagRow('hide-resting-parts', metadata.hideRestingParts)}
       />
       <CheckboxFieldRow
         label="Hide System Dividers"
         help={metadataFieldHelp['hide-system-dividers']}
         onShowHelp={showHelp}
-        checked={metadata.hideSystemDividers ?? d.hideSystemDividers}
-        onChange={setFlag('hide-system-dividers')}
+        {...flagRow('hide-system-dividers', metadata.hideSystemDividers)}
       />
       <TextFieldRow
         label="Directive Row Offset (x y)"
@@ -141,6 +183,10 @@ export function MetadataFieldsTableBody({
         onShowHelp={showHelp}
         value={metadata.directiveRowOffset ?? ''}
         placeholder={d.directiveRowOffset}
+        onReset={resetIfSet(metadata.directiveRowOffset, {
+          tag: 'directive-row-offset',
+          val: undefined,
+        })}
         onChange={(value) =>
           onFieldChange({
             tag: 'directive-row-offset',

@@ -36,7 +36,7 @@ struct Underline {
 }
 
 fn render_single_page(score: &str) -> String {
-    render_svgs_from_source(score, "test.jianpu", &[])
+    render_svgs_from_source(score, "test.poentaro", &[])
         .expect("should render")
         .svgs
         .remove(0)
@@ -76,15 +76,14 @@ fn lowest_underline_under(underlines: &[Underline], x: f32) -> Option<f32> {
 #[test]
 fn below_octave_dots_hang_beneath_the_notes_own_underlines() {
     let svg = render_single_page(
-        r#"# metadata
-title = "t"
+        r#"metadata { title "t" },
 
-# parts
-S = notes
+parts ["S": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1, 5,_ 6,_ 5,= 6,= 7,_ 1
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1, 5,_ 6,_ 5,= 6,= 7,_ 1
+    """,
 "#,
     );
     let dots = octave_dots(&svg);

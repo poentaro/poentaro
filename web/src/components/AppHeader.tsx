@@ -1,10 +1,11 @@
 import type { FileStoreState } from '../fileStore'
 import { sortedBinNames } from '../fileStore'
+import type { CloudLoadFailure } from '../hooks/useCloudStoreLoader'
 import type { FolderShares } from '../hooks/useFolderShares'
 import type { SharedFolderViewer } from '../hooks/useSharedFolderViewer'
 import type { DisplaySaveStatus } from '../hooks/useStorageBackend'
 import type { SyncedShareViewerStatus } from '../hooks/useSyncedShareViewer'
-import type { SelectionMove, SelectionUnit } from '../jianpuWasm'
+import type { SelectionMove, SelectionUnit } from '../poentaroWasm'
 import type { SharePayload } from '../shareUrl'
 import type { SyncedShareFailure } from '../syncedShare/errors'
 import {
@@ -18,9 +19,8 @@ import { PlayAllButton } from './PlayAllButton'
 import { PlayFromCurrentMeasureButton } from './PlayFromCurrentMeasureButton'
 import { PlayMeasureButton } from './PlayMeasureButton'
 import { ProfileControl } from './ProfileControl'
+import { ShareBanner } from './ShareBanner'
 import { SharedFolderSwitcher } from './SharedFolderSwitcher'
-import { SharedPreviewBanner } from './SharedPreviewBanner'
-import { SyncedShareBanner } from './SyncedShareBanner'
 import { SyncedShareErrorDialog } from './SyncedShareErrorDialog'
 
 interface MeasureRange {
@@ -28,7 +28,7 @@ interface MeasureRange {
   end: number
 }
 
-interface SyncedShareHeaderProps {
+export interface SyncedShareHeaderProps {
   sharedPreview: SharePayload | null
   onImportShared: () => void
   onDismissShared: () => void
@@ -41,6 +41,7 @@ interface SyncedShareHeaderProps {
   viewerStatus: SyncedShareViewerStatus
   viewerFilename: string | null
   onImportSyncedShare: () => void
+  onDiscardSyncedShare: () => void
   /** Whether the active file can have a live link (cloud files only) --
    * see `useSyncedShareOwner.ts`. */
   canSync: boolean
@@ -58,6 +59,8 @@ interface SyncedShareHeaderProps {
   onSignIn: () => void
   /** Opens the change password dialog. */
   onChangePassword: () => void
+  /** Opens the dialog that connects an AI agent with an API key. */
+  onOpenApiKeys: () => void
   /** Ends this browser's session, stopping any active sync first. */
   onSignOut: () => void
   /** Drives the full-screen error dialog (task 9) -- non-null while a
@@ -109,7 +112,8 @@ interface AppHeaderProps {
   deletingFileName?: string | null
   duplicatingFile?: boolean
   renamingFileName?: string | null
-  isLoadingCloud?: boolean
+  isLoadingCloud: boolean
+  cloudLoadFailure?: CloudLoadFailure | null
   onOpenBin: () => void
   onOpenSyncPanel?: () => void
   onOpenHistory?: () => void
@@ -183,6 +187,7 @@ export function AppHeader({
   duplicatingFile,
   renamingFileName,
   isLoadingCloud,
+  cloudLoadFailure,
   onOpenBin,
   onOpenSyncPanel,
   onOpenHistory,
@@ -223,31 +228,7 @@ export function AppHeader({
   } = syncedShare
   return (
     <header className="app-header">
-      {sharedFolder?.kind === 'static' ? (
-        <SharedPreviewBanner
-          folderName={sharedFolder.folderName}
-          onImport={sharedFolder.onImport}
-          onDiscard={sharedFolder.onDiscard}
-        />
-      ) : sharedPreview ? (
-        <SharedPreviewBanner
-          onImport={syncedShare.onImportShared}
-          onDiscard={syncedShare.onDismissShared}
-        />
-      ) : (
-        syncedShareViewerActive && (
-          <SyncedShareBanner
-            status={syncedShare.viewerStatus}
-            filename={syncedShare.viewerFilename}
-            folderName={sharedFolder?.folderName ?? null}
-            onImport={
-              sharedFolder
-                ? sharedFolder.onImport
-                : syncedShare.onImportSyncedShare
-            }
-          />
-        )
-      )}
+      <ShareBanner syncedShare={syncedShare} importDisabled={isLoadingCloud} />
       {audioAvailable && (
         <MetronomeToggleButton
           enabled={metronomeEnabled}
@@ -329,6 +310,7 @@ export function AppHeader({
             duplicating={duplicatingFile}
             renamingName={renamingFileName}
             isLoadingCloud={isLoadingCloud}
+            cloudLoadFailure={cloudLoadFailure}
             importing={importing}
             onImportFile={onImportFile}
             binNames={sortedBinNames(store)}
@@ -386,6 +368,7 @@ export function AppHeader({
           isSynced={syncedShare.isSynced}
           onSignIn={syncedShare.onSignIn}
           onChangePassword={syncedShare.onChangePassword}
+          onOpenApiKeys={syncedShare.onOpenApiKeys}
           onSignOut={onSignOut}
         />
       </div>

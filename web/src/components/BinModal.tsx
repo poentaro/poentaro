@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { CounterClockwiseClockIcon } from '@radix-ui/react-icons'
 import { useEffect } from 'react'
 import { displayFileName } from '../fileStore'
-import type { BinEntry } from '../jianpuWasm'
+import type { BinEntry } from '../poentaroWasm'
 
 export interface BinModalProps {
   open: boolean

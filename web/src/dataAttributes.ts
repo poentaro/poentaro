@@ -3,7 +3,7 @@ import type {
   SvgVariant,
   Tag,
   TransparentRectRole,
-} from './jianpuWasm'
+} from './poentaroWasm'
 
 /**
  * Every `data-variant` attribute value written onto rendered preview SVG
@@ -30,7 +30,7 @@ export function rectVariantSelector(variant: DataVariant): string {
 /**
  * Every `data-tag` attribute value written onto a rendered preview SVG `<g>`
  * group, keyed by `Tag['tag']`
- * (`crates/jianpu-wasm/wit/world.wit`). `satisfies Record<Tag['tag'], string>`
+ * (`crates/poentaro-wasm/wit/world.wit`). `satisfies Record<Tag['tag'], string>`
  * means renaming, adding, or removing a `Tag` variant fails the TS build
  * right here until this map (and everything derived from it below) is
  * updated — closing the exact `data-tag`/`Tag` gap the "Cross-boundary

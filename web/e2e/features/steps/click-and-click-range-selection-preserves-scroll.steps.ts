@@ -20,15 +20,14 @@ import { Given, Then, When } from './fixtures'
 const measures = Array.from({ length: 60 }, () => '[M] 1 2 3 4').join('\n\n')
 
 const scrollPreservingSource = [
-  '# metadata',
-  'title = "scroll preserving range test"',
+  'metadata { title "scroll preserving range test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
+  'score """',
   '',
   measures,
+  '""",',
 ].join('\n')
 
 function previewPages(page: import('@playwright/test').Page) {
@@ -46,13 +45,13 @@ Given(
   async ({ page }) => {
     await page.addInitScript((source) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'scroll-preserving-range-test.jianpu',
-          userFiles: { 'scroll-preserving-range-test.jianpu': source },
+          active: 'scroll-preserving-range-test.poentaro',
+          userFiles: { 'scroll-preserving-range-test.poentaro': source },
           bin: {},
           fileIds: {
-            'scroll-preserving-range-test.jianpu':
+            'scroll-preserving-range-test.poentaro':
               'scroll-preserving-range-test-id-001',
           },
         }),

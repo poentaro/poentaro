@@ -2,13 +2,31 @@ use crate::grouper::tests::parse_and_group;
 
 fn source_with(body: &str, sequence: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n# sequence\n{sequence}\n\n# score\n{body}\n"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["Melody": notes],
+
+sequence [{sequence}],
+
+score """
+    {body}
+    """,
+"#
     )
 }
 
 fn source_with_voices(body: &str, sequence: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nSoprano [S] = notes\nAlto 2 [A2] = notes\nTenor [T] = notes\n\n# sequence\n{sequence}\n\n# score\n{body}\n"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["Soprano" [S]: notes, "Alto 2" [A2]: notes, "Tenor" [T]: notes],
+
+sequence [{sequence}],
+
+score """
+    {body}
+    """,
+"#
     )
 }
 
@@ -68,10 +86,17 @@ fn sequence_can_repeat_a_label() {
 
 #[test]
 fn no_sequence_section_leaves_score_sequence_none() {
-    let score = parse_and_group(concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120 label=\"A\"\n[Melody] 1 2 3 4\n",
-    ));
+    let score = parse_and_group(
+        r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120 label="A"
+    [Melody] 1 2 3 4
+    """,
+"#,
+    );
     assert!(score.sequence.is_none());
 }
 
@@ -110,19 +135,19 @@ fn undefined_label_reference_is_a_recoverable_error() {
 fn part_omission_suffix_resolves_to_omit_parts_on_the_span() {
     let score = parse_and_group(&source_with_voices(
         voices_body(),
-        "Verse, Chorus(-S -A2), Verse, Chorus(-A2)",
+        "Verse, Chorus WITHOUT [S, A2], Verse, Chorus WITHOUT [A2]",
     ));
     let sequence = score.sequence.expect("expected a resolved sequence");
     assert_eq!(sequence.len(), 4);
     assert!(sequence[0].omit_parts.is_empty()); // Verse
-    assert_eq!(sequence[1].omit_parts, vec!["S", "A2"]); // Chorus(-S -A2)
+    assert_eq!(sequence[1].omit_parts, vec!["S", "A2"]); // Chorus WITHOUT [S, A2]
     assert!(sequence[2].omit_parts.is_empty()); // Verse
-    assert_eq!(sequence[3].omit_parts, vec!["A2"]); // Chorus(-A2)
+    assert_eq!(sequence[3].omit_parts, vec!["A2"]); // Chorus WITHOUT [A2]
 }
 
 #[test]
 fn part_omission_suffix_with_unknown_abbreviation_is_a_recoverable_error() {
-    let score = parse_and_group(&source_with_voices(voices_body(), "Chorus(-Bogus)"));
+    let score = parse_and_group(&source_with_voices(voices_body(), "Chorus WITHOUT [Bogus]"));
     let messages = all_error_messages(&score);
     let sequence = score.sequence.expect("expected a resolved sequence");
     assert!(sequence[0].omit_parts.is_empty());
@@ -136,23 +161,23 @@ fn part_omission_suffix_with_unknown_abbreviation_is_a_recoverable_error() {
 
 #[test]
 fn part_only_suffix_resolves_to_the_complement_omit_parts_on_the_span() {
-    let score = parse_and_group(&source_with_voices(voices_body(), "Verse, Chorus(S)"));
+    let score = parse_and_group(&source_with_voices(voices_body(), "Verse, Chorus ONLY [S]"));
     let sequence = score.sequence.expect("expected a resolved sequence");
     assert_eq!(sequence.len(), 2);
     assert!(sequence[0].omit_parts.is_empty()); // Verse
-    assert_eq!(sequence[1].omit_parts, vec!["A2", "T"]); // Chorus(S) keeps only S
+    assert_eq!(sequence[1].omit_parts, vec!["A2", "T"]); // Chorus ONLY [S] keeps only S
 }
 
 #[test]
 fn part_only_suffix_naming_every_declared_part_omits_nothing() {
-    let score = parse_and_group(&source_with_voices(voices_body(), "Chorus(S A2 T)"));
+    let score = parse_and_group(&source_with_voices(voices_body(), "Chorus ONLY [S, A2, T]"));
     let sequence = score.sequence.expect("expected a resolved sequence");
     assert!(sequence[0].omit_parts.is_empty());
 }
 
 #[test]
 fn part_only_suffix_with_unknown_abbreviation_is_a_recoverable_error() {
-    let score = parse_and_group(&source_with_voices(voices_body(), "Chorus(Bogus)"));
+    let score = parse_and_group(&source_with_voices(voices_body(), "Chorus ONLY [Bogus]"));
     let messages = all_error_messages(&score);
     assert!(
         messages

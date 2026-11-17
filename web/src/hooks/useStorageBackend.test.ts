@@ -7,8 +7,8 @@ describe('shouldScheduleAutosave', () => {
     expect(
       shouldScheduleAutosave(
         'local',
-        { active: 'a.jianpu', content: 'old' },
-        { active: 'a.jianpu', content: 'new' },
+        { active: 'a.poentaro', content: 'old' },
+        { active: 'a.poentaro', content: 'new' },
       ),
     ).toBe(false)
   })
@@ -16,7 +16,7 @@ describe('shouldScheduleAutosave', () => {
   it('does not schedule on the very first render (no previous snapshot)', () => {
     expect(
       shouldScheduleAutosave('cloud', null, {
-        active: 'a.jianpu',
+        active: 'a.poentaro',
         content: 'new',
       }),
     ).toBe(false)
@@ -26,8 +26,8 @@ describe('shouldScheduleAutosave', () => {
     expect(
       shouldScheduleAutosave(
         'cloud',
-        { active: 'a.jianpu', content: 'content of a' },
-        { active: 'b.jianpu', content: 'content of b' },
+        { active: 'a.poentaro', content: 'content of a' },
+        { active: 'b.poentaro', content: 'content of b' },
       ),
     ).toBe(false)
   })
@@ -36,8 +36,8 @@ describe('shouldScheduleAutosave', () => {
     expect(
       shouldScheduleAutosave(
         'cloud',
-        { active: 'a.jianpu', content: 'same' },
-        { active: 'a.jianpu', content: 'same' },
+        { active: 'a.poentaro', content: 'same' },
+        { active: 'a.poentaro', content: 'same' },
       ),
     ).toBe(false)
   })
@@ -46,8 +46,8 @@ describe('shouldScheduleAutosave', () => {
     expect(
       shouldScheduleAutosave(
         'cloud',
-        { active: 'a.jianpu', content: 'old' },
-        { active: 'a.jianpu', content: 'new' },
+        { active: 'a.poentaro', content: 'old' },
+        { active: 'a.poentaro', content: 'new' },
       ),
     ).toBe(true)
   })

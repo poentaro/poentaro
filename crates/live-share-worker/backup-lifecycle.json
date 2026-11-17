@@ -1,0 +1,4 @@
+[
+  { "fileNamePrefix": "daily/", "daysFromUploadingToHiding": 30, "daysFromHidingToDeleting": 1 },
+  { "fileNamePrefix": "monthly/", "daysFromUploadingToHiding": 365, "daysFromHidingToDeleting": 1 }
+]

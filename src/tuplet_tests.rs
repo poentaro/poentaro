@@ -1,4 +1,6 @@
-use crate::ast::parsed::{Accidental, JianPuPitch, ParsedNote, ParsedRest, ScoreEvent, TupletInfo};
+use crate::ast::parsed::{
+    Accidental, NumberedPitch, ParsedNote, ParsedRest, ScoreEvent, TupletInfo,
+};
 use crate::error::{Span, Spanned};
 use crate::tuplet::{apply_resolution_multiplier, resolution_multiplier_of};
 
@@ -11,7 +13,7 @@ fn rescale_tuplets(events: Vec<Spanned<ScoreEvent>>) -> (Vec<Spanned<ScoreEvent>
 fn note(duration: u32, tuplet: Option<TupletInfo>) -> Spanned<ScoreEvent> {
     Spanned::new(
         ScoreEvent::Note(ParsedNote {
-            pitch: JianPuPitch::One,
+            pitch: NumberedPitch::One,
             accidental: Accidental::Natural,
             octave: 0,
             duration,

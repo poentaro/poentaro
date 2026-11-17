@@ -2,41 +2,37 @@ import { expect } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Bass [B] = notes',
+  'parts ["Melody" [M]: notes, "Bass" [B]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 2 3 4',
-  '[B] 5 6 7 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 2 3 4',
+  '    [B] 5 6 7 1',
+  '    """,',
 ].join('\n')
 
 const FOLLOW_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Chords [C] = follow[M]',
+  'parts ["Melody" [M]: notes, "Chords" [C]: follow [M]],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 2 3 4',
+  '    """,',
 ].join('\n')
 
 async function loadSource(page: import('@playwright/test').Page, src: string) {
   await page.addInitScript((source) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'test.jianpu',
-        userFiles: { 'test.jianpu': source },
+        active: 'test.poentaro',
+        userFiles: { 'test.poentaro': source },
         bin: {},
-        fileIds: { 'test.jianpu': crypto.randomUUID() },
+        fileIds: { 'test.poentaro': crypto.randomUUID() },
       }),
     )
   }, src)
@@ -63,7 +59,7 @@ async function getEditorSource(page: import('@playwright/test').Page) {
 
 async function getStoredSource(page: import('@playwright/test').Page) {
   return page.evaluate(() => {
-    const raw = localStorage.getItem('jianpu:files:v1')
+    const raw = localStorage.getItem('poentaro:files:v1')
     if (!raw) return ''
     const store = JSON.parse(raw) as {
       active: string

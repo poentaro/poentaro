@@ -28,7 +28,7 @@ pub fn toggle_range_tie(source: &str, ranges: &[ByteRange]) -> RangeEditResult {
         return RangeEditResult::unchanged(source);
     }
 
-    let Ok(document) = parser::parse(source, "input.jianpu", &[]) else {
+    let Ok(document) = parser::parse(source, "input.poentaro", &[]) else {
         return RangeEditResult::unchanged(source);
     };
 

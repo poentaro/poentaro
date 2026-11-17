@@ -10,7 +10,7 @@
 //! anchor-mode standardization exists to make achievable exactly, not just
 //! approximately.
 
-use crate::ast::parsed::{Accidental, JianPuPitch};
+use crate::ast::parsed::{Accidental, NumberedPitch};
 use crate::compositor::types::{AbsoluteContent, FontFamily, GlyphFontFamilies};
 use crate::coordinate_resolver::resolve::{
     resolve, ElementPaddings, LabelFontSizes, LyricFontSizes, ResolveFontSizes,
@@ -102,7 +102,13 @@ fn resolve_anchor_x(content: GridContent) -> f32 {
         content,
     };
     let page = single_row_page(el);
-    let abs = resolve(&[page], NOTE_NUMBER_WIDTH, 40.0, RESOLVE_FONT_SIZES).unwrap();
+    let abs = resolve(
+        &[page],
+        NOTE_NUMBER_WIDTH,
+        super::tests::TEST_PAGE_FRAME,
+        RESOLVE_FONT_SIZES,
+    )
+    .unwrap();
     abs[0]
         .elements
         .iter()
@@ -129,7 +135,7 @@ fn ink_left_edge(anchor: f32, bearing: f32) -> f32 {
 #[test]
 fn note_head_and_latin_lyric_syllable_have_the_same_ink_left_edge_in_one_column() {
     let note_anchor = resolve_anchor_x(GridContent::NoteHead {
-        pitch: JianPuPitch::One,
+        pitch: NumberedPitch::One,
         accidental: Accidental::Natural,
         octave: 0,
         dotted: false,
@@ -138,6 +144,8 @@ fn note_head_and_latin_lyric_syllable_have_the_same_ink_left_edge_in_one_column(
     });
     let lyric_anchor = resolve_anchor_x(GridContent::LyricSyllable {
         text: "la".to_string(),
+        ruby: None,
+        ruby_band_pt: 0.0,
         source_part_index: 0,
         note_id: 0,
     });
@@ -162,7 +170,7 @@ fn note_head_and_latin_lyric_syllable_have_the_same_ink_left_edge_in_one_column(
 #[test]
 fn note_head_and_cjk_lyric_syllable_have_the_same_ink_left_edge_in_one_column() {
     let note_anchor = resolve_anchor_x(GridContent::NoteHead {
-        pitch: JianPuPitch::One,
+        pitch: NumberedPitch::One,
         accidental: Accidental::Natural,
         octave: 0,
         dotted: false,
@@ -171,6 +179,8 @@ fn note_head_and_cjk_lyric_syllable_have_the_same_ink_left_edge_in_one_column() 
     });
     let lyric_anchor = resolve_anchor_x(GridContent::LyricSyllable {
         text: "春".to_string(),
+        ruby: None,
+        ruby_band_pt: 0.0,
         source_part_index: 0,
         note_id: 0,
     });
@@ -194,7 +204,7 @@ fn note_head_and_cjk_lyric_syllable_have_the_same_ink_left_edge_in_one_column() 
 #[test]
 fn note_head_and_chord_symbol_have_the_same_ink_left_edge_in_one_column() {
     let note_anchor = resolve_anchor_x(GridContent::NoteHead {
-        pitch: JianPuPitch::One,
+        pitch: NumberedPitch::One,
         accidental: Accidental::Natural,
         octave: 0,
         dotted: false,
@@ -227,11 +237,15 @@ fn note_head_and_chord_symbol_have_the_same_ink_left_edge_in_one_column() {
 fn latin_and_cjk_lyric_syllables_have_the_same_ink_left_edge_in_one_column() {
     let latin_anchor = resolve_anchor_x(GridContent::LyricSyllable {
         text: "la".to_string(),
+        ruby: None,
+        ruby_band_pt: 0.0,
         source_part_index: 0,
         note_id: 0,
     });
     let cjk_anchor = resolve_anchor_x(GridContent::LyricSyllable {
         text: "春".to_string(),
+        ruby: None,
+        ruby_band_pt: 0.0,
         source_part_index: 0,
         note_id: 0,
     });

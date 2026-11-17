@@ -4,15 +4,14 @@ import { fileSwitcherTrigger, openFileActions } from '../../fileSwitcherHelpers'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 let pdfBytes: Buffer | undefined
@@ -34,7 +33,7 @@ Given(
     await page.addInitScript(
       ({ src, fileName }) => {
         localStorage.setItem(
-          'jianpu:files:v1',
+          'poentaro:files:v1',
           JSON.stringify({
             active: fileName,
             userFiles: { [fileName]: src },
@@ -92,7 +91,7 @@ When('I import the exported PDF file', async ({ page }) => {
 Then(
   'the recovered file opens under a deduped name {string}',
   async ({ page }, name: string) => {
-    // "test.jianpu" is already open, so the recovered file lands under a
+    // "test.poentaro" is already open, so the recovered file lands under a
     // deduped name rather than overwriting it.
     await expect(fileSwitcherTrigger(page)).toContainText(name)
   },

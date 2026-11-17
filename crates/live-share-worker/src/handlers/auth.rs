@@ -10,7 +10,9 @@
 use worker::{D1Database, RouteContext};
 
 use super::routes::{HandlerResult, Json, NoContent, NoPathParams};
-use super::{is_unique_constraint_violation, resolve_files_caller, D1_BINDING};
+use super::{
+    check_rate_limit, is_unique_constraint_violation, now_millis, resolve_files_caller, D1_BINDING,
+};
 use crate::api_error::ApiError;
 use crate::app_log::{
     self, AuthEvent, LockedOut, LogEvent, PasswordChanged, RequestMeta, SignInFailed,
@@ -27,29 +29,6 @@ use crate::protocol::{ChangePasswordRequest, CredentialsRequest, SessionResponse
 /// Rate limit bindings (`cloudflare.config.ts`), keyed per client IP.
 const SIGN_IN_RATE_LIMITER: &str = "SIGN_IN_RATE_LIMITER";
 const SIGN_UP_RATE_LIMITER: &str = "SIGN_UP_RATE_LIMITER";
-
-fn now_millis() -> i64 {
-    worker::Date::now().as_millis() as i64
-}
-
-/// Refuses the request once `binding`'s per-IP limit is spent. Requests
-/// with no `CF-Connecting-IP` (only local runs) share one bucket.
-async fn check_rate_limit(
-    ctx: &RouteContext<()>,
-    binding: &str,
-    request_meta: &RequestMeta,
-) -> HandlerResult<()> {
-    let key = request_meta
-        .client_ip
-        .clone()
-        .unwrap_or_else(|| "unknown".to_string());
-    let outcome = ctx.rate_limiter(binding)?.limit(key).await?;
-    if outcome.success {
-        Ok(())
-    } else {
-        Err(ApiError::RateLimited)
-    }
-}
 
 async fn hash_new_password(password: &str) -> HandlerResult<String> {
     let salt = crypto::random_bytes(SALT_LENGTH)?;

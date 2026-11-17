@@ -1,4 +1,4 @@
-//! Writing jianpu durations (in sixteenths) as MEI note values.
+//! Writing numbered durations (in sixteenths) as MEI note values.
 
 /// A duration one MEI note can write: `@dur` plus `@dots`.
 #[derive(Debug, Clone, Copy, PartialEq)]

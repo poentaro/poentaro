@@ -1,5 +1,5 @@
 // Bridge between `fileStore.ts`'s plain-object `FileStoreState` and the Rust
-// file-store operations (`jianpu_generator::file_tree`, exposed through the
+// file-store operations (`poentaro::file_tree`, exposed through the
 // wasm component). It only converts shapes: `Record<string, string>` maps
 // cross the boundary as ordered key/value lists, and a Rust `err` result
 // becomes "no change" or a returned failure. All tree, path and naming logic
@@ -9,10 +9,10 @@ import type { FileStoreState } from './fileStore'
 import type {
   FileOperationContext,
   FileStoreFailure,
-  jianpuWasm,
+  poentaroWasm,
   StringEntry,
   FileStoreState as WasmFileStoreState,
-} from './jianpuWasm'
+} from './poentaroWasm'
 
 const entriesOf = (record: Record<string, string>): StringEntry[] =>
   Object.entries(record).map(([key, value]) => ({ key, value }))
@@ -57,7 +57,7 @@ export type StoreOperationResult =
   | { ok: false; failure: FileStoreFailure }
 
 export function storeResult(
-  response: ReturnType<ReturnType<typeof jianpuWasm>['fileStoreCreateFile']>,
+  response: ReturnType<ReturnType<typeof poentaroWasm>['fileStoreCreateFile']>,
 ): StoreOperationResult {
   return response.tag === 'ok'
     ? { ok: true, state: fromWasmState(response.val) }

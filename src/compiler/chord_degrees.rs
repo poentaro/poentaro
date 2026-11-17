@@ -1,9 +1,9 @@
 //! A chord symbol's harmony as written in degrees, formatted either as its
-//! jianpu symbol (`♯1m⁷/5`) or, in the letter-name view, as letter names
+//! numbered symbol (`♯1m⁷/5`) or, in the letter-name view, as letter names
 //! (`F♯m⁷/C♯`).
 
 use crate::ast::grouped::GroupedChordNote;
-use crate::ast::parsed::{Accidental, BassDegree, Extension, JianPuPitch, TriadQuality};
+use crate::ast::parsed::{Accidental, BassDegree, Extension, NumberedPitch, TriadQuality};
 use crate::font_metrics;
 use crate::pitch_description::spelling::SpelledPitch;
 
@@ -11,7 +11,7 @@ use crate::pitch_description::spelling::SpelledPitch;
 /// bass as scale degrees, and its quality.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChordDegrees {
-    pub degree: JianPuPitch,
+    pub degree: NumberedPitch,
     pub accidental: Accidental,
     pub triad: TriadQuality,
     pub extension: Option<Extension>,
@@ -29,7 +29,7 @@ impl ChordDegrees {
         }
     }
 
-    /// The jianpu symbol, e.g. `♯1m⁷/5`. Accidentals lead their degree,
+    /// The numbered symbol, e.g. `♯1m⁷/5`. Accidentals lead their degree,
     /// matching note heads — see `render_chord_symbol`, which hangs the
     /// leading accidental into the column's accidental lead.
     pub(super) fn degree_symbol(&self) -> String {
@@ -49,7 +49,7 @@ impl ChordDegrees {
         self.symbol(|degree, accidental| tonic.scale_degree(degree, accidental).engraved_name())
     }
 
-    fn symbol(&self, name: impl Fn(&JianPuPitch, &Accidental) -> String) -> String {
+    fn symbol(&self, name: impl Fn(&NumberedPitch, &Accidental) -> String) -> String {
         let triad = match self.triad {
             TriadQuality::Major => "",
             TriadQuality::Minor => "m",

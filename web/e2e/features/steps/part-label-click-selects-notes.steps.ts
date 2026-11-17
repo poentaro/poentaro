@@ -16,32 +16,29 @@ import { Given, Then, When } from './fixtures'
  * Measure 1: Melody "3 4" (2 notes), Harmony "7 1'" (2 notes)
  */
 const source = [
-  '# metadata',
-  'title = "part label click test"',
-  'max_measures_per_system = 48',
+  'metadata { title "part label click test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
+  'score """',
+  '[M] 1 2',
   '[H] 5 6',
   '',
-  '[M] 3 4', // measure 1
+  '[M] 3 4',
   "[H] 7 1'",
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
   await page.addInitScript((source) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'part-label-click-test.jianpu',
-        userFiles: { 'part-label-click-test.jianpu': source },
+        active: 'part-label-click-test.poentaro',
+        userFiles: { 'part-label-click-test.poentaro': source },
         bin: {},
         fileIds: {
-          'part-label-click-test.jianpu': 'part-label-click-test-id-001',
+          'part-label-click-test.poentaro': 'part-label-click-test-id-001',
         },
       }),
     )
@@ -53,7 +50,7 @@ async function loadFixture(page: import('@playwright/test').Page) {
 async function primeMeasureSpans(page: import('@playwright/test').Page) {
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('11')
+  await page.keyboard.type('7')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,
@@ -91,31 +88,28 @@ Given(
     // pointer movement) used to go through that exact same code path and
     // incorrectly pick up the lyric row too.
     const lyricSource = [
-      '# metadata',
-      'title = "part label click no-lyric test"',
-      'max_measures_per_system = 48',
+      'metadata { title "part label click no-lyric test", max measures per system 48 },',
       '',
-      '# parts',
-      'Melody [M] = notes',
-      'Melody lyrics [Mv1] = lyrics[M]',
+      'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
       '',
-      '# score',
-      '[M] 1 2', // measure 0
-      '[Mv1] do re', // verse 0
+      'score """',
+      '[M] 1 2',
+      '[Mv1] do re',
       '',
-      '[M] 3 4', // measure 1
-      '[Mv1] mi fa', // verse 0
+      '[M] 3 4',
+      '[Mv1] mi fa',
+      '""",',
     ].join('\n')
 
     await page.addInitScript((source) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'part-label-click-no-lyric-test.jianpu',
-          userFiles: { 'part-label-click-no-lyric-test.jianpu': source },
+          active: 'part-label-click-no-lyric-test.poentaro',
+          userFiles: { 'part-label-click-no-lyric-test.poentaro': source },
           bin: {},
           fileIds: {
-            'part-label-click-no-lyric-test.jianpu':
+            'part-label-click-no-lyric-test.poentaro':
               'part-label-click-no-lyric-test-id-001',
           },
         }),
@@ -139,28 +133,25 @@ Given(
     // one row down — since `:hover` paints the whole rect, hovering the note
     // label visually painted over the lyric label too.
     const lyricSource = [
-      '# metadata',
-      'title = "part label no lyric-label overlap test"',
-      'max_measures_per_system = 48',
+      'metadata { title "part label no lyric-label overlap test", max measures per system 48 },',
       '',
-      '# parts',
-      'Melody [M] = notes',
-      'Melody lyrics [Mv1] = lyrics[M]',
+      'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
       '',
-      '# score',
-      '[M] 1 2', // measure 0
-      '[Mv1] do re', // verse 0
+      'score """',
+      '[M] 1 2',
+      '[Mv1] do re',
+      '""",',
     ].join('\n')
 
     await page.addInitScript((source) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'part-label-no-overlap-test.jianpu',
-          userFiles: { 'part-label-no-overlap-test.jianpu': source },
+          active: 'part-label-no-overlap-test.poentaro',
+          userFiles: { 'part-label-no-overlap-test.poentaro': source },
           bin: {},
           fileIds: {
-            'part-label-no-overlap-test.jianpu':
+            'part-label-no-overlap-test.poentaro':
               'part-label-no-overlap-test-id-001',
           },
         }),

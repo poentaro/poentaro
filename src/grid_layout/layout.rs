@@ -1,5 +1,6 @@
 use crate::compiler::types::{BarLineKind, CompileResult, ElementContent, MeasureBlock};
 use crate::error::{Diagnostic, Span, Warning};
+use crate::grid_layout::page_layout::PageLayout;
 use crate::grid_layout::slur_placement::{build_measure_placements, resolve_slur_spans};
 use crate::grid_layout::tuplet_placement::resolve_tuplet_spans;
 use crate::grid_layout::types::Header;
@@ -55,18 +56,23 @@ pub(crate) use system_bands::{system_bands, SystemBands};
 #[path = "layout_systems.rs"]
 mod systems;
 pub(crate) use systems::{
-    compute_bar_height, pack_into_systems, system_has_any_decoration, system_lyric_height_pt,
-    system_musical_height_pt, LABEL_COLS, MUSIC_START_COL,
+    compute_bar_height, lyric_ruby_band_pt, pack_into_systems, system_has_any_decoration,
+    system_lyric_height_pt, system_musical_height_pt, LABEL_COLS, MUSIC_START_COL,
 };
 
 #[path = "layout_decoration.rs"]
 mod decoration;
+#[path = "layout_page_heights.rs"]
+mod page_heights;
+#[path = "layout_running_title.rs"]
+mod running_title;
 pub(crate) use super::expand::expand_system_to_rows;
 use super::expand::make_footer_row;
 pub(crate) use decoration::{
     directive_line_rod_width, directive_line_should_emit, make_header_rows,
 };
 use decoration::{make_decoration_row, make_separator_row};
+use page_heights::PageUsableHeights;
 
 fn system_total_height(
     system: &[MeasureBlock],
@@ -79,19 +85,13 @@ fn system_total_height(
     };
     let musical =
         system_musical_height_pt(first, base, bands, lyric_sizing.notes_vertical_padding_pt);
-    let lyric = system_lyric_height_pt(first, base, lyric_sizing);
+    let lyric = system_lyric_height_pt(system, base, lyric_sizing);
     let deco = if system_has_any_decoration(system) {
         crate::font_metrics::directive_line_row_height()
     } else {
         0.0
     };
     musical + lyric + deco
-}
-
-/// The page's usable music width (see [`super::usable_music_width_pt`]),
-/// net of `config`'s part-label column.
-fn usable_music_width_pt(page_width_pt: f32, config: &RenderConfig) -> f32 {
-    super::usable_music_width_pt(page_width_pt, config.part_label_width_pt as f32)
 }
 
 /// One system's summed column rods against the page's usable music width —
@@ -107,7 +107,7 @@ fn system_overflow_diagnostic(
     config: &RenderConfig,
 ) -> Option<Diagnostic> {
     let total_rod: f32 = measure_layout.iter().map(|m| m.rod_pt).sum();
-    let available = usable_music_width_pt(page_width_pt, config);
+    let available = config.page_frame().usable_music_width_pt(page_width_pt);
     if total_rod <= available {
         return None;
     }
@@ -236,7 +236,7 @@ fn pack_page_systems(
     systems: Vec<Vec<MeasureBlock>>,
     tuplet_bracket_map: &HashMap<(usize, usize), Vec<GridElement>>,
     base: f32,
-    usable_h: f32,
+    usable_heights: PageUsableHeights,
     hide_system_dividers: bool,
     lyric_sizing: LyricSizing,
 ) -> Vec<Vec<Vec<MeasureBlock>>> {
@@ -252,6 +252,7 @@ fn pack_page_systems(
         } else {
             separator_row_height()
         };
+        let usable_h = usable_heights.for_page(page_systems.len());
         if !current_page.is_empty() && used_h + gap + sys_h > usable_h {
             page_systems.push(std::mem::take(&mut current_page));
             used_h = 0.0;
@@ -273,36 +274,33 @@ pub struct LayoutOutput {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// Public entry point: convert compiler blocks to GridPages.
+/// Public entry point: convert compiler blocks to GridPages laid out on
+/// `page_layout`. `config`'s page margin is used as given; callers apply
+/// [`PageLayout::margin_pt`] to it first.
 pub fn layout(
     compile_result: &CompileResult,
     config: &RenderConfig,
     header: &Header,
-    page_width_pt: f32,
-    page_height_pt: f32,
+    page_layout: PageLayout,
     highlighted_measure_ranges: Option<Vec<MeasureRange>>,
 ) -> LayoutOutput {
+    let page_width_pt = page_layout.width_pt();
     let base = config.row_height as f32;
     let blocks = &compile_result.blocks;
-    let systems = pack_into_systems(blocks, config, usable_music_width_pt(page_width_pt, config));
+    let frame = config.page_frame();
+    let header = &*page_layout.fit_header(header, page_width_pt - 2.0 * frame.margin_pt);
+    let systems = pack_into_systems(blocks, config, frame.usable_music_width_pt(page_width_pt));
 
     let measure_placements = build_measure_placements(&systems);
     let arc_map = resolve_slur_spans(&compile_result.slur_spans, &measure_placements, &systems);
     let tuplet_bracket_map =
         resolve_tuplet_spans(&compile_result.tuplet_spans, &measure_placements);
 
-    let header_h: f32 = make_header_rows(header, base, true)
-        .iter()
-        .map(|r| r.height_pt)
-        .sum();
-    let footer_h = base * 0.40;
-    let usable_h = page_height_pt - 2.0 * super::PAGE_MARGIN - header_h - footer_h;
-
     let page_systems = pack_page_systems(
         systems,
         &tuplet_bracket_map,
         base,
-        usable_h,
+        PageUsableHeights::new(header, config, page_layout),
         config.hide_system_dividers,
         config.lyric_sizing(),
     );
@@ -339,14 +337,13 @@ pub fn layout(
             page_width_pt,
         });
         diagnostics.extend(page_diagnostics);
-        let body_height: f32 = rows.iter().map(|r| r.height_pt).sum();
-        let remaining_height = page_height_pt - 2.0 * super::PAGE_MARGIN - body_height;
-        rows.push(page_footer_row(
+        let page_height_pt = finish_page(
+            &mut rows,
+            page_layout,
             config,
             page_idx as u32 + 1,
             total_pages,
-            remaining_height,
-        ));
+        );
         abs_system_index_start += page_sys.len();
         let page_targets = PageHighlightsAndTargets::for_page(&highlight_and_click_infos, page_idx);
         pages.push(GridPage {
@@ -367,26 +364,31 @@ pub fn layout(
     LayoutOutput { pages, diagnostics }
 }
 
-/// Builds a page's footer row from `config`'s page-number style — split out
-/// of [`layout`] to keep it under clippy's line-count limit.
-fn page_footer_row(
+/// Adds a fixed-size page's footer, the page number, to `rows`, and
+/// returns the page's height: the page size's, or a continuous page's
+/// content plus its margins.
+fn finish_page(
+    rows: &mut Vec<GridRow>,
+    page_layout: PageLayout,
     config: &RenderConfig,
     page_num: u32,
     total_pages: u32,
-    remaining_height: f32,
-) -> GridRow {
-    make_footer_row(
-        page_num,
-        total_pages,
-        config.page_number_font_size as f32,
-        crate::grid_layout::types::TextStyleFlags {
-            bold: config.page_number_bold,
-            italic: config.page_number_italic,
-            underline: config.page_number_underline,
-        },
-        config.page_number_font_family,
-        remaining_height,
-    )
+) -> f32 {
+    let frame = config.page_frame();
+    let body_height: f32 = rows.iter().map(|r| r.height_pt).sum();
+    match page_layout {
+        PageLayout::Paged(size) => {
+            let remaining_height = frame.usable_height_pt(size.height_pt) - body_height;
+            rows.push(make_footer_row(
+                config,
+                page_num,
+                total_pages,
+                remaining_height,
+            ));
+            size.height_pt
+        }
+        PageLayout::Continuous(_) => body_height + 2.0 * frame.margin_pt,
+    }
 }
 
 #[path = "layout_page_targets.rs"]

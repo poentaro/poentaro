@@ -195,3 +195,13 @@
   font-size: 0.65rem;
   opacity: 0.75;
 }
+
+/* As tall as the part pills beside it. */
+.part-toggles .preset-menu-trigger {
+  gap: 4px;
+  height: 28px;
+}
+
+.notation-toggle-item + .preset-menu-action {
+  border-top: 1px solid var(--border);
+}

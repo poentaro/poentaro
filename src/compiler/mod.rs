@@ -23,7 +23,9 @@ pub use chord_degrees::ChordDegrees;
 #[cfg(test)]
 pub(crate) mod test_chord_degrees;
 
+mod element_position;
 mod harmonica_tabs;
+mod least_movement_path;
 mod letter_names;
 pub use letter_names::{label_note_heads, NoteLabels};
 
@@ -32,6 +34,7 @@ mod guitar_voicing_path;
 
 use crate::ast::grouped::{MultiPartMeasure, NoteEvent, PartRow, Score};
 use crate::ast::parsed::{Accidental, KeyChange, NoteName, PartKind};
+use crate::lyric_slots::LyricCursor;
 use itertools::Itertools;
 
 struct PartSliceResult {
@@ -98,8 +101,8 @@ pub fn compile(score: &Score) -> CompileResult {
     }
 }
 
-/// Every lyric part's link to its target part, read from the part level
-/// (`LyricsSlice::target_name`) and named by the same `RowId`s the rows get.
+/// Every lyric part's link to the part it is drawn under, read from the part
+/// level (`LyricsSlice::drawn_under`) and named by the same `RowId`s the rows get.
 fn lyric_links(score: &Score) -> Vec<LyricLink> {
     score
         .measures
@@ -108,7 +111,7 @@ fn lyric_links(score: &Score) -> Vec<LyricLink> {
         .filter_map(|(part_idx, part_row)| {
             part_row.slice().lyrics.as_ref().map(|lyrics| LyricLink {
                 lyric_row_id: part_row_id(part_row, part_idx),
-                target_row_id: RowId(lyrics.target_name.clone()),
+                target_row_id: RowId(lyrics.drawn_under.clone()),
             })
         })
         .unique()
@@ -165,6 +168,45 @@ pub(crate) fn is_resting(part_row: &PartRow) -> bool {
     // A non-lyric part is resting if all its notes are rests
     let events = slice.timing_events();
     !events.is_empty() && events.iter().all(|e| matches!(e, NoteEvent::Rest(_)))
+}
+
+/// Whether a lyric part's note ids advance past this measure: when the part
+/// it sings along to is compiled here (see `visible_part_indices`), so the
+/// ids match that part's. A target hidden by the track filter is gone from
+/// `measure.parts` altogether, with no note ids to match; the ids still
+/// advance then, or every measure's syllables would repeat the same ids.
+pub(crate) fn lyric_target_visible(
+    measure: &MultiPartMeasure,
+    visible: &[usize],
+    target_name: &str,
+) -> bool {
+    let target_index = measure
+        .parts
+        .iter()
+        .position(|part_row| part_row.name().map(String::as_str) == Some(target_name));
+    target_index.is_none_or(|part_idx| visible.contains(&part_idx))
+}
+
+/// Moves every lyric part's cursor past this measure, including a lyric part
+/// whose row is hidden here (see `lyric_slots::LyricCursor`).
+fn advance_lyric_cursors(
+    measure: &MultiPartMeasure,
+    visible: &[usize],
+    cross_states: &mut [PartCrossState],
+) {
+    for (part_row, cs) in measure.parts.iter().zip(cross_states.iter_mut()) {
+        let Some(lyrics) = &part_row.slice().lyrics else {
+            continue;
+        };
+        let cursor = LyricCursor {
+            next_note_id: cs.next_note_id,
+        }
+        .advance(
+            &lyrics.target_events,
+            lyric_target_visible(measure, visible, &lyrics.target_name),
+        );
+        cs.next_note_id = cursor.next_note_id;
+    }
 }
 
 fn update_cross_state(cs: &mut PartCrossState, result: &mut PartSliceResult) {
@@ -234,10 +276,13 @@ fn compile_measure(
             tuplet_spans,
         );
 
-        let Some(cs) = cross_states.get_mut(part_idx) else {
-            continue;
-        };
-        update_cross_state(cs, &mut slice_result);
+        // A lyric part's cursor advances after the loop, hidden or not.
+        if part_row.slice().lyrics.is_none() {
+            let Some(cs) = cross_states.get_mut(part_idx) else {
+                continue;
+            };
+            update_cross_state(cs, &mut slice_result);
+        }
 
         let label = part_row.name().cloned().unwrap_or_default();
         let id = part_row_id(part_row, part_idx);
@@ -251,6 +296,8 @@ fn compile_measure(
             absorbed_rows: Vec::new(),
         });
     }
+
+    advance_lyric_cursors(measure, &visible, cross_states);
 
     MeasureBlock {
         rows,
@@ -308,6 +355,8 @@ mod tests_harmonica_tabs;
 mod tests_implicit_fill_rest;
 #[cfg(test)]
 mod tests_letter_names;
+#[cfg(test)]
+mod tests_lyric_cursor_properties;
 #[cfg(test)]
 mod tests_lyrics_and_diagnostics;
 #[cfg(test)]

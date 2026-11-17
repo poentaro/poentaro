@@ -7,7 +7,7 @@ import {
   moveDestination,
   parentFolder,
 } from '../fileStoreQueries'
-import type { ShareOverview } from '../jianpuWasm'
+import type { ShareOverview } from '../poentaroWasm'
 import { DeleteFolderDialog } from './DeleteFolderDialog'
 import { MoveToDialog } from './MoveToDialog'
 import { RenameFileDialog } from './RenameFileDialog'

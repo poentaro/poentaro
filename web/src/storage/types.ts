@@ -1,5 +1,5 @@
 import type { FileStoreState } from '../fileStore'
-import type { FolderSnapshot } from '../jianpuWasm'
+import type { FolderSnapshot } from '../poentaroWasm'
 
 /**
  * Persistence/save-indicator state exposed by a backend. `'offline'` and

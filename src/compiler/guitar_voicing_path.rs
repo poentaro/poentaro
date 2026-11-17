@@ -1,14 +1,14 @@
 //! Picks one guitar voicing per chord so the whole progression needs the
-//! least hand movement: a shortest path through a layered graph where each
-//! chord (in written order) is a layer, each of its voicings a node, and
-//! each edge the movement between two consecutive voicings. A Viterbi-style
-//! dynamic program finds the global optimum in O(n · k²). Each node also
+//! least hand movement (see `least_movement_path`): each chord (in written
+//! order) is a layer, each of its voicings a node, and each edge the
+//! movement between two consecutive voicings. Each node also
 //! costs a little for how far down chords-db's list it is, so a progression
 //! of open chords stays open rather than moving up the neck to save a few
 //! string changes.
 
 use itertools::Itertools;
 
+use super::least_movement_path::PathCosts;
 use crate::pitch_description::GuitarVoicing;
 
 /// Cost of one string changing fret, against the hand position's shift
@@ -24,47 +24,13 @@ const LESS_COMMON_VOICING_COST: u32 = 50;
 /// Every layer must be non-empty, ordered most common first. Ties go to the
 /// voicing earliest in its layer, so the result is stable.
 pub(crate) fn least_movement_path(layers: &[Vec<&GuitarVoicing>]) -> Vec<usize> {
-    let Some(first) = layers.first() else {
-        return vec![];
-    };
-    // `costs[j]`: the cheapest path ending on the current layer's voicing `j`;
-    // `back_pointers[i][j]`: that path's voicing on layer `i`.
-    let (costs, back_pointers) = layers.iter().tuple_windows().fold(
-        (
-            (0..first.len()).map(commonness_cost).collect_vec(),
-            Vec::<Vec<usize>>::new(),
-        ),
-        |(costs, mut back_pointers), (previous, layer)| {
-            let (next_costs, pointers): (Vec<u32>, Vec<usize>) = layer
-                .iter()
-                .enumerate()
-                .map(|(index, voicing)| {
-                    let (from, cost) = previous
-                        .iter()
-                        .zip(&costs)
-                        .map(|(from, cost)| cost + movement_cost(from, voicing))
-                        .enumerate()
-                        .min_by_key(|&(_, cost)| cost)
-                        .unwrap_or_default();
-                    (cost + commonness_cost(index), from)
-                })
-                .unzip();
-            back_pointers.push(pointers);
-            (next_costs, back_pointers)
+    super::least_movement_path::least_movement_path(
+        layers,
+        &PathCosts {
+            node: commonness_cost,
+            movement: |from: &&GuitarVoicing, to: &&GuitarVoicing| movement_cost(from, to),
         },
-    );
-    let last = costs.iter().position_min().unwrap_or_default();
-    let mut path = back_pointers
-        .iter()
-        .rev()
-        .scan(last, |current, pointers| {
-            *current = pointers.get(*current).copied().unwrap_or_default();
-            Some(*current)
-        })
-        .collect_vec();
-    path.reverse();
-    path.push(last);
-    path
+    )
 }
 
 fn commonness_cost(index_in_layer: usize) -> u32 {

@@ -1,4 +1,4 @@
-use crate::ast::parsed::{JianPuPitch, Offset};
+use crate::ast::parsed::{NumberedPitch, Offset};
 use crate::compiler::types::{ColumnElement, ElementContent, MeasureBlock, MeasureRow, RowId};
 use crate::font_metrics;
 use crate::grid_layout::layout::{block_column_width, build_measure_column_layout};
@@ -37,7 +37,7 @@ fn notes_row(note_count: u32, bar_col: u32) -> MeasureRow {
         .map(|col| ColumnElement {
             column: col,
             content: ElementContent::NoteHead {
-                pitch: JianPuPitch::One,
+                pitch: NumberedPitch::One,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
                 dotted: false,

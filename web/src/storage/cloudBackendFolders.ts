@@ -5,7 +5,7 @@ import {
   deleteFolder as pureDeleteFolder,
   moveFolder as pureMoveFolder,
 } from '../fileStore'
-import type { FolderSnapshot, RenameMove } from '../jianpuWasm'
+import type { FolderSnapshot, RenameMove } from '../poentaroWasm'
 import { importSharedFolderState } from '../sharedFolder'
 import type { CloudPlaceholders } from './cloudBackendPlaceholders'
 import type { OutboxLooper } from './outbox/outboxLooper'

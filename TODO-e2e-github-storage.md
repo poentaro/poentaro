@@ -2,11 +2,11 @@
 
 `web/e2e/rename-file-github.spec.ts` covers rename. The same pattern (mock
 `https://api.github.com/repos/{owner}/jianpu-generator-storage/contents/**`
-via `page.route`, seed `jianpu:storage-backend:v1` + `jianpu:github-auth:v1`
+via `page.route`, seed `poentaro:storage-backend:v1` + `poentaro:github-auth:v1`
 in `page.addInitScript`, no real OAuth/network) still needs to be written for:
 
 - [x] **new** (`FileTabBar`'s "New" button → `createFile`/`pureCreateFile`,
-      `githubBackend.ts`'s `createFile`) — expect a `PUT contents/scores/<name>.jianpu`
+      `githubBackend.ts`'s `createFile`) — expect a `PUT contents/scores/<name>.poentaro`
       (create-only, no prior `sha` lookup) and the new tab to appear active.
       See `web/e2e/new-file-github.spec.ts`.
 - [x] **duplicate** (`FileTabBar`'s "Duplicate" button → `duplicateFile`) —
@@ -14,20 +14,20 @@ in `page.addInitScript`, no real OAuth/network) still needs to be written for:
       content; assert the duplicate's preview matches the source's.
       See `web/e2e/duplicate-file-github.spec.ts`.
 - [x] **delete** (tab's `×` / `file-tab-close`, `aria-label="Move <name> to bin"`
-      → `deleteFile`) — expect `PUT contents/trash/<name>.jianpu` then
-      `DELETE contents/scores/<name>.jianpu` (mirrors rename's create+delete
+      → `deleteFile`) — expect `PUT contents/trash/<name>.poentaro` then
+      `DELETE contents/scores/<name>.poentaro` (mirrors rename's create+delete
       pair, just to `trash/` instead of a renamed path); assert the tab
       disappears and the name shows up under the "Bin (n)" `<details>`.
       See `web/e2e/delete-file-github.spec.ts`.
 - [x] **restore** (bin item's `↩` / `file-tab-bar-restore`, `aria-label="Restore
-      <name>"` → `restoreFile`) — expect `PUT contents/scores/<name>.jianpu`
-      then `DELETE contents/trash/<name>.jianpu`; assert the tab reappears
+      <name>"` → `restoreFile`) — expect `PUT contents/scores/<name>.poentaro`
+      then `DELETE contents/trash/<name>.poentaro`; assert the tab reappears
       outside the bin.
       See `web/e2e/restore-file-github.spec.ts`.
 - [x] **import** (shared-link flow, see `web/e2e/share.spec.ts` for the local-
       backend version) — open `/#share=...` while the GitHub backend is
       already active/seeded, click "Import to my scores", and expect the same
-      create-only `PUT contents/scores/<name>.jianpu` as new/duplicate.
+      create-only `PUT contents/scores/<name>.poentaro` as new/duplicate.
       Required adding `StorageBackend.importFile` (mirroring `createFile`)
       and wiring `App.tsx`'s `handleImportShared` through it — previously it
       called `setStore` directly, which never actually persisted an import

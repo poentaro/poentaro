@@ -1,4 +1,4 @@
-import type { NoteTiming } from '../jianpuWasm'
+import type { NoteTiming } from '../poentaroWasm'
 
 export interface ActiveNote {
   sourcePartIndex: number

@@ -33,10 +33,10 @@ AfterScenario(async () => {
 Given(
   'a cloud file named {string} is seeded for idempotent sharing',
   async ({}, name: string) => {
-    const displayName = name.replace(/\.jianpu$/, '')
+    const displayName = name.replace(/\.poentaro$/, '')
     const file = await seedCloudFile(
       DEFAULT_E2E_EMAIL,
-      `${assignActualName(displayName)}.jianpu`,
+      `${assignActualName(displayName)}.poentaro`,
       idempotentSharingSource(name),
     )
     state.seededFileIds[displayName] = file.id
@@ -106,7 +106,7 @@ async function mockCloudFileListWithForeignFile(
         files: [
           {
             id: fileId,
-            name: `${actualNameFor(tabName)}.jianpu`,
+            name: `${actualNameFor(tabName)}.poentaro`,
             content: idempotentSharingSource(tabName),
             revision: 0,
             trashedAt: null,
@@ -141,7 +141,7 @@ async function loadSecondContextOnCloudFile(
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await context.addInitScript(() => {
     localStorage.setItem(
-      'jianpu:storage-backend:v1',
+      'poentaro:storage-backend:v1',
       JSON.stringify({ backend: 'cloud' }),
     )
   })

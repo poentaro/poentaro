@@ -5,12 +5,17 @@ import {
   seedCloudFile,
   seedTokenFor,
   trashCloudFile,
+  workerRouteGlob,
 } from '../../cloudFileHelpers'
 import { openFileList } from '../../fileSwitcherHelpers'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { seedSignedInSession } from './cloud-account-helpers'
 import { Given, Then, When } from './fixtures'
 import { syncedShareButtonState as state } from './synced-share-button-state'
+
+/** Releases the viewer's held-back `/files/list` requests; set while they are
+ * held. */
+let releaseViewerFileList: (() => void) | undefined
 
 /** Ids of the cloud files this scenario seeded, by name, for the owner's
  * API-side changes (rename, delete). */
@@ -31,6 +36,7 @@ async function openViewer(
     phone?: boolean
     localFolder?: string
     cloudAccount?: string
+    holdFileList?: boolean
   } = {},
 ) {
   state.viewerContext = await browser.newContext(
@@ -39,14 +45,16 @@ async function openViewer(
   const page = await state.viewerContext.newPage()
   if (options.localFolder) {
     await page.addInitScript((folder: string) => {
-      if (localStorage.getItem('jianpu:files:v1')) return
+      if (localStorage.getItem('poentaro:files:v1')) return
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: `${folder}/mine.jianpu`,
-          userFiles: { [`${folder}/mine.jianpu`]: '# score\n1 2 3 4' },
+          active: `${folder}/mine.poentaro`,
+          userFiles: {
+            [`${folder}/mine.poentaro`]: 'score """\n    1 2 3 4\n    """\n',
+          },
           bin: {},
-          fileIds: { [`${folder}/mine.jianpu`]: crypto.randomUUID() },
+          fileIds: { [`${folder}/mine.poentaro`]: crypto.randomUUID() },
           folders: [],
         }),
       )
@@ -56,9 +64,18 @@ async function openViewer(
     await seedSignedInSession(page, options.cloudAccount)
     await page.addInitScript(() => {
       localStorage.setItem(
-        'jianpu:storage-backend:v1',
+        'poentaro:storage-backend:v1',
         JSON.stringify({ backend: 'cloud' }),
       )
+    })
+  }
+  if (options.holdFileList) {
+    const released = new Promise<void>((resolve) => {
+      releaseViewerFileList = resolve
+    })
+    await page.route(workerRouteGlob('/files/list'), async (route) => {
+      await released
+      await route.continue()
     })
   }
   state.viewerPage = page
@@ -112,6 +129,30 @@ When(
     })
   },
 )
+
+When(
+  'a cloud viewer whose files are still loading opens the synced link of the share dialog',
+  async ({ page, browser }) => {
+    await openViewer(browser, await syncedLinkOf(page), {
+      cloudAccount: currentSignedInEmail(),
+      holdFileList: true,
+    })
+  },
+)
+
+Then('the viewer cannot import the folder yet', async () => {
+  await expect(
+    viewer().getByRole('button', { name: 'Import this folder' }),
+  ).toBeDisabled()
+})
+
+When("the viewer's files finish loading", async () => {
+  releaseViewerFileList?.()
+  releaseViewerFileList = undefined
+  await expect(
+    viewer().getByRole('button', { name: 'Import this folder' }),
+  ).toBeEnabled()
+})
 
 When(
   'a viewer opens the static link of the share dialog',
@@ -185,7 +226,7 @@ When('the viewer imports the folder', async () => {
   await viewer().getByRole('button', { name: 'Import this folder' }).click()
 })
 
-When('the viewer discards the folder', async () => {
+When('the viewer clicks Discard', async () => {
   await viewer().getByRole('button', { name: 'Discard' }).click()
 })
 
@@ -249,6 +290,10 @@ Then("the viewer's page URL has no synced share param", async () => {
 
 Then("the viewer's page URL has no share hash", async () => {
   await expect.poll(() => new URL(viewer().url()).hash).toBe('')
+})
+
+Then('the viewer sees no shared viewer notice', async () => {
+  await expect(viewer().getByTestId('shared-viewer-notice')).toHaveCount(0)
 })
 
 Then('the viewer sees the "no longer shared" screen', async () => {

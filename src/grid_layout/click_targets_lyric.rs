@@ -114,7 +114,7 @@ struct LyricRowPosition<'a> {
 /// to keep that function under the max-function-length lint.
 fn push_lyric_click_targets_for_row(
     pos: &LyricRowPosition<'_>,
-    note_max_cols: &HashMap<usize, u32>,
+    note_max_cols: &HashMap<u32, u32>,
     page_idx: usize,
     results: &mut Vec<(usize, LyricClickTarget)>,
 ) {
@@ -130,7 +130,7 @@ fn push_lyric_click_targets_for_row(
         .map(|e| e.column)
         .min();
     for el in &pos.part_row.elements {
-        let ElementContent::Lyric { text, note_id } = &el.content else {
+        let ElementContent::Lyric { text, note_id, .. } = &el.content else {
             continue;
         };
         // Can't gate on `ColumnElement::note_id` the way the note/rest case
@@ -145,8 +145,12 @@ fn push_lyric_click_targets_for_row(
         // `compute_all_playback_cursor_targets` snaps the first note's own
         // click target — otherwise the box starts a whole column short of
         // (or past) where the bar line is actually drawn.
-        let column_start = if pos.block_idx == 0 && Some(el.column) == row_min_col {
-            LABEL_COLS as f32
+        let column_start = if Some(el.column) == row_min_col {
+            if pos.block_idx == 0 {
+                LABEL_COLS as f32
+            } else {
+                (pos.col_offset - 1) as f32 + 0.5
+            }
         } else {
             (pos.col_offset + el.column) as f32
         };
@@ -156,7 +160,7 @@ fn push_lyric_click_targets_for_row(
         // flush right (`bar_line_col + 1.0`) for the system's last measure,
         // otherwise centered on the bar line (`bar_line_col + 0.5`) like an
         // inter-measure one is drawn.
-        let column_end = match note_max_cols.get(note_id) {
+        let column_end = match note_max_cols.get(&el.column) {
             Some(&max_col) if pos.has_bar_line && Some(max_col) == row_max_col => {
                 let bar_line_col = (pos.col_offset + pos.col_w - 1) as f32;
                 if pos.block_idx == pos.last_block_idx {
@@ -165,8 +169,31 @@ fn push_lyric_click_targets_for_row(
                     bar_line_col + 0.5
                 }
             }
-            Some(&max_col) => (pos.col_offset + max_col + 1) as f32,
-            None => column_start + 1.0,
+            Some(&max_col) => note_max_cols
+                .keys()
+                .copied()
+                .filter(|&column| column > el.column)
+                .min()
+                .map_or((pos.col_offset + max_col + 1) as f32, |next| {
+                    (pos.col_offset + next) as f32
+                }),
+            None => pos
+                .part_row
+                .elements
+                .iter()
+                .filter(|next| matches!(&next.content, ElementContent::Lyric { text, .. } if !text.is_empty()))
+                .map(|next| next.column)
+                .filter(|&column| column > el.column)
+                .min()
+                .map(|next| (pos.col_offset + next) as f32)
+                .unwrap_or_else(|| {
+                    let end = (pos.col_offset + pos.col_w) as f32;
+                    if pos.has_bar_line && pos.block_idx != pos.last_block_idx {
+                        end - 0.5
+                    } else {
+                        end
+                    }
+                }),
         };
         results.push((
             page_idx,
@@ -187,8 +214,9 @@ fn push_lyric_click_targets_for_row(
 /// `column_end` is widened to match its own note's full written column span
 /// (attack plus any dash-continuation columns, via `group_elements_by_note_id`
 /// on the paired note row) so a multi-beat note's hover/click box covers its
-/// whole duration rather than stopping after the first beat. Both edges are
-/// then snapped to a system's leading/trailing bar line where relevant
+/// whole duration rather than stopping after the first beat.
+/// For a chord-targeting or unpaired row, the next syllable bounds the
+/// target instead. Both edges are snapped to the bar lines where relevant
 /// (`column_start` for the first syllable, `column_end` for the last),
 /// exactly like `compute_all_playback_cursor_targets` snaps a note's own
 /// click target.
@@ -224,17 +252,20 @@ pub(crate) fn compute_all_lyric_click_targets(
                     let Some(part_row) = block.rows.get(part_idx) else {
                         continue;
                     };
-                    // The paired note row's own `(note_id -> max_col)` map,
-                    // used to widen each syllable's `column_end` to its
-                    // note's full written span rather than the single column
-                    // the syllable text itself sits in.
+                    // The paired note row's own `(start column -> max_col)`
+                    // map, used to widen each syllable's `column_end` to the
+                    // full written span of the note starting under it rather
+                    // than the single column the syllable text itself sits
+                    // in. Keyed by column, not note id: a lyric part sung on
+                    // several parts may pair with one other than the row it
+                    // is drawn under, whose note ids then differ.
                     //
                     // Not for a chord-targeting lyric row: the lyric line
                     // carries its own timing there, so a bracketed syllable
                     // widened to its chord's whole span would overlap the
                     // unbracketed syllables spread inside that span. Every
-                    // syllable keeps its own single-column box instead.
-                    let note_max_cols: HashMap<usize, u32> = owner_note_row_indices
+                    // syllable extends only to the next syllable instead.
+                    let note_max_cols: HashMap<u32, u32> = owner_note_row_indices
                         .get(part_idx)
                         .copied()
                         .flatten()
@@ -243,7 +274,7 @@ pub(crate) fn compute_all_lyric_click_targets(
                         .map(|note_row| {
                             group_elements_by_note_id(&note_row.elements)
                                 .into_iter()
-                                .map(|(note_id, _min_col, max_col)| (note_id, max_col))
+                                .map(|(_note_id, min_col, max_col)| (min_col, max_col))
                                 .collect()
                         })
                         .unwrap_or_default();

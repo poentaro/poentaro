@@ -36,6 +36,7 @@ import { createVersionCalls } from './cloudBackendVersions'
 import type { BaseSnapshots } from './outbox/baseSnapshots'
 import { type ConflictFlow, createConflictFlow } from './outbox/conflictFlow'
 import type { OutboxLooper, OutboxSnapshot } from './outbox/outboxLooper'
+import { watchForEndedSession } from './outbox/watchForEndedSession'
 import type { SaveStatus } from './types'
 
 export type {
@@ -132,6 +133,7 @@ export function createCloudBackend(
   let conflictFlow: ConflictFlow | null = null
   let startGeneration = 0
   let stopReconciling: (() => void) | null = null
+  let stopWatchingSession: (() => void) | null = null
 
   /** Initializes wasm and starts the looper, once. */
   function whenReady(): Promise<void> {
@@ -145,6 +147,9 @@ export function createCloudBackend(
       // for sign-in can go again.
       if (!looper.snapshot().halted) await looper.resolveSignedIn()
       stopReconciling = looper.subscribe(reconcileLocalNames)
+      stopWatchingSession = watchForEndedSession(looper, () =>
+        config.onSessionEnded?.(),
+      )
       conflictFlow = createConflictFlow({
         looper,
         bases,
@@ -354,6 +359,8 @@ export function createCloudBackend(
     dispose() {
       stopReconciling?.()
       stopReconciling = null
+      stopWatchingSession?.()
+      stopWatchingSession = null
       conflictFlow?.stop()
       conflictFlow = null
       startGeneration += 1

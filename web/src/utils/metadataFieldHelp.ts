@@ -3,7 +3,7 @@ import type {
   MetadataFlagKey,
   MetadataNumberKey,
   TextStyleKind,
-} from '../jianpuWasm'
+} from '../poentaroWasm'
 
 /** Markdown help text shown in the field-help modal, keyed by the generated
  * wasm key types: the 13 `TextStyleKind`s (shared by both the content row
@@ -24,7 +24,7 @@ export const metadataFieldHelp: Record<
 
   author: `Rendered in the header, below the title/subtitle.`,
 
-  sequence: `Style of the \`# sequence\` summary line rendered near the top of the score.`,
+  sequence: `Style of the \`sequence\` summary line rendered near the top of the score.`,
 
   'part-legend': `Style of the part-name legend entries shown in the header.`,
 
@@ -38,9 +38,13 @@ See **Part Label Width** below for the column's reserved width.`,
 
   'part-label-width-pt': `Fixed width (points) of the part-label column at the start of each system, shared by every system in the score regardless of how many measures/columns that system's music needs.`,
 
+  'page-margin-pt': `Blank space (points) on every side of the page, between the paper's edge and the header, music and page number. A wider margin also narrows each system, so measures may wrap differently.`,
+
   'page-number': `Style of the page number shown in the footer.
 
 **V. Padding** pushes the page number upward from the page's bottom edge, without moving anything else.`,
+
+  'running-title': `Style of the small title shown at the top of every page after the first (the subtitle and author appear on the first page only).`,
 
   lyrics: `Style of lyric syllable text under notes.
 
@@ -96,5 +100,5 @@ Can be overridden from a specific measure onward with a
 
 Moves that row's text without affecting the layout or spacing of anything else on the page.
 
-Not applied to the \`# sequence\` summary header line.`,
+Not applied to the \`sequence\` summary header line.`,
 }

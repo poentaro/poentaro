@@ -9,10 +9,10 @@ Feature: Lyric syllable hover/click-target box height
   Latin ones — the glyph no longer fits inside its own click-target box.
 
   Background:
-    Given "# metadata" sets "row_height" to "30"
+    Given "metadata" sets "row_height" to "30"
 
   Scenario: CJK syllable overflows its click-target box before Latin does
-    Given "# metadata" sets "lyrics_font_size" to "40"
+    Given "metadata" sets "lyrics_font_size" to "40"
     And the score has a note with lyric syllable "詞"
     When it is rendered
     Then the lyric click-target height should be at least the resolved lyric font size
@@ -20,7 +20,7 @@ Feature: Lyric syllable hover/click-target box height
     And the lyric glyph should be fully contained within its click-target box
 
   Scenario: Latin syllable still fits its click-target box at the same override
-    Given "# metadata" sets "lyrics_font_size" to "40"
+    Given "metadata" sets "lyrics_font_size" to "40"
     And the score has a note with lyric syllable "Love"
     When it is rendered
     Then the lyric click-target height should be at least the resolved lyric font size
@@ -28,7 +28,7 @@ Feature: Lyric syllable hover/click-target box height
     And the lyric glyph should be fully contained within its click-target box
 
   Scenario Outline: Click-target height should track the resolved lyric font size
-    Given "# metadata" sets "lyrics_font_size" to "<lyrics_font_size>"
+    Given "metadata" sets "lyrics_font_size" to "<lyrics_font_size>"
     And the score has a note with lyric syllable "<syllable>"
     When it is rendered
     Then the lyric click-target height should be at least the resolved lyric font size
@@ -45,8 +45,8 @@ Feature: Lyric syllable hover/click-target box height
       | 60                | 詞        |
 
   Scenario Outline: Original repro parameters — small row_height, large lyrics_font_size override
-    Given "# metadata" sets "row_height" to "24"
-    And "# metadata" sets "lyrics_font_size" to "<lyrics_font_size>"
+    Given "metadata" sets "row_height" to "24"
+    And "metadata" sets "lyrics_font_size" to "<lyrics_font_size>"
     And the score has a note with lyric syllable "<syllable>"
     When it is rendered
     Then the lyric click-target height should be at least the resolved lyric font size

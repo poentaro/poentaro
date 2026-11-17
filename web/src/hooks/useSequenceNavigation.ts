@@ -7,6 +7,9 @@ export interface SelectedSequenceRange {
   end: number
   entryStartIndex: number
   entryEndIndex: number
+  /** The written measures the selected entries cover, first to last in the
+   * score: the measure range the selection puts in the editor. */
+  coveredMeasures: { start: number; end: number }
 }
 
 interface LineRange {
@@ -15,11 +18,11 @@ interface LineRange {
 }
 
 /**
- * Resolves a single `# sequence` entry (by its 0-based index into
+ * Resolves a single `sequence` entry (by its 0-based index into
  * `sequenceEntries`) to its own source line range. A repeated label (e.g.
  * the closing `Intro` in `Intro, A, B, C, Intro`) resolves to the same
  * written measures — and therefore the same lines — as every other
- * occurrence, since `# sequence` only replays already-written measures
+ * occurrence, since `sequence` only replays already-written measures
  * rather than duplicating them in the source.
  */
 function resolveEntryLineRange(
@@ -35,7 +38,7 @@ function resolveEntryLineRange(
 }
 
 /**
- * Resolves a chain-order range of `# sequence` entries (indices into
+ * Resolves a chain-order range of `sequence` entries (indices into
  * `sequenceEntries`, already sorted so `startIndex <= endIndex`) to one
  * source line range per entry.
  *
@@ -67,7 +70,7 @@ export function computeSequenceSelectionLineRanges(
 }
 
 /**
- * Resolves a chain-order range of `# sequence` entries to one measure-index
+ * Resolves a chain-order range of `sequence` entries to one measure-index
  * range per entry — the disjoint-measure-range analogue of
  * `computeSequenceSelectionLineRanges`, but simpler: a sequence entry
  * already carries its own `start_measure_index`/`end_measure_index`
@@ -111,6 +114,16 @@ export function envelopeOfLineRanges(ranges: LineRange[]): LineRange | null {
   }
 }
 
+function envelopeOfMeasureRanges(ranges: { start: number; end: number }[]): {
+  start: number
+  end: number
+} {
+  return {
+    start: Math.min(...ranges.map((r) => r.start)),
+    end: Math.max(...ranges.map((r) => r.end)),
+  }
+}
+
 export function useSequenceNavigation(
   sequenceEntries: SequenceEntry[],
   measureSpans: MeasureSpan[],
@@ -125,9 +138,9 @@ export function useSequenceNavigation(
   ) => void,
   /**
    * Owned by the caller (`useAppController`) rather than this hook, and
-   * also handed to `useMeasureAudioPlayback` (inside `useJianpuWorker`,
+   * also handed to `useMeasureAudioPlayback` (inside `usePoentaroWorker`,
    * constructed before this hook runs since this hook needs
-   * `useJianpuWorker`'s own `notifySelection` output) — a ref lets that
+   * `usePoentaroWorker`'s own `notifySelection` output) — a ref lets that
    * earlier-constructed consumer read the latest selection at click time
    * without a circular dependency between the two hooks.
    */
@@ -170,12 +183,19 @@ export function useSequenceNavigation(
     return {
       start: startEntry.startMeasureIndex,
       end: endEntry.endMeasureIndex,
-      // The selected entries' own 0-based index into `# sequence`, needed
+      // The selected entries' own 0-based index into `sequence`, needed
       // to disambiguate a repeated label (e.g. `A, B(-x), B`): every
       // occurrence shares the same written measure range above, so without
       // this the backend can't tell which occurrence was actually clicked.
       entryStartIndex: selectedIndexRange.start,
       entryEndIndex: selectedIndexRange.end,
+      coveredMeasures: envelopeOfMeasureRanges(
+        computeSequenceSelectionMeasureRanges(
+          sequenceEntries,
+          selectedIndexRange.start,
+          selectedIndexRange.end,
+        ),
+      ),
     }
   }, [selectedIndexRange, sequenceEntries])
 

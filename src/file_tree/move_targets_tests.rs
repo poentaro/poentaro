@@ -7,7 +7,7 @@ fn path(raw: &str) -> TreePath {
 fn context() -> FileOperationContext {
     FileOperationContext {
         demo_files: vec![DemoFile {
-            path: path("Demo.jianpu"),
+            path: path("Demo.poentaro"),
             content: String::new(),
         }],
         new_file_id: "new-id".to_string(),
@@ -37,7 +37,7 @@ fn labels(targets: &[MoveTarget]) -> Vec<String> {
 #[test]
 fn targets_list_top_level_then_every_folder_depth_first() {
     let state = store(
-        &["Hymns/Advent/O Come.jianpu", "Scratch.jianpu"],
+        &["Hymns/Advent/O Come.poentaro", "Scratch.poentaro"],
         &["Empty"],
     );
     assert_eq!(
@@ -48,7 +48,7 @@ fn targets_list_top_level_then_every_folder_depth_first() {
 
 #[test]
 fn targets_carry_full_paths_with_empty_path_for_top_level() {
-    let state = store(&["Hymns/Advent/x.jianpu"], &[]);
+    let state = store(&["Hymns/Advent/x.poentaro"], &[]);
     let paths: Vec<String> = move_targets(&state, None)
         .into_iter()
         .map(|target| target.path)
@@ -59,7 +59,7 @@ fn targets_carry_full_paths_with_empty_path_for_top_level() {
 #[test]
 fn excluded_folder_and_its_descendants_are_not_offered() {
     let state = store(
-        &["A/B/x.jianpu", "A/y.jianpu", "Other/z.jianpu"],
+        &["A/B/x.poentaro", "A/y.poentaro", "Other/z.poentaro"],
         &["A/Empty"],
     );
     assert_eq!(
@@ -74,7 +74,7 @@ fn excluded_folder_and_its_descendants_are_not_offered() {
 
 #[test]
 fn excluding_a_folder_keeps_siblings_sharing_its_name_prefix() {
-    let state = store(&["A/x.jianpu", "AB/y.jianpu"], &[]);
+    let state = store(&["A/x.poentaro", "AB/y.poentaro"], &[]);
     assert_eq!(
         labels(&move_targets(&state, Some(&path("A")))),
         vec!["Top level", "-AB"]
@@ -84,26 +84,26 @@ fn excluding_a_folder_keeps_siblings_sharing_its_name_prefix() {
 #[test]
 fn destination_keeps_the_name_and_swaps_the_folder() {
     assert_eq!(
-        move_destination("Hymns/O Come.jianpu", Some(&path("Archive/Old")))
+        move_destination("Hymns/O Come.poentaro", Some(&path("Archive/Old")))
             .unwrap()
             .as_str(),
-        "Archive/Old/O Come.jianpu"
+        "Archive/Old/O Come.poentaro"
     );
     assert_eq!(
-        move_destination("Hymns/O Come.jianpu", None)
+        move_destination("Hymns/O Come.poentaro", None)
             .unwrap()
             .as_str(),
-        "O Come.jianpu"
+        "O Come.poentaro"
     );
 }
 
 #[test]
 fn rename_error_reports_clash_and_invalid_paths_but_not_success() {
-    let state = store(&["a.jianpu", "Docs/a.jianpu"], &[]);
-    let error = |to: &str| rename_error(&state, "a.jianpu", to, &context());
+    let state = store(&["a.poentaro", "Docs/a.poentaro"], &[]);
+    let error = |to: &str| rename_error(&state, "a.poentaro", to, &context());
     assert_eq!(
         error("Docs/a"),
-        Some("`Docs/a.jianpu` already exists".into())
+        Some("`Docs/a.poentaro` already exists".into())
     );
     assert_eq!(
         error("Docs//a"),

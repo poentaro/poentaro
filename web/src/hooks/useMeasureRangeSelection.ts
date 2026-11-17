@@ -123,7 +123,7 @@ export function useMeasureRangeSelection(
         // lyric cells themselves already got their own precise blue/lyric
         // highlight painted directly on the SVG (`resolveMeasureSelection`),
         // and the amber whole-measure background is reserved for an actual
-        // Monaco caret (see `useJianpuWorkerRenderRequests.ts`'s
+        // Monaco caret (see `usePoentaroWorkerRenderRequests.ts`'s
         // `notifySelection` — only a caret-only report paints it, same
         // convention `useSectionNavigation.selectSectionRange` relies on).
         // There's no Monaco caret in this view at all, so `notifySelection`

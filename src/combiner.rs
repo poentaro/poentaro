@@ -1,10 +1,11 @@
 use crate::ast::grouped::{
-    GroupedMeasure, GroupedScore, GroupedTrack, LyricsSlice, MeasureDirectives, MultiPartMeasure,
-    Notes, PartRow, PartSlice, DEFAULT_HIDE_RESTING_PARTS,
+    GroupedMeasure, GroupedPart, GroupedScore, GroupedTrack, LyricsSlice, MeasureDirectives,
+    MultiPartMeasure, Notes, PartRow, PartSlice, DEFAULT_HIDE_RESTING_PARTS,
     DEFAULT_MERGE_DUPLICATE_MEASURES_ACROSS_PARTS,
 };
 use crate::ast::parsed::PartKind;
 use crate::error::{Diagnostic, RecoverableError, Span};
+use crate::lyric_paired_target::{enters_tied, paired_target_index, target_part};
 
 fn collect_part_measure_diagnostics(m: Option<&GroupedMeasure>) -> Vec<Diagnostic> {
     [
@@ -188,21 +189,22 @@ fn build_part_rows(
                     ));
                     continue;
                 };
+                diagnostics.extend(
+                    crate::lyric_targets_rhythm::lyric_targets_rhythm_error(
+                        grouped_tracks,
+                        part,
+                        measure_idx,
+                    )
+                    .map(Diagnostic::Error),
+                );
                 let lyrics = match part.kind {
-                    PartKind::Lyrics { target_part_index } => {
-                        grouped_tracks.get(target_part_index).map(|target| {
-                            let GroupedTrack::Timed(target) = target;
-                            LyricsSlice {
-                                target_name: target.name.clone().unwrap_or_default(),
-                                target_events: target
-                                    .measures
-                                    .get(measure_idx)
-                                    .map_or_else(Vec::new, |measure| measure.notes.events.clone()),
-                                targets_chords: target.kind == PartKind::Chords,
-                                syllables: measure.paired_lyrics.clone(),
-                            }
-                        })
-                    }
+                    PartKind::Lyrics { target_part_index } => lyrics_slice(
+                        grouped_tracks,
+                        part,
+                        measure,
+                        target_part_index,
+                        measure_idx,
+                    ),
                     _ => None,
                 };
                 let slice = PartSlice {
@@ -211,6 +213,8 @@ fn build_part_rows(
                     soundfont: part.soundfont,
                     volume: part.volume,
                     octave_offset: part.octave_offset,
+                    range_instrument: part.range_instrument,
+                    singing_voice: part.singing_voice,
                     notes: Notes {
                         events: measure.notes.events.clone(),
                     },
@@ -227,6 +231,41 @@ fn build_part_rows(
     (part_rows, diagnostics)
 }
 
+/// A lyric part's measure, sung along to the target it pairs with there
+/// (see `lyric_paired_target`).
+fn lyrics_slice(
+    grouped_tracks: &[GroupedTrack],
+    part: &GroupedPart,
+    measure: &GroupedMeasure,
+    target_part_index: usize,
+    measure_index: usize,
+) -> Option<LyricsSlice> {
+    let paired_index = paired_target_index(
+        grouped_tracks,
+        &part.lyric_targets,
+        target_part_index,
+        measure_index,
+    );
+    let target = target_part(grouped_tracks, paired_index)?;
+    let name_of = |index: usize| target_part(grouped_tracks, index)?.name.clone();
+    Some(LyricsSlice {
+        target_name: target.name.clone().unwrap_or_default(),
+        target_events: target
+            .measures
+            .get(measure_index)
+            .map_or_else(Vec::new, |measure| measure.notes.events.clone()),
+        entering_tied: enters_tied(target, measure_index),
+        targets_chords: target.kind == PartKind::Chords,
+        syllables: measure.paired_lyrics.clone(),
+        sung_on: part
+            .lyric_targets
+            .iter()
+            .filter_map(|&index| name_of(index))
+            .collect(),
+        drawn_under: name_of(target_part_index).unwrap_or_default(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -234,9 +273,18 @@ mod tests {
 
     fn make_two_part_score(soprano: &str, alto: &str) -> Vec<MultiPartMeasure> {
         let input = format!(
-            "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nSoprano = notes\nAlto = notes\n\n# score\ntime=4/4 key=C4 bpm=120\n[Soprano] {soprano}\n[Alto] {alto}\n"
+            r#"metadata {{ title "t", author "a" }},
+
+parts ["Soprano": notes, "Alto": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] {soprano}
+    [Alto] {alto}
+    """,
+"#
         );
-        let doc = parser::parse(&input, "test.jianpu", &[]).unwrap();
+        let doc = parser::parse(&input, "test.poentaro", &[]).unwrap();
         grouper::group(doc).unwrap().measures
     }
 
@@ -258,15 +306,18 @@ mod tests {
     fn beat_overflow_in_one_part_attaches_error_to_measure() {
         // Alto has 5 notes in a 4/4 bar — overflow is recoverable; the measure
         // gets an error and the 5th note is trimmed.
-        let input = concat!(
-            "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nSoprano = notes\nAlto = notes\n\n",
-            "# score\n",
-            "time=4/4 key=C4 bpm=120\n",
-            "[Soprano] 1 2 3 4\n",
-            "[Alto] 5 6 7 1 5\n",
-        );
-        let doc =
-            parser::parse(input, "test.jianpu", &[]).expect("beat overflow must not abort parsing");
+        let input = r#"metadata { title "t", author "a" },
+
+parts ["Soprano": notes, "Alto": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Soprano] 1 2 3 4
+    [Alto] 5 6 7 1 5
+    """,
+"#;
+        let doc = parser::parse(input, "test.poentaro", &[])
+            .expect("beat overflow must not abort parsing");
         let score = grouper::group(doc).expect("grouping must succeed");
         assert_eq!(score.measures.len(), 1);
         assert_eq!(score.measures[0].diagnostics.len(), 1);

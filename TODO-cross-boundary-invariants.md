@@ -45,7 +45,7 @@ at the time this item was fixed, `data-tag` was *not* actually centralized anywh
 and ~7 other TS files, exactly the shape `AGENTS.md`'s "Cross-boundary invariants" section
 names as its running example. See item 6 for the actual fix.)
 
-- Source: `TransparentRectRoleOut` enum, `crates/jianpu-wasm/src/svg_types.rs:20-30`.
+- Source: `TransparentRectRoleOut` enum, `crates/poentaro-wasm/src/svg_types.rs:20-30`.
 - Hand-mapped to kebab-case strings in `web/src/components/PreviewSvgRenderer.tsx:45+`
   (`transparentRectRoleToDataVariant`), plus a standalone literal
   `data-variant="playback-cursor-rect"` at line 308 for `PlaybackCursorRect`.
@@ -76,10 +76,10 @@ tags that already exist for it.
 
 - Rust hand-parses these literal strings: `src/source_edit/mod.rs:12-23` (`PartMode::parse`).
 - This is entirely independent of `PartDeclarationModeOut`'s existing serde tags
-  (`crates/jianpu-wasm/src/types.rs:74`), consumed as TS's `PartMode`
+  (`crates/poentaro-wasm/src/types.rs:74`), consumed as TS's `PartMode`
   (`web/src/types.ts:16`).
 - TS reconstructs the raw strings to send across the boundary in
-  `web/src/worker/jianpu.worker.ts:114-118` (`modeToWasmString`).
+  `web/src/worker/poentaro.worker.ts:114-118` (`modeToWasmString`).
 
 **Failure mode:** typed on the TS input (`mode: PartMode`) but not on the Rust parser
 side — if the two string sets drift, `PartMode::parse` silently returns `None` and
@@ -129,7 +129,7 @@ leftover — see item 14.)
   `merge_duplicate_measures_across_parts=`, `hide_resting_parts=` across the
   timed/interleaved directive parsers.
 - TS hardcodes the same keyword set for editor syntax coloring only:
-  `web/src/monacoJianpuLanguage.ts:39`
+  `web/src/monacoPoentaroLanguage.ts:39`
   (`/\b(bpm|key|time|label|merge_duplicate_measures_across_parts|hide_resting_parts)(?=\s*=)/`).
 
 **Failure mode:** cosmetic only — Rust never consults this regex, so a drift just means a
@@ -144,7 +144,7 @@ correct fix in principle.
 
 ## [x] 6. `TagOut` → `data-tag` kebab-case strings (the running example in `AGENTS.md`)
 
-- Source: `TagOut` enum, `crates/jianpu-wasm/src/svg_types.rs`.
+- Source: `TagOut` enum, `crates/poentaro-wasm/src/svg_types.rs`.
 - Was hand-mapped to kebab-case strings in `web/src/components/PreviewSvgRenderer.tsx`'s
   `groupAttrsForTag`, and re-typed independently as raw `data-tag="..."` string literals
   in `web/src/components/clickableElementId.ts` (its own hand-typed
@@ -270,10 +270,10 @@ import that JSON, so neither has its own length or charset. A missing file fails
 ## [x] 10. `set-layout-fonts` takes three positional `list<u8>`s; TS picks the role for each (silent layout)
 
 - WIT `world.wit:829`: `(directive-line-font, lyric-font, monospace-font)`, all
-  `list<u8>` (`crates/jianpu-wasm/src/component/guest_metadata_and_misc.rs:45-53`).
+  `list<u8>` (`crates/poentaro-wasm/src/component/guest_metadata_and_misc.rs:45-53`).
   Which role each text kind renders in is decided in
   `src/serializer/text.rs:70,81`.
-- TS: `web/src/worker/jianpu.worker.ts:66-73` calls
+- TS: `web/src/worker/poentaro.worker.ts:66-73` calls
   `setLayoutFonts(fonts.tc, fonts.sc, fonts.mono)`. Here `tc` is the sansSerif role and
   `sc` is the serif role (`web/src/hooks/useFontsLoader.ts:25-27`). The mapping is kept
   only by a comment.

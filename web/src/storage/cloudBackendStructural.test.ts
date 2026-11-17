@@ -17,10 +17,10 @@ const emptyState: FileStoreState = {
 }
 
 const stateWithFile: FileStoreState = {
-  active: 'a.jianpu',
-  userFiles: { 'a.jianpu': 'content' },
-  bin: { 'binned.jianpu': 'old' },
-  fileIds: { 'a.jianpu': 'id-a', 'binned.jianpu': 'id-binned' },
+  active: 'a.poentaro',
+  userFiles: { 'a.poentaro': 'content' },
+  bin: { 'binned.poentaro': 'old' },
+  fileIds: { 'a.poentaro': 'id-a', 'binned.poentaro': 'id-binned' },
 }
 
 const createdFile = (name: string, revision = 0) =>
@@ -45,8 +45,8 @@ describe('createCloudBackend: structural operations are applied locally at once'
 
     const next = await backend.createFile(emptyState, undefined, 'untitled')
 
-    expect(next.active).toBe('untitled.jianpu')
-    const id = next.fileIds['untitled.jianpu'] ?? ''
+    expect(next.active).toBe('untitled.poentaro')
+    const id = next.fileIds['untitled.poentaro'] ?? ''
     expect(queuedTags(looper, id)).toEqual(['create-file'])
   })
 
@@ -54,9 +54,13 @@ describe('createCloudBackend: structural operations are applied locally at once'
     const { backend, looper } = createTestBackend()
     neverAnswer()
 
-    const next = await backend.renameFile(stateWithFile, 'a.jianpu', 'b.jianpu')
+    const next = await backend.renameFile(
+      stateWithFile,
+      'a.poentaro',
+      'b.poentaro',
+    )
 
-    expect(next.userFiles).toHaveProperty('b.jianpu')
+    expect(next.userFiles).toHaveProperty('b.poentaro')
     expect(queuedTags(looper, 'id-a')).toEqual(['rename-file'])
   })
 
@@ -64,9 +68,9 @@ describe('createCloudBackend: structural operations are applied locally at once'
     const { backend, looper } = createTestBackend()
     neverAnswer()
 
-    const next = await backend.deleteFile(stateWithFile, 'a.jianpu')
+    const next = await backend.deleteFile(stateWithFile, 'a.poentaro')
 
-    expect(next.bin).toHaveProperty('a.jianpu')
+    expect(next.bin).toHaveProperty('a.poentaro')
     expect(queuedTags(looper, 'id-a')).toEqual(['trash-file'])
   })
 
@@ -74,9 +78,9 @@ describe('createCloudBackend: structural operations are applied locally at once'
     const { backend, looper } = createTestBackend()
     neverAnswer()
 
-    const next = await backend.restoreFile(stateWithFile, 'binned.jianpu')
+    const next = await backend.restoreFile(stateWithFile, 'binned.poentaro')
 
-    expect(next.userFiles).toHaveProperty('binned.jianpu')
+    expect(next.userFiles).toHaveProperty('binned.poentaro')
     expect(queuedTags(looper, 'id-binned')).toEqual(['restore-file'])
   })
 })
@@ -89,11 +93,11 @@ describe('createCloudBackend: ordering within a file', () => {
     const created = await backend.createFile(emptyState, undefined, 'untitled')
     await backend.saveContent({
       ...created,
-      userFiles: { ...created.userFiles, 'untitled.jianpu': 'edited' },
+      userFiles: { ...created.userFiles, 'untitled.poentaro': 'edited' },
     })
     await looper.whenIdle()
 
-    const id = created.fileIds['untitled.jianpu'] ?? ''
+    const id = created.fileIds['untitled.poentaro'] ?? ''
     expect(queuedTags(looper, id)[0]).toBe('create-file')
     expect(backend.status()).toBe('offline')
   })
@@ -105,12 +109,12 @@ describe('createCloudBackend: ordering within a file', () => {
     const created = await backend.createFile(emptyState, undefined, 'untitled')
     await backend.saveContent({
       ...created,
-      userFiles: { ...created.userFiles, 'untitled.jianpu': 'edited' },
+      userFiles: { ...created.userFiles, 'untitled.poentaro': 'edited' },
     })
     await looper.whenIdle()
 
     fetchMock
-      .mockResolvedValueOnce(createdFile('untitled.jianpu', 1))
+      .mockResolvedValueOnce(createdFile('untitled.poentaro', 1))
       .mockResolvedValueOnce(jsonResponse(200, { revision: 2 }))
     advance(120_000)
     wake()
@@ -133,15 +137,15 @@ describe('createCloudBackend: a name collision found at delivery time', () => {
     backend.onLocalRename(({ from, to }) => renames.push({ from, to }))
     fetchMock
       .mockResolvedValueOnce(apiErrorResponse(409, { code: 'name_taken' }))
-      .mockResolvedValueOnce(createdFile('untitled 2.jianpu'))
+      .mockResolvedValueOnce(createdFile('untitled 2.poentaro'))
 
     await backend.createFile(emptyState, undefined, 'untitled')
     await looper.whenIdle()
 
-    expect((await callAt(0)).body.name).toBe('untitled.jianpu')
-    expect((await callAt(1)).body.name).toBe('untitled 2.jianpu')
+    expect((await callAt(0)).body.name).toBe('untitled.poentaro')
+    expect((await callAt(1)).body.name).toBe('untitled 2.poentaro')
     expect(renames).toEqual([
-      { from: 'untitled.jianpu', to: 'untitled 2.jianpu' },
+      { from: 'untitled.poentaro', to: 'untitled 2.poentaro' },
     ])
     expect(backend.status()).toBe('idle')
   })
@@ -154,10 +158,10 @@ describe('createCloudBackend: a name collision found at delivery time', () => {
       .mockResolvedValueOnce(apiErrorResponse(409, { code: 'name_taken' }))
       .mockResolvedValueOnce(emptyResponse(204))
 
-    await backend.renameFile(stateWithFile, 'a.jianpu', 'b.jianpu')
+    await backend.renameFile(stateWithFile, 'a.poentaro', 'b.poentaro')
     await looper.whenIdle()
 
-    expect((await callAt(1)).body.name).toBe('b 2.jianpu')
-    expect(renames).toEqual([{ from: 'b.jianpu', to: 'b 2.jianpu' }])
+    expect((await callAt(1)).body.name).toBe('b 2.poentaro')
+    expect(renames).toEqual([{ from: 'b.poentaro', to: 'b 2.poentaro' }])
   })
 })

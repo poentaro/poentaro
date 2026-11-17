@@ -1,7 +1,7 @@
 Feature: Selecting measures in the staff notation view
 
   # The staff view selects by measure, through the editor's selection like
-  # the jianpu view: a section button or a click-and-click on the staff
+  # the numbered view: a section button or a click-and-click on the staff
   # pages sets the editor's selection, and the staff view highlights
   # whatever measures that selection covers.
 

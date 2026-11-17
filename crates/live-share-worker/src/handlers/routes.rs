@@ -3,7 +3,7 @@
 //! Every part of a route's spec is derived from its handler's signature --
 //! path params from an `IntoParams` struct, the request body from a
 //! `ToSchema` type, the success response from its `Reply` type, and
-//! `ApiError` as every route's `default` response -- so there's no separate
+//! `ApiErrorBody` as every route's `default` response -- so there's no separate
 //! annotation to keep in step with the handler, and no hand-written TS to
 //! keep in step with either.
 
@@ -21,10 +21,14 @@ use utoipa::openapi::response::ResponseBuilder;
 use utoipa::openapi::schema::{ComponentsBuilder, Schema};
 use utoipa::openapi::{Content, Info, OpenApi, OpenApiBuilder, Ref, RefOr, Required};
 use utoipa::{IntoParams, ToSchema};
-use worker::{Request, Response, RouteContext, Router};
+use worker::{Env, Request, Response, RouteContext, Router};
 
-use crate::api_error::ApiError;
+use crate::api_error::{ApiError, ApiErrorBody};
 use crate::app_log::RequestMeta;
+use crate::crypto;
+
+/// The response header every answer carries its request's trace ID in.
+pub(crate) const TRACE_ID_HEADER: &str = "X-Trace-Id";
 
 pub(crate) type HandlerResult<T> = Result<T, ApiError>;
 
@@ -151,11 +155,22 @@ fn read_path_params<Params: DeserializeOwned>(
     serde_json::from_value(serde_json::Value::Object(values)).map_err(|_| ApiError::BadRequest)
 }
 
-fn respond<R: Reply>(outcome: HandlerResult<R>) -> worker::Result<Response> {
+/// Answers a handler's `outcome` to a request for `route`; a failure goes
+/// through `super::fail`.
+async fn respond<R: Reply>(
+    env: &Env,
+    route: &str,
+    request_meta: &RequestMeta,
+    outcome: HandlerResult<R>,
+) -> worker::Result<Response> {
     let mut response = match outcome {
         Ok(reply) => reply.into_response()?,
-        Err(error) => Response::from_json(&error)?.with_status(error.status_code()),
+        Err(error) => super::fail(env, route, error, request_meta).await?,
     };
+    // A success carries its trace ID too, for the client's own logs.
+    if let Some(trace_id) = &request_meta.trace_id {
+        response.headers_mut().set(TRACE_ID_HEADER, trace_id)?;
+    }
     // A viewer's page reload is the only way they ever see an owner's later
     // edit (see `useSyncedShareViewer.ts`'s doc comment) -- letting the
     // browser cache `GET /shares/{share_id}` would mean that reload
@@ -165,12 +180,16 @@ fn respond<R: Reply>(outcome: HandlerResult<R>) -> worker::Result<Response> {
     Ok(response)
 }
 
-fn request_meta(req: &Request) -> RequestMeta {
+/// `req`'s `RequestMeta`, with a new trace ID.
+pub(crate) fn request_meta(req: &Request) -> RequestMeta {
     let header = |name: &str| req.headers().get(name).ok().flatten();
     RequestMeta {
         origin: header("Origin"),
         user_agent: header("User-Agent"),
         client_ip: header("CF-Connecting-IP"),
+        trace_id: crypto::new_trace_id().ok(),
+        worker_origin: req.url().ok().map(|url| url.origin().ascii_serialization()),
+        resolved_user_id: Default::default(),
     }
 }
 
@@ -189,6 +208,7 @@ impl Routes {
     pub(crate) fn new() -> Self {
         let mut schemas = Schemas::default();
         schemas.add::<ApiError>();
+        schemas.add::<ApiErrorBody>();
         Routes {
             router: Router::new(),
             paths: PathsBuilder::new(),
@@ -203,7 +223,7 @@ impl Routes {
                 "default",
                 ResponseBuilder::new()
                     .description("Error")
-                    .content(JSON, json_content::<ApiError>()),
+                    .content(JSON, json_content::<ApiErrorBody>()),
             );
         R::document(operation, &mut self.schemas)
     }
@@ -217,22 +237,25 @@ impl Routes {
         Fut: Future<Output = HandlerResult<R>> + 'static,
     {
         let names = path_param_names::<Params>(path)?;
+        let route: Rc<str> = format!("GET {path}").into();
         let operation = self.operation::<Params, R>();
         self.paths = self
             .paths
             .path(path, PathItem::new(HttpMethod::Get, operation));
         self.router = self
             .router
-            .get_async(&router_pattern(path), move |_req: Request, ctx| {
+            .get_async(&router_pattern(path), move |req: Request, ctx| {
                 let names = Rc::clone(&names);
+                let route = Rc::clone(&route);
                 async move {
-                    respond(
-                        async {
-                            let params = read_path_params(&ctx, &names)?;
-                            handler(ctx, params).await
-                        }
-                        .await,
-                    )
+                    let request_meta = request_meta(&req);
+                    let env = ctx.env.clone();
+                    let outcome = async {
+                        let params = read_path_params(&ctx, &names)?;
+                        handler(ctx, params).await
+                    }
+                    .await;
+                    respond(&env, &route, &request_meta, outcome).await
                 }
             });
         Ok(self)
@@ -293,6 +316,7 @@ impl Routes {
         Fut: Future<Output = HandlerResult<R>> + 'static,
     {
         let names = path_param_names::<Params>(path)?;
+        let route: Rc<str> = format!("POST {path}").into();
         self.schemas.add::<Body>();
         let operation = self.operation::<Params, R>().request_body(Some(
             RequestBodyBuilder::new()
@@ -310,17 +334,18 @@ impl Routes {
             self.router
                 .post_async(&router_pattern(path), move |mut req: Request, ctx| {
                     let names = Rc::clone(&names);
+                    let route = Rc::clone(&route);
                     async move {
-                        respond(
-                            async {
-                                let params = read_path_params(&ctx, &names)?;
-                                let request_meta = request_meta(&req);
-                                let body =
-                                    req.json::<Body>().await.map_err(|_| ApiError::BadRequest)?;
-                                handler(ctx, params, body, request_meta).await
-                            }
-                            .await,
-                        )
+                        let request_meta = request_meta(&req);
+                        let env = ctx.env.clone();
+                        let outcome = async {
+                            let params = read_path_params(&ctx, &names)?;
+                            let body =
+                                req.json::<Body>().await.map_err(|_| ApiError::BadRequest)?;
+                            handler(ctx, params, body, request_meta.clone()).await
+                        }
+                        .await;
+                        respond(&env, &route, &request_meta, outcome).await
                     }
                 });
         Ok(self)

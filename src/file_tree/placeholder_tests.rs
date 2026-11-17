@@ -24,9 +24,9 @@ fn a_keep_leaf_inside_a_folder_is_a_placeholder() {
 #[test]
 fn other_names_are_not_placeholders() {
     assert!(!is_placeholder_path(".keep"));
-    assert!(!is_placeholder_path("Hymns/.keep.jianpu"));
-    assert!(!is_placeholder_path("Hymns/.keep/song.jianpu"));
-    assert!(!is_placeholder_path("Hymns/song.jianpu"));
+    assert!(!is_placeholder_path("Hymns/.keep.poentaro"));
+    assert!(!is_placeholder_path("Hymns/.keep/song.poentaro"));
+    assert!(!is_placeholder_path("Hymns/song.poentaro"));
 }
 
 #[test]
@@ -42,8 +42,8 @@ fn active_placeholders_become_folders_and_all_are_hidden() {
     let result = classify_cloud_listing(&[
         entry("1", "Empty/.keep", false),
         entry("2", "Gone/.keep", true),
-        entry("3", "Empty/song.jianpu", false),
-        entry("4", "Top.jianpu", false),
+        entry("3", "Empty/song.poentaro", false),
+        entry("4", "Top.poentaro", false),
     ]);
     assert_eq!(
         result.folders,
@@ -64,7 +64,7 @@ fn active_placeholders_become_folders_and_all_are_hidden() {
 
 #[test]
 fn a_listing_without_placeholders_is_unchanged() {
-    let result = classify_cloud_listing(&[entry("1", "a.jianpu", false)]);
+    let result = classify_cloud_listing(&[entry("1", "a.poentaro", false)]);
     assert!(result.folders.is_empty());
     assert!(result.hidden_file_ids.is_empty());
 }

@@ -1,4 +1,5 @@
-//! Typed events for the `app_log` table (migration `0006_app_log.sql`): an
+//! Typed events for the `app_log` table (migrations `0006_app_log.sql` and
+//! `0009_app_log_trace_id.sql`): an
 //! append-only log in D1 that agents and the owner query with SQL (the saved
 //! queries in `queries/observability/`) so production behaviour, e.g. why a
 //! user got signed out, can be explained from data instead of guessed.
@@ -11,6 +12,15 @@
 //!
 //! D1/JsValue-free and `pub` so `tests/app_log.rs` can unit-test it; the D1
 //! writes live in the crate-private `db::app_log`.
+
+mod agent;
+mod request;
+
+pub use agent::{AgentEvent, Called, KeyEvent, KeyRejected};
+pub use request::{RequestEvent, RequestFailed};
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use serde::de::Error as _;
 use serde::{Deserialize, Serialize};
@@ -54,6 +64,8 @@ pub fn prune_cutoff_millis(now_millis: i64) -> i64 {
 #[serde(tag = "flow", content = "event", rename_all = "snake_case")]
 pub enum LogEvent {
     Auth(AuthEvent),
+    Request(RequestEvent),
+    Agent(AgentEvent),
 }
 
 /// An account's life cycle: created, signed in (or refused), locked out,
@@ -234,8 +246,8 @@ impl Outcome {
 }
 
 /// Where a row's request came from: captured on every request-driven row
-/// (sign-in, sign-out, a rejected session); `None` on rows with no
-/// request, such as the scheduled prune.
+/// (sign-in, sign-out, a rejected session, a failed request); `None` on
+/// rows with no request, such as the scheduled prune.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RequestMeta {
     pub origin: Option<String>,
@@ -243,11 +255,23 @@ pub struct RequestMeta {
     /// `CF-Connecting-IP`, the key of the sign-in rate limits. Never
     /// written to `app_log`.
     pub client_ip: Option<String>,
+    /// The request's trace ID: answered in every response's `X-Trace-Id`
+    /// header (and a failure's body), and stored on every row the request
+    /// writes.
+    pub trace_id: Option<String>,
+    /// This worker's own origin, as the request reached it, such as
+    /// `https://….workers.dev`: where an agent sends `POST /agent`. Never
+    /// written to `app_log`.
+    pub worker_origin: Option<String>,
+    /// The caller's `users.id` once its session token has resolved, so the
+    /// row of a request that fails afterwards names who it was. Shared by
+    /// every clone of this `RequestMeta`.
+    pub resolved_user_id: Rc<RefCell<Option<String>>>,
 }
 
 /// The event-derived columns of an `app_log` row (the rest -- `at`,
-/// `user_id`, `worker_version`, `origin`, `user_agent` -- are filled in when
-/// the row is written).
+/// `user_id`, `worker_version`, `origin`, `user_agent`, `trace_id` -- are
+/// filled in when the row is written).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LogRow {
     pub flow: String,
@@ -304,15 +328,20 @@ impl LogEvent {
     pub fn outcome(&self) -> Outcome {
         match self {
             LogEvent::Auth(event) => event.outcome(),
+            LogEvent::Request(event) => event.outcome(),
+            LogEvent::Agent(event) => event.outcome(),
         }
     }
 
     /// What the row is about, as a typed tag (`email:<email>` or
     /// `token:<token tag>`), so rows of one account or one session can be
-    /// joined across kinds.
+    /// joined across kinds. A failed request has none: its `user_id` and
+    /// `trace_id` columns say who and which request.
     pub fn subject(&self) -> Option<String> {
         match self {
             LogEvent::Auth(event) => event.subject(),
+            LogEvent::Request(_) => None,
+            LogEvent::Agent(event) => event.subject(),
         }
     }
 

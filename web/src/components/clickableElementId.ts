@@ -1,5 +1,5 @@
 import { tagFromElement, tagSelector } from '../dataAttributes'
-import type { ClickableElementId } from '../jianpuWasm'
+import type { ClickableElementId } from '../poentaroWasm'
 
 /**
  * The `ClickableElementId` for an already-resolved DOM element — the

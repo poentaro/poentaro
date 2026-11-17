@@ -1,5 +1,5 @@
 import type { editor } from 'monaco-editor'
-import type { FocusMeasure } from '../../jianpuWasm'
+import type { FocusMeasure } from '../../poentaroWasm'
 import { byteOffsetToStringIndex } from '../../utils/byteSpan'
 import { createMeasureViewZoneDomNode } from '../editorMeasureViewZones'
 

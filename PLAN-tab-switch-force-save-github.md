@@ -49,16 +49,16 @@ New file: `web/e2e/tab-switch-force-save-github.spec.ts`, modeled on
 `web/e2e/autosave-github.spec.ts` (same `mockGithubContentsApi` + fake
 clock setup):
 
-1. Seed two files via the mock, e.g. `a.jianpu` and `b.jianpu`.
-2. Open `a.jianpu`, type an edit, **do not** advance the fake clock.
+1. Seed two files via the mock, e.g. `a.poentaro` and `b.poentaro`.
+2. Open `a.poentaro`, type an edit, **do not** advance the fake clock.
 3. Assert no PUT has fired yet (debounce still pending) and no
    `save-status-badge` is showing "Saved".
-4. Click the tab for `b.jianpu`.
-5. Assert a PUT for `a.jianpu`'s path fires immediately (poll the mock's
+4. Click the tab for `b.poentaro`.
+5. Assert a PUT for `a.poentaro`'s path fires immediately (poll the mock's
    captured PUT bodies) — without any `page.clock.fastForward` call. This
    is what proves the tab switch itself forced the flush, rather than the
    debounce timer happening to elapse.
-6. Switch back to `a.jianpu` and reload the page; assert the edit survived
+6. Switch back to `a.poentaro` and reload the page; assert the edit survived
    in the (mocked) remote content, not just in-memory React state.
 
 ## Out of scope

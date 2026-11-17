@@ -1,8 +1,8 @@
 Feature: Selecting several files and folders in the file browser to rename, move or delete them
 
   Background:
-    Given the file tree is seeded with files "Hymns/Advent/O Come.jianpu", "Hymns/Amazing.jianpu" and "Scratch.jianpu" and an empty folder "Empty" with "Scratch.jianpu" active
-    And the file tree active file is "Hymns/Amazing.jianpu"
+    Given the file tree is seeded with files "Hymns/Advent/O Come.poentaro", "Hymns/Amazing.poentaro" and "Scratch.poentaro" and an empty folder "Empty" with "Scratch.poentaro" active
+    And the file tree active file is "Hymns/Amazing.poentaro"
 
   Scenario: Select mode shows a selection bar that Done and Escape leave
     When the file tree app loads
@@ -100,7 +100,7 @@ Feature: Selecting several files and folders in the file browser to rename, move
     And the file tree shows the folder "Hymns" nested 2 levels deep
 
   Scenario: A move that would clash is explained and cannot be confirmed
-    Given the file tree also has the file "Empty/Scratch.jianpu"
+    Given the file tree also has the file "Empty/Scratch.poentaro"
     When the file tree app loads
     And I open the file tree list
     And I start selecting files
@@ -117,7 +117,7 @@ Feature: Selecting several files and folders in the file browser to rename, move
     And I tick the file "Scratch"
     And I tick the file "Amazing"
     And I click "Delete" in the selection bar
-    Then the delete selection dialog lists "Hymns/Amazing.jianpu" and "Scratch.jianpu"
+    Then the delete selection dialog lists "Hymns/Amazing.poentaro" and "Scratch.poentaro"
     When I cancel the delete selection dialog
     Then the selection bar says "2 selected"
     When I click "Delete" in the selection bar

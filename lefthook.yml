@@ -33,7 +33,9 @@ pre-commit:
           - name: check-max-file-lines
             glob: "**/*.{rs,ts,tsx,js,jsx,py,css,html}"
             exclude:
-              - "crates/jianpu-wasm/pkg/**"
+              - "crates/poentaro-grammar/src/generated.rs"
+              - "crates/poentaro-protocol/src/generated.rs"
+              - "crates/poentaro-wasm/pkg/**"
               - "target/**"
               - "vendor/**"
             run: python3 scripts/check-max-file-lines.py {staged_files}
@@ -43,7 +45,7 @@ pre-commit:
             run: cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
 
           - name: dead-pub-check
-            glob: "{src/**,crates/jianpu-wasm/src/**,tests/**}"
+            glob: "{src/**,crates/poentaro-wasm/src/**,tests/**}"
             run: cargo run -p dead-pub-check --quiet
 
           - name: sqruff
@@ -87,7 +89,7 @@ pre-commit:
             run: cd web && pnpm run lint:ast-grep
 
     - name: web-typecheck
-      glob: "{crates/jianpu-wasm/**,crates/live-share-worker/**,web/**}"
+      glob: "{crates/poentaro-wasm/**,crates/live-share-worker/**,web/**}"
       run: cd web && pnpm run build:wasm-component && pnpm run build:worker-types && python3 ../scripts/check-wasm-size.py && pnpm exec tsc -b
 
     # The slowest job, so master only; CI runs the full suite on PRs.

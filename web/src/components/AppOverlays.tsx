@@ -1,7 +1,7 @@
 import { displayFileName, type FileStoreState, fileContent } from '../fileStore'
 import { binEntries } from '../fileStoreQueries'
 import type { FileOpError } from '../hooks/useFileOperations'
-import type { PendingDownload } from '../hooks/useJianpuWorkerTypes'
+import type { PendingDownload } from '../hooks/usePoentaroWorkerTypes'
 import type {
   StorageBackendPreference,
   StorageBackendTarget,

@@ -1,6 +1,6 @@
 //! The two things accounts need from WebCrypto (the Workers runtime's
 //! `crypto` global): unpredictable random bytes for session tokens and
-//! salts, and PBKDF2 for password hashes. Runtime-only, so not exercised by
+//! salts (and request trace IDs), and PBKDF2 for password hashes. Runtime-only, so not exercised by
 //! host-side `cargo test`; the rules around them live in `crate::auth`.
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -30,10 +30,34 @@ pub(crate) fn new_session_token() -> Result<String> {
     Ok(URL_SAFE_NO_PAD.encode(random_bytes(SESSION_TOKEN_BYTES)?))
 }
 
+/// A new API key: `poe_` and `KEY_BYTES` random bytes, base64url.
+pub(crate) fn new_api_key() -> Result<String> {
+    Ok(format!(
+        "{}{}",
+        crate::api_keys::KEY_PREFIX,
+        URL_SAFE_NO_PAD.encode(random_bytes(crate::api_keys::KEY_BYTES)?)
+    ))
+}
+
+/// A new `api_keys.id`: 16 random bytes, base64url.
+pub(crate) fn new_api_key_id() -> Result<String> {
+    Ok(URL_SAFE_NO_PAD.encode(random_bytes(16)?))
+}
+
 /// A new `users.id`: 16 random bytes, base64url -- unguessable, like a
 /// share id, never sequential.
 pub(crate) fn new_user_id() -> Result<String> {
     Ok(URL_SAFE_NO_PAD.encode(random_bytes(16)?))
+}
+
+/// A new request trace ID (`app_log::RequestMeta::trace_id`): 8 random
+/// bytes as 16 lowercase hex characters -- short enough for a user to copy
+/// into a message, unique enough to name one request in 30 days of logs.
+pub(crate) fn new_trace_id() -> Result<String> {
+    Ok(random_bytes(8)?
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
 }
 
 /// PBKDF2-HMAC-SHA256 of `password` with `salt`, `HASH_LENGTH` bytes long.

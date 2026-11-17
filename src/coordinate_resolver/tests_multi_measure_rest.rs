@@ -53,7 +53,7 @@ fn multi_measure_rest_resolves_width_from_column_span_inset_by_glyph_left_paddin
     let abs = resolve(
         &[page],
         12.0,
-        40.0,
+        super::tests::TEST_PAGE_FRAME,
         ResolveFontSizes {
             lyric: LyricFontSizes {
                 base: 14.4,

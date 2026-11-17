@@ -8,7 +8,7 @@ fn existing_file() -> StoredFile {
     StoredFile {
         id: "file-1".to_string(),
         owner_user_id: "owner-1".to_string(),
-        name: "song.jianpu".to_string(),
+        name: "song.poentaro".to_string(),
         content: "1 2 3".to_string(),
         revision: 0,
         trashed_at: None,
@@ -21,7 +21,7 @@ fn existing_file() -> StoredFile {
 fn same_id_owner_and_name_returns_the_existing_file() {
     let existing = existing_file();
 
-    let result = idempotent_create_match(Some(&existing), "song.jianpu");
+    let result = idempotent_create_match(Some(&existing), "song.poentaro");
 
     assert_eq!(result, Some(to_public_file(&existing)));
 }
@@ -30,7 +30,7 @@ fn same_id_owner_and_name_returns_the_existing_file() {
 fn same_name_under_a_different_id_is_name_taken() {
     // The lookup by the requested id finds nothing, because the colliding
     // row has another id.
-    let result = idempotent_create_match(None, "song.jianpu");
+    let result = idempotent_create_match(None, "song.poentaro");
 
     assert_eq!(result, None);
 }
@@ -38,7 +38,7 @@ fn same_name_under_a_different_id_is_name_taken() {
 #[test]
 fn same_id_owned_by_someone_else_is_name_taken() {
     // The owner-scoped lookup finds nothing for a row owned by another user.
-    let result = idempotent_create_match(None, "song.jianpu");
+    let result = idempotent_create_match(None, "song.poentaro");
 
     assert_eq!(result, None);
 }
@@ -47,7 +47,7 @@ fn same_id_owned_by_someone_else_is_name_taken() {
 fn same_id_with_a_different_name_is_name_taken() {
     let existing = existing_file();
 
-    let result = idempotent_create_match(Some(&existing), "other.jianpu");
+    let result = idempotent_create_match(Some(&existing), "other.poentaro");
 
     assert_eq!(result, None);
 }

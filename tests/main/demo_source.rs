@@ -1,6 +1,6 @@
 #![allow(clippy::panic, clippy::disallowed_macros)]
 
-/// Every numbered `.jianpu` fragment under `demo/`, sorted by filename —
+/// Every numbered `.poentaro` fragment under `demo/`, sorted by filename —
 /// each one is a complete, standalone-renderable document (its own
 /// metadata/parts/score), shown to users as a folder of individually
 /// selectable demo files in the web editor.
@@ -18,10 +18,12 @@ fn demo_file_paths() -> Vec<std::path::PathBuf> {
     paths
 }
 
-fn render_demo_file(path: &std::path::Path) -> jianpu_generator::RenderOutput {
+fn render_demo_file(path: &std::path::Path) -> poentaro::RenderOutput {
     let source =
         std::fs::read_to_string(path).unwrap_or_else(|e| panic!("failed to read {path:?}: {e}"));
-    jianpu_generator::render_svgs_from_source(&source, "demo.jianpu", &[])
+    let errors = poentaro::document::anyx_errors(&source, &[]);
+    assert!(errors.is_empty(), "{path:?}: {errors:?}");
+    poentaro::render_svgs_from_source(&source, "demo.poentaro", &[])
         .unwrap_or_else(|e| panic!("{path:?} failed to parse/render: {e}"))
 }
 

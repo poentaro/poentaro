@@ -1,6 +1,5 @@
 use crate::compositor::types::{AbsoluteContent, AbsoluteElement};
 use crate::grid_layout::types::{ColumnGeometry, GridContent, GridElement};
-use crate::grid_layout::PAGE_MARGIN;
 
 use super::resolve::RowResolveConfig;
 
@@ -41,9 +40,8 @@ pub(super) fn resolve_span_marking(
             // overshoot into whatever sits next door.
             let span_left = geometry.x_start(el.column as f32);
             let span_right = geometry.x_start(el.column as f32 + el.column_span as f32);
-            let ul_x = PAGE_MARGIN + (start_center - config.note_number_width * 0.5).max(span_left);
-            let ul_right =
-                PAGE_MARGIN + (end_center + config.note_number_width * 0.5).min(span_right);
+            let ul_x = (start_center - config.note_number_width * 0.5).max(span_left);
+            let ul_right = (end_center + config.note_number_width * 0.5).min(span_right);
             Some(AbsoluteElement {
                 x: ul_x,
                 y,
@@ -57,7 +55,7 @@ pub(super) fn resolve_span_marking(
             let start_center = geometry.glyph_left_anchor_x(el.column as f32, padding);
             let end_center = span_end_center(geometry, el, padding);
             Some(AbsoluteElement {
-                x: PAGE_MARGIN + start_center,
+                x: start_center,
                 y,
                 content: AbsoluteContent::TieOrSlur {
                     kind: kind.clone(),
@@ -69,7 +67,7 @@ pub(super) fn resolve_span_marking(
             let start_center = geometry.glyph_left_anchor_x(el.column as f32, padding);
             let system_right_edge = geometry.x_start(el.column as f32 + el.column_span as f32);
             Some(AbsoluteElement {
-                x: PAGE_MARGIN + start_center,
+                x: start_center,
                 y,
                 content: AbsoluteContent::TieOrSlur {
                     kind: kind.clone(),
@@ -81,7 +79,7 @@ pub(super) fn resolve_span_marking(
             let system_left_edge = geometry.x_start(el.column as f32);
             let end_center = span_end_center(geometry, el, padding);
             Some(AbsoluteElement {
-                x: PAGE_MARGIN + system_left_edge,
+                x: system_left_edge,
                 y,
                 content: AbsoluteContent::TieOrSlur {
                     kind: kind.clone(),
@@ -93,7 +91,7 @@ pub(super) fn resolve_span_marking(
             let start_center = geometry.glyph_left_anchor_x(el.column as f32, padding);
             let end_center = span_end_center(geometry, el, padding);
             Some(AbsoluteElement {
-                x: PAGE_MARGIN + start_center,
+                x: start_center,
                 y,
                 content: AbsoluteContent::TupletBracket {
                     label: label.clone(),

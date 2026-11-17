@@ -15,7 +15,7 @@ export { DEFAULT_E2E_EMAIL }
 /** The `localStorage` key `web/src/storage/accountAuth.ts` keeps the
  * signed-in session under -- hardcoded rather than imported, so the
  * Playwright process never loads the app module and its React imports. */
-export const ACCOUNT_AUTH_STORAGE_KEY = 'jianpu:account-auth:v2'
+export const ACCOUNT_AUTH_STORAGE_KEY = 'poentaro:account-auth:v2'
 
 // The token `seedSignedInSession` seeded most recently, for steps that check
 // what the worker now thinks of the page's session (e.g. after signing out).
@@ -57,7 +57,7 @@ export async function seedSignedInSession(
 export async function gotoCloudApp(page: Page): Promise<void> {
   await page.addInitScript(() => {
     localStorage.setItem(
-      'jianpu:storage-backend:v1',
+      'poentaro:storage-backend:v1',
       JSON.stringify({ backend: 'cloud' }),
     )
   })

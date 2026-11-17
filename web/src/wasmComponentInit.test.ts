@@ -15,7 +15,7 @@ const hoisted = vi.hoisted(() => ({
   lastImports: undefined as unknown,
 }))
 
-vi.mock('../../crates/jianpu-wasm/pkg-component/jianpu_wasm.js', () => ({
+vi.mock('../../crates/poentaro-wasm/pkg-component/poentaro_wasm.js', () => ({
   instantiate: vi.fn(
     (getCoreModule: (path: string) => unknown, imports: unknown) => {
       hoisted.instantiateCallCount++
@@ -60,7 +60,7 @@ describe('wasm component init', () => {
     expect(hoisted.lastImports).toEqual({})
     // `getCoreModule` must resolve to the one already-compiled module, not
     // trigger a second fetch/compile of its own.
-    expect(hoisted.lastGetCoreModule?.('jianpu_wasm.core.wasm')).toBe(
+    expect(hoisted.lastGetCoreModule?.('poentaro_wasm.core.wasm')).toBe(
       fakeModule,
     )
     expect(exports.greet('world')).toBe('hello')
@@ -83,7 +83,7 @@ describe('wasm component init', () => {
     expect(fetchMock).not.toHaveBeenCalled()
     expect(hoisted.instantiateCallCount).toBe(1)
     expect(hoisted.lastImports).toEqual({})
-    expect(hoisted.lastGetCoreModule?.('jianpu_wasm.core.wasm')).toBe(
+    expect(hoisted.lastGetCoreModule?.('poentaro_wasm.core.wasm')).toBe(
       receivedModule,
     )
     expect(exports.greet('world')).toBe('hello')

@@ -1,6 +1,6 @@
 // ── Sharp/flat accidental column-width reservation ────────────────────────────
 
-use crate::ast::parsed::{Accidental, JianPuPitch, Offset};
+use crate::ast::parsed::{Accidental, NumberedPitch, Offset};
 use crate::compiler::types::{ColumnElement, ElementContent, MeasureBlock, MeasureRow, RowId};
 use crate::font_metrics;
 use crate::grid_layout::layout::{build_measure_column_layout, measure_column_weights};
@@ -65,7 +65,7 @@ fn make_block_with_accidental_note(
                 ColumnElement {
                     column: 0,
                     content: ElementContent::NoteHead {
-                        pitch: JianPuPitch::One,
+                        pitch: NumberedPitch::One,
                         accidental,
                         octave: 0,
                         dotted: false,

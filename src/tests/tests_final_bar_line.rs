@@ -15,8 +15,10 @@ fn bar_line_kinds_by_page(input: &str, page_height_pt: f32) -> Vec<Vec<BarLineKi
             parts_list_columns: 3,
             ..Default::default()
         },
-        595.0,
-        page_height_pt,
+        grid_layout::PageLayout::Paged(grid_layout::PageSize {
+            width_pt: 595.0,
+            height_pt: page_height_pt,
+        }),
         None,
     )
     .pages;
@@ -35,16 +37,22 @@ fn bar_line_kinds_by_page(input: &str, page_height_pt: f32) -> Vec<Vec<BarLineKi
         .collect()
 }
 
-const MULTI_SYSTEM_INPUT: &str = concat!(
-    "# metadata\n",
-    "max_measures_per_system = 2\n",
-    "\n",
-    "# parts\n",
-    "a = notes\n",
-    "\n",
-    "# score\n",
-    "[a] 1 2 3 4\n\n[a] 5 6 7 1\n\n[a] 1 2 3 4\n\n[a] 5 6 7 1\n\n[a] 1 2 3 4\n",
-);
+const MULTI_SYSTEM_INPUT: &str = r#"metadata { max measures per system 2 },
+
+parts ["a": notes],
+
+score """
+    [a] 1 2 3 4
+
+    [a] 5 6 7 1
+
+    [a] 1 2 3 4
+
+    [a] 5 6 7 1
+
+    [a] 1 2 3 4
+    """,
+"#;
 
 #[test]
 fn only_the_score_closing_bar_line_is_final() {

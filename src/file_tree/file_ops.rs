@@ -2,14 +2,13 @@
 //! `createFile`/`duplicateFile`/`renameFile`/`deleteFile`/`restoreFile` in
 //! `web/src/fileStore.ts`, generalised to paths. Each returns a new state.
 
+use super::extension::FILE_EXTENSION;
 use super::path::TreePath;
 use super::placeholder::is_reserved_leaf;
 use super::store_state::{FileOperationContext, FileStoreError, FileStoreState};
 use super::unique_name::unique_path;
 
-const EXTENSION: &str = ".jianpu";
-
-/// A new file `name` (one path segment, trimmed, `.jianpu` appended when
+/// A new file `name` (one path segment, trimmed, `.poentaro` appended when
 /// missing) in `folder` (`None` = top level) holding `content`; it becomes
 /// active. It may not collide with a file, folder, demo file or bin entry
 /// (`Collision`).
@@ -22,10 +21,10 @@ pub fn create_file(
 ) -> Result<FileStoreState, FileStoreError> {
     let trimmed = name.trim();
     reject_reserved_leaf(&TreePath::child(folder, trimmed)?)?;
-    let leaf = if trimmed.ends_with(EXTENSION) {
+    let leaf = if trimmed.ends_with(FILE_EXTENSION) {
         trimmed.to_string()
     } else {
-        format!("{trimmed}{EXTENSION}")
+        format!("{trimmed}{FILE_EXTENSION}")
     };
     let path = TreePath::child(folder, &leaf)?;
     if let Some(ancestor) = state.ancestor_that_is_file(&path, context) {
@@ -92,7 +91,7 @@ fn insert_active_file(
     next
 }
 
-/// Renames and/or moves a file to the path `to_raw` (trimmed, `.jianpu`
+/// Renames and/or moves a file to the path `to_raw` (trimmed, `.poentaro`
 /// appended when missing). The file keeps its id and content. An existing
 /// file, folder, demo file or bin entry at the destination is a
 /// [`FileStoreError::Collision`] (never overwritten); moving onto itself is a
@@ -210,10 +209,10 @@ pub fn restore_file(
 fn with_extension(raw: &str) -> Result<TreePath, FileStoreError> {
     let trimmed = raw.trim();
     reject_reserved_leaf(&TreePath::parse(trimmed)?)?;
-    let named = if trimmed.ends_with(EXTENSION) {
+    let named = if trimmed.ends_with(FILE_EXTENSION) {
         trimmed.to_string()
     } else {
-        format!("{trimmed}{EXTENSION}")
+        format!("{trimmed}{FILE_EXTENSION}")
     };
     Ok(TreePath::parse(&named)?)
 }

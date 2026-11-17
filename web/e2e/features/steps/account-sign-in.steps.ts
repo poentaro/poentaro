@@ -47,7 +47,7 @@ Then(
   'the stored storage-backend preference is set to cloud',
   async ({ page }) => {
     const preference = await page.evaluate(() =>
-      localStorage.getItem('jianpu:storage-backend:v1'),
+      localStorage.getItem('poentaro:storage-backend:v1'),
     )
     expect(JSON.parse(preference ?? '{}')).toEqual({ backend: 'cloud' })
   },
@@ -90,7 +90,7 @@ When('I click the {string} button', async ({ page }, label: string) => {
 
 Then('the stored account auth is cleared', async ({ page }) => {
   const storedAuth = await page.evaluate(() =>
-    localStorage.getItem('jianpu:account-auth:v2'),
+    localStorage.getItem('poentaro:account-auth:v2'),
   )
   // `accountAuth.ts`'s state is a `usehooks-ts` `useLocalStorage` hook --
   // `setAccountAuth(null)` writes the JSON-stringified value `"null"`

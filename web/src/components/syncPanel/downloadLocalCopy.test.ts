@@ -16,20 +16,26 @@ describe('downloadLocalCopy', () => {
     return { anchor, createObjectURL, revokeObjectURL }
   }
 
-  it('downloads a blob with the content and a .jianpu name', async () => {
+  it('downloads a blob with the content and a .poentaro name', async () => {
     const { anchor, createObjectURL, revokeObjectURL } = setup()
     downloadLocalCopy('song', 'hello')
     const blob = (createObjectURL.mock.calls[0] as unknown as [Blob])[0]
     expect(await blob.text()).toBe('hello')
-    expect(anchor.download).toBe('song.jianpu')
+    expect(anchor.download).toBe('song.poentaro')
     expect(anchor.href).toBe('blob:fake')
     expect(anchor.click).toHaveBeenCalledOnce()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:fake')
   })
 
-  it('keeps an existing .jianpu extension', () => {
+  it('keeps an existing .poentaro extension', () => {
     const { anchor } = setup()
-    downloadLocalCopy('song.jianpu', 'x')
-    expect(anchor.download).toBe('song.jianpu')
+    downloadLocalCopy('song.poentaro', 'x')
+    expect(anchor.download).toBe('song.poentaro')
+  })
+
+  it('drops the folders from the name', () => {
+    const { anchor } = setup()
+    downloadLocalCopy('hymns/advent/song.poentaro', 'x')
+    expect(anchor.download).toBe('song.poentaro')
   })
 })

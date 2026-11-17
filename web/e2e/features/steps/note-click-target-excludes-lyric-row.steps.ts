@@ -22,17 +22,14 @@ import { Given, Then } from './fixtures'
  * above the lyric row instead.
  */
 const source = [
-  '# metadata',
-  'title = "note click target lyric row test"',
-  'max_measures_per_system = 48',
+  'metadata { title "note click target lyric row test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — line 9
-  '[Mv1] do re mi fa', // verse 0 — line 10
+  'score """',
+  '[M] 1 2 3 4',
+  '[Mv1] do re mi fa',
+  '""",',
 ].join('\n')
 
 Given(
@@ -40,13 +37,13 @@ Given(
   async ({ page }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'note-click-target-lyric-row-test.jianpu',
-          userFiles: { 'note-click-target-lyric-row-test.jianpu': src },
+          active: 'note-click-target-lyric-row-test.poentaro',
+          userFiles: { 'note-click-target-lyric-row-test.poentaro': src },
           bin: {},
           fileIds: {
-            'note-click-target-lyric-row-test.jianpu':
+            'note-click-target-lyric-row-test.poentaro':
               'note-click-target-lyric-row-test-id-001',
           },
         }),

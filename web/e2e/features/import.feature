@@ -1,7 +1,7 @@
-Feature: Import a jianpu source from a previously exported file
+Feature: Import a `.poentaro` source from a previously exported file
 
   Background:
-    Given a local-storage-backed file "test.jianpu" is seeded for import
+    Given a local-storage-backed file "test.poentaro" is seeded for import
     And the app loads the seeded import test file
 
   Scenario: Import recovers the original source from a previously exported PDF

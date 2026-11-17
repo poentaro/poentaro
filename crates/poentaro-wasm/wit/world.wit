@@ -1,0 +1,2324 @@
+package poentaro:wasm;
+
+// Phase 2 of PLAN-wit-bindgen-migration.md: type schema only, ported from
+// `crates/poentaro-wasm/src/{types,note_selection_types,lyric_selection_types,
+// metadata_types,svg_types,types_export,responses*,selection_range/types}.rs`.
+// No functions are exported from these types yet beyond Phase 1's
+// `greet` sanity check — Phase 3 wires real `#[wasm_bindgen] fn`s to
+// `Guest` methods using these shapes one at a time.
+//
+// Mapping conventions used throughout this file (matching the plan):
+//   - Rust `usize` -> WIT `u32`. Not a narrowing compromise: this crate
+//     only ever targets `wasm32-unknown-unknown` (32-bit), where `usize`
+//     already *is* 32 bits, so this is the exact width, not an approximation.
+//   - Rust `i8`/`i32` -> WIT `s8`/`s32`.
+//   - `Option<T>` -> `option<T>`.
+//   - `Vec<u8>` binary payloads -> `list<u8>` (confirmed byte-exact,
+//     maps to a real `Uint8Array` in the generated `.d.ts` — see the
+//     plan's "Resolved risks" section).
+//   - `Vec<T>` -> `list<T>`.
+//   - The `#[serde(tag = "status")] enum { Ok { .. }, Err { .. } }` pattern
+//     -> a WIT `variant` with `ok`/`err` cases, each carrying a record with
+//     the same field names as the original struct-like variant. A bare
+//     `Ok`/`Err` case with no fields (e.g. `ListNoteSpansResponse::Err`)
+//     stays a payload-less variant case.
+//   - Several `Err` cases across unrelated responses share the exact same
+//     shape (`{ diagnostics: list<diagnostic> }`); those reuse one
+//     `diagnostics-error` record instead of repeating an identical record
+//     under a different name per response. This is not a shape change —
+//     each such `Err` case still carries exactly the fields the original
+//     Rust `Err { diagnostics: Vec<DiagnosticOut> }` variant did.
+//   - Field names stay `kebab-case` — `jco` auto-converts to `camelCase`
+//     in the generated `.d.ts`, matching every existing
+//     `#[serde(rename_all = "camelCase")]` struct with no extra config.
+//   - A record carried by a variant case is never named `<variant>-<case>`
+//     (e.g. `note-tag`, `render-success`, not `tag-note`,
+//     `render-response-ok`): jco names each case's own interface that way
+//     too, and TypeScript merges the two same-named declarations into one
+//     unconstructible type. `web/src/poentaroWasmDts.test.ts` guards this.
+//   - Flat world-level type declarations, not `interface`-grouped (Phase 2's
+//     explicit decision — see the plan's "Guest trait ergonomics" section).
+//     Revisit only if this file becomes hard to navigate at full function
+//     count.
+//   - WIT type declarations must appear before their first use (no forward
+//     references within a world), unlike Rust — this only changes ordering
+//     of the sections below relative to their originating `.rs` files, not
+//     any type's shape. `svg_types.rs` is ported first because
+//     `RenderResponse::Ok` (from `types.rs`) embeds `SvgDocumentOut`.
+
+world poentaro-wasm {
+    // ---- Phase 1 sanity check (kept as-is) ----
+    export greet: func(name: string) -> string;
+
+    // ==================== svg_types.rs ====================
+
+    /// What the numbered layout's note heads read as
+    /// (`poentaro::NoteLabels`): degree digits, the letter names
+    /// of the letter-name view, the tabs of the harmonica-tab view, or
+    /// degree digits with a guitar chord diagram at each chord symbol (the
+    /// guitar chord view).
+    enum note-labels {
+        degrees,
+        letter-names,
+        harmonica-tabs,
+        guitar-chords,
+    }
+
+    /// The page(s) the preview lays the numbered layout out on
+    /// (`poentaro::grid_layout::PageLayout`): A4 pages, or max view's one
+    /// continuous page as wide as the preview.
+    variant page-layout {
+        a4,
+        continuous(continuous-page),
+    }
+
+    record continuous-page {
+        /// The preview's content width in CSS pixels.
+        width-px: f32,
+    }
+
+    /// Which instrument the staff view is engraved for
+    /// (`poentaro::mei_export::ClefChoice`): every staff in treble
+    /// clef for a violin, in bass clef for a cello.
+    enum staff-clef {
+        violin,
+        cello,
+    }
+
+    enum text-anchor {
+        start,
+        middle,
+        end,
+    }
+
+    enum dominant-baseline {
+        middle,
+        hanging,
+        ideographic,
+    }
+
+    enum font-family {
+        monospace,
+        sans-serif,
+        serif,
+    }
+
+    enum font-weight {
+        normal,
+        bold,
+    }
+
+    enum transparent-rect-role {
+        measure-click-target,
+        bar-number-click-target,
+        section-label-background,
+        section-label-click-target,
+        note-click-target,
+        part-label-click-target,
+        lyric-click-target,
+        lyric-label-click-target,
+        bar-line-click-target,
+    }
+
+    record tspan {
+        content: string,
+        bold: bool,
+        italic: bool,
+        underline: bool,
+        font-size: option<f32>,
+    }
+
+    record measure-tag {
+        index: u32,
+        end: u32,
+    }
+
+    record bar-number-tag {
+        index: u32,
+        end: u32,
+    }
+
+    record section-label-tag {
+        label: string,
+    }
+
+    record note-tag {
+        source-part-index: u32,
+        note-id: u32,
+    }
+
+    record part-label-tag {
+        source-part-index: u32,
+        measure-index-start: u32,
+        measure-index-end: u32,
+    }
+
+    record lyric-tag {
+        source-part-index: u32,
+        note-id: u32,
+    }
+
+    record lyric-label-tag {
+        source-part-index: u32,
+        measure-index-start: u32,
+        measure-index-end: u32,
+    }
+
+    record bar-line-tag {
+        measure-index-next: option<u32>,
+        measure-index-prev: option<u32>,
+    }
+
+    /// A guitar chord diagram (the guitar chord view): its absolute frets,
+    /// low E to high E (`"x 3 2 0 1 0"`), and the fret its grid starts at.
+    record guitar-diagram-tag {
+        frets: string,
+        base-fret: u8,
+    }
+
+    variant tag {
+        measure(measure-tag),
+        bar-number(bar-number-tag),
+        section-label(section-label-tag),
+        note(note-tag),
+        part-label(part-label-tag),
+        lyric(lyric-tag),
+        lyric-label(lyric-label-tag),
+        bar-line(bar-line-tag),
+        guitar-diagram(guitar-diagram-tag),
+    }
+
+    record svg-text-kind {
+        content: string,
+        font-size: f32,
+        anchor: text-anchor,
+        baseline: dominant-baseline,
+        font: font-family,
+        weight: font-weight,
+        italic: bool,
+        underline: bool,
+    }
+
+    record svg-line-kind {
+        x2: f32,
+        y2: f32,
+        stroke-width: f32,
+    }
+
+    record svg-circle-kind {
+        r: f32,
+    }
+
+    /// An unfilled circle, `x`/`y` its centre (a guitar diagram's open
+    /// string).
+    record svg-ring-circle-kind {
+        r: f32,
+        stroke-width: f32,
+    }
+
+    /// A filled bar with fully rounded ends, `x`/`y` its top-left corner (a
+    /// guitar diagram's barre).
+    record svg-rounded-bar-kind {
+        width: f32,
+        height: f32,
+    }
+
+    record svg-path-kind {
+        control-x: f32,
+        control-y: f32,
+        end-x: f32,
+        end-y: f32,
+        stroke-width: f32,
+    }
+
+    record svg-rect-kind {
+        width: f32,
+        height: f32,
+    }
+
+    record svg-error-rect-kind {
+        width: f32,
+        height: f32,
+    }
+
+    record svg-playback-cursor-rect-kind {
+        width: f32,
+        height: f32,
+    }
+
+    record svg-transparent-rect-kind {
+        width: f32,
+        height: f32,
+        role: transparent-rect-role,
+    }
+
+    record svg-text-with-tspans-kind {
+        font-size: f32,
+        anchor: text-anchor,
+        baseline: dominant-baseline,
+        font: font-family,
+        spans: list<tspan>,
+    }
+
+    // `SvgKindOut::Group { children: Vec<SvgElementOut>, .. }` makes
+    // `SvgElementOut` a recursive tree (an element can contain a `Group`
+    // element, which contains more elements). WIT records/variants must
+    // have a statically bounded flattened ABI shape — the component model
+    // has no support for a directly self-referential type, confirmed here
+    // (`cargo component build` rejects it outright: "type `svg-element`
+    // depends on itself"). So this is *not* a shape-for-shape port: a
+    // group's children are indices into the flat `elements` arena on
+    // `svg-document` (pre-order-flattened) rather than nested elements
+    // directly. See `svg-document`'s doc comment for the flattening
+    // contract Phase 3's conversion code must produce.
+    record svg-group-kind {
+        child-indices: list<u32>,
+        tag: option<tag>,
+    }
+
+    variant svg-kind {
+        text(svg-text-kind),
+        line(svg-line-kind),
+        circle(svg-circle-kind),
+        ring-circle(svg-ring-circle-kind),
+        rounded-bar(svg-rounded-bar-kind),
+        path(svg-path-kind),
+        rect(svg-rect-kind),
+        error-rect(svg-error-rect-kind),
+        playback-cursor-rect(svg-playback-cursor-rect-kind),
+        transparent-rect(svg-transparent-rect-kind),
+        text-with-tspans(svg-text-with-tspans-kind),
+        group(svg-group-kind),
+    }
+
+    // Mirrors `SvgVariant` (`src/renderer/new_types.rs`): what a drawn
+    // element depicts, written onto it as its `data-variant` styling hook.
+    enum svg-variant {
+        text,
+        note-head,
+        unplayable-note-head,
+        harmonica-slide,
+        rest,
+        omitted-part-rest,
+        multi-measure-rest,
+        chord-symbol,
+        percussion-hit,
+        horizontal-line,
+        underline,
+        tie-or-slur,
+        tuplet-bracket,
+        bar-line,
+        lyric,
+        directive-line,
+        guitar-diagram,
+    }
+
+    // `variant` is a reserved WIT keyword, so the field named `variant` in
+    // `SvgElementOut` (unrelated to WIT's `variant` type construct) is ported
+    // as `variant-tag` instead.
+    record svg-element {
+        x: f32,
+        y: f32,
+        variant-tag: option<svg-variant>,
+        kind: svg-kind,
+    }
+
+    // `elements` is a flat, pre-order-flattened arena holding every
+    // `svg-element` in the document at any nesting depth exactly once (see
+    // `svg-group-kind`'s doc comment for why: WIT can't represent the
+    // original recursive `Vec<SvgElementOut>` nesting directly).
+    // `root-element-indices` holds the indices, into `elements`, of the
+    // document's direct (top-level) children — this is what
+    // `SvgDocumentOut.elements` held directly before flattening.
+    record svg-document {
+        width-pt: f32,
+        height-pt: f32,
+        elements: list<svg-element>,
+        root-element-indices: list<u32>,
+    }
+
+    // ==================== types.rs ====================
+
+    record span {
+        start: u32,
+        end: u32,
+    }
+
+    // `MeasureRangeIn` — input-only, decoded via serde_wasm_bindgen today.
+    record measure-range-in {
+        start: u32,
+        end: u32,
+    }
+
+    enum diagnostic-severity {
+        error,
+        warning,
+    }
+
+    record diagnostic {
+        severity: diagnostic-severity,
+        message: string,
+        span: span,
+    }
+
+    record part {
+        abbreviation: string,
+        display-name: string,
+        // False for a lyric part, which only sings along to its target.
+        sounds: bool,
+    }
+
+    // `poentaro::source_edit::PartMode`; `follow` and `lyrics` carry their target.
+    variant part-mode {
+        chords,
+        notes,
+        percussion,
+        follow(string),
+        lyrics(string),
+    }
+
+    // `poentaro::source_edit::PartSettings`: a `parts` line's
+    // settings, with an omitted volume/octave suffix read as its default.
+    // `update-part-declaration` takes it back, omitting default suffixes.
+    // `program` is the quoted sound's GM program number (a GM percussion key
+    // on a percussion part); Rust alone writes and reads the quoted
+    // `"N: Name"` source text for it.
+    record part-settings {
+        mode: part-mode,
+        // `poentaro::ast::parsed::RangeInstrument::keyword`, e.g.
+        // `"violin"`; `none` when the line names no instrument.
+        range-instrument: option<string>,
+        // The written `range`'s lowest and highest MIDI notes; both `none`
+        // when the line writes none. `update-part-declaration` fills a
+        // missing bound and orders them.
+        range-lowest: option<u8>,
+        range-highest: option<u8>,
+        program: option<u8>,
+        volume: u8,
+        octave-offset: s8,
+    }
+
+    record part-declaration {
+        abbreviation: string,
+        display-name: string,
+        line-number: u32,
+        settings: part-settings,
+        // Display-only label for the sound the part plays, e.g. `"40: Violin"`:
+        // `settings.program`, or else the range instrument's default sound.
+        sound-label: option<string>,
+        // `poentaro::RangeBoundLabels`: what the range pickers show when the
+        // part writes no range, e.g. `"C3 (tenor)"`, `"as target"`, `"none"`.
+        default-range-labels: range-bound-labels,
+    }
+
+    record range-bound-labels {
+        lowest: string,
+        highest: string,
+    }
+
+    record diagnostic-message {
+        message: string,
+    }
+
+    record diagnostic-view-zone {
+        severity: diagnostic-severity,
+        after-line-number: u32,
+        messages: list<diagnostic-message>,
+    }
+
+    record render-success {
+        documents: list<svg-document>,
+        diagnostics: list<diagnostic>,
+        diagnostic-view-zones: list<diagnostic-view-zone>,
+    }
+
+    record render-failure {
+        diagnostics: list<diagnostic>,
+        diagnostic-view-zones: list<diagnostic-view-zone>,
+    }
+
+    variant render-response {
+        ok(render-success),
+        err(render-failure),
+    }
+
+    // Shared shape for every response whose `Err` case is just
+    // `{ diagnostics: Vec<DiagnosticOut> }` — see the mapping-conventions
+    // note at the top of this file.
+    record diagnostics-error {
+        diagnostics: list<diagnostic>,
+    }
+
+    record list-parts-success {
+        parts: list<part>,
+        declarations: list<part-declaration>,
+    }
+
+    variant list-parts-response {
+        ok(list-parts-success),
+        err(diagnostics-error),
+    }
+
+    // `InstrumentInfo` (`poentaro::parser::parts_parser::InstrumentInfo`)
+    // — input-only: one GM instrument catalog entry. `name` is the bare
+    // instrument name (e.g. `Violin`); Rust builds the quoted `"N: Name"`
+    // label from `program` and `name` (`poentaro::sound_label`).
+    record instrument-info {
+        name: string,
+        program: u8,
+        category: string,
+        source: string,
+        role: string,
+        articulation: string,
+    }
+
+    // The part-toggle UI's raw show/hide/solo state, as part abbreviations.
+    // Every part, lyric parts included, is toggled the same way. Input to
+    // `resolve-part-visibility`.
+    record part-toggle-state {
+        hidden-parts: list<string>,
+        soloed-parts: list<string>,
+    }
+
+    // What `resolve-part-visibility` decided (`poentaro::ResolvedPartVisibility`),
+    // passed back verbatim to the render and PDF exports. `rendered-tracks`
+    // and `sounding-tracks` are `none` when every part is drawn / sounds.
+    // `preset-name` is the preset in force, `none` when the chosen one no
+    // longer exists; `hidden-parts` are the pills shown as off, and
+    // `soloed-parts` those soloed in the toggles or the preset's `soloed_parts`.
+    record resolved-part-visibility {
+        rendered-tracks: option<list<string>>,
+        sounding-tracks: option<list<string>>,
+        sounding-display-names: option<list<string>>,
+        preset-name: option<string>,
+        hidden-parts: list<string>,
+        soloed-parts: list<string>,
+    }
+
+    // Resolves hide/solo state into what is drawn and what sounds, given the
+    // score's parts (as returned by `list-parts`) and the preset chosen in
+    // the preset menu (`none` for Default).
+    export resolve-part-visibility: func(source: string, parts: list<part>, toggles: part-toggle-state, preset-name: option<string>) -> resolved-part-visibility;
+
+    // Phase 3, group 4 of PLAN-wit-bindgen-migration.md. Placed here, not
+    // immediately after `render-response`'s own `variant` declaration
+    // further up this file, since both exports also need `instrument-info`
+    // (declared just above) and `measure-range-in` (declared much earlier,
+    // near `types.rs`'s section) — WIT requires every type an export
+    // references to already be declared, so this is the earliest point in
+    // the file where all three are available.
+    //
+    // Named `render-svg`/`render-svg-with-highlight-range`, not
+    // `render`/`render-with-highlight-range` matching `wasm_boundary.rs`'s
+    // exact fn names (group 3's convention) — deliberately deviates here:
+    // `render` is a single word, so its kebab-case WIT form and its
+    // snake_case Rust form are the *same literal string*, and
+    // `wit-bindgen`'s raw ABI export uses that literal string as the actual
+    // `#[export_name = "..."]` on `wasm32-unknown-unknown` — colliding with
+    // `#[wasm_bindgen] pub fn render`'s own identically-named export and
+    // breaking the link step (confirmed: both `cargo build --target
+    // wasm32-unknown-unknown --features wav,mp3,pdf,midi` and the real
+    // `wasm-pack build` failed with "symbol `render` is already defined").
+    // Every multi-word name ported so far (`group-note-selection`,
+    // `list-note-spans`, `rename-symbol`, ...) was safe by accident, since
+    // hyphens vs. underscores kept the two mechanisms' literal export names
+    // distinct — this was the first single-word export.
+    export render-svg: func(source: string, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, note-labels: note-labels, page-layout: page-layout) -> render-response;
+
+    export render-svg-with-highlight-range: func(source: string, raw-measure-ranges: list<measure-range-in>, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, note-labels: note-labels, page-layout: page-layout) -> render-response;
+
+    /// Which `<measure>` in the MEI (and so which `id` in Verovio's SVG)
+    /// engraves which score measure — the staff view's only way to map
+    /// between the two, so it never knows the id format.
+    record staff-measure {
+        element-id: string,
+        measure-index: u32,
+    }
+
+    record render-mei-success {
+        mei: string,
+        measures: list<staff-measure>,
+    }
+
+    variant render-mei-response {
+        ok(render-mei-success),
+        err(diagnostics-error),
+    }
+
+    // The staff-notation view: the score as MEI
+    // (`poentaro::render_mei_from_source_with_visibility`), for the
+    // worker to engrave with Verovio. Takes the same visibility as
+    // `render-svg`, so hidden parts get no staff.
+    export render-mei: func(source: string, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, clef: staff-clef) -> render-mei-response;
+
+    /// A box in whichever space its caller measured it in: client pixels
+    /// to hit-test, the SVG's user units to paint.
+    record bounding-box {
+        left: f64,
+        right: f64,
+        top: f64,
+        bottom: f64,
+    }
+
+    /// One of Verovio's measures as the staff view measured it: its
+    /// group's whole box (slurs, ties and lyrics crossing its barlines
+    /// included) and each of its staff lines' boxes.
+    record staff-measure-geometry {
+        measure-index: u32,
+        measure-box: bounding-box,
+        staff-line-boxes: list<bounding-box>,
+    }
+
+    // The staff view's measure under the pointer (`staff_measures` module).
+    export staff-measure-at-point: func(measures: list<staff-measure-geometry>, x: f64, y: f64) -> option<u32>;
+
+    // The area a staff measure's hover target and highlight cover.
+    export staff-measure-area: func(measure: staff-measure-geometry) -> bounding-box;
+
+    // Which of `measure-indices` the editor's selection `ranges` paint.
+    export highlighted-staff-measures: func(measure-indices: list<u32>, ranges: list<measure-range-in>) -> list<u32>;
+
+    // Which of `measure-indices` a click-and-click gesture's hover preview
+    // paints, between its `anchor` and `current` ends in either order.
+    export pending-staff-measures: func(measure-indices: list<u32>, anchor: measure-range-in, current: measure-range-in) -> list<u32>;
+
+    /// One sounding part's MEI for the split staff export; `file-name` is
+    /// the PDF it becomes.
+    record split-mei {
+        track-name: string,
+        file-name: string,
+        mei: string,
+    }
+
+    variant render-split-meis-response {
+        ok(list<split-mei>),
+        err(diagnostics-error),
+    }
+
+    export render-split-meis: func(source: string, base-name: string, preset-name: option<string>, raw-instruments: list<instrument-info>, clef: staff-clef) -> render-split-meis-response;
+
+    /// Verovio's SVG pages for one part of the split staff export.
+    record staff-pdf-part {
+        track-name: string,
+        file-name: string,
+        pages: list<string>,
+    }
+
+    /// Verovio's staff pages → PDF, with `source` embedded for re-import.
+    export generate-staff-pdf: func(pages: list<string>, source: string, fonts: font-bytes-by-family) -> generate-pdf-response;
+    export generate-split-staff-pdfs: func(parts: list<staff-pdf-part>, fonts: font-bytes-by-family) -> generate-split-pdfs-response;
+
+    // Phase 3, group 3 of PLAN-wit-bindgen-migration.md.
+    export list-parts: func(source: string, raw-instruments: list<instrument-info>) -> list-parts-response;
+
+    record list-part-declarations-success {
+        declarations: list<part-declaration>,
+    }
+
+    variant list-part-declarations-response {
+        ok(list-part-declarations-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 7 of PLAN-wit-bindgen-migration.md.
+    export list-part-declarations: func(source: string, raw-instruments: list<instrument-info>) -> list-part-declarations-response;
+
+    // Rewrites `abbreviation`'s `parts` line to `settings`, naming
+    // `settings.program` from `raw-instruments` (or the GM percussion map);
+    // returns `source` unchanged when no such part is declared.
+    export update-part-declaration: func(source: string, abbreviation: string, settings: part-settings) -> string;
+
+    // `poentaro::sound_label::SoundChoice`: one sound the Edit Parts
+    // sound picker offers — its GM program number (or percussion key) and
+    // its display label.
+    record sound-choice {
+        program: u8,
+        label: string,
+    }
+
+    // `poentaro::sound_label::SoundChoices`.
+    record sound-choices {
+        instruments: list<sound-choice>,
+        percussion: list<sound-choice>,
+    }
+
+    // Every sound the Edit Parts sound picker offers, labelled by Rust.
+    export list-sound-choices: func(raw-instruments: list<instrument-info>) -> sound-choices;
+
+    // `poentaro::ast::parsed::RangeInstrument`: one instrument the
+    // Edit Parts instrument picker offers — its source keyword (`"guzheng"`)
+    // and its display label (`"guzheng 古箏"`).
+    record range-instrument-choice {
+        name: string,
+        label: string,
+    }
+
+    // Every instrument a notes part can name, whose range its notes are
+    // checked against.
+    export list-range-instruments: func() -> list<range-instrument-choice>;
+
+    // `poentaro::ast::parsed::RangePitchChoice`: one pitch the Edit Parts
+    // range pickers offer, as a MIDI note and its name (`"F#3"`).
+    record range-pitch-choice {
+        midi: u8,
+        name: string,
+    }
+
+    // Every pitch the range pickers offer, lowest first.
+    export list-range-pitches: func() -> list<range-pitch-choice>;
+
+    // `poentaro::parser::parts_parser::PartSettingRange<u8>` for
+    // `PART_SETTING_LIMITS.volume` — inclusive, in percent.
+    record volume-range {
+        min: u8,
+        max: u8,
+    }
+
+    // `PartSettingRange<i8>` for `PART_SETTING_LIMITS.octave-offset` —
+    // inclusive, in octaves.
+    record octave-offset-range {
+        min: s8,
+        max: s8,
+    }
+
+    // `poentaro::parser::parts_parser::PartSettingLimits`: the valid
+    // range of each numeric `part-settings` field. The parser clamps a `parts`
+    // line's out-of-range value into it (with a diagnostic), so every
+    // `part-declaration` already lies within it.
+    record part-setting-limits {
+        volume: volume-range,
+        octave-offset: octave-offset-range,
+    }
+
+    // `PART_SETTING_LIMITS`, for the Edit Parts volume slider and octave
+    // select. Prefixed `get-` so it doesn't share its record's name.
+    export get-part-setting-limits: func() -> part-setting-limits;
+
+    enum symbol-kind {
+        abbreviation,
+        section-label,
+    }
+
+    enum occurrence-role {
+        declaration,
+        reference,
+    }
+
+    record symbol-occurrence {
+        span: span,
+        hit-span: span,
+        role: occurrence-role,
+    }
+
+    record symbol {
+        name: string,
+        kind: symbol-kind,
+        occurrences: list<symbol-occurrence>,
+    }
+
+    record list-symbols-success {
+        symbols: list<symbol>,
+    }
+
+    variant list-symbols-response {
+        ok(list-symbols-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 3 of PLAN-wit-bindgen-migration.md.
+    export list-symbols: func(source: string, raw-instruments: list<instrument-info>) -> list-symbols-response;
+
+    record text-edit {
+        span: span,
+        replacement: string,
+    }
+
+    record rename-symbol-success {
+        edits: list<text-edit>,
+    }
+
+    variant rename-symbol-response {
+        ok(rename-symbol-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 3 of PLAN-wit-bindgen-migration.md.
+    export rename-symbol: func(source: string, kind: symbol-kind, old-name: string, new-name: string, raw-instruments: list<instrument-info>) -> rename-symbol-response;
+
+    record measure-at-offset-success {
+        measure-index: u32,
+    }
+
+    variant measure-at-offset-response {
+        ok(measure-at-offset-success),
+        not-in-measure,
+    }
+
+    // Phase 3, group 3 of PLAN-wit-bindgen-migration.md. Named to match
+    // `wasm_boundary.rs`'s `get_measure_index_at_offset`, not the plan
+    // prose's `measure_at_offset` shorthand.
+    export get-measure-index-at-offset: func(source: string, byte-offset: u32) -> measure-at-offset-response;
+
+    record measure-span {
+        start: u32,
+        end: u32,
+        view-zone-start: u32,
+        section-label: option<string>,
+        start-line: u32,
+        end-line: u32,
+    }
+
+    record note-span {
+        source-part-index: u32,
+        // The part's abbreviation as Rust resolved it after hidden parts
+        // were filtered out, so the web never maps `source-part-index` back
+        // to a part name itself. `none` only for an unnamed part.
+        part-abbreviation: option<string>,
+        note-id: u32,
+        measure-index: u32,
+        start: option<u32>,
+        end: option<u32>,
+        timing: measure-timing,
+    }
+
+    // When an event sounds within its measure, in quarter-beats. Read only
+    // by Rust, to bound cross-part selection ranges by time.
+    record measure-timing {
+        offset: u32,
+        duration: u32,
+    }
+
+    record list-note-spans-success {
+        spans: list<note-span>,
+    }
+
+    variant list-note-spans-response {
+        ok(list-note-spans-success),
+        err,
+    }
+
+    // Phase 3, group 2 of PLAN-wit-bindgen-migration.md.
+    export list-note-spans: func(source: string, enabled-tracks: option<list<string>>) -> list-note-spans-response;
+
+    record lyric-span {
+        source-part-index: u32,
+        // See `note-span.part-abbreviation`.
+        part-abbreviation: option<string>,
+        note-id: u32,
+        measure-index: u32,
+        start: u32,
+        end: u32,
+        timing: measure-timing,
+    }
+
+    record list-lyric-spans-success {
+        spans: list<lyric-span>,
+    }
+
+    variant list-lyric-spans-response {
+        ok(list-lyric-spans-success),
+        err,
+    }
+
+    // Phase 3, group 2 of PLAN-wit-bindgen-migration.md.
+    export list-lyric-spans: func(source: string, enabled-tracks: option<list<string>>) -> list-lyric-spans-response;
+
+    record section-range {
+        first-line: u32,
+        last-line: u32,
+        labels: list<string>,
+    }
+
+    record sequence-entry {
+        label: string,
+        start-measure-index: u32,
+        end-measure-index: u32,
+    }
+
+    record list-measure-spans-success {
+        spans: list<measure-span>,
+        section-ranges: list<section-range>,
+        sequence-entries: list<sequence-entry>,
+    }
+
+    variant list-measure-spans-response {
+        ok(list-measure-spans-success),
+        err,
+    }
+
+    // Phase 3, group 2 of PLAN-wit-bindgen-migration.md.
+    export list-measure-spans: func(source: string) -> list-measure-spans-response;
+
+    // ==================== note_selection_types.rs ====================
+
+    // `NoteCellIn` — input-only, decoded via serde_wasm_bindgen today.
+    record note-cell-in {
+        source-part-index: u32,
+        note-id: u32,
+    }
+
+    record note-selection-run {
+        source-part-index: u32,
+        // Copied from the run's `note-span.part-abbreviation`.
+        part-abbreviation: option<string>,
+        measure-index: u32,
+        start-byte: u32,
+        end-byte: u32,
+    }
+
+    record group-note-selection-success {
+        runs: list<note-selection-run>,
+    }
+
+    variant group-note-selection-response {
+        ok(group-note-selection-success),
+        err,
+    }
+
+    // ==================== lyric_selection_types.rs ====================
+
+    // `LyricCellIn` — input-only, decoded via serde_wasm_bindgen today.
+    record lyric-cell-in {
+        source-part-index: u32,
+        note-id: u32,
+    }
+
+    record lyric-selection-run {
+        source-part-index: u32,
+        // Copied from the run's `lyric-span.part-abbreviation`.
+        part-abbreviation: option<string>,
+        measure-index: u32,
+        start-byte: u32,
+        end-byte: u32,
+    }
+
+    record group-lyric-selection-success {
+        runs: list<lyric-selection-run>,
+    }
+
+    variant group-lyric-selection-response {
+        ok(group-lyric-selection-success),
+        err,
+    }
+
+    // Phase 3, group 1 of PLAN-wit-bindgen-migration.md: the first two real
+    // functions ported from the `wasm-bindgen` boundary (`wasm_boundary.rs`)
+    // to `wit-bindgen`. Both coexist with their `#[wasm_bindgen] fn`
+    // originals until Phase 6's cutover.
+    export group-note-selection: func(note-spans: list<note-span>, selected-cells: list<note-cell-in>) -> group-note-selection-response;
+    export group-lyric-selection: func(lyric-spans: list<lyric-span>, selected-cells: list<lyric-cell-in>) -> group-lyric-selection-response;
+
+    enum font-family-choice {
+        serif,
+        sans-serif,
+        monospace,
+    }
+
+    // One kind's fully resolved style when its style object is left unset.
+    record text-style-defaults {
+        font-size: u32,
+        horizontal-padding-pt: u32,
+        vertical-padding-pt: u32,
+        bold: bool,
+        italic: bool,
+        underline: bool,
+        font-family: font-family-choice,
+    }
+
+    // What each scalar field of the edited section resolves to when left
+    // unset: the song's `metadata` value when editing a preset, else the
+    // documented default.
+    record metadata-defaults {
+        // Text fields have no documented default; `none` unless a preset
+        // inherits them from `metadata`.
+        title: option<string>,
+        subtitle: option<string>,
+        author: option<string>,
+        row-height: u32,
+        max-measures-per-system: u32,
+        note-number-width: u32,
+        parts-list-columns: u32,
+        part-label-width-pt: u32,
+        page-margin-pt: u32,
+        merge-duplicate-measures-across-parts: bool,
+        hide-resting-parts: bool,
+        hide-system-dividers: bool,
+        // Spelled the way `directive_row_offset = x y` writes it.
+        directive-row-offset: string,
+    }
+
+    // ==================== `metadata` fields (source_edit::metadata_edit) ====================
+
+    // Every text kind that takes a `<kind> = { ... }` style object, in
+    // canonical order (`poentaro::ast::parsed::TextStyleKind`).
+    enum text-style-kind {
+        title,
+        subtitle,
+        author,
+        sequence,
+        part-legend,
+        measure-number,
+        section-label,
+        part-label,
+        page-number,
+        running-title,
+        lyrics,
+        notes,
+        chords,
+        note-dash,
+    }
+
+    // One kind's style object as written in the source; unset components are `none`.
+    record text-style-fields {
+        font-size: option<u32>,
+        horizontal-padding-pt: option<u32>,
+        vertical-padding-pt: option<u32>,
+        bold: option<bool>,
+        italic: option<bool>,
+        underline: option<bool>,
+        font-family: option<font-family-choice>,
+    }
+
+    // How a text kind's `font_size` defaults when unset
+    // (`poentaro::ast::grouped::FontSizeDefault`).
+    variant font-size-default {
+        // A fixed size in points.
+        fixed(u32),
+        // This percentage of `row_height`, rounded to the nearest point.
+        row-height-percent(u32),
+        // Whatever this kind's `font_size` resolves to.
+        same-as(text-style-kind),
+    }
+
+    record text-style-entry {
+        kind: text-style-kind,
+        fields: text-style-fields,
+        // What `fields` resolve to when all unset, given the rest of the
+        // document (`poentaro::grouper::metadata_defaults`).
+        defaults: text-style-defaults,
+        // The rule `defaults.font-size` was derived from.
+        font-size-default: font-size-default,
+    }
+
+    // The `metadata` section's values as written; unset fields are `none`.
+    record metadata-fields {
+        title: option<string>,
+        subtitle: option<string>,
+        author: option<string>,
+        row-height: option<u32>,
+        max-measures-per-system: option<u32>,
+        note-number-width: option<u32>,
+        parts-list-columns: option<u32>,
+        part-label-width-pt: option<u32>,
+        page-margin-pt: option<u32>,
+        merge-duplicate-measures-across-parts: option<bool>,
+        hide-resting-parts: option<bool>,
+        hide-system-dividers: option<bool>,
+        // Verbatim, even when it doesn't parse (see `MetadataFields`).
+        directive-row-offset: option<string>,
+        // One entry per `text-style-kind`, in that enum's order.
+        styles: list<text-style-entry>,
+        defaults: metadata-defaults,
+    }
+
+    enum metadata-text-key {
+        title,
+        subtitle,
+        author,
+    }
+
+    enum metadata-number-key {
+        row-height,
+        max-measures-per-system,
+        note-number-width,
+        parts-list-columns,
+        part-label-width-pt,
+        page-margin-pt,
+    }
+
+    enum metadata-flag-key {
+        merge-duplicate-measures-across-parts,
+        hide-resting-parts,
+        hide-system-dividers,
+    }
+
+    variant text-style-component-value {
+        font-size(option<u32>),
+        horizontal-padding-pt(option<u32>),
+        vertical-padding-pt(option<u32>),
+        bold(option<bool>),
+        italic(option<bool>),
+        underline(option<bool>),
+        font-family(option<font-family-choice>),
+    }
+
+    record metadata-text-edit {
+        key: metadata-text-key,
+        value: option<string>,
+    }
+
+    record metadata-number-edit {
+        key: metadata-number-key,
+        value: option<u32>,
+    }
+
+    record metadata-flag-edit {
+        key: metadata-flag-key,
+        value: option<bool>,
+    }
+
+    record metadata-style-edit {
+        kind: text-style-kind,
+        value: text-style-component-value,
+    }
+
+    // One Edit Metadata form edit; a `none` value removes the field.
+    variant metadata-edit {
+        text(metadata-text-edit),
+        number(metadata-number-edit),
+        flag(metadata-flag-edit),
+        directive-row-offset(option<string>),
+        style(metadata-style-edit),
+        // Removes every component of one kind's style.
+        reset-style(text-style-kind),
+    }
+
+    // The fields of the preset named `preset-name`, or of `metadata` when
+    // `none` (or no preset has that name).
+    export parse-metadata-fields: func(source: string, preset-name: option<string>) -> metadata-fields;
+
+    // Applies one edit to the section `parse-metadata-fields` reads and
+    // rewrites it in canonical order; returns `source` unchanged when it has
+    // no such section.
+    export update-metadata-field: func(source: string, preset-name: option<string>, edit: metadata-edit) -> string;
+
+    // How the preview and exports draw the score (`poentaro::ast::parsed::Notation`).
+    enum notation {
+        numbered,
+        violin,
+        cello,
+        abc,
+        guitar,
+        harmonica,
+    }
+
+    // One entry of the preset menu.
+    record preset-summary {
+        name: string,
+        notation: option<notation>,
+    }
+
+    // The file's `preset` sections in file order, read from the sections
+    // alone so a half-typed score doesn't empty the menu.
+    export list-presets: func(source: string) -> list<preset-summary>;
+
+    // One line the preset menu's controls write into a `preset` section.
+    // An empty `visible-parts` list hides every part; an empty
+    // `soloed-parts` list removes the line.
+    variant preset-edit {
+        visible-parts(list<string>),
+        soloed-parts(list<string>),
+        notation(notation),
+    }
+
+    // Rewrites the named preset's line for `edit` in place, or adds it under
+    // the header; returns `source` unchanged when no preset has that name.
+    export update-preset-field: func(source: string, preset-name: string, edit: preset-edit) -> string;
+
+    // A part pill clicked under a preset: which part, and whether it now shows.
+    record part-shown {
+        abbreviation: string,
+        shown: bool,
+    }
+
+    // Shows or hides one part in the named preset's `visible_parts`,
+    // rewritten in `all-parts` order (the abbreviations `list-parts` gives).
+    export set-preset-part-shown: func(source: string, preset-name: string, all-parts: list<string>, part: part-shown) -> string;
+
+    // A solo button clicked under a preset: which part, and whether it is
+    // now soloed.
+    record part-soloed {
+        abbreviation: string,
+        soloed: bool,
+    }
+
+    // Solos or unsolos one part in the named preset's `soloed_parts`,
+    // rewritten in `all-parts` order; the line goes once nothing is soloed.
+    export set-preset-part-soloed: func(source: string, preset-name: string, all-parts: list<string>, part: part-soloed) -> string;
+
+    // Why "New preset…" can't use `name` (empty, quoted, Default or taken).
+    export new-preset-name-error: func(source: string, name: string) -> option<string>;
+
+    // A preset for "New preset…", holding the parts, solos and notation
+    // shown now.
+    record new-preset {
+        name: string,
+        visible-parts: list<string>,
+        soloed-parts: list<string>,
+        notation: notation,
+    }
+
+    // Adds a `preset` section after the last one (else before the music).
+    export add-preset-section: func(source: string, preset: new-preset) -> string;
+
+    // The chosen preset's name after an edit from `previous-source`: the same
+    // name, the preset's new name when the edit renamed it, or none when gone.
+    export follow-preset-rename: func(previous-source: string, source: string, preset-name: string) -> option<string>;
+
+    // Kind of one score-string keyword `highlight-tokens` reports.
+    enum highlight-kind {
+        directive-key,
+        lyric-reading,
+    }
+
+    // One keyword's UTF-8 byte span; never spans a line break.
+    record highlight-token {
+        kind: highlight-kind,
+        span: span,
+    }
+
+    // Every keyword inside the score string of `source`, ordered by position,
+    // found by the score's own lexer. Drives the editor's semantic
+    // highlighting; anyx's tokenizer colors the rest of the document.
+    export highlight-tokens: func(source: string) -> list<highlight-token>;
+
+    // Which section a `# <section>` header opens.
+    enum section-kind {
+        metadata,
+        parts,
+        score,
+        sequence,
+        preset,
+    }
+
+    // One known section header keyword's UTF-8 byte span.
+    record section-header {
+        kind: section-kind,
+        span: span,
+    }
+
+    // Every section header the parser recognizes in `source`, ordered by
+    // position. Drives the editor's Edit Parts / Edit Metadata CodeLens.
+    export section-headers: func(source: string) -> list<section-header>;
+
+    // Raw OTF/TTF bytes of each `font-family` role's font (see
+    // `fonts/fonts.json`, keyed by the same role names). Keyed by role, not
+    // by what text a role renders: which role measures/renders which text
+    // is decided on the Rust side only.
+    record font-bytes-by-family {
+        serif: list<u8>,
+        sans-serif: list<u8>,
+        monospace: list<u8>,
+    }
+
+    // `set_layout_fonts` supplies the raw font bytes used for layout glyph
+    // measurement — no return value, so this is the first `export` in this
+    // file with no return type at all (a plain `func(...)`, matching the old
+    // `#[wasm_bindgen] fn`'s `()` return).
+    export set-layout-fonts: func(fonts: font-bytes-by-family);
+
+    // `shift_part_octave`/`format_score` are both plain source-string
+    // rewrites with no response-shaped type, same reasoning as
+    // `update-part-declaration` above.
+    export shift-part-octave: func(source: string, abbreviation: string, delta: s32) -> string;
+
+    // One `[start-byte, end-byte)` span of the editor's selection. A Monaco
+    // multicursor selection (e.g. clicking a part label, which selects that
+    // part's notes across every measure in its system) surfaces as several
+    // disjoint `byte-range`s rather than one contiguous span — see
+    // `shift-range-octave`/`toggle-range-slur`/`toggle-range-tie` below.
+    record byte-range {
+        start-byte: u32,
+        end-byte: u32,
+    }
+
+    // A selection-scoped editor toolbar action's return value
+    // (`shift-range-octave`, `toggle-range-slur`, `toggle-range-tie`): the
+    // rewritten source, plus the caller's own input ranges remapped onto the
+    // new source — see `source_edit::RangeEditResult`'s doc comment for why
+    // the caller needs these instead of just re-applying its own pre-edit
+    // ranges to restore the selection afterward.
+    record range-edit-response {
+        source: string,
+        ranges: list<byte-range>,
+    }
+
+    // The "shift selected range" editor toolbar action — same shape as
+    // `shift-part-octave` above, but scoped to a list of byte ranges instead
+    // of a part (see `source_edit::shift_range_octave`). Takes a *list* of
+    // ranges, not one pair, because a multicursor selection is generally
+    // disjoint — collapsing it to a single min/max span would sweep in
+    // unrelated notes/parts sitting between the disjoint pieces.
+    export shift-range-octave: func(source: string, ranges: list<byte-range>, delta: s32) -> range-edit-response;
+
+    // The "Slur/Unslur" editor toolbar action (see
+    // `source_edit::toggle_range_slur`): removes every `(…)` group the
+    // selection touches, or — if it touches none — wraps each part's
+    // selected notes in a new group.
+    export toggle-range-slur: func(source: string, ranges: list<byte-range>) -> range-edit-response;
+
+    // The "Tie/Untie" editor toolbar action (see
+    // `source_edit::toggle_range_tie`): removes every `~` tie on the selected
+    // notes, or — if there are none — ties the selected same-pitch neighbours.
+    export toggle-range-tie: func(source: string, ranges: list<byte-range>) -> range-edit-response;
+
+    export format-score: func(source: string) -> string;
+
+    // ==================== part stream editing ====================
+    // `poentaro::part_stream`: edit one part of the `score` as a
+    // single stream (no barlines, no directives), then apply it back.
+
+    // `part_stream::StreamablePartKind`.
+    enum streamable-part-kind {
+        notes,
+        chords,
+        percussion,
+        follow,
+        lyrics,
+    }
+
+    // `part_stream::StreamablePart`: one part picker row; `none` reason = selectable.
+    record streamable-part {
+        abbreviation: string,
+        display-name: string,
+        kind: streamable-part-kind,
+        ineligible-reason: option<string>,
+    }
+
+    // `part_stream::PartStream`. `measure-starts` are UTF-8 byte offsets in
+    // `text` where each measure's chunk starts (index = measure index).
+    record part-stream {
+        text: string,
+        measure-starts: list<u32>,
+    }
+
+    // `part_stream::PartStreamError`, each case carrying its single field.
+    variant part-stream-error {
+        source-does-not-parse(string),
+        unknown-part(string),
+        ineligible(string),
+    }
+
+    // Why a stream could not be extracted, with Rust's human-readable `message`.
+    record part-stream-failure {
+        reason: part-stream-error,
+        message: string,
+    }
+
+    variant extract-part-stream-response {
+        ok(part-stream),
+        err(part-stream-failure),
+    }
+
+    // `part_stream::PartStreamApplyResult`. `diagnostics` are
+    // `StreamDiagnostic`s (same shape as `diagnostic`), spanned in UTF-8
+    // byte offsets of the *edited stream*, not the source. `source` is
+    // `none` while any error-severity diagnostic exists.
+    record part-stream-apply-result {
+        source: option<string>,
+        diagnostics: list<diagnostic>,
+        measure-starts: list<u32>,
+        changed-measure-count: u32,
+    }
+
+    // Every declared part, in declaration order, with why it can't be stream-edited (if any).
+    export list-streamable-parts: func(source: string) -> list<streamable-part>;
+    // The part's measures as one stream, one measure chunk per measure.
+    export extract-part-stream: func(source: string, abbreviation: string) -> extract-part-stream-response;
+    // Re-bars `edited-stream` into the part's measures; pure, so the
+    // editor calls it on every keystroke and uses `source` only on Apply.
+    export apply-part-stream: func(source: string, abbreviation: string, edited-stream: string) -> part-stream-apply-result;
+
+    // `part_stream::StreamTextEdit`: replace `span` (UTF-8 byte offsets of
+    // the edited stream) with `replacement`.
+    record stream-text-edit {
+        span: span,
+        replacement: string,
+    }
+
+    // `part_stream::FormattedPartStream`. `edits` are sorted and
+    // non-overlapping (empty when already formatted, or when the stream has
+    // errors); `cursors` are the input cursors mapped into the formatted
+    // stream, as UTF-8 byte offsets.
+    record formatted-part-stream {
+        edits: list<stream-text-edit>,
+        cursors: list<u32>,
+    }
+
+    // Re-bars `edited-stream` one measure per line by changing whitespace
+    // only; the part focus editor calls it on every keystroke.
+    export format-part-stream: func(source: string, abbreviation: string, edited-stream: string, cursors: list<u32>) -> formatted-part-stream;
+
+    // `part_stream::FocusMeasure`: one score measure's ghost lines around
+    // the focused part's line, verbatim from the source.
+    record focus-measure {
+        section-label: option<string>,
+        lines-above: list<string>,
+        lines-below: list<string>,
+    }
+
+    variant part-focus-measures-response {
+        ok(list<focus-measure>),
+        err(part-stream-failure),
+    }
+
+    // Every measure's ghost lines (index = stream measure index), keeping
+    // only the parts `toggles` draw.
+    export part-focus-measures: func(source: string, abbreviation: string, toggles: part-toggle-state) -> part-focus-measures-response;
+
+    // `part_stream::part_stream_ranges_to_source`: the part focus editor's
+    // selections (UTF-8 byte ranges in `edited-stream`) as ranges in the
+    // draft source, for the preview to highlight. Empty when the stream has
+    // errors.
+    export part-stream-ranges-to-source: func(source: string, abbreviation: string, edited-stream: string, ranges: list<span>) -> list<span>;
+
+    // `part_stream::source_ranges_to_part_stream`: draft source ranges (the
+    // preview's selection) as selections in `edited-stream`. Empty when the
+    // stream has errors.
+    export source-ranges-to-part-stream: func(source: string, abbreviation: string, edited-stream: string, ranges: list<span>) -> list<span>;
+
+    // The editor's pitch drawer (see `pitch_description::describe_selection`):
+    // what a selection covering exactly one note/chord means in letter names,
+    // or `none` for any other selection (several notes, a rest, a caret).
+    record note-description {
+        letter-name: string,
+    }
+
+    record chord-description {
+        chord-name: string,
+        tone-names: list<string>,
+        bass-note: option<string>,
+        guitar-diagram-svgs: list<string>,
+        piano-diagram-svg: string,
+    }
+
+    variant pitch-description {
+        note(note-description),
+        chord(chord-description),
+    }
+
+    export describe-selection: func(source: string, ranges: list<byte-range>) -> option<pitch-description>;
+
+    // ==================== types_export.rs (wav/pdf/midi/mp3) ====================
+
+    record generate-wav-success {
+        wav: list<u8>,
+    }
+
+    variant generate-wav-response {
+        ok(generate-wav-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
+    // `vocals`: as in `generate-mp3`.
+    export generate-wav: func(source: string, enabled-tracks: option<list<string>>, metronome: bool, soundfont: list<u8>, vocals: list<f32>) -> generate-wav-response;
+
+    // Phase 3, group 6 of PLAN-wit-bindgen-migration.md. Plain scalar params
+    // (not wrapped in a record), matching group 3/4's convention for
+    // multi-param exports rather than introducing a new
+    // `measure-range-selection`-shaped record. `sequence-entry-start-index`/
+    // `sequence-entry-end-index` mirror `render-svg-with-highlight-range`'s
+    // sibling functions' `Option<usize>` pair (recombined into a
+    // `RangeInclusive` on the Rust side via `crate::sequence_entry_range`);
+    // `trim-start-s`/`trim-end-s`/`trim-next-note-start-s` likewise recombine
+    // via `crate::trim_window` — both helpers were previously reachable only
+    // from the `wasm-bindgen` boundary (gated on `wasm-bindgen-boundary`) and
+    // had to be ungated the same way group 5 ungated `types_export.rs`/
+    // `responses_*.rs` — see PLAN-wit-bindgen-migration.md's Status section.
+    export generate-wav-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>, metronome: bool, trim-start-s: option<f64>, trim-end-s: option<f64>, trim-next-note-start-s: option<f64>, soundfont: list<u8>, vocals: list<f32>) -> generate-wav-response;
+
+    // What `generate-wav-for-measure-range` / `generate-mp3-for-measure-range`
+    // of the same range and tracks sing, like `singing-plan`. A singing part
+    // sings when its notes or its lyrics are enabled; lyrics alone bring in
+    // only their `visible-tracks` singers.
+    export singing-plan-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>, visible-tracks: option<list<string>>) -> option<list<u8>>;
+
+    // Phase 3, group 6 of PLAN-wit-bindgen-migration.md.
+    export generate-instrument-preview-wav: func(program-number: u8, soundfont: list<u8>) -> generate-wav-response;
+
+    // Phase 3, group 6 of PLAN-wit-bindgen-migration.md.
+    export generate-percussion-preview-wav: func(key: u8, soundfont: list<u8>) -> generate-wav-response;
+
+    record note-timing {
+        source-part-index: u32,
+        note-id: u32,
+        start-s: f64,
+        end-s: f64,
+    }
+
+    record note-timings-success {
+        timings: list<note-timing>,
+    }
+
+    variant note-timings-response {
+        ok(note-timings-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 6 of PLAN-wit-bindgen-migration.md.
+    export list-note-timings: func(source: string, visible-tracks: option<list<string>>, enabled-tracks: option<list<string>>) -> note-timings-response;
+
+    // Phase 3, group 6 of PLAN-wit-bindgen-migration.md. See
+    // `generate-wav-for-measure-range`'s doc comment above for
+    // `sequence-entry-start-index`/`sequence-entry-end-index`.
+    export list-note-timings-for-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, visible-tracks: option<list<string>>, enabled-tracks: option<list<string>>) -> note-timings-response;
+
+    record trim-window {
+        start-s: f64,
+        end-s: f64,
+        next-note-start-s: option<f64>,
+    }
+
+    // The stretch of a measure-range clip that exactly covers the selected
+    // notes, given that clip's note timings. `none` plays the clip in full.
+    export note-selection-trim-window: func(cells: list<note-cell-in>, note-timings: list<note-timing>) -> option<trim-window>;
+
+    record generate-pdf-success {
+        pdf: list<u8>,
+    }
+
+    variant generate-pdf-response {
+        ok(generate-pdf-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
+    export generate-pdf: func(source: string, visibility: resolved-part-visibility, fonts: font-bytes-by-family, note-labels: note-labels) -> generate-pdf-response;
+
+    record generate-split-pdfs-success {
+        zip: list<u8>,
+    }
+
+    variant generate-split-pdfs-response {
+        ok(generate-split-pdfs-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
+    export generate-split-pdfs: func(source: string, base-name: string, preset-name: option<string>, fonts: font-bytes-by-family, note-labels: note-labels) -> generate-split-pdfs-response;
+
+    record generate-midi-success {
+        midi: list<u8>,
+    }
+
+    variant generate-midi-response {
+        ok(generate-midi-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
+    export generate-midi: func(source: string, enabled-tracks: option<list<string>>) -> generate-midi-response;
+
+    record generate-split-midis-success {
+        zip: list<u8>,
+    }
+
+    variant generate-split-midis-response {
+        ok(generate-split-midis-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
+    export generate-split-midis: func(source: string, base-name: string, preset-name: option<string>) -> generate-split-midis-response;
+
+    record generate-split-wavs-success {
+        zip: list<u8>,
+    }
+
+    variant generate-split-wavs-response {
+        ok(generate-split-wavs-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
+    // One track of a split audio export and what it sings, as an opaque plan
+    // for the singer module's `sing`.
+    record track-singing-plan {
+        track-name: string,
+        plan: list<u8>,
+    }
+
+    // One track's samples from the singer module's `sing` of its plan.
+    record track-vocals {
+        track-name: string,
+        samples: list<f32>,
+    }
+
+    // What each track of `generate-split-wavs` / `generate-split-mp3s` of the
+    // same source and preset sings; only the tracks that sing.
+    export split-singing-plans: func(source: string, preset-name: option<string>) -> list<track-singing-plan>;
+
+    export generate-split-wavs: func(source: string, base-name: string, preset-name: option<string>, soundfont: list<u8>, vocals: list<track-vocals>) -> generate-split-wavs-response;
+
+    record generate-mp3-success {
+        mp3: list<u8>,
+    }
+
+    variant generate-mp3-response {
+        ok(generate-mp3-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
+    // `vocals`: mono samples from the singer module's `sing` (see
+    // `singing-plan`), mixed in the centre; empty when nothing sings.
+    export generate-mp3: func(source: string, enabled-tracks: option<list<string>>, soundfont: list<u8>, vocals: list<f32>) -> generate-mp3-response;
+
+    // What `generate-mp3` of the same source and tracks sings, as an opaque
+    // plan for the singer module's `sing`; none when no part sings. Only then does the app load the singer.
+    export singing-plan: func(source: string, enabled-tracks: option<list<string>>) -> option<list<u8>>;
+
+    // Phase 3, group 6 of PLAN-wit-bindgen-migration.md. See
+    // `generate-wav-for-measure-range`'s doc comment above for
+    // `sequence-entry-start-index`/`sequence-entry-end-index`/
+    // `trim-start-s`/`trim-end-s`/`trim-next-note-start-s` — this mirrors it
+    // exactly, only encoding to MP3 instead of WAV.
+    export generate-mp3-for-measure-range: func(source: string, start-index: u32, end-index: u32, extend-to-last-occurrence: bool, respect-sequence: bool, sequence-entry-start-index: option<u32>, sequence-entry-end-index: option<u32>, enabled-tracks: option<list<string>>, trim-start-s: option<f64>, trim-end-s: option<f64>, trim-next-note-start-s: option<f64>, soundfont: list<u8>, vocals: list<f32>) -> generate-mp3-response;
+
+    record generate-split-mp3s-success {
+        zip: list<u8>,
+    }
+
+    variant generate-split-mp3s-response {
+        ok(generate-split-mp3s-success),
+        err(diagnostics-error),
+    }
+
+    // Phase 3, group 5 of PLAN-wit-bindgen-migration.md.
+    export generate-split-mp3s: func(source: string, base-name: string, preset-name: option<string>, soundfont: list<u8>, vocals: list<track-vocals>) -> generate-split-mp3s-response;
+
+    // ==================== lib_import.rs ====================
+    // Phase 3, group 7 of PLAN-wit-bindgen-migration.md.
+
+    export extract-source-from-svg: func(svg-bytes: list<u8>) -> option<string>;
+
+    export extract-source-from-pdf: func(pdf-bytes: list<u8>) -> option<string>;
+
+    // ==================== share_payload.rs ====================
+
+    export compress-share-payload: func(payload: string) -> list<u8>;
+
+    export decompress-share-payload: func(bytes: list<u8>) -> option<string>;
+
+    // ==================== selection_range/types.rs ====================
+
+    // `ClickableElementId` — input-only. Each case's record has the same
+    // fields as the matching `tag` case, so the web builds one straight from
+    // a rendered group's `Tag`.
+    record note-element-id {
+        source-part-index: u32,
+        note-id: u32,
+    }
+
+    record lyric-element-id {
+        source-part-index: u32,
+        note-id: u32,
+    }
+
+    record measure-element-id {
+        measure-index-start: u32,
+        measure-index-end: u32,
+    }
+
+    record part-label-element-id {
+        source-part-index: u32,
+        measure-index-start: u32,
+        measure-index-end: u32,
+    }
+
+    record lyric-label-element-id {
+        source-part-index: u32,
+        measure-index-start: u32,
+        measure-index-end: u32,
+    }
+
+    variant clickable-element-id {
+        note(note-element-id),
+        lyric(lyric-element-id),
+        measure(measure-element-id),
+        part-label(part-label-element-id),
+        lyric-label(lyric-label-element-id),
+    }
+
+    record note-cell-out {
+        source-part-index: u32,
+        note-id: u32,
+    }
+
+    record lyric-cell-out {
+        source-part-index: u32,
+        note-id: u32,
+    }
+
+    record resolve-selection-range-success {
+        note-cells: list<note-cell-out>,
+        lyric-cells: list<lyric-cell-out>,
+    }
+
+    variant resolve-selection-range-response {
+        ok(resolve-selection-range-success),
+        err,
+    }
+
+    // Phase 3, group 7 of PLAN-wit-bindgen-migration.md.
+    export resolve-selection-range: func(note-spans: list<note-span>, lyric-spans: list<lyric-span>, anchor: clickable-element-id, current: clickable-element-id) -> resolve-selection-range-response;
+
+    // Every part of every system from the anchor's through the current
+    // endpoint's. `systems` are the rendered systems' inclusive measure ranges.
+    export resolve-system-selection-range: func(note-spans: list<note-span>, lyric-spans: list<lyric-span>, systems: list<measure-range-in>, anchor: clickable-element-id, current: clickable-element-id) -> resolve-selection-range-response;
+
+    // Whether each label reads as selected: a part label once every note it
+    // covers is in `note-cells`, a lyric label once every syllable it covers
+    // is in `lyric-cells`. Any other id is never selected.
+    export fully-selected-labels: func(note-spans: list<note-span>, lyric-spans: list<lyric-span>, labels: list<clickable-element-id>, note-cells: list<note-cell-in>, lyric-cells: list<lyric-cell-in>) -> list<bool>;
+
+    // The notes or lyric syllables whose source text a selection's byte
+    // ranges overlap, against the spans listed for the parts visible now —
+    // so a selection follows a part being hidden or shown. See
+    // `span_selection.rs`.
+    record note-selection {
+        cells: list<note-cell-out>,
+        runs: list<note-selection-run>,
+    }
+
+    record lyric-selection {
+        cells: list<lyric-cell-out>,
+        runs: list<lyric-selection-run>,
+    }
+
+    export select-notes-in-byte-ranges: func(note-spans: list<note-span>, ranges: list<byte-range>) -> note-selection;
+    export select-lyrics-in-byte-ranges: func(lyric-spans: list<lyric-span>, ranges: list<byte-range>) -> lyric-selection;
+
+    // ==================== cloud-outbox (crates/cloud-outbox/src/types.rs) ====================
+    //
+    // Mirrors the Rust types field-for-field. `#[serde(tag = "kind")]` enums
+    // become variants (unit variants are payload-less cases). Rust u64/i64 map
+    // to WIT u64/s64, which jco surfaces to TypeScript as `bigint`.
+
+    record file-revision {
+        file-id: string,
+        revision: s64,
+    }
+
+    record create-file-message {
+        name: string,
+        content: string,
+    }
+
+    record save-content-message {
+        content: string,
+    }
+
+    record rename-file-message {
+        to: string,
+    }
+
+    record rename-move {
+        file-id: string,
+        to: string,
+    }
+
+    record rename-files-message {
+        moves: list<rename-move>,
+    }
+
+    variant message {
+        create-file(create-file-message),
+        save-content(save-content-message),
+        rename-file(rename-file-message),
+        rename-files(rename-files-message),
+        trash-file,
+        restore-file,
+    }
+
+    record transient-reason {
+        reason: string,
+    }
+
+    record revision-conflict-details {
+        current-revision: s64,
+    }
+
+    record name-taken-details {
+        suggested-name: string,
+    }
+
+    record name-adjustment {
+        rejected: string,
+        replacement: option<string>,
+    }
+
+    record names-taken-details {
+        adjustments: list<name-adjustment>,
+    }
+
+    record permanent-details {
+        status: u16,
+        reason: string,
+    }
+
+    variant attempt-outcome {
+        succeeded,
+        transient(transient-reason),
+        unauthorized,
+        revision-conflict(revision-conflict-details),
+        name-taken(name-taken-details),
+        names-taken(names-taken-details),
+        permanent(permanent-details),
+    }
+
+    record attempt {
+        at-ms: u64,
+        outcome: attempt-outcome,
+    }
+
+    record queued-message {
+        message-id: string,
+        created-at-ms: u64,
+        message: message,
+        attempts: list<attempt>,
+    }
+
+    record waiting-details {
+        retry-at-ms: u64,
+    }
+
+    record needs-merge-details {
+        current-revision: s64,
+    }
+
+    record failed-details {
+        reason: string,
+    }
+
+    variant lane-status {
+        idle,
+        draining,
+        waiting(waiting-details),
+        needs-sign-in,
+        needs-merge(needs-merge-details),
+        failed(failed-details),
+    }
+
+    record lane {
+        file-id: string,
+        status: lane-status,
+        in-flight: option<string>,
+        messages: list<queued-message>,
+    }
+
+    record queue {
+        lanes: list<lane>,
+        revisions: list<file-revision>,
+    }
+
+    record send-request {
+        file-id: string,
+        message-id: string,
+        message: message,
+        expected-revision: s64,
+    }
+
+    record begin-send {
+        queue: queue,
+        request: option<send-request>,
+    }
+
+    record send-ok-details {
+        revision: s64,
+    }
+
+    variant send-result {
+        ok(send-ok-details),
+        transient(transient-reason),
+        unauthorized,
+        conflict(revision-conflict-details),
+        name-taken(name-taken-details),
+        names-taken(names-taken-details),
+        permanent(permanent-details),
+    }
+
+    record merged-and-save-details {
+        content: string,
+        server-revision: s64,
+    }
+
+    variant resolution {
+        retry,
+        discard,
+        merged-and-save(merged-and-save-details),
+    }
+
+    record stored-record {
+        key: string,
+        value: string,
+    }
+
+    record unsupported-version-details {
+        found: u32,
+    }
+
+    record corrupt-details {
+        key: string,
+    }
+
+    variant decode-error {
+        unsupported-version(unsupported-version-details),
+        corrupt(corrupt-details),
+    }
+
+    record merge-clean-details {
+        text: string,
+    }
+
+    record merge-conflicted-details {
+        text: string,
+        has-markers: bool,
+    }
+
+    variant merge-outcome {
+        clean(merge-clean-details),
+        conflicted(merge-conflicted-details),
+    }
+
+    enum lane-reason {
+        syncing,
+        waiting-to-retry,
+        possibly-stuck,
+        needs-sign-in,
+        needs-merge,
+        failed,
+    }
+
+    record lane-summary {
+        file-id: string,
+        reason: lane-reason,
+        pending-messages: u32,
+        retry-in-ms: option<u64>,
+        attempts: list<attempt>,
+        failure-reason: option<string>,
+    }
+
+    record queue-summary {
+        lanes: list<lane-summary>,
+        total-pending: u32,
+        lanes-needing-attention: u32,
+        has-unsynced: bool,
+    }
+
+    // ---- outbox history (crates/cloud-outbox/src/history.rs) ----
+
+    enum message-kind {
+        create,
+        edit,
+        rename,
+        trash,
+        restore,
+    }
+
+    enum history-status {
+        pending,
+        retrying,
+        needs-merge,
+        needs-sign-in,
+        failed,
+        sent,
+    }
+
+    variant status-filter {
+        any,
+        only(history-status),
+        problem,
+    }
+
+    enum attempts-filter {
+        any,
+        untried,
+        two-or-more,
+    }
+
+    record history-filter {
+        query: string,
+        status: status-filter,
+        kind: option<message-kind>,
+        file-id: option<string>,
+        max-age-ms: option<u64>,
+        min-size-bytes: option<u32>,
+        attempts: attempts-filter,
+    }
+
+    record file-name {
+        file-id: string,
+        name: string,
+    }
+
+    record history-row {
+        message-id: string,
+        file-id: string,
+        file-name: string,
+        kind: message-kind,
+        status: history-status,
+        size-bytes: u32,
+        at-ms: u64,
+        attempts: list<attempt>,
+        retry-in-ms: option<u64>,
+        revision: option<s64>,
+        payload-json: string,
+        payload-matches-query: bool,
+    }
+
+    record history-write {
+        put: option<stored-record>,
+        deletes: list<string>,
+    }
+
+    export outbox-enqueue: func(queue: queue, file-id: string, message: message, message-id: string, now-ms: u64) -> queue;
+    export outbox-begin-send: func(queue: queue, now-ms: u64) -> begin-send;
+    export outbox-next-wake-ms: func(queue: queue) -> option<u64>;
+    export outbox-on-result: func(queue: queue, file-id: string, message-id: string, send-result: send-result, now-ms: u64, jitter-unit: f64) -> queue;
+    export outbox-resolve: func(queue: queue, file-id: string, resolution: resolution) -> queue;
+    export outbox-resolve-signed-in: func(queue: queue) -> queue;
+    export outbox-record-revision: func(queue: queue, file-id: string, revision: s64) -> queue;
+    export outbox-encode-queue: func(queue: queue) -> list<stored-record>;
+    export outbox-decode-queue: func(records: list<stored-record>) -> result<queue, decode-error>;
+    export outbox-summarize: func(queue: queue, now-ms: u64) -> queue-summary;
+    export outbox-record-sent: func(queue-before: queue, existing: list<stored-record>, file-id: string, message-id: string, revision: s64, now-ms: u64) -> history-write;
+    export outbox-history-rows: func(queue: queue, sent-records: list<stored-record>, file-names: list<file-name>, filter: history-filter, now-ms: u64) -> list<history-row>;
+    export merge-three-way: func(base: string, mine: string, theirs: string) -> merge-outcome;
+
+    // File tree store (`poentaro::file_tree`). The TS `FileStoreState`
+    // maps (`Record<string, string>`) cross as ordered key/value lists.
+    record string-entry {
+        key: string,
+        value: string,
+    }
+
+    record file-store-state {
+        active: string,
+        user-files: list<string-entry>,
+        bin: list<string-entry>,
+        file-ids: list<string-entry>,
+        folders: list<string>,
+    }
+
+    record demo-file {
+        path: string,
+        content: string,
+    }
+
+    record file-operation-context {
+        demo-files: list<demo-file>,
+        new-file-id: string,
+    }
+
+    enum file-store-error-kind {
+        invalid-path,
+        not-found,
+        collision,
+        ancestor-is-file,
+        move-into-itself,
+        demo-file-read-only,
+        reserved-name,
+    }
+
+    record file-store-failure {
+        kind: file-store-error-kind,
+        message: string,
+    }
+
+    variant file-store-response {
+        ok(file-store-state),
+        err(file-store-failure),
+    }
+
+    enum path-kind {
+        file,
+        explicit-folder,
+    }
+
+    record path-change {
+        kind: path-kind,
+        old-path: string,
+        new-path: string,
+    }
+
+    record folder-move-success {
+        state: file-store-state,
+        changes: list<path-change>,
+    }
+
+    variant folder-move-response {
+        ok(folder-move-success),
+        err(file-store-failure),
+    }
+
+    // One visible row of the file tree, depth-first (folders before files
+    // within a folder, each alphabetical); `depth` is 0 at the top level.
+    record file-tree-row {
+        path: string,
+        name: string,
+        depth: u32,
+        is-folder: bool,
+    }
+
+    enum file-tree-view-row-kind {
+        folder,
+        file,
+        demo-folder,
+        demo-file,
+        empty-folder-hint,
+    }
+
+    // A row's checkbox in select mode.
+    enum check-state {
+        unchecked,
+        checked,
+        // A folder with some, but not all, of its files selected.
+        mixed,
+    }
+
+    // A visible row of the file list. `key` is the folder path, file path,
+    // bare demo file name, or (demo folder) the expansion key `Demo/`; the
+    // ancestors of the active file are already `expanded`.
+    record file-tree-view-row {
+        key: string,
+        name: string,
+        depth: u32,
+        kind: file-tree-view-row-kind,
+        expanded: bool,
+        file-count: u32,
+        is-active: bool,
+        // For a folder row: the folder's own live link.
+        share-id: option<string>,
+        // The innermost shared folder the row lies inside.
+        shared-via: option<shared-via>,
+        // The part of the displayed name the search query matched.
+        name-match: option<name-match>,
+        // The row's checkbox; none for rows that cannot be selected (demo files, the empty-folder hint).
+        check: option<check-state>,
+        // Keys of the folder rows the row lies inside, outermost first; empty at the top level.
+        ancestor-keys: list<string>,
+    }
+
+    // A half-open range of UTF-16 code units in a row's displayed name (no `.poentaro`).
+    record name-match {
+        start: u32,
+        end: u32,
+    }
+
+    // A shared folder (path and own name) with its share id.
+    record shared-via {
+        folder: string,
+        name: string,
+        share-id: string,
+    }
+
+    record file-share-link {
+        share-id: string,
+        file-id: string,
+        name: string,
+    }
+
+    record folder-share-link {
+        share-id: string,
+        folder: string,
+    }
+
+    // The owner's live links, as the worker's `POST /shares/overview` answers.
+    record share-overview {
+        files: list<file-share-link>,
+        folders: list<folder-share-link>,
+    }
+
+    // What one folder's Share dialog shows.
+    record folder-share-info {
+        name: string,
+        file-count: u32,
+        folder-count: u32,
+        share-id: option<string>,
+        shared-via: option<shared-via>,
+        // Files inside that already have their own link (they keep working independently).
+        own-link-warning: option<string>,
+    }
+
+    // A static folder link: the part after `#share-folder=`, or none if the snapshot is too long to be offered.
+    record folder-static-share {
+        file-count: u32,
+        folder-count: u32,
+        suffix: option<string>,
+        too-long: bool,
+    }
+
+    record snapshot-file {
+        path: string,
+        content: string,
+    }
+
+    // A decoded static folder link; paths are relative to the shared folder.
+    record folder-snapshot {
+        folder: string,
+        files: list<snapshot-file>,
+        empty-folders: list<string>,
+    }
+
+    variant file-tree-view-response {
+        ok(list<file-tree-view-row>),
+        err(string),
+    }
+
+    // The active file split for the toolbar button.
+    record file-active-label {
+        folder-names: list<string>,
+        file-name: string,
+        // The folder holding the file (new items go next to it); none at the top level and for demo files.
+        folder-path: option<string>,
+    }
+
+    variant file-tree-response {
+        ok(list<file-tree-row>),
+        err(string),
+    }
+
+    // One thing a multi-select action applies to: a file, or a folder whose files are all selected.
+    record selection-unit {
+        path: string,
+        is-folder: bool,
+        // Files in the unit; 1 for a file.
+        file-count: u32,
+    }
+
+    record selection-move {
+        from-path: string,
+        to-path: string,
+        is-folder: bool,
+    }
+
+    // The moves that put the selection into a folder, in the order to apply them; units already there are left out.
+    record selection-move-plan {
+        moves: list<selection-move>,
+        // The first reason the moves would be rejected, if any.
+        error: option<string>,
+    }
+
+    // What the multi-select "Delete" confirmation shows.
+    record selection-delete-summary {
+        units: list<selection-unit>,
+        // One line per unit, ready to list.
+        lines: list<string>,
+        message: string,
+        // What deleting does to live links involved; none when nothing is shared.
+        share-warning: option<string>,
+    }
+
+    // One choice in the "Move to" folder picker; `path` is empty for the top level.
+    record move-target {
+        path: string,
+        name: string,
+        depth: u32,
+    }
+
+    // One binned file: `key` is what to hand to `file-store-restore-file`, `name` its own name, `location` the folder it was deleted from (none = top level).
+    record bin-entry {
+        key: string,
+        name: string,
+        location: option<string>,
+    }
+
+    // What the "Delete folder" confirmation shows.
+    record folder-delete-summary {
+        file-count: u32,
+        message: string,
+        // What deleting does to live links involved; none when nothing is shared.
+        share-warning: option<string>,
+    }
+
+    // One row of the cloud's file listing, as far as placeholder classification needs.
+    record cloud-listed-entry {
+        id: string,
+        name: string,
+        trashed: bool,
+    }
+
+    // An active placeholder row: the explicit empty `folder` it keeps and the `file-id` to rename or trash with it.
+    record folder-placeholder {
+        folder: string,
+        file-id: string,
+    }
+
+    record cloud-listing-classification {
+        folders: list<folder-placeholder>,
+        // Placeholders of deleted folders: hidden, but they still hold their name in the cloud.
+        trashed-folders: list<folder-placeholder>,
+        // Every placeholder row (active or trashed): not a file, drop it from the listing.
+        hidden-file-ids: list<string>,
+    }
+
+    // Splits the `<folder>/.keep` placeholder rows out of a cloud listing.
+    export file-store-classify-cloud-listing: func(entries: list<cloud-listed-entry>) -> cloud-listing-classification;
+    // Whether `path` is a `<folder>/.keep` placeholder file's path.
+    export file-store-is-placeholder-path: func(path: string) -> bool;
+    // The placeholder file's path for `folder`; none if invalid.
+    export file-store-placeholder-path: func(folder: string) -> option<string>;
+    // Creates the folder `name` inside `parent` (`none` for the top level).
+    export file-store-create-folder: func(state: file-store-state, parent: option<string>, name: string, context: file-operation-context) -> file-store-response;
+    // The reason creating the folder `name` inside `parent` would be rejected, if it would.
+    export file-store-create-folder-error: func(state: file-store-state, parent: option<string>, name: string, context: file-operation-context) -> option<string>;
+    // Top level plus every folder; `excluded-folder` and its descendants are left out.
+    export file-store-move-targets: func(state: file-store-state, excluded-folder: option<string>) -> list<move-target>;
+    // Where `source-path` lands when moved into `folder` (`none` = top level); `none` if invalid.
+    export file-store-move-destination: func(source-path: string, folder: option<string>) -> option<string>;
+    // The next numbered sibling to try after `rejected` was reported as taken (keeps the folder); none if invalid.
+    export file-store-name-after-collision: func(rejected: string) -> option<string>;
+    // The reason renaming/moving a file to `to-path` would be rejected, if it would.
+    export file-store-rename-error: func(state: file-store-state, from-path: string, to-path: string, context: file-operation-context) -> option<string>;
+    // The reason renaming/moving the folder `from-path` to `to-path` would be rejected, if it would.
+    export file-store-folder-move-error: func(state: file-store-state, from-path: string, to-path: string, context: file-operation-context) -> option<string>;
+    // The confirmation text for deleting a folder; none if it does not exist.
+    export file-store-folder-delete-summary: func(state: file-store-state, folder: string, shares: share-overview) -> option<folder-delete-summary>;
+    // The Share dialog's facts about a folder; none if it does not exist.
+    export file-store-folder-share-info: func(state: file-store-state, shares: share-overview, folder: string) -> option<folder-share-info>;
+    // Encodes a folder as a static link payload; none if the folder does not exist.
+    export file-store-folder-static-share: func(state: file-store-state, folder: string) -> option<folder-static-share>;
+    // Decodes the part after `#share-folder=`; none if it is not a valid folder snapshot.
+    export decode-folder-share-suffix: func(suffix: string) -> option<folder-snapshot>;
+    // The file a shared-folder viewer opens first (first in tree order); none if the folder holds no file.
+    export shared-folder-first-file: func(snapshot: folder-snapshot) -> option<string>;
+    // The read-only file list of a shared folder, rooted at it (no Demo row, no share markers).
+    export shared-folder-view: func(snapshot: folder-snapshot, active: string, expanded: list<string>) -> file-tree-view-response;
+    // Copies a shared folder into the store as a new top-level folder (`Name 2` on a clash); `file-ids` are the new files' ids in snapshot order.
+    export file-store-import-shared-folder: func(state: file-store-state, snapshot: folder-snapshot, file-ids: list<string>, context: file-operation-context) -> file-store-response;
+    // The folder and every folder above it, outermost first (what to expand to show it).
+    export file-store-folders-to-reveal: func(path: string) -> list<string>;
+    // The bin as a sorted list of leaf names and original locations.
+    export file-store-bin-entries: func(state: file-store-state) -> list<bin-entry>;
+    export file-store-create-file: func(state: file-store-state, folder: option<string>, name: string, content: string, context: file-operation-context) -> file-store-response;
+    // The reason creating the file `name` inside `folder` would be rejected, if it would.
+    export file-store-create-file-error: func(state: file-store-state, folder: option<string>, name: string, context: file-operation-context) -> option<string>;
+    export file-store-duplicate-file: func(state: file-store-state, source: string, context: file-operation-context) -> file-store-response;
+    // The file store an origin migration carried from the old origin merged into
+    // `current` (see `file_tree::merge_migrated_file_store`).
+    export file-store-merge-migrated: func(current: file-store-state, carried: file-store-state, context: file-operation-context) -> file-store-response;
+    // `state` with its files saved under the legacy `.jianpu` extension renamed to
+    // `.poentaro`, or none when it has none (see `file_tree::rename_legacy_extensions`).
+    export file-store-rename-legacy-extensions: func(state: file-store-state, context: file-operation-context) -> option<file-store-state>;
+    export file-store-rename-file: func(state: file-store-state, from-path: string, to-path: string, context: file-operation-context) -> file-store-response;
+    export file-store-delete-file: func(state: file-store-state, path: string, context: file-operation-context) -> file-store-response;
+    export file-store-restore-file: func(state: file-store-state, bin-key: string, context: file-operation-context) -> file-store-response;
+    export file-store-move-folder: func(state: file-store-state, from-path: string, to-path: string, context: file-operation-context) -> folder-move-response;
+    export file-store-delete-folder: func(state: file-store-state, folder: string, context: file-operation-context) -> file-store-response;
+    export file-store-tree: func(state: file-store-state) -> file-tree-response;
+    // `selected` are the file paths ticked in select mode; they drive each row's `check`.
+    export file-store-tree-view: func(state: file-store-state, expanded: list<string>, demo-file-names: list<string>, shares: share-overview, query: string, selected: list<string>) -> file-tree-view-response;
+    // Every file path, for "Select all".
+    export file-store-selection-all: func(state: file-store-state) -> list<string>;
+    // `selected` after clicking the checkbox of `key` (a file, or a folder meaning every file inside it).
+    export file-store-selection-toggle: func(state: file-store-state, selected: list<string>, key: string) -> list<string>;
+    // What an action on the selection applies to: whole folders whose files are all selected, and the other selected files.
+    export file-store-selection-units: func(state: file-store-state, selected: list<string>) -> list<selection-unit>;
+    // The moves that put the selection into `folder` (`none` = top level), or why they would be rejected.
+    export file-store-selection-move-plan: func(state: file-store-state, selected: list<string>, folder: option<string>, context: file-operation-context) -> selection-move-plan;
+    // The confirmation for deleting the selection.
+    export file-store-selection-delete-summary: func(state: file-store-state, selected: list<string>, shares: share-overview) -> selection-delete-summary;
+    export file-store-active-label: func(active: string, demo-file-names: list<string>) -> file-active-label;
+}

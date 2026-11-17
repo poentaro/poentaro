@@ -1,7 +1,10 @@
+use crate::ast::grouped::{LyricsSlice, NoteEvent};
 use crate::chord_lyric_placement::place_chord_syllables;
-use crate::compiler::visible_part_indices;
+use crate::compiler::{lyric_target_visible, visible_part_indices};
 use crate::error::IrrecoverableError;
-use crate::lyric_slots::measure_lyric_slots;
+use crate::lyric_slots::{measure_lyric_slots, LyricCursor};
+use crate::note_spans::MeasureTiming;
+use itertools::Itertools;
 
 /// Source byte range of one lyric syllable — see `ast::parsed::Syllable::span`.
 /// Keyed the same way the compiled SVG's `data-part-index`/`data-note-id`
@@ -26,6 +29,72 @@ pub struct LyricSourceSpan {
     pub start: usize,
     /// Exclusive end byte of this syllable's own token in the original source.
     pub end: usize,
+    /// Where this syllable is sung within its measure: for its note's whole
+    /// tie chain in the measure, or, under a chord part, from its column to
+    /// the next syllable's (or the bar line).
+    pub timing: MeasureTiming,
+}
+
+/// One syllable placed in a measure, before its span is built.
+struct LyricPlacement {
+    syllable_index: usize,
+    note_id: usize,
+    timing: MeasureTiming,
+}
+
+/// Where each syllable of one lyric part's measure sits, starting from
+/// `cursor`. A syllable lasts as long as its note and every note tied to it
+/// in the measure; under a chord part, until the next syllable (or the bar
+/// line).
+fn measure_placements(lyrics: &LyricsSlice, cursor: LyricCursor) -> Vec<LyricPlacement> {
+    let events = &lyrics.target_events;
+    if !lyrics.targets_chords {
+        return measure_lyric_slots(events, lyrics.entering_tied)
+            .slots
+            .iter()
+            .enumerate()
+            .map(|(syllable_index, slot)| LyricPlacement {
+                syllable_index,
+                note_id: cursor.next_note_id + slot.event_index,
+                timing: MeasureTiming {
+                    offset: slot.column,
+                    duration: events
+                        .iter()
+                        .skip(slot.event_index)
+                        .take_while_inclusive(
+                            |event| matches!(event, NoteEvent::Note(note) if note.tie_to_next()),
+                        )
+                        .map(NoteEvent::duration)
+                        .sum(),
+                },
+            })
+            .collect();
+    }
+    let placed = place_chord_syllables(events, &lyrics.syllables);
+    let columns = placed
+        .iter()
+        .map(|placed| placed.column)
+        .sorted()
+        .collect_vec();
+    let measure_end = events.iter().map(NoteEvent::duration).sum::<u32>();
+    placed
+        .iter()
+        .map(|placed| {
+            let next_column = columns
+                .iter()
+                .copied()
+                .find(|&column| column > placed.column)
+                .unwrap_or(measure_end.max(placed.column + 1));
+            LyricPlacement {
+                syllable_index: placed.syllable_index,
+                note_id: placed.note_id(cursor.next_note_id),
+                timing: MeasureTiming {
+                    offset: placed.column,
+                    duration: next_column - placed.column,
+                },
+            }
+        })
+        .collect()
 }
 
 /// Result of [`list_lyric_spans_from_source`].
@@ -33,16 +102,6 @@ pub struct LyricSpansResult {
     /// Source byte span of every lyric syllable, in score order (measure,
     /// then lyric part, then note).
     pub spans: Vec<LyricSourceSpan>,
-}
-
-/// Per-lyric-part running state mirroring the id/tie bookkeeping
-/// `compiler::part_slice::compile_lyrics_slice` performs during compilation,
-/// so the note ids produced here line up 1-to-1 with the `note_id` of each
-/// compiled `ElementContent::Lyric`.
-#[derive(Default, Clone, Copy)]
-struct PartCounterState {
-    next_note_id: usize,
-    entering_tied: bool,
 }
 
 /// Return the source byte span of every lyric syllable in the compiled
@@ -68,54 +127,42 @@ pub fn list_lyric_spans_from_source(
         .map(|m| m.parts.len())
         .max()
         .unwrap_or(0);
-    let mut states: Vec<PartCounterState> = vec![PartCounterState::default(); max_parts];
+    // One cursor per lyric part, advanced exactly as
+    // `compiler::advance_lyric_cursors` does, so the note ids here line up
+    // 1-to-1 with each compiled `ElementContent::Lyric::note_id`.
+    let mut cursors: Vec<LyricCursor> = vec![LyricCursor::default(); max_parts];
 
     let mut spans = Vec::new();
     for (measure_index, measure) in score.measures.iter().enumerate() {
         let visible = visible_part_indices(measure);
         for (part_idx, part_row) in measure.parts.iter().enumerate() {
-            if !visible.contains(&part_idx) {
-                continue;
-            }
-            let Some(state) = states.get_mut(part_idx) else {
-                continue;
-            };
             let Some(lyrics) = &part_row.slice().lyrics else {
                 continue;
             };
-            let measure_slots = measure_lyric_slots(&lyrics.target_events, state.entering_tied);
-            let placements: Vec<(usize, usize)> = if lyrics.targets_chords {
-                place_chord_syllables(&lyrics.target_events, &lyrics.syllables)
-                    .iter()
-                    .map(|placed| (placed.syllable_index, placed.note_id(state.next_note_id)))
-                    .collect()
-            } else {
-                measure_slots
-                    .slots
-                    .iter()
-                    .enumerate()
-                    .map(|(syllable_index, slot)| {
-                        (syllable_index, state.next_note_id + slot.event_index)
-                    })
-                    .collect()
+            let Some(cursor) = cursors.get_mut(part_idx) else {
+                continue;
             };
-            spans.extend(
-                placements
-                    .into_iter()
-                    .filter_map(|(syllable_index, note_id)| {
-                        let syllable = lyrics.syllables.get(syllable_index)?;
-                        Some(LyricSourceSpan {
-                            source_part_index: part_idx,
-                            part_abbreviation: part_row.name().cloned(),
-                            note_id,
-                            measure_index,
-                            start: syllable.span.start,
-                            end: syllable.span.end,
-                        })
-                    }),
+            let start = *cursor;
+            *cursor = start.advance(
+                &lyrics.target_events,
+                lyric_target_visible(measure, &visible, &lyrics.target_name),
             );
-            state.next_note_id += lyrics.target_events.len();
-            state.entering_tied = measure_slots.exits_tied;
+            if !visible.contains(&part_idx) {
+                continue;
+            }
+            let placements = measure_placements(lyrics, start);
+            spans.extend(placements.into_iter().filter_map(|placement| {
+                let syllable = lyrics.syllables.get(placement.syllable_index)?;
+                Some(LyricSourceSpan {
+                    source_part_index: part_idx,
+                    part_abbreviation: part_row.name().cloned(),
+                    note_id: placement.note_id,
+                    measure_index,
+                    start: syllable.span.start,
+                    end: syllable.span.end,
+                    timing: placement.timing,
+                })
+            }));
         }
     }
 

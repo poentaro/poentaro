@@ -1,4 +1,4 @@
-import type { HistoryFilter, MessageKind } from '../../jianpuWasm'
+import type { HistoryFilter, MessageKind } from '../../poentaroWasm'
 
 /** The filter controls as the person left them; empty string means "any". */
 export interface HistoryFilterState {

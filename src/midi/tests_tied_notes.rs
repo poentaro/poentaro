@@ -2,12 +2,14 @@ use super::*;
 use crate::ast::grouped::{
     GroupedNote, MultiPartMeasure, NoteEvent, Notes, PartRow, PartSlice, Score, TimeSignature,
 };
-use crate::ast::parsed::{Accidental, JianPuPitch, KeyChange, Note, NoteName, PartKind, Soundfont};
+use crate::ast::parsed::{
+    Accidental, KeyChange, Note, NoteName, NumberedPitch, PartKind, Soundfont,
+};
 use crate::error::Span;
 
 fn tied_note_event(tied: bool) -> NoteEvent {
     NoteEvent::Note(GroupedNote {
-        pitch: JianPuPitch::One,
+        pitch: NumberedPitch::One,
         accidental: Accidental::Natural,
         octave: 0,
         duration: 4, // quarter note
@@ -29,9 +31,11 @@ fn tied_note_part(tied: bool) -> PartRow {
         resolution_multiplier: 1,
         beat_group_size: 4,
         kind: PartKind::Notes,
-        soundfont: Soundfont::default(),
+        soundfont: Soundfont::CHOIR_AAHS,
         volume: 100,
         octave_offset: 0,
+        range_instrument: None,
+        singing_voice: None,
         notes: Notes {
             events: vec![tied_note_event(tied)],
         },

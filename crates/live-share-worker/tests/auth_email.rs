@@ -15,8 +15,8 @@ fn trims_and_lowercases_so_case_never_splits_an_account() {
 #[test]
 fn accepts_plus_addresses_and_subdomains() {
     assert_eq!(
-        normalize_email("ann+jianpu@mail.example.co.uk"),
-        Some("ann+jianpu@mail.example.co.uk".to_string())
+        normalize_email("ann+poentaro@mail.example.co.uk"),
+        Some("ann+poentaro@mail.example.co.uk".to_string())
     );
 }
 

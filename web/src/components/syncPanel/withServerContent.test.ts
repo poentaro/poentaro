@@ -3,16 +3,16 @@ import type { FileStoreState } from '../../fileStore'
 import { withServerContent } from './withServerContent'
 
 const store: FileStoreState = {
-  active: 'a.jianpu',
-  userFiles: { 'a.jianpu': 'mine' },
+  active: 'a.poentaro',
+  userFiles: { 'a.poentaro': 'mine' },
   bin: {},
-  fileIds: { 'a.jianpu': 'id-a' },
+  fileIds: { 'a.poentaro': 'id-a' },
 }
 
 describe('withServerContent', () => {
   it('replaces the text of the file with that id', () => {
     expect(withServerContent(store, 'id-a', 'theirs').userFiles).toEqual({
-      'a.jianpu': 'theirs',
+      'a.poentaro': 'theirs',
     })
   })
 

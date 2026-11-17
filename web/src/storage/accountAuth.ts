@@ -10,11 +10,11 @@ import { useLocalStorage } from 'usehooks-ts'
  * (`useSyncedShareOwner`'s `signOut`) clears it, and a request the worker
  * refuses as `unauthorized` clears it too.
  */
-const ACCOUNT_AUTH_STORAGE_KEY = 'jianpu:account-auth:v2'
+const ACCOUNT_AUTH_STORAGE_KEY = 'poentaro:account-auth:v2'
 
 /** Where GitHub sign-in kept its token. Removed on load: that token means
  * nothing to the worker any more. */
-const LEGACY_GITHUB_AUTH_STORAGE_KEY = 'jianpu:synced-share-github-auth:v1'
+const LEGACY_GITHUB_AUTH_STORAGE_KEY = 'poentaro:synced-share-github-auth:v1'
 
 /** A signed-in session. `email` is only for display; the worker identifies
  * the account from `token` on every request. */

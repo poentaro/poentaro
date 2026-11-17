@@ -10,10 +10,10 @@ interface NotationToggleProps {
   onChange: (notation: Notation) => void
 }
 
-// Jianpu and the clefs are notation glyphs; the rest are line icons sized to
+// Numbered and the clefs are notation glyphs; the rest are line icons sized to
 // match them (see `.notation-toggle-icon svg`).
 const OPTIONS: { value: Notation; icon: ReactNode; label: string }[] = [
-  { value: 'jianpu', icon: '簡', label: '123' },
+  { value: 'numbered', icon: '簡', label: '123' },
   { value: 'violin', icon: '𝄞', label: 'Violin' },
   { value: 'cello', icon: '𝄢', label: 'Cello' },
   { value: 'abc', icon: <CaseUpper />, label: 'ABC' },
@@ -32,12 +32,12 @@ function OptionLabel({ icon, label }: { icon: ReactNode; label: string }) {
   )
 }
 
-/** Switches the preview between jianpu, western staff notation for a violin
+/** Switches the preview between numbered notation, western staff notation for a violin
  * (treble clef) or a cello (bass clef), ABC (the
- * jianpu layout with letter names in place of degree numbers), Guitar (the
- * jianpu layout with each degree followed by its letter name, `1 (C)`, and
+ * numbered layout with letter names in place of degree numbers), Guitar (the
+ * numbered layout with each degree followed by its letter name, `1 (C)`, and
  * a chord diagram at each chord symbol), and Harmonica
- * (the jianpu layout with diatonic harmonica tabs). A dropdown rather than a
+ * (the numbered layout with chromatic harmonica tabs). A dropdown rather than a
  * row of buttons so it stays compact as views are added; `ResponsiveMenu`
  * opens it as a full-screen drawer on mobile. */
 export function NotationToggle({ notation, onChange }: NotationToggleProps) {

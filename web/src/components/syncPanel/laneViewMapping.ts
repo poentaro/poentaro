@@ -4,7 +4,7 @@ import type {
   LaneSummary,
   Message,
   QueuedMessage,
-} from '../../jianpuWasm'
+} from '../../poentaroWasm'
 import type { OutboxSnapshot } from '../../storage/outbox/outboxLooper'
 import type {
   AttemptView,

@@ -2,16 +2,16 @@ import { expect } from '@playwright/test'
 import { Then, When } from './fixtures'
 
 /**
- * The default demo source (demo/01-pitches.jianpu) has the following Monaco
+ * The default demo source (demo/01-pitches.poentaro) has the following Monaco
  * line numbers (1-based):
  *
- *   1  # metadata
+ *   1  metadata { title "Pitches", max measures per system 1 },
  *   ...
- *   8  # score
- *   9  label="Scale degrees & rest"
- *  10  [M] 1 2 3 0   ← melody note line → measure 1
+ *   5  score """
+ *   6      label="Scale degrees & rest"
+ *   7      [M] 1 2 3 0   ← melody note line → measure 1
  *
- * Line 1 (`# metadata`) sits outside any measure span.
+ * Line 1 (`metadata`) sits outside any measure span.
  */
 
 function highlightRect(page: import('@playwright/test').Page) {

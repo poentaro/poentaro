@@ -1,12 +1,12 @@
 use crate::error::Span;
 use crate::part_stream::{apply_part_stream, PartStreamApplyResult, StreamDiagnosticSeverity};
 
-const ONE_MEASURE: &str = r"# parts
-Melody [M] = notes
+const ONE_MEASURE: &str = r#"parts ["Melody" [M]: notes],
 
-# score
-[M] 1 2 3 4
-";
+score """
+    [M] 1 2 3 4
+    """,
+"#;
 
 fn apply(stream: &str) -> PartStreamApplyResult {
     apply_part_stream(ONE_MEASURE, "M", stream)
@@ -36,14 +36,14 @@ fn a_triplet_fills_one_beat() {
     assert_eq!(result.measure_starts, vec![0, 17]);
     assert_eq!(
         result.source.unwrap(),
-        r"# parts
-Melody [M] = notes
+        r#"parts ["Melody" [M]: notes],
 
-# score
-[M] 3:{1_1_1_} 2 3 4
+score """
+    [M] 3:{1_1_1_} 2 3 4
 
-[M] 5 0 0 0
-"
+    [M] 5 0 0 0
+    """,
+"#
     );
 }
 
@@ -71,7 +71,7 @@ fn an_opening_slur_moves_to_the_next_measure() {
     assert!(result
         .source
         .unwrap()
-        .contains("[M] 1 2 3 4\n\n[M] (5 6) 7 1\n"));
+        .contains("[M] 1 2 3 4\n\n    [M] (5 6) 7 1\n"));
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn a_closing_slur_and_a_tie_stay_with_the_measure_before() {
     assert_eq!(error_spans(&result), vec![]);
     let source = result.source.unwrap();
     assert!(
-        source.contains("[M] 1 2 3 (4\n\n[M] 5) 6 7 1~\n\n[M] 1 0 0 0\n"),
+        source.contains("[M] 1 2 3 (4\n\n    [M] 5) 6 7 1~\n\n    [M] 1 0 0 0\n"),
         "{source}"
     );
 }

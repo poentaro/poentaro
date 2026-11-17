@@ -1,4 +1,4 @@
-# Clippy configuration for jianpu-generator.
+# Clippy configuration for poentaro.
 # Lint levels live in Cargo.toml [lints]; this file sets thresholds and test allowances.
 
 # --- Complexity / size limits ---

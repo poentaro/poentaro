@@ -18,6 +18,11 @@ export interface CloudBackendConfig {
    * `VITE_SYNCED_SHARE_HOST` — turned into an origin via
    * `syncedShareWorkerOrigin`. */
   workerHost: string
+  /** Called when the worker refuses a queued change because this session
+   * has ended (signed out, expired, or a password change elsewhere), so the
+   * app can drop the dead token. Not called for changes still waiting from
+   * an earlier session, which this one picks up. */
+  onSessionEnded?: () => void
 }
 
 /**

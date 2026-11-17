@@ -3,13 +3,13 @@ import { describe, expect, it, vi } from 'vitest'
 /**
  * `renameSymbol.ts` and `shareUrl.ts` each
  * call the shared `ensureWasmInit()` (`wasmInit.ts`) before touching
- * `jianpuWasm.ts`'s functions. Because `ensureWasmInit()` memoizes a single
+ * `poentaroWasm.ts`'s functions. Because `ensureWasmInit()` memoizes a single
  * in-flight promise, calling into two of them before the first
  * instantiate() call resolves — e.g. `parseShareFromHash()` on mount racing
  * a rename-symbol lookup — must still only trigger one fetch/instantiate of
  * the wasm component, not one per caller. This is the main-thread
  * counterpart of the worker-side race covered by
- * `worker/jianpu.worker.raceInit.test.ts`.
+ * `worker/poentaro.worker.raceInit.test.ts`.
  */
 
 const hoisted = vi.hoisted(() => ({
@@ -17,7 +17,7 @@ const hoisted = vi.hoisted(() => ({
   resolveInstantiate: undefined as (() => void) | undefined,
 }))
 
-vi.mock('../../crates/jianpu-wasm/pkg-component/jianpu_wasm.js', () => ({
+vi.mock('../../crates/poentaro-wasm/pkg-component/poentaro_wasm.js', () => ({
   instantiate: vi.fn(() => {
     hoisted.instantiateCallCount++
     return new Promise((resolve) => {
@@ -51,7 +51,7 @@ describe('main-thread wasm init', () => {
     // worker-lifecycle hand-off, represented here by ensureWasmModule())
     // would race in practice.
     void listRenameSymbols('')
-    void encodeShareHashSuffix('a.jianpu', '')
+    void encodeShareHashSuffix('a.poentaro', '')
     void ensureWasmModule()
 
     // The shared `ensureWasmInit()` chain (fetch -> compileStreaming ->

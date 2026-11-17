@@ -1,0 +1,15 @@
+metadata { title "Pinyin for a polyphonic character" },
+
+parts [
+    "Melody" [M]: notes { instrument: soprano },
+    "Words" [w]: lyrics [M],
+],
+
+score """
+    time=4/4 key=C4 bpm=90
+    [M] 1 2 3 5
+    [w] 银 行(háng) 行(xíng) 人
+
+    [M] 5 3 2 1
+    [w] 长(zhang3) 大 长(chang2) 江
+    """,

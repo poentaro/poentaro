@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeSet, HashMap};
 
-use jianpu_generator::file_tree::{is_placeholder_path, TreePath, PLACEHOLDER_LEAF};
+use poentaro::file_tree::{is_placeholder_path, TreePath, PLACEHOLDER_LEAF};
 
 use crate::api_error::ApiError;
 use crate::protocol::{RenameBatchMove, SharedFolder, SharedFolderFile, SyncedDoc};

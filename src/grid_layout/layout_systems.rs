@@ -56,18 +56,45 @@ pub(crate) fn system_musical_height_pt(
 /// `RenderConfig::lyric_cjk_font_size`) rather than scanning each row's
 /// actual syllables for CJK text — a deliberately conservative estimate, so
 /// a page never ends up packed tighter than what `expand_lyric_part` (which
-/// does look at each row's real syllables) goes on to render.
+/// does look at each row's real syllables) goes on to render. A row with
+/// pinyin above a character anywhere in the system adds its ruby band.
 pub(crate) fn system_lyric_height_pt(
-    block: &MeasureBlock,
+    system: &[MeasureBlock],
     base: f32,
     lyric_sizing: LyricSizing,
 ) -> f32 {
-    block.rows.iter().filter(|r| is_lyric_row(r)).count() as f32
-        * lyric_row_height(
-            base,
-            lyric_sizing.font_sizes.cjk,
-            lyric_sizing.click_target_padding_pt,
-        )
+    let Some(first) = system.first() else {
+        return 0.0;
+    };
+    let row_height = lyric_row_height(
+        base,
+        lyric_sizing.font_sizes.cjk,
+        lyric_sizing.click_target_padding_pt,
+    );
+    first
+        .rows
+        .iter()
+        .enumerate()
+        .filter(|(_, row)| is_lyric_row(row))
+        .map(|(part_idx, _)| {
+            row_height + lyric_ruby_band_pt(system, part_idx, lyric_sizing.font_sizes.cjk)
+        })
+        .sum()
+}
+
+/// The extra height lyric row `part_idx` takes for pinyin above its
+/// characters: none unless one of the system's measures has some.
+pub(crate) fn lyric_ruby_band_pt(system: &[MeasureBlock], part_idx: usize, cjk: f32) -> f32 {
+    let has_ruby = system
+        .iter()
+        .filter_map(|block| block.rows.get(part_idx))
+        .flat_map(|row| &row.elements)
+        .any(|el| matches!(&el.content, ElementContent::Lyric { ruby: Some(_), .. }));
+    if has_ruby {
+        crate::font_metrics::lyric_ruby_band_pt(cjk)
+    } else {
+        0.0
+    }
 }
 
 /// Internal sort key used by [`union_row_order`] to order a system's union of
@@ -341,13 +368,16 @@ fn overflows_with(
 }
 
 pub(crate) fn compute_bar_height(
-    first: &MeasureBlock,
+    system: &[MeasureBlock],
     base: f32,
     bands: &SystemBands,
     lyric_sizing: LyricSizing,
 ) -> f32 {
+    let Some(first) = system.first() else {
+        return 0.0;
+    };
     system_musical_height_pt(first, base, bands, lyric_sizing.notes_vertical_padding_pt)
-        + system_lyric_height_pt(first, base, lyric_sizing)
+        + system_lyric_height_pt(system, base, lyric_sizing)
 }
 
 pub(crate) fn system_has_any_decoration(system: &[MeasureBlock]) -> bool {

@@ -10,16 +10,13 @@ const fillerMeasures = Array.from(
 ).join('\n\n')
 
 const SOURCE = [
-  '# metadata',
-  'title = "test"',
+  'metadata { title "test" },',
   '',
-  '# parts',
-  'M = notes',
+  'parts ["M": notes],',
   '',
-  '# sequence',
-  'Intro, C, Intro',
+  'sequence [Intro, "C", Intro],',
   '',
-  '# score',
+  'score """',
   'time=4/4 key=C4 bpm=120 label="Intro"',
   '1 2 3 4',
   '',
@@ -27,6 +24,7 @@ const SOURCE = [
   '',
   'label="C"',
   "1' 7 6 5",
+  '""",',
 ].join('\n')
 
 function sequenceToolbarButtons(page: import('@playwright/test').Page) {
@@ -41,13 +39,13 @@ Given(
   async ({ page }, _chain: string) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'sequence-reveal-target-test.jianpu',
-          userFiles: { 'sequence-reveal-target-test.jianpu': src },
+          active: 'sequence-reveal-target-test.poentaro',
+          userFiles: { 'sequence-reveal-target-test.poentaro': src },
           bin: {},
           fileIds: {
-            'sequence-reveal-target-test.jianpu': crypto.randomUUID(),
+            'sequence-reveal-target-test.poentaro': crypto.randomUUID(),
           },
         }),
       )

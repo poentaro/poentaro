@@ -17,10 +17,10 @@ describe('createCloudBackend: forceOverwrite()', () => {
   it('realigns the recorded revision to the conflict-reported one, then retries the save', async () => {
     const { backend, looper } = createTestBackend()
     const state: FileStoreState = {
-      active: 'a.jianpu',
-      userFiles: { 'a.jianpu': 'mine' },
+      active: 'a.poentaro',
+      userFiles: { 'a.poentaro': 'mine' },
       bin: {},
-      fileIds: { 'a.jianpu': 'id-a' },
+      fileIds: { 'a.poentaro': 'id-a' },
     }
 
     fetchMock.mockResolvedValueOnce(
@@ -32,7 +32,7 @@ describe('createCloudBackend: forceOverwrite()', () => {
         files: [
           {
             id: 'id-a',
-            name: 'a.jianpu',
+            name: 'a.poentaro',
             content: 'theirs',
             revision: 9,
             trashedAt: null,
@@ -46,7 +46,7 @@ describe('createCloudBackend: forceOverwrite()', () => {
         files: [
           {
             id: 'id-a',
-            name: 'a.jianpu',
+            name: 'a.poentaro',
             content: 'theirs',
             revision: 9,
             trashedAt: null,
@@ -75,10 +75,10 @@ describe('createCloudBackend: delivery retry', () => {
   it('keeps an offline save queued and delivers it once the retry is due', async () => {
     const { backend, looper, wake, advance } = createTestBackend()
     const state: FileStoreState = {
-      active: 'a.jianpu',
-      userFiles: { 'a.jianpu': 'A' },
+      active: 'a.poentaro',
+      userFiles: { 'a.poentaro': 'A' },
       bin: {},
-      fileIds: { 'a.jianpu': 'id-a' },
+      fileIds: { 'a.poentaro': 'id-a' },
     }
 
     fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
@@ -108,10 +108,10 @@ describe('createCloudBackend: delivery retry', () => {
     })
     const { backend, looper } = createTestBackend()
     const state: FileStoreState = {
-      active: 'a.jianpu',
-      userFiles: { 'a.jianpu': 'A' },
+      active: 'a.poentaro',
+      userFiles: { 'a.poentaro': 'A' },
       bin: {},
-      fileIds: { 'a.jianpu': 'id-a' },
+      fileIds: { 'a.poentaro': 'id-a' },
     }
 
     await Promise.all([backend.saveContent(state), backend.saveContent(state)])

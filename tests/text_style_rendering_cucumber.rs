@@ -1,23 +1,10 @@
 //! Cucumber harness for `tests/features/text_style_rendering.feature`:
-//! verifies each `TextStyle` component (see
-//! `tests/features/text_style_metadata_syntax.feature`) has a real
-//! rendering/layout effect, not just a resolved config value.
-//!
-//! Each scenario's `# metadata` overrides are spliced into a minimal
-//! `.jianpu` document and run through the full pipeline —
-//! `compile` → `compiler::compile` → `consolidator::consolidate` →
-//! `grid_layout::layout` → `coordinate_resolver::resolve` →
-//! `renderer::new_renderer::render_new`. "Then" steps compare the configured run
-//! against a freshly rendered baseline (the same score with no metadata
-//! override) rather than a hardcoded expected number, since the effects
-//! being tested are relative ("differs from the default", "increases by at
-//! least N") rather than exact pixel values.
-//!
-//! Clippy's `allow-*-in-tests` (clippy.toml) only recognizes `#[test]`-
-//! attributed functions as test code; cucumber's `#[given]`/`#[when]`/
-//! `#[then]` step functions don't qualify even though this whole file only
-//! ever runs under `cargo test`. Mirrors `tests/cucumber.rs`'s
-//! `#![allow(clippy::disallowed_macros)]` for the same reason.
+//! verifies each `TextStyle` component has a real rendering/layout effect,
+//! not just a resolved config value. Each scenario's `metadata` overrides are
+//! spliced into a minimal document and run through the full pipeline. "Then"
+//! steps compare the configured run against a freshly rendered baseline
+//! rather than a hardcoded expected number.
+//! Clippy's `allow-*-in-tests` skips cucumber steps, hence the allows.
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -27,12 +14,17 @@
     clippy::needless_pass_by_value
 )]
 
+#[path = "support/metadata_field.rs"]
+mod metadata_field;
+
 use cucumber::{given, then, when, World as _};
-use jianpu_generator::compositor::types::{AbsoluteContent, AbsolutePage};
-use jianpu_generator::grid_layout::types::GridPage;
-use jianpu_generator::renderer::new_renderer::render_new;
-use jianpu_generator::renderer::new_types::{SvgDocument, SvgKind};
-use jianpu_generator::{coordinate_resolver, grid_layout};
+use metadata_field::metadata_field;
+use poentaro::compositor::types::{AbsoluteContent, AbsolutePage};
+use poentaro::grid_layout::types::{GridContent, GridPage};
+use poentaro::grid_layout::PageLayout;
+use poentaro::renderer::new_renderer::render_new;
+use poentaro::renderer::new_types::{SvgDocument, SvgKind};
+use poentaro::{coordinate_resolver, grid_layout};
 
 /// One full pipeline run's outputs — everything a "Then" step needs to
 /// inspect, at whichever stage (grid/absolute/SVG) its assertion lives at.
@@ -42,12 +34,9 @@ struct RenderResult {
     svg_docs: Vec<SvgDocument>,
 }
 
-/// Bundles `config`'s four `*_horizontal_padding_pt` accessors — mirrors
-/// `tests/lyric_hover_box_height_cucumber.rs`'s helper of the same name,
-/// needed because `RenderConfig::element_paddings` is `pub(crate)` and this
-/// file is an external integration test.
+/// Bundles `config`'s four `*_horizontal_padding_pt` accessors (`RenderConfig::element_paddings` is `pub(crate)`).
 fn element_paddings(
-    config: &jianpu_generator::render_config::RenderConfig,
+    config: &poentaro::render_config::RenderConfig,
 ) -> coordinate_resolver::ElementPaddings {
     coordinate_resolver::ElementPaddings {
         notes: config.notes_horizontal_padding_pt(),
@@ -57,37 +46,53 @@ fn element_paddings(
     }
 }
 
+fn zero_vertical_padding(kind: &str) -> String {
+    metadata_field(kind, "{ vertical_padding_pt: 0 }")
+}
+
 fn render_source(metadata_lines: &[String], title: &str, score_body: &str) -> RenderResult {
     let mut lines = metadata_lines.to_vec();
-    lines.push(format!("title = {title:?}"));
-    let metadata_block = lines.join("\n");
+    lines.push(format!("title {title:?}"));
+    let metadata_block = lines.join(", ");
     let source =
-        format!("# metadata\n{metadata_block}\n\n# parts\nS = notes\n\n# score\n{score_body}\n");
-    let score = jianpu_generator::compile(&source, "test.jianpu", &[])
+        format!("metadata {{ {metadata_block} }},\n\nparts [\"S\" : notes],\n\nscore \"\"\"\n{score_body}\n\"\"\",\n");
+    let score = poentaro::compile(&source, "test.poentaro", &[])
         .unwrap_or_else(|err| panic!("compile returned an irrecoverable error: {}", err.message()));
-    let config = jianpu_generator::render_config::RenderConfig::from_metadata(&score.metadata);
+    let config = poentaro::render_config::RenderConfig::from_metadata(&score.metadata);
     let header = grid_layout::types::Header {
         title: score.metadata.title.clone(),
         subtitle: score.metadata.subtitle.clone(),
         author: score.metadata.author.clone(),
-        part_list: vec![],
+        part_list: vec![grid_layout::types::PartListEntry {
+            abbreviation: "S".to_string(),
+            display_name: "Soprano".to_string(),
+        }],
         parts_list_columns: 3,
-        sequence: None,
+        sequence: Some(vec![grid_layout::types::SequenceEntryInfo {
+            label: "A".to_string(),
+            lines: Vec::new(),
+            part_filter: None,
+        }]),
         title_font_size: score.metadata.title_style.font_size as f32,
         subtitle_font_size: score.metadata.subtitle_style.font_size as f32,
         author_font_size: score.metadata.author_style.font_size as f32,
         sequence_font_size: score.metadata.sequence.font_size as f32,
         part_legend_font_size: score.metadata.part_legend.font_size as f32,
+        part_legend_vertical_padding_pt: score.metadata.part_legend.vertical_padding_pt as f32,
+        sequence_vertical_padding_pt: score.metadata.sequence.vertical_padding_pt as f32,
+        title_vertical_padding_pt: score.metadata.title_style.vertical_padding_pt as f32,
+        subtitle_vertical_padding_pt: score.metadata.subtitle_style.vertical_padding_pt as f32,
+        author_vertical_padding_pt: score.metadata.author_style.vertical_padding_pt as f32,
         ..Default::default()
     };
-    let compile_result = jianpu_generator::compiler::compile(&score);
-    let compile_result = jianpu_generator::consolidator::consolidate(compile_result);
+    let compile_result = poentaro::compiler::compile(&score);
+    let compile_result = poentaro::consolidator::consolidate(compile_result);
     let grid_pages =
-        grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None).pages;
+        grid_layout::layout(&compile_result, &config, &header, PageLayout::A4, None).pages;
     let abs_pages = coordinate_resolver::resolve(
         &grid_pages,
         config.note_number_width as f32,
-        config.part_label_width_pt as f32,
+        config.page_frame(),
         coordinate_resolver::ResolveFontSizes {
             lyric: config.lyric_font_sizes(),
             notes: config.notes_font_size(),
@@ -140,7 +145,7 @@ fn given_metadata_line(
     key: String,
     value: String,
 ) {
-    world.metadata_lines.push(format!("{key} = {value}"));
+    world.metadata_lines.push(metadata_field(&key, &value));
 }
 
 #[given(expr = "the score has a note followed by a dash")]
@@ -164,6 +169,15 @@ fn given_minimal_score_using_kind(world: &mut TextStyleRenderingWorld, kind: Str
         "time=4/4 key=C4 bpm=120\n[S] 1\n".to_string()
     };
     world.kind = kind;
+}
+
+#[given(expr = "a score with a title, subtitle and author")]
+fn given_score_with_title_subtitle_author(world: &mut TextStyleRenderingWorld) {
+    world.title = "T".to_string();
+    world
+        .metadata_lines
+        .extend(["subtitle \"Sub\"".to_string(), "author \"Au\"".to_string()]);
+    world.score_body = "time=4/4 key=C4 bpm=120\n[S] 1\n".to_string();
 }
 
 #[when(expr = "it is rendered")]
@@ -238,9 +252,27 @@ fn page_number_box_height_pt(result: &RenderResult) -> f32 {
     page.height_pt - text_y
 }
 
+/// Height of the first page's header row holding the element `is_target`
+/// matches — the part legend entry or the `sequence` summary line.
+fn header_row_height_pt(result: &RenderResult, is_target: impl Fn(&GridContent) -> bool) -> f32 {
+    result.grid_pages[0]
+        .rows
+        .iter()
+        .find(|row| row.elements.iter().any(|e| is_target(&e.content)))
+        .map(|row| row.height_pt)
+        .expect("header row should be present")
+}
+
 fn box_height_pt(result: &RenderResult, kind: &str) -> f32 {
     match kind {
         "notes" => notes_body_height_pt(result),
+        "part_legend" => header_row_height_pt(
+            result,
+            |content| matches!(content, GridContent::Text { content, .. } if content == "S \u{2014} Soprano"),
+        ),
+        "sequence" => header_row_height_pt(result, |content| {
+            matches!(content, GridContent::SequenceLine { .. })
+        }),
         "section_label" => section_label_box_height_pt(result),
         "page_number" => page_number_box_height_pt(result),
         other => panic!("unrecognized text style kind {other:?}"),
@@ -295,7 +327,11 @@ fn then_box_height_increases(world: &mut TextStyleRenderingWorld, kind: String, 
         .expect("'it is rendered' must run first")
         .0;
     let padded = box_height_pt(rendered, &kind);
-    let baseline = render_source(&[], &world.title, &world.score_body);
+    let baseline = render_source(
+        &[zero_vertical_padding(&kind)],
+        &world.title,
+        &world.score_body,
+    );
     let unpadded = box_height_pt(&baseline, &kind);
     assert!(
         padded >= unpadded + padding_pt as f32,
@@ -317,6 +353,43 @@ fn then_unrelated_elements_unchanged(world: &mut TextStyleRenderingWorld) {
     assert!(
         (padded_title_y - unpadded_title_y).abs() < 0.001,
         "the title (laid out before any system/footer row) should not move: padded y={padded_title_y}, unpadded y={unpadded_title_y}"
+    );
+}
+
+#[then(expr = "the header row holding the {word} grows by {int} above and below")]
+fn then_header_row_grows(world: &mut TextStyleRenderingWorld, kind: String, padding_pt: i64) {
+    let rendered = &world
+        .rendered
+        .as_ref()
+        .expect("'it is rendered' must run first")
+        .0;
+    let text = match kind.as_str() {
+        "title" => "T",
+        "subtitle" => "Sub",
+        "author" => "Au",
+        other => panic!("unrecognized header kind {other:?}"),
+    };
+    let row_height = |result: &RenderResult| {
+        header_row_height_pt(
+            result,
+            |content| matches!(content, GridContent::Text { content, .. } if content == text),
+        )
+    };
+    let padded = row_height(rendered);
+    // Subtitle and author share a row (larger padding wins): clear all three.
+    let zero_padding_metadata: Vec<String> = world
+        .metadata_lines
+        .iter()
+        .filter(|line| !line.contains("vertical padding pt"))
+        .cloned()
+        .chain(["title", "subtitle", "author"].map(zero_vertical_padding))
+        .collect();
+    let baseline = render_source(&zero_padding_metadata, &world.title, &world.score_body);
+    let unpadded = row_height(&baseline);
+    assert!(
+        (padded - unpadded - 2.0 * padding_pt as f32).abs() < 0.001,
+        "the {kind} row ({padded}) should be {padding_pt}pt taller above and below than \
+         unpadded ({unpadded})"
     );
 }
 

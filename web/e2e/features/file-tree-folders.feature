@@ -1,7 +1,7 @@
 Feature: Folder rows have their own actions menu, folders can be deleted to the bin and restored
 
   Background:
-    Given the file tree is seeded with files "Hymns/Advent/O Come.jianpu", "Hymns/Amazing.jianpu" and "Scratch.jianpu" and an empty folder "Empty" with "Scratch.jianpu" active
+    Given the file tree is seeded with files "Hymns/Advent/O Come.poentaro", "Hymns/Amazing.poentaro" and "Scratch.poentaro" and an empty folder "Empty" with "Scratch.poentaro" active
 
   Scenario: A folder row has a menu with its own actions
     When the file tree app loads
@@ -130,7 +130,7 @@ Feature: Folder rows have their own actions menu, folders can be deleted to the 
     And the file tree shows the folder "Hymns" nested 2 levels deep
 
   Scenario: Moving a folder onto a folder of the same name explains the clash and changes nothing
-    Given the file tree also has the file "Empty/Hymns/Old.jianpu"
+    Given the file tree also has the file "Empty/Hymns/Old.poentaro"
     When the file tree app loads
     And I open the file tree list
     And I choose "Move to…" from the actions menu of the folder "Hymns"
@@ -168,7 +168,7 @@ Feature: Folder rows have their own actions menu, folders can be deleted to the 
     And I choose "Delete folder" from the actions menu of the folder "Hymns"
     And I confirm the delete folder dialog
     And I open the bin
-    And I restore "Hymns/Amazing.jianpu" from the bin
+    And I restore "Hymns/Amazing.poentaro" from the bin
     Then the file switcher toolbar button shows the folder prefix "Hymns /" and the file name "Amazing"
 
   Scenario: Restoring recreates a folder that is gone
@@ -177,12 +177,12 @@ Feature: Folder rows have their own actions menu, folders can be deleted to the 
     And I choose "Delete folder" from the actions menu of the folder "Hymns"
     And I confirm the delete folder dialog
     And I open the bin
-    And I restore "Hymns/Advent/O Come.jianpu" from the bin
+    And I restore "Hymns/Advent/O Come.poentaro" from the bin
     Then the file switcher toolbar button shows the folder prefix "Hymns / Advent /" and the file name "O Come"
 
   Scenario: Restoring gets a unique name when the original path is taken
-    Given the file tree bin also holds "Hymns/Amazing.jianpu"
+    Given the file tree bin also holds "Hymns/Amazing.poentaro"
     When the file tree app loads
     And I open the bin
-    And I restore "Hymns/Amazing.jianpu" from the bin
+    And I restore "Hymns/Amazing.poentaro" from the bin
     Then the file switcher toolbar button shows the folder prefix "Hymns /" and the file name "Amazing 2"

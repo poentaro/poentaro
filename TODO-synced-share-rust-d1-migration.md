@@ -256,7 +256,7 @@ off in both places.
       async, calling the worker's `POST /shares` (new `CreateShareRequest`/
       `CreateShareResponse` types) the first time a file syncs and
       persisting the returned `shareId` locally per file
-      (`jianpu:synced-share-id:v1:<fileId>`, §1's "client persists the
+      (`poentaro:synced-share-id:v1:<fileId>`, §1's "client persists the
       returned shareId" bullet), reusing it on later "Sync" clicks with no
       network call. `SyncedShareButton`/`AppHeader`'s `onStartSync` type
       updated to `Promise<string | null>` to match. Deleted the old

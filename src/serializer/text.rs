@@ -68,8 +68,8 @@ pub(super) fn serialize_text(el: &SvgElement, out: &mut String, kind: &SvgKind) 
 }
 
 /// Every `FontFamily::SansSerif` glyph (the directive line's bar number,
-/// section label, key/bpm/time signature, navigation markers, part legend,
-/// and footer) is pinned to this concrete font family — the same one PDF
+/// section label, key/bpm/time signature, navigation markers, and
+/// footer) is pinned to this concrete font family — the same one PDF
 /// export already resolves `sans-serif` to (see `set_sans_serif_family` in
 /// `src/pdf.rs`) — rather than the generic `sans-serif` alias, so glyph
 /// widths are consistent between viewers that have this font installed and
@@ -80,9 +80,9 @@ use crate::fonts::SANS_SERIF_FONT_FAMILY_CSS as DIRECTIVE_LINE_FONT_FAMILY;
 
 /// `FontFamily::Serif` — the song title, subtitle, and author (via
 /// `make_title_row`/`make_subtitle_author_row`) and lyric syllables/lines
-/// (`render_lyric`/`render_lyric_line`) — is pinned to whichever font backs
+/// (`render_lyric`/`render_lyric_line`) and the part legend — is pinned to whichever font backs
 /// the `serif` role in `fonts/fonts.json` (currently Zhuque Fangsong, a
-/// calligraphic font kept off the directive line/part legend/footer, where
+/// calligraphic font kept off the directive line/footer, where
 /// its Latin glyphs would read too calligraphic — see `DIRECTIVE_LINE_FONT_FAMILY`'s
 /// Source Han Sans SC above). Kept as a separate constant from
 /// `DIRECTIVE_LINE_FONT_FAMILY` rather than merged into one, since the two

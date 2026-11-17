@@ -1,5 +1,5 @@
 import LZString from 'lz-string'
-import { type FolderSnapshot, jianpuWasm } from './jianpuWasm'
+import { type FolderSnapshot, poentaroWasm } from './poentaroWasm'
 import { ensureWasmInit } from './wasmInit'
 
 export interface SharePayload {
@@ -9,7 +9,7 @@ export interface SharePayload {
 
 const SHARE_HASH_PREFIX = '#share='
 /** Static folder links: `#share-folder=<brotli+base64url snapshot>`, encoded
- * and decoded in Rust (`jianpu-wasm`'s `folder_share_payload.rs`). A separate
+ * and decoded in Rust (`poentaro-wasm`'s `folder_share_payload.rs`). A separate
  * prefix keeps the single-file `#share=` links decoding exactly as before. */
 const FOLDER_SHARE_HASH_PREFIX = '#share-folder='
 
@@ -56,7 +56,7 @@ export async function encodeShareHashSuffix(
 ): Promise<string> {
   await ensureWasmInit()
   const payload = JSON.stringify({ filename, content } satisfies SharePayload)
-  const compressed = jianpuWasm().compressSharePayload(payload)
+  const compressed = poentaroWasm().compressSharePayload(payload)
   return bytesToBase64Url(compressed)
 }
 
@@ -64,7 +64,7 @@ async function tryDecodeBrotli(encoded: string): Promise<SharePayload | null> {
   const bytes = base64UrlToBytes(encoded)
   if (!bytes) return null
   await ensureWasmInit()
-  const decompressed = jianpuWasm().decompressSharePayload(bytes)
+  const decompressed = poentaroWasm().decompressSharePayload(bytes)
   if (decompressed === undefined) return null
   return parseSharePayloadJson(decompressed)
 }
@@ -124,7 +124,7 @@ export async function parseFolderShareFromHash(
   if (!hash.startsWith(FOLDER_SHARE_HASH_PREFIX)) return null
   await ensureWasmInit()
   return (
-    jianpuWasm().decodeFolderShareSuffix(
+    poentaroWasm().decodeFolderShareSuffix(
       hash.slice(FOLDER_SHARE_HASH_PREFIX.length),
     ) ?? null
   )

@@ -5,7 +5,7 @@ import type {
   FileActiveLabel,
   FileTreeViewRow,
   ShareOverview,
-} from '../jianpuWasm'
+} from '../poentaroWasm'
 import { ensureWasmInit } from '../wasmInit'
 
 export interface FileTreeView {

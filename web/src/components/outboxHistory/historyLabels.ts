@@ -3,7 +3,7 @@ import type {
   HistoryRow,
   HistoryStatus,
   MessageKind,
-} from '../../jianpuWasm'
+} from '../../poentaroWasm'
 import { outcomeLabel } from '../syncPanel/laneViewMapping'
 
 export const STATUS_LABEL: Record<HistoryStatus, string> = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { LaneReason, LaneSummary, QueuedMessage } from '../../jianpuWasm'
+import type { LaneReason, LaneSummary, QueuedMessage } from '../../poentaroWasm'
 import { toLaneView } from './laneViewMapping'
 
 const summaryFor = (
@@ -31,24 +31,24 @@ describe('toLaneView', () => {
   ]
 
   it.each(cases)('maps $reason to $status with a sentence', (testCase) => {
-    const view = toLaneView(summaryFor(testCase.reason), [], 'a.jianpu')
+    const view = toLaneView(summaryFor(testCase.reason), [], 'a.poentaro')
     expect(view.status).toBe(testCase.status)
     expect(view.sentence.length).toBeGreaterThan(0)
-    expect(view.fileName).toBe('a.jianpu')
+    expect(view.fileName).toBe('a.poentaro')
   })
 
   it('rounds the retry delay up to whole seconds', () => {
     const view = toLaneView(
       summaryFor('waiting-to-retry', { retryInMs: 1_200n }),
       [],
-      'a.jianpu',
+      'a.poentaro',
     )
     expect(view.retryInSeconds).toBe(2)
   })
 
   it('leaves the retry delay out when none is scheduled', () => {
     expect(
-      toLaneView(summaryFor('failed'), [], 'a.jianpu').retryInSeconds,
+      toLaneView(summaryFor('failed'), [], 'a.poentaro').retryInSeconds,
     ).toBeUndefined()
   })
 

@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { beforeEach, vi } from 'vitest'
-import { instantiate } from '../../../crates/jianpu-wasm/pkg-component/jianpu_wasm.js'
-import { setWasmRoot } from '../jianpuWasm'
+import { instantiate } from '../../../crates/poentaro-wasm/pkg-component/poentaro_wasm.js'
+import { setWasmRoot } from '../poentaroWasm'
 import {
-  type ApiError,
   callWorker,
   createWorkerClient,
+  type WorkerSchemas,
 } from '../syncedShare/workerClient'
-import { createCloudBackend } from './cloudBackend'
+import { type CloudBackendConfig, createCloudBackend } from './cloudBackend'
 import { baseSnapshotHooks } from './cloudBackendOutbox'
 import { createBaseSnapshots } from './outbox/baseSnapshots'
 import { createMemoryOutboxStore } from './outbox/memoryOutboxStore'
@@ -29,10 +29,15 @@ export function jsonResponse(status: number, body: unknown): Response {
   })
 }
 
+const TEST_TRACE_ID = '0123456789abcdef'
+
 /** A worker failure response, its body checked against the generated
  * `ApiError` union. */
-export function apiErrorResponse(status: number, error: ApiError): Response {
-  return jsonResponse(status, error)
+export function apiErrorResponse(
+  status: number,
+  error: WorkerSchemas['ApiError'],
+): Response {
+  return jsonResponse(status, { ...error, traceId: TEST_TRACE_ID })
 }
 
 export function emptyResponse(status: number): Response {
@@ -74,7 +79,7 @@ export function lastCall(): Promise<RecordedCall> {
 export async function installRealWasm(): Promise<void> {
   const bytes = readFileSync(
     new URL(
-      '../../../crates/jianpu-wasm/pkg-component/jianpu_wasm.core.wasm',
+      '../../../crates/poentaro-wasm/pkg-component/poentaro_wasm.core.wasm',
       import.meta.url,
     ),
   )
@@ -85,7 +90,7 @@ export async function installRealWasm(): Promise<void> {
 /** A cloud backend whose outbox runs on the real wasm decisions, an
  * in-memory store, a single (always-leader) tab and a manual clock: call
  * `wake()` after `advance()` to run what has become due. */
-export function createTestBackend() {
+export function createTestBackend(overrides: Partial<CloudBackendConfig> = {}) {
   let time = 1_000_000
   let wake: () => void = () => undefined
   const client = createWorkerClient(config.workerHost)
@@ -108,7 +113,7 @@ export function createTestBackend() {
             response.files.find((file) => file.id === fileId)?.content ?? ''
           )
         },
-        restoreName: () => 'restored.jianpu',
+        restoreName: () => 'restored.poentaro',
       }),
     createScheduler: (onWake) => {
       wake = onWake
@@ -126,11 +131,14 @@ export function createTestBackend() {
     now: () => time,
     random: () => 0,
   })
-  const backend = createCloudBackend(config, {
-    looper,
-    bases,
-    ensureWasm: installRealWasm,
-  })
+  const backend = createCloudBackend(
+    { ...config, ...overrides },
+    {
+      looper,
+      bases,
+      ensureWasm: installRealWasm,
+    },
+  )
   return {
     backend,
     looper,

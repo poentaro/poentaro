@@ -5,6 +5,7 @@ import { AppWorkspace } from './components/AppWorkspace'
 import { AssetLoadingBanner } from './components/AssetLoadingBanner'
 import { ExportAudioToast } from './components/ExportAudioToast'
 import { PartToggles } from './components/PartToggles'
+import { PresetMenu } from './components/PresetMenu'
 import { SectionJumpToolbar } from './components/SectionJumpToolbar'
 import { SequenceJumpToolbar } from './components/SequenceJumpToolbar'
 import {
@@ -25,6 +26,7 @@ export default function App() {
     setStore,
     backend,
     isLoadingCloud,
+    cloudLoadFailure,
     saveStatus,
     saveLabel,
     autosaveDeadline,
@@ -60,15 +62,17 @@ export default function App() {
     syncedShare,
     fileId,
     editorRef,
+    partFocusHandleRef,
     soundfont,
     fonts,
     wasm,
     soundfontReady,
     pdfFontsReady,
-    disabledParts,
+    hiddenParts,
     soloedParts,
     partToggles,
-    handlePartToggle,
+    handlePartPillToggle,
+    presetMenuProps,
     handleSoloToggle,
     parts,
     partDeclarations,
@@ -150,6 +154,7 @@ export default function App() {
     handlePlayNoteSelection,
     noPartsSelected,
     staffNotation,
+    previewLayout,
   } = useAppController()
   const previewInteractive = wasm.status === 'ready'
   const handleAccountSignOut = useCallback(() => {
@@ -205,6 +210,7 @@ export default function App() {
         duplicatingFile={duplicatingFile}
         renamingFileName={renamingFileName}
         isLoadingCloud={isLoadingCloud}
+        cloudLoadFailure={cloudLoadFailure}
         onOpenBin={() => panels.setBinOpen(true)}
         onOpenSyncPanel={
           backend.kind === 'cloud'
@@ -298,20 +304,25 @@ export default function App() {
       <SequenceJumpToolbar {...sequenceJumpToolbarProps} />
       <PartToggles
         parts={parts}
-        disabledParts={disabledParts}
-        soloedParts={soloedParts}
-        onPartToggle={handlePartToggle}
+        hiddenParts={new Set(hiddenParts)}
+        presetMenu={<PresetMenu {...presetMenuProps} />}
+        soloedParts={new Set(soloedParts)}
+        onPartToggle={handlePartPillToggle}
         onSoloToggle={handleSoloToggle}
       />
       {syncedShareViewerActive &&
       showsSharedViewerNotice(syncedShare.viewerStatus) ? (
-        <SharedViewerNotice status={syncedShare.viewerStatus} />
+        <SharedViewerNotice
+          status={syncedShare.viewerStatus}
+          traceId={syncedShare.viewerTraceId}
+        />
       ) : (
         <AppWorkspace
           editorCollapsed={editorCollapsed}
           setEditorCollapsed={setEditorCollapsed}
           hideEditor={sharedPreview !== null || syncedShareViewerActive}
           editorRef={editorRef}
+          partFocusHandleRef={partFocusHandleRef}
           fileId={fileId}
           source={source}
           handleSourceChange={handleSourceChange}
@@ -346,8 +357,9 @@ export default function App() {
           previewAudioPlaying={previewAudioPlaying}
           editMetadataOpen={panels.editMetadataOpen}
           parsedMetadata={panels.parsedMetadata}
+          metadataPresetName={panels.metadataPresetName}
           handleMetadataFieldChange={panels.handleMetadataFieldChange}
-          // The preview's click/hover resolvers call `jianpuWasm()`
+          // The preview's click/hover resolvers call `poentaroWasm()`
           // synchronously, so its SVG only appears once the main-thread
           // component is instantiated — a click can never land before then.
           documents={previewInteractive ? documents : []}
@@ -378,6 +390,7 @@ export default function App() {
           measureAudioElement={measureAudioElement}
           noPartsSelected={noPartsSelected}
           staffNotation={staffNotation}
+          previewLayout={previewLayout}
           partToggles={partToggles}
           onPartFocusDraftChange={setPartFocusDraft}
         />

@@ -50,10 +50,12 @@ fn sequence_line_renders_label_and_omit_parts_spans() {
             entries: vec![
                 SequenceEntryInfo {
                     label: "Verse".to_string(),
+                    lines: Vec::new(),
                     part_filter: None,
                 },
                 SequenceEntryInfo {
                     label: "Chorus".to_string(),
+                    lines: Vec::new(),
                     part_filter: Some(SequenceEntryPartFilter {
                         kind: PartFilterKind::Omit,
                         parts: vec!["S".to_string(), "A2".to_string()],
@@ -67,7 +69,7 @@ fn sequence_line_renders_label_and_omit_parts_spans() {
     let abs = resolve(
         &[page],
         12.0,
-        40.0,
+        super::tests::TEST_PAGE_FRAME,
         ResolveFontSizes {
             lyric: LyricFontSizes {
                 base: 14.4,
@@ -97,7 +99,7 @@ fn sequence_line_renders_label_and_omit_parts_spans() {
     let texts: Vec<&str> = spans.iter().map(|s| s.content.as_str()).collect();
     assert_eq!(
         texts,
-        vec!["Sequence: ", "Verse", " \u{203a} ", "Chorus", " (-S -A2)"]
+        vec!["Sequence: ", "Verse", " \u{203a} ", "Chorus", " (-S, -A2)"]
     );
     // Verse's suffix span is absent (no part filter); Chorus's isn't
     // bold/italic like the label span, since it's plain annotation text.
@@ -107,7 +109,7 @@ fn sequence_line_renders_label_and_omit_parts_spans() {
 }
 
 /// `Metadata::sequence`'s `bold`/`italic`/`underline` must style the label
-/// spans on the `# sequence` summary line — previously the line was
+/// spans on the `sequence` summary line — previously the line was
 /// hardcoded to reuse `section_label`'s style, so `sequence`'s own toggles
 /// had no rendering effect (see `syntax.md`'s "Text styles" section).
 #[test]
@@ -120,6 +122,7 @@ fn sequence_line_label_span_uses_the_sequence_style() {
         content: GridContent::SequenceLine {
             entries: vec![SequenceEntryInfo {
                 label: "Verse".to_string(),
+                lines: Vec::new(),
                 part_filter: None,
             }],
             font_size: 12.0,
@@ -129,7 +132,7 @@ fn sequence_line_label_span_uses_the_sequence_style() {
     let abs = resolve(
         &[page],
         12.0,
-        40.0,
+        super::tests::TEST_PAGE_FRAME,
         ResolveFontSizes {
             lyric: LyricFontSizes {
                 base: 14.4,
@@ -191,6 +194,7 @@ fn sequence_line_renders_only_parts_suffix_without_a_dash() {
         content: GridContent::SequenceLine {
             entries: vec![SequenceEntryInfo {
                 label: "Chorus".to_string(),
+                lines: Vec::new(),
                 part_filter: Some(SequenceEntryPartFilter {
                     kind: PartFilterKind::Only,
                     parts: vec!["S".to_string()],
@@ -203,7 +207,7 @@ fn sequence_line_renders_only_parts_suffix_without_a_dash() {
     let abs = resolve(
         &[page],
         12.0,
-        40.0,
+        super::tests::TEST_PAGE_FRAME,
         ResolveFontSizes {
             lyric: LyricFontSizes {
                 base: 14.4,

@@ -17,13 +17,11 @@ import { Given, Then, When } from './fixtures'
  */
 function buildLongSectionedSource(totalMeasures: number): string {
   const lines = [
-    '# metadata',
-    'title = "section scroll sync test"',
+    'metadata { title "section scroll sync test" },',
     '',
-    '# parts',
-    'Melody [M] = notes',
+    'parts ["Melody" [M]: notes],',
     '',
-    '# score',
+    'score """',
     'label="A"',
     '[M] 1 2 3 4',
     '',
@@ -34,7 +32,7 @@ function buildLongSectionedSource(totalMeasures: number): string {
   }
   lines.push('label="B"')
   lines.push('[M] 1 2 3 4')
-  return lines.join('\n')
+  return [...lines, '""",'].join('\n')
 }
 
 const TOTAL_MEASURES = 60
@@ -49,12 +47,12 @@ Given(
 
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'section-scroll-sync-test.jianpu',
-          userFiles: { 'section-scroll-sync-test.jianpu': src },
+          active: 'section-scroll-sync-test.poentaro',
+          userFiles: { 'section-scroll-sync-test.poentaro': src },
           bin: {},
-          fileIds: { 'section-scroll-sync-test.jianpu': crypto.randomUUID() },
+          fileIds: { 'section-scroll-sync-test.poentaro': crypto.randomUUID() },
         }),
       )
     }, source)

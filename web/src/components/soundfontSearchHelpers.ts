@@ -1,4 +1,4 @@
-import type { SoundChoice } from '../jianpuWasm'
+import type { SoundChoice } from '../poentaroWasm'
 import type {
   InstrumentArticulation,
   InstrumentCategory,

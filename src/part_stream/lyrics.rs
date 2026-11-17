@@ -1,26 +1,73 @@
 //! Lyric parts bound to a notes part: measures are cut by the target's
 //! **lyric slots** (its notes that aren't the continuation of a tie), never
-//! by guessing from the lyric text.
+//! by guessing from the lyric text. Past the last slot, each line is a measure.
 
-use crate::ast::parsed::Syllable;
+use itertools::Itertools;
+
+use crate::ast::parsed::{ScoreEvent, Syllable};
 use crate::error::Span;
 use crate::parser::score::interleaved_parser::padded_measure_events;
 use crate::parser::score::timed_parser::GroupStack;
 use crate::parser::score::token_parser::parse_notes_line;
 use crate::utils::{count_lyric_slots_in_events, tokenize_lyrics, LyricTieState};
 
-use super::diagnostics::{error_at, forbidden_character_errors, warning_at, AllowedMarkers};
+use super::diagnostics::{forbidden_character_errors, has_error, warning_at, AllowedMarkers};
 use super::document::ScoreDocument;
 use super::split::SplitStream;
 use super::timing::normalize_whitespace;
 use super::NO_LYRICS_MEASURE;
 
-/// How many syllables each measure of the notes part at `target_index`
-/// takes, with ties carried across barlines the way the parser carries them.
+/// How many syllables each measure of a lyric part sung on the notes parts
+/// at `target_indices` takes: the lyric slots of the part it pairs with
+/// there, the bottommost with a note, else `bottommost` (see
+/// `lyric_paired_target`).
 pub(super) fn lyric_slot_counts(
     document: &ScoreDocument,
-    target_index: usize,
+    target_indices: &[usize],
+    bottommost: usize,
 ) -> Result<Vec<usize>, String> {
+    let targets = target_indices
+        .iter()
+        .chain(std::iter::once(&bottommost))
+        .unique()
+        .map(|&index| {
+            Ok(TargetSlots {
+                index,
+                measures: measure_slots(document, index)?,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok((0..document.measures.len())
+        .map(|measure_index| {
+            let slots_of = |target: &TargetSlots| target.measures.get(measure_index).copied();
+            targets
+                .iter()
+                .filter(|target| slots_of(target).is_some_and(|slots| slots.has_note))
+                .max_by_key(|target| target.index)
+                .or_else(|| targets.iter().find(|target| target.index == bottommost))
+                .and_then(slots_of)
+                .map_or(0, |slots| slots.count)
+        })
+        .collect())
+}
+
+struct TargetSlots {
+    index: usize,
+    measures: Vec<MeasureSlots>,
+}
+
+#[derive(Clone, Copy)]
+struct MeasureSlots {
+    count: usize,
+    has_note: bool,
+}
+
+/// Each measure's lyric slots of the notes part at `target_index`, with ties
+/// carried across barlines the way the parser carries them.
+fn measure_slots(
+    document: &ScoreDocument,
+    target_index: usize,
+) -> Result<Vec<MeasureSlots>, String> {
     let mut stack = GroupStack::default();
     let mut tie_state = LyricTieState::default();
     document
@@ -33,7 +80,10 @@ pub(super) fn lyric_slot_counts(
                 .get(target_index)
                 .map_or("", String::as_str);
             if content == NO_LYRICS_MEASURE {
-                return Ok(0);
+                return Ok(MeasureSlots {
+                    count: 0,
+                    has_note: false,
+                });
             }
             let parsed = parse_notes_line(content, 0, &mut stack).map_err(|error| {
                 format!(
@@ -43,7 +93,12 @@ pub(super) fn lyric_slot_counts(
                 )
             })?;
             let events = padded_measure_events(parsed.events, measure.capacity);
-            Ok(count_lyric_slots_in_events(&events, &mut tie_state) as usize)
+            Ok(MeasureSlots {
+                count: count_lyric_slots_in_events(&events, &mut tie_state) as usize,
+                has_note: events
+                    .iter()
+                    .any(|event| matches!(event.value, ScoreEvent::Note(_))),
+            })
         })
         .collect()
 }
@@ -84,8 +139,10 @@ pub(super) fn extract_lyric_chunks(
         .collect()
 }
 
-/// Cuts a lyric stream into measures by `slot_counts`. Lyric streams can't
-/// add measures: syllables left after the last slot are an error.
+/// Cuts a lyric stream into measures by `slot_counts`. Syllables left after
+/// the last slot are appended as new measures, one per line (see
+/// [`appended_measures`]), unless they are all `_`: placeholders pushed out
+/// by syllables typed before them, which are dropped.
 pub(super) fn split_lyric_stream(stream: &str, slot_counts: &[usize]) -> SplitStream {
     let mut diagnostics = forbidden_character_errors(stream, AllowedMarkers::default());
     let syllables = tokenize_lyrics(stream, 0);
@@ -127,17 +184,57 @@ pub(super) fn split_lyric_stream(stream: &str, slot_counts: &[usize]) -> SplitSt
         consumed += taken.len();
         previous_end = span.end;
     }
-    if let Some(leftover) = syllables.get(consumed) {
-        diagnostics.push(error_at(
-            leftover.span,
-            "this syllable has no note left to sing on; a lyric stream can't add measures",
-        ));
-    }
+    let leftovers = syllables.get(consumed..).unwrap_or_default();
+    let dropped_placeholders = if leftovers
+        .iter()
+        .all(|syllable| syllable.text == NO_LYRICS_MEASURE)
+    {
+        leftovers
+            .last()
+            .map(|last| Span::new(previous_end, last.span.end))
+    } else {
+        for measure in appended_measures(stream, leftovers) {
+            let span = covering_span(measure).unwrap_or(Span::new(previous_end, previous_end));
+            chunks.push(normalize_whitespace(
+                stream.get(span.start..span.end).unwrap_or_default(),
+            ));
+            measure_starts.push(span.start);
+        }
+        None
+    };
     SplitStream {
         chunks,
         measure_starts,
+        blocks_rebarring: has_error(&diagnostics),
         diagnostics,
+        dropped_placeholders,
     }
+}
+
+/// Syllables past the last slot have no notes to cut them by, so each line
+/// of them is one new measure, and `_` is a whole measure on its own.
+fn appended_measures<'a>(stream: &str, leftovers: &'a [Syllable]) -> Vec<&'a [Syllable]> {
+    let starts = std::iter::once(0)
+        .chain(
+            leftovers
+                .iter()
+                .tuple_windows()
+                .positions(|(previous, current)| {
+                    previous.text == NO_LYRICS_MEASURE
+                        || current.text == NO_LYRICS_MEASURE
+                        || stream
+                            .get(previous.span.end..current.span.start)
+                            .is_some_and(|between| between.contains('\n'))
+                })
+                .map(|index| index + 1),
+        )
+        .collect_vec();
+    starts
+        .iter()
+        .zip(starts.iter().skip(1).copied().chain([leftovers.len()]))
+        .filter_map(|(&start, end)| leftovers.get(start..end))
+        .filter(|measure| !measure.is_empty())
+        .collect()
 }
 
 fn covering_span(syllables: &[Syllable]) -> Option<Span> {

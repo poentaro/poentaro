@@ -1,6 +1,6 @@
 // ── Letter-name view column widths ────────────────────────────────────────────
 
-use crate::ast::parsed::{Accidental, JianPuPitch, Offset};
+use crate::ast::parsed::{Accidental, NumberedPitch, Offset};
 use crate::compiler::types::{
     ColumnElement, ElementContent, HeadLabelPlacement, MeasureBlock, MeasureRow, NoteHeadLabel,
     RowId,
@@ -44,7 +44,7 @@ fn block_with_note(head_label: Option<NoteHeadLabel>, accidental: Accidental) ->
                 ColumnElement {
                     column: 0,
                     content: ElementContent::NoteHead {
-                        pitch: JianPuPitch::Three,
+                        pitch: NumberedPitch::Three,
                         accidental,
                         octave: 0,
                         dotted: false,
@@ -98,7 +98,7 @@ fn a_letter_name_s_column_is_measured_from_the_letter_name_itself() {
 #[test]
 fn a_letter_name_reserves_no_accidental_lead_since_its_accidental_trails() {
     // A written `4#` in C reads `F♯`: the sharp follows the letter, so the
-    // column needs no room ahead of the glyph, unlike the jianpu `♯4`.
+    // column needs no room ahead of the glyph, unlike the numbered `♯4`.
     let config = test_config();
     let layout = build_measure_column_layout(
         &[block_with_note(
@@ -129,7 +129,7 @@ fn a_guitar_view_note_head_s_column_is_measured_from_its_digit_and_letter_name()
 #[test]
 fn a_guitar_view_note_head_still_leads_with_its_digit_s_accidental() {
     // A written `3b` in C reads `♭3 (E♭)`: the flat still leads the digit,
-    // so the column reserves room ahead of the glyph as in the jianpu view.
+    // so the column reserves room ahead of the glyph as in the numbered view.
     let config = test_config();
     let layout = build_measure_column_layout(
         &[block_with_note(after_degree("E\u{266D}"), Accidental::Flat)],

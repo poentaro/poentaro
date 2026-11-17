@@ -3,19 +3,12 @@ import {
   tagFromElement,
   tagSelector,
 } from '../dataAttributes'
-import type { Tag } from '../jianpuWasm'
+import type { Tag } from '../poentaroWasm'
 import type { LyricCell, NoteCell } from './previewSelection'
 
-export interface AnchorPoint {
-  x: number
-  y: number
-}
-
 /**
- * Shape driving `cellsInMarquee`/`applyPersistedHighlights`/
- * `applyRangeHighlights` — the generic core behind
- * `selectedNoteCellsInMarquee`/`applyNoteRangeHighlights`/
- * `applyPersistedNoteHighlights` and their lyric counterparts. Deliberately
+ * Shape driving `applyPersistedHighlights` — the generic core behind
+ * `applyPersistedNoteHighlights` and its lyric counterpart. Deliberately
  * *not* used for part-label highlighting: that uses a different marking
  * mechanism (`setAttribute`/`removeAttribute` on the rect itself, rather
  * than a dataset boolean on its enclosing group) plus a system-scoping
@@ -39,43 +32,9 @@ interface RangeHighlightSpec<Cell> {
   datasetFlag: string
 }
 
-/** Every cell whose hit-target rect overlaps the axis-aligned marquee
- * spanned by `anchor`/`current` (real screen geometry, not column math). */
-function cellsInMarquee<Cell>(
-  container: HTMLElement,
-  anchor: AnchorPoint,
-  current: AnchorPoint,
-  spec: RangeHighlightSpec<Cell>,
-): Cell[] {
-  const minX = Math.min(anchor.x, current.x)
-  const maxX = Math.max(anchor.x, current.x)
-  const minY = Math.min(anchor.y, current.y)
-  const maxY = Math.max(anchor.y, current.y)
-  const cells: Cell[] = []
-  for (const rect of Array.from(
-    container.querySelectorAll<SVGRectElement>(spec.rectSelector),
-  )) {
-    const bounds = rect.getBoundingClientRect()
-    const intersects =
-      bounds.left < maxX &&
-      bounds.right > minX &&
-      bounds.top < maxY &&
-      bounds.bottom > minY
-    if (!intersects) continue
-    const group = rect.closest(tagSelector(spec.tagType))
-    if (!group) continue
-    const tag = tagFromElement(group)
-    const cell = tag && spec.parseCell(tag)
-    if (cell === undefined) continue
-    cells.push(cell)
-  }
-  return cells
-}
-
 /** Marks every hit-target rect's enclosing group whose cell is in `cells`
- * with `spec.datasetFlag`, clearing it from every other one. Re-applies from
- * a fixed cell list rather than a live marquee test — used to keep the
- * selection visible after mouseup and to restore it whenever the SVG DOM is
+ * with `spec.datasetFlag`, clearing it from every other one. Used to keep
+ * the selection visible after it resolves and to restore it whenever the SVG DOM is
  * swapped out from under it. Cheap and idempotent, so it's safe to re-run on
  * every relevant render. */
 function applyPersistedHighlights<Cell>(
@@ -84,6 +43,14 @@ function applyPersistedHighlights<Cell>(
   spec: RangeHighlightSpec<Cell>,
 ): void {
   const selectedKeys = new Set(cells.map(spec.cellKey))
+  // Clear every group first, not only those holding a click target: a
+  // patched SVG can leave the flag on a sibling group (e.g. a note's
+  // playback-cursor group) that held a click target before.
+  for (const group of Array.from(
+    container.querySelectorAll<HTMLElement>(tagSelector(spec.tagType)),
+  )) {
+    delete group.dataset[spec.datasetFlag]
+  }
   for (const rect of Array.from(
     container.querySelectorAll<SVGRectElement>(spec.rectSelector),
   )) {
@@ -92,25 +59,8 @@ function applyPersistedHighlights<Cell>(
     const tag = tagFromElement(group)
     const cell = tag && spec.parseCell(tag)
     const selected = cell !== undefined && selectedKeys.has(spec.cellKey(cell))
-    if (selected) {
-      group.dataset[spec.datasetFlag] = ''
-    } else {
-      delete group.dataset[spec.datasetFlag]
-    }
+    if (selected) group.dataset[spec.datasetFlag] = ''
   }
-}
-
-/** Live-marquee-tests then persists the highlight in one step — the
- * mousemove-time counterpart to `applyPersistedHighlights`. */
-function applyRangeHighlights<Cell>(
-  container: HTMLElement,
-  anchor: AnchorPoint,
-  current: AnchorPoint,
-  spec: RangeHighlightSpec<Cell>,
-): Cell[] {
-  const cells = cellsInMarquee(container, anchor, current, spec)
-  applyPersistedHighlights(container, cells, spec)
-  return cells
 }
 
 const noteRangeSpec: RangeHighlightSpec<NoteCell> = {
@@ -138,31 +88,7 @@ const lyricRangeSpec: RangeHighlightSpec<LyricCell> = {
   datasetFlag: 'lyricRangeSelected',
 }
 
-/**
- * Every note/rest cell whose click-target rect overlaps the axis-aligned
- * marquee spanned by `anchor`/`current` (real screen geometry, not column
- * math — naturally handles both a horizontal range-select within one part's
- * row and a vertical range-select extending the selection to more part rows,
- * since it just tests each note's actual rendered bounding box).
- */
-export function selectedNoteCellsInMarquee(
-  container: HTMLElement,
-  anchor: AnchorPoint,
-  current: AnchorPoint,
-): NoteCell[] {
-  return cellsInMarquee(container, anchor, current, noteRangeSpec)
-}
-
-export function applyNoteRangeHighlights(
-  container: HTMLElement,
-  anchor: AnchorPoint,
-  current: AnchorPoint,
-): NoteCell[] {
-  return applyRangeHighlights(container, anchor, current, noteRangeSpec)
-}
-
-/** Re-applies the note-range highlight from a fixed cell list rather than a
- * live marquee test — used to keep the selection visible after mouseup (and
+/** Re-applies the note-range highlight from a fixed cell list — used to keep the selection visible after mouseup (and
  * to restore it whenever the SVG DOM is swapped out from under it, e.g. by a
  * highlighted re-render triggered by the Monaco selection the range-select
  * pushed).
@@ -178,30 +104,7 @@ export function applyPersistedNoteHighlights(
   applyPersistedHighlights(container, cells, noteRangeSpec)
 }
 
-/**
- * Every lyric syllable cell whose click-target rect overlaps the axis-aligned
- * marquee spanned by `anchor`/`current` — mirrors `selectedNoteCellsInMarquee`
- * exactly, but scoped to `[data-tag="lyric"]` groups/`lyric-click-target`
- * rects so it's independent of any note selection happening at the same time.
- */
-export function selectedLyricCellsInMarquee(
-  container: HTMLElement,
-  anchor: AnchorPoint,
-  current: AnchorPoint,
-): LyricCell[] {
-  return cellsInMarquee(container, anchor, current, lyricRangeSpec)
-}
-
-export function applyLyricRangeHighlights(
-  container: HTMLElement,
-  anchor: AnchorPoint,
-  current: AnchorPoint,
-): LyricCell[] {
-  return applyRangeHighlights(container, anchor, current, lyricRangeSpec)
-}
-
-/** Re-applies the lyric-range highlight from a fixed cell list rather than a
- * live marquee test — mirrors `applyPersistedNoteHighlights`, used to keep
+/** Re-applies the lyric-range highlight from a fixed cell list — mirrors `applyPersistedNoteHighlights`, used to keep
  * the selection visible after mouseup and to restore it whenever the SVG DOM
  * is swapped out from under it. */
 export function applyPersistedLyricHighlights(

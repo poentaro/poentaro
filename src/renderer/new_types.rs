@@ -7,6 +7,9 @@ pub enum SvgVariant {
     /// A note head whose label (a harmonica tab) names a pitch the
     /// instrument can't play, drawn in red. See `NoteHeadLabel::unplayable`.
     UnplayableNoteHead,
+    /// The arrow above a harmonica tab that says to press the chromatic
+    /// harmonica's slide button in. See `NoteHeadLabel::slide_button`.
+    HarmonicaSlide,
     Rest,
     /// A rest that fills a part not mentioned in this measure, rendered
     /// with a distinct glyph so it reads as "not written" rather than
@@ -32,6 +35,7 @@ impl SvgVariant {
             Self::Text => "text",
             Self::NoteHead => "note-head",
             Self::UnplayableNoteHead => "unplayable-note-head",
+            Self::HarmonicaSlide => "harmonica-slide",
             Self::Rest => "rest",
             Self::OmittedPartRest => "omitted-part-rest",
             Self::MultiMeasureRest => "multi-measure-rest",

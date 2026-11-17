@@ -11,7 +11,14 @@ fn score_from(source: &str) -> crate::ast::grouped::Score {
 
 fn notes_doc(score_content: &str) -> String {
     format!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nS = notes\n\n# score\n{score_content}"
+        r#"metadata {{ title "t", author "a" }},
+
+parts ["S": notes],
+
+score """
+    {score_content}
+    """,
+"#
     )
 }
 

@@ -11,7 +11,7 @@ use live_share_worker::protocol::{
 fn serializes_synced_doc_with_camel_case_fields() -> Result<(), serde_json::Error> {
     let doc = SyncedDoc {
         ended: false,
-        filename: "song.jianpu".to_string(),
+        filename: "song.poentaro".to_string(),
         content: "[M] 1".to_string(),
         revision: 1,
         folder: None,
@@ -19,7 +19,7 @@ fn serializes_synced_doc_with_camel_case_fields() -> Result<(), serde_json::Erro
 
     let json = serde_json::to_string(&doc)?;
 
-    assert!(json.contains("\"filename\":\"song.jianpu\""));
+    assert!(json.contains("\"filename\":\"song.poentaro\""));
     assert!(json.contains("\"revision\":1"));
     assert!(!json.contains("owner"));
     Ok(())

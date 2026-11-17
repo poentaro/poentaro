@@ -12,7 +12,7 @@ Feature: Synced share viewer response caching
     Given clipboard permissions are granted
 
   Scenario: The share document response tells the browser never to cache it
-    Given the owner is signed in as "e2e-test-user@jianpu.test"
+    Given the owner is signed in as "e2e-test-user@poentaro.test"
     And the file store is seeded with the synced score
     When the owner loads the app and clicks "Sync"
     Then the synced link is copied

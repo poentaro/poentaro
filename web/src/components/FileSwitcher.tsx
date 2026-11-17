@@ -48,6 +48,7 @@ export function FileSwitcher({
   duplicating = false,
   renamingName = null,
   isLoadingCloud = false,
+  cloudLoadFailure = null,
   importing = false,
   onImportFile,
   binNames,
@@ -143,6 +144,7 @@ export function FileSwitcher({
           onQueryChange={setQuery}
           rows={rows}
           isLoadingCloud={isLoadingCloud}
+          cloudLoadFailure={cloudLoadFailure}
           storeIsEmpty={showEmptyHint}
           creating={creating}
           creatingFolder={creatingFolder}

@@ -5,7 +5,7 @@ use pdf_writer::{Content, Finish, Name, Pdf, Rect, Ref, TextStr};
 use std::collections::HashMap;
 
 /// Writes PDF bytes for the given rendered SVG pages, optionally embedding
-/// `source` (the original `.jianpu` text) as a base64-encoded `/JianpuSource`
+/// `source` (the original `.poentaro` text) as a base64-encoded `/PoentaroSource`
 /// key in the PDF's `/Info` dictionary. `usvg` (used to parse `svgs` before
 /// PDF conversion) strips `<metadata>` tags, so unlike SVG output the source
 /// can't ride along inside the page content — see `extract_embedded_source_from_pdf`
@@ -105,7 +105,7 @@ pub fn write_pdf(
         let info_id = alloc.bump();
         let encoded = base64::engine::general_purpose::STANDARD.encode(source);
         pdf.document_info(info_id)
-            .pair(Name(b"JianpuSource"), TextStr(&encoded));
+            .pair(Name(b"PoentaroSource"), TextStr(&encoded));
     }
 
     Ok(pdf.finish())
@@ -117,9 +117,18 @@ mod tests {
 
     fn make_pdf(score_str: &str, lyrics_str: &str) -> Vec<u8> {
         let input = format!(
-            "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n# parts\nMelody = notes\n\n# score\ntime=4/4 key=C4 bpm=120\n{score_str}\n{lyrics_str}\n"
+            r#"metadata {{ title "t", author "a" }},
+
+parts ["Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    {score_str}
+    {lyrics_str}
+    """,
+"#
         );
-        let svgs = crate::render_svgs_from_source(&input, "test.jianpu", &[])
+        let svgs = crate::render_svgs_from_source(&input, "test.poentaro", &[])
             .unwrap()
             .svgs;
         write_pdf(&svgs, &FontBytesByFamily::embedded(), None).unwrap()

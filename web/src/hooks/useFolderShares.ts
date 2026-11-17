@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ShareOverview } from '../jianpuWasm'
+import type { ShareOverview } from '../poentaroWasm'
 import type { SyncedShareOperation } from '../syncedShare/errors'
 import {
   callWorker,

@@ -19,9 +19,8 @@ import { Given, Then, When } from './fixtures'
  * that commits to exactly one mode on the anchoring click — a click that
  * lands on a note anchors `'note'` mode, and a click that lands on a lyric
  * syllable anchors `'lyric'` mode. For the rest of the gesture,
- * `previewClickHandler.ts`'s resolution calls only that one mode's
- * highlighter — `applyNoteRangeHighlights` for `'note'` mode,
- * `applyLyricRangeHighlights` for `'lyric'` mode — never both.
+ * `previewClickHandler.ts`'s resolution used to call only that one mode's
+ * highlighter — never both.
  *
  * That's a real behavioral gap: a range-select that starts on a NOTE and
  * whose second click lands below it, so it visually covers the lyric
@@ -31,8 +30,7 @@ import { Given, Then, When } from './fixtures'
  *
  * Contrast with `'measure'` mode (a gesture starting on empty space or a
  * bare bar line), which unions both: its resolution calls
- * `noteCellsInMeasureRange` and `lyricCellsInMeasureRange` together and
- * applies both highlight sets (see `previewClickHandler.ts`).
+ * both cell types together and applies both highlight sets (see `previewClickHandler.ts`).
  *
  * Self-contained source (not a demo file) with a generous "max measures per
  * system" and four single-beat notes with one syllable each, so all four
@@ -41,17 +39,14 @@ import { Given, Then, When } from './fixtures'
  * `lyric-range-select-highlight.feature`.
  */
 const rangeTestSource = [
-  '# metadata',
-  'title = "note lyric cross range-select test"',
-  'max_measures_per_system = 48',
+  'metadata { title "note lyric cross range-select test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — line 9
-  '[Mv1] do re mi fa', // verse 0 — line 10
+  'score """',
+  '[M] 1 2 3 4',
+  '[Mv1] do re mi fa',
+  '""",',
 ].join('\n')
 
 function noteRects(page: import('@playwright/test').Page) {
@@ -70,13 +65,13 @@ Given(
   async ({ page }) => {
     await page.addInitScript((source) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'note-lyric-cross-range-test.jianpu',
-          userFiles: { 'note-lyric-cross-range-test.jianpu': source },
+          active: 'note-lyric-cross-range-test.poentaro',
+          userFiles: { 'note-lyric-cross-range-test.poentaro': source },
           bin: {},
           fileIds: {
-            'note-lyric-cross-range-test.jianpu':
+            'note-lyric-cross-range-test.poentaro':
               'note-lyric-cross-range-test-id-001',
           },
         }),

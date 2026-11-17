@@ -10,6 +10,7 @@ SELECT
     origin,
     user_agent,
     detail,
+    trace_id,
     DATETIME(at / 1000, 'unixepoch') AS at_utc
 FROM app_log
 ORDER BY at DESC

@@ -1,11 +1,10 @@
+import { FILE_EXTENSION, stripFileExtension } from './fileExtension'
 import shareIdFormat from './generated/live-share-worker/shareIdFormat.json'
 import { SHARE_QUERY_PARAM } from './shareQueryParam'
 
 // Legacy link format (`/#synced=<payload>`), still parsed so links shared
 // before the move to `?s=` keep working. Never generated any more.
 const LEGACY_SYNCED_HASH_PREFIX = '#synced='
-
-const FILENAME_EXTENSION = '.jianpu'
 
 // Generated from `crates/live-share-worker/src/share_id.rs`
 // (`share_id_format`) by `build:worker-types` -- the worker mints every
@@ -35,9 +34,8 @@ export function buildSyncedShareUrl(
   filename?: string,
 ): string {
   const base = new URL(import.meta.env.BASE_URL, window.location.origin)
-  const bareName = filename?.endsWith(FILENAME_EXTENSION)
-    ? filename.slice(0, -FILENAME_EXTENSION.length)
-    : filename
+  const bareName =
+    filename === undefined ? undefined : stripFileExtension(filename)
   // Whitespace becomes `-` so a chat app (e.g. WhatsApp) doesn't end the
   // auto-linked URL at the first space.
   const dashedName = bareName?.trim().replace(/\s+/g, '-')
@@ -59,7 +57,7 @@ function parsePayload(payload: string): SyncedSharePayload | null {
   const rest = payload.slice(SHARE_ID_LENGTH)
   if (rest === '') return { shareId }
   if (!rest.startsWith(FILENAME_SEPARATOR)) return null
-  const filename = `${rest.slice(FILENAME_SEPARATOR.length)}${FILENAME_EXTENSION}`
+  const filename = `${rest.slice(FILENAME_SEPARATOR.length)}${FILE_EXTENSION}`
   return { shareId, filename }
 }
 

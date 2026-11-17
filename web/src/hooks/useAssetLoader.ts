@@ -9,7 +9,7 @@ export interface AssetLoaderState {
   totalBytes: number
 }
 
-const CACHE_NAME = 'jianpu-assets-v1'
+export const ASSET_CACHE_NAME = 'poentaro-assets-v1'
 
 function resolveAssetUrl(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -80,7 +80,7 @@ async function readCachedBytes(
   resolvedUrl: string,
 ): Promise<Uint8Array | null> {
   try {
-    const cache = await caches.open(CACHE_NAME)
+    const cache = await caches.open(ASSET_CACHE_NAME)
     const cached = await cache.match(resolvedUrl)
     if (!cached) return null
     const buffer = await cached.arrayBuffer()
@@ -95,7 +95,7 @@ async function writeCachedBytes(
   bytes: Uint8Array,
 ): Promise<void> {
   try {
-    const cache = await caches.open(CACHE_NAME)
+    const cache = await caches.open(ASSET_CACHE_NAME)
     await cache.put(
       resolvedUrl,
       new Response(new Uint8Array(bytes), {

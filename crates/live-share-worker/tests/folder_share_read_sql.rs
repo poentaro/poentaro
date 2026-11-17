@@ -12,14 +12,14 @@ use support::*;
 async fn a_folder_read_matches_whole_segments_and_skips_trashed_and_foreign_files(
 ) -> Result<(), sqlx::Error> {
     let mut connection = migrated().await?;
-    add_file(&mut connection, "a", "u1", "Hymns/a.jianpu", "A").await?;
+    add_file(&mut connection, "a", "u1", "Hymns/a.poentaro", "A").await?;
     add_file(&mut connection, "k", "u1", "Hymns/Empty/.keep", "").await?;
-    add_file(&mut connection, "n", "u1", "Hymns/Sub/n.jianpu", "NN").await?;
-    add_file(&mut connection, "t", "u1", "Hymns/trashed.jianpu", "T").await?;
-    add_file(&mut connection, "o", "u1", "Hymns 2/o.jianpu", "O").await?;
-    add_file(&mut connection, "p", "u1", "Hymns.jianpu", "P").await?;
-    add_file(&mut connection, "w", "u1", "Hymns%/w.jianpu", "W").await?;
-    add_file(&mut connection, "x", "u2", "Hymns/x.jianpu", "X").await?;
+    add_file(&mut connection, "n", "u1", "Hymns/Sub/n.poentaro", "NN").await?;
+    add_file(&mut connection, "t", "u1", "Hymns/trashed.poentaro", "T").await?;
+    add_file(&mut connection, "o", "u1", "Hymns 2/o.poentaro", "O").await?;
+    add_file(&mut connection, "p", "u1", "Hymns.poentaro", "P").await?;
+    add_file(&mut connection, "w", "u1", "Hymns%/w.poentaro", "W").await?;
+    add_file(&mut connection, "x", "u2", "Hymns/x.poentaro", "X").await?;
     trash(&mut connection, "t").await?;
 
     let stats = sqlx::query(GET_FOLDER_FILES_STATS)
@@ -45,7 +45,11 @@ async fn a_folder_read_matches_whole_segments_and_skips_trashed_and_foreign_file
     assert_eq!(stats.try_get::<i64, _>("content_bytes")?, 3);
     assert_eq!(
         names,
-        ["Hymns/Empty/.keep", "Hymns/Sub/n.jianpu", "Hymns/a.jianpu"]
+        [
+            "Hymns/Empty/.keep",
+            "Hymns/Sub/n.poentaro",
+            "Hymns/a.poentaro"
+        ]
     );
     assert_eq!(wildcard.len(), 1, "% is a literal, not a wildcard");
     Ok(())
@@ -54,7 +58,7 @@ async fn a_folder_read_matches_whole_segments_and_skips_trashed_and_foreign_file
 #[tokio::test]
 async fn content_bytes_count_utf8_bytes_not_characters() -> Result<(), sqlx::Error> {
     let mut connection = migrated().await?;
-    add_file(&mut connection, "a", "u1", "F/a.jianpu", "你好").await?;
+    add_file(&mut connection, "a", "u1", "F/a.poentaro", "你好").await?;
 
     let stats = sqlx::query(GET_FOLDER_FILES_STATS)
         .bind("u1")
@@ -70,7 +74,7 @@ async fn content_bytes_count_utf8_bytes_not_characters() -> Result<(), sqlx::Err
 async fn the_viewer_header_resolves_a_folder_share_and_not_a_file_share() -> Result<(), sqlx::Error>
 {
     let mut connection = migrated().await?;
-    add_file(&mut connection, "f1", "u1", "a.jianpu", "").await?;
+    add_file(&mut connection, "f1", "u1", "a.poentaro", "").await?;
     start_folder(&mut connection, "folder-id", "u1", "Hymns/Advent").await?;
     sqlx::query(UPSERT_SHARE)
         .bind("file-id")
@@ -106,10 +110,10 @@ async fn the_viewer_header_resolves_a_folder_share_and_not_a_file_share() -> Res
 #[tokio::test]
 async fn the_overview_lists_only_live_links_of_the_owner() -> Result<(), sqlx::Error> {
     let mut connection = migrated().await?;
-    add_file(&mut connection, "live", "u1", "Hymns/live.jianpu", "").await?;
-    add_file(&mut connection, "stopped", "u1", "stopped.jianpu", "").await?;
-    add_file(&mut connection, "binned", "u1", "binned.jianpu", "").await?;
-    add_file(&mut connection, "theirs", "u2", "theirs.jianpu", "").await?;
+    add_file(&mut connection, "live", "u1", "Hymns/live.poentaro", "").await?;
+    add_file(&mut connection, "stopped", "u1", "stopped.poentaro", "").await?;
+    add_file(&mut connection, "binned", "u1", "binned.poentaro", "").await?;
+    add_file(&mut connection, "theirs", "u2", "theirs.poentaro", "").await?;
     for (share_id, owner, file) in [
         ("s-live", "u1", "live"),
         ("s-stopped", "u1", "stopped"),
@@ -157,7 +161,7 @@ async fn the_overview_lists_only_live_links_of_the_owner() -> Result<(), sqlx::E
     )
     .await?;
 
-    assert_eq!(files, ["Hymns/live.jianpu"]);
+    assert_eq!(files, ["Hymns/live.poentaro"]);
     assert_eq!(folders, ["Hymns"]);
     assert_eq!(
         prefixes.len(),
@@ -170,9 +174,9 @@ async fn the_overview_lists_only_live_links_of_the_owner() -> Result<(), sqlx::E
 #[tokio::test]
 async fn a_batch_rename_and_a_prefix_rewrite_apply_together() -> Result<(), sqlx::Error> {
     let mut connection = migrated().await?;
-    add_file(&mut connection, "a", "u1", "Hymns/a.jianpu", "").await?;
-    add_file(&mut connection, "b", "u1", "Hymns/Advent/b.jianpu", "").await?;
-    add_file(&mut connection, "o", "u1", "Hymns 2/o.jianpu", "").await?;
+    add_file(&mut connection, "a", "u1", "Hymns/a.poentaro", "").await?;
+    add_file(&mut connection, "b", "u1", "Hymns/Advent/b.poentaro", "").await?;
+    add_file(&mut connection, "o", "u1", "Hymns 2/o.poentaro", "").await?;
     start_folder(&mut connection, "s-hymns", "u1", "Hymns").await?;
     start_folder(&mut connection, "s-advent", "u1", "Hymns/Advent").await?;
     start_folder(&mut connection, "s-other", "u1", "Hymns 2").await?;
@@ -191,7 +195,9 @@ async fn a_batch_rename_and_a_prefix_rewrite_apply_together() -> Result<(), sqlx
 
     let mut transaction = sqlx::Connection::begin(&mut connection).await?;
     sqlx::query(RENAME_FILES_BATCH)
-        .bind(r#"[{"id":"a","name":"Songs/a.jianpu"},{"id":"b","name":"Songs/Advent/b.jianpu"}]"#)
+        .bind(
+            r#"[{"id":"a","name":"Songs/a.poentaro"},{"id":"b","name":"Songs/Advent/b.poentaro"}]"#,
+        )
         .bind(5)
         .bind("u1")
         .execute(&mut *transaction)
@@ -229,13 +235,13 @@ async fn a_batch_rename_and_a_prefix_rewrite_apply_together() -> Result<(), sqlx
 async fn a_rewrite_onto_a_folder_that_has_its_own_share_is_rejected_and_rolls_back(
 ) -> Result<(), sqlx::Error> {
     let mut connection = migrated().await?;
-    add_file(&mut connection, "a", "u1", "Hymns/a.jianpu", "").await?;
+    add_file(&mut connection, "a", "u1", "Hymns/a.poentaro", "").await?;
     start_folder(&mut connection, "s-hymns", "u1", "Hymns").await?;
     start_folder(&mut connection, "s-songs", "u1", "Songs").await?;
 
     let mut transaction = sqlx::Connection::begin(&mut connection).await?;
     sqlx::query(RENAME_FILES_BATCH)
-        .bind(r#"[{"id":"a","name":"Songs/a.jianpu"}]"#)
+        .bind(r#"[{"id":"a","name":"Songs/a.poentaro"}]"#)
         .bind(5)
         .bind("u1")
         .execute(&mut *transaction)
@@ -253,7 +259,7 @@ async fn a_rewrite_onto_a_folder_that_has_its_own_share_is_rejected_and_rolls_ba
         .fetch_one(&mut connection)
         .await?
         .try_get("name")?;
-    assert_eq!(name, "Hymns/a.jianpu");
+    assert_eq!(name, "Hymns/a.poentaro");
     Ok(())
 }
 

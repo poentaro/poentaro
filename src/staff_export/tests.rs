@@ -1,13 +1,28 @@
 use super::render_split_meis_from_source;
 use crate::mei_export::ClefChoice;
+use crate::split_track::SplitSelection;
 
-const SOURCE: &str = "# parts\nSoprano [S] = notes\nAlto [A] = notes\nWords [w] = lyrics[A]\n\n# score\nkey=C4 time=2/4\n[S] 1 2\n[A] 5 6\n[w] 你好\n";
+const SOURCE: &str = r#"parts ["Soprano" [S]: notes, "Alto" [A]: notes, "Words" [w]: lyrics [A]],
+
+score """
+    key=C4 time=2/4
+    [S] 1 2
+    [A] 5 6
+    [w] 你好
+    """,
+"#;
 
 #[test]
 fn split_meis_give_each_sounding_part_its_own_score_and_lyrics() {
-    let entries =
-        render_split_meis_from_source(SOURCE, "test.jianpu", "song", &[], ClefChoice::Automatic)
-            .unwrap();
+    let entries = render_split_meis_from_source(
+        SOURCE,
+        "test.poentaro",
+        "song",
+        SplitSelection::default(),
+        &[],
+        ClefChoice::Automatic,
+    )
+    .unwrap();
     let summary: Vec<(&str, &str)> = entries
         .iter()
         .map(|entry| (entry.track_name.as_str(), entry.filename.as_str()))
@@ -47,19 +62,19 @@ mod pdf {
     }
 
     #[test]
-    fn staff_pages_print_at_the_jianpu_page_size_and_keep_the_source() {
+    fn staff_pages_print_at_the_numbered_page_size_and_keep_the_source() {
         let fonts = FontBytesByFamily::embedded();
         let pdf = write_staff_pdf(&[VEROVIO_PAGE.to_string()], &fonts, Some("[S] 1")).unwrap();
-        let jianpu = crate::write_pdf_from_source_with_visibility(
+        let numbered = crate::write_pdf_from_source_with_visibility(
             "[S] 1",
-            "test.jianpu",
+            "test.poentaro",
             &crate::ResolvedPartVisibility::default(),
             &fonts,
             &[],
             crate::NoteLabels::Degrees,
         )
         .unwrap();
-        assert_eq!(media_box(&pdf), media_box(&jianpu));
+        assert_eq!(media_box(&pdf), media_box(&numbered));
         assert_eq!(
             crate::source_embed::extract_embedded_source_from_pdf(&pdf).as_deref(),
             Some("[S] 1")

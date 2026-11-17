@@ -1,4 +1,4 @@
-const demoFragments = import.meta.glob('../../demo/*.jianpu', {
+const demoFragments = import.meta.glob('../../demo/*.poentaro', {
   query: '?raw',
   import: 'default',
   eager: true,

@@ -15,7 +15,7 @@ Given(
     // Focus the Monaco editor and navigate to the first measure.
     await focusEditor(page)
     await page.keyboard.press('Control+g')
-    await page.keyboard.type('10')
+    await page.keyboard.type('7')
     await page.keyboard.press('Enter')
 
     // Allow the debounce + highlight render worker round-trip.

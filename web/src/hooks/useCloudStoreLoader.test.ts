@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  type ApiError,
   NetworkFailure,
   WorkerRequestError,
+  type WorkerSchemas,
 } from '../syncedShare/workerClient'
 import { cloudLoadRetryDelayMs, isAuthRejection } from './useCloudStoreLoader'
 
@@ -18,8 +18,14 @@ describe('cloudLoadRetryDelayMs', () => {
   })
 })
 
-function workerError(status: number, body: ApiError): WorkerRequestError {
-  return new WorkerRequestError(new Response(null, { status }), body)
+function workerError(
+  status: number,
+  body: WorkerSchemas['ApiError'],
+): WorkerRequestError {
+  return new WorkerRequestError(new Response(null, { status }), {
+    ...body,
+    traceId: '0123456789abcdef',
+  })
 }
 
 describe('isAuthRejection', () => {

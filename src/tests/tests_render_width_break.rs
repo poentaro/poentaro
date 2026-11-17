@@ -7,7 +7,14 @@ const MEASURE: &str = "[S] 1_ 2_ 3_ 4_ 5_ 6_ 7_ 1'_";
 /// `measure_count` dense measures under `max_measures_per_system=8`.
 fn source(measure_count: usize) -> String {
     format!(
-        "# metadata\nmax_measures_per_system = 8\n\n# parts\nS = notes\n\n# score\n{}\n",
+        r#"metadata {{ max measures per system 8 }},
+
+parts ["S": notes],
+
+score """
+    {}
+    """,
+"#,
         std::iter::repeat_n(MEASURE, measure_count).join("\n\n")
     )
 }
@@ -15,7 +22,7 @@ fn source(measure_count: usize) -> String {
 fn render(source: &str, note_labels: NoteLabels) -> RenderOutput {
     render_svgs_from_source_with_visibility(
         source,
-        "test.jianpu",
+        "test.poentaro",
         &ResolvedPartVisibility::default(),
         &[],
         note_labels,
@@ -41,7 +48,7 @@ fn overflow_warning_count(output: &RenderOutput) -> usize {
 }
 
 #[test]
-fn the_jianpu_view_fits_four_measures_in_one_system() {
+fn the_numbered_view_fits_four_measures_in_one_system() {
     let output = render(&source(4), NoteLabels::Degrees);
     assert_eq!(system_count(&output), 1);
     assert_eq!(overflow_warning_count(&output), 0);

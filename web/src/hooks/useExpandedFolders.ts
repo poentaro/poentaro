@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 
-const STORAGE_KEY = 'jianpu:file-tree-expanded:v1'
+const STORAGE_KEY = 'poentaro:file-tree-expanded:v1'
 
 function load(): string[] {
   try {

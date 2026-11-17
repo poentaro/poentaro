@@ -23,13 +23,18 @@
     clippy::needless_pass_by_value
 )]
 
+#[path = "support/metadata_field.rs"]
+mod metadata_field;
+
 use cucumber::{given, then, when, World as _};
-use jianpu_generator::compositor::types::{AbsoluteContent, DominantBaseline};
-use jianpu_generator::fonts::SERIF_FONT_BYTES;
-use jianpu_generator::render_config::RenderConfig;
-use jianpu_generator::renderer::new_renderer::render_new;
-use jianpu_generator::renderer::new_types::SvgKind;
-use jianpu_generator::{coordinate_resolver, grid_layout};
+use metadata_field::metadata_field;
+use poentaro::compositor::types::{AbsoluteContent, DominantBaseline};
+use poentaro::fonts::SERIF_FONT_BYTES;
+use poentaro::grid_layout::PageLayout;
+use poentaro::render_config::RenderConfig;
+use poentaro::renderer::new_renderer::render_new;
+use poentaro::renderer::new_types::SvgKind;
+use poentaro::{coordinate_resolver, grid_layout};
 
 /// Mirrors `font_metrics::is_cjk_char`'s range (CJK Unified Ideographs
 /// only) — that function is crate-private, so it can't be imported from an
@@ -100,16 +105,30 @@ fn resolve_font_sizes(config: &RenderConfig) -> coordinate_resolver::ResolveFont
 
 #[when(expr = "it is rendered")]
 fn when_rendered(world: &mut LyricHoverBoxWorld) {
-    let mut metadata = String::from("# metadata\ntitle = \"t\"\n");
-    for (key, value) in &world.metadata_overrides {
-        metadata.push_str(&format!("{key} = {value}\n"));
-    }
+    let metadata = std::iter::once(r#"title "t""#.to_string())
+        .chain(
+            world
+                .metadata_overrides
+                .iter()
+                .map(|(key, value)| metadata_field(key, value)),
+        )
+        .collect::<Vec<_>>()
+        .join(", ");
     let source = format!(
-        "{metadata}\n# parts\nMelody [M] = notes\nLyrics [L] = lyrics[M]\n\n# score\ntime=4/4 key=C4 bpm=120\n[M] 1\n[L] {}\n",
+        r#"metadata {{ {metadata} }},
+
+parts ["Melody" [M]: notes, "Lyrics" [L]: lyrics [M]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1
+    [L] {}
+    """,
+"#,
         world.syllable_text
     );
 
-    let score = jianpu_generator::compile(&source, "test.jianpu", &[])
+    let score = poentaro::compile(&source, "test.poentaro", &[])
         .unwrap_or_else(|err| panic!("compile returned an irrecoverable error: {}", err.message()));
     let config = RenderConfig::from_metadata(&score.metadata);
     let header = grid_layout::types::Header {
@@ -126,14 +145,14 @@ fn when_rendered(world: &mut LyricHoverBoxWorld) {
         part_legend_font_size: score.metadata.part_legend.font_size as f32,
         ..Default::default()
     };
-    let compile_result = jianpu_generator::compiler::compile(&score);
-    let compile_result = jianpu_generator::consolidator::consolidate(compile_result);
+    let compile_result = poentaro::compiler::compile(&score);
+    let compile_result = poentaro::consolidator::consolidate(compile_result);
     let grid_pages =
-        grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None).pages;
+        grid_layout::layout(&compile_result, &config, &header, PageLayout::A4, None).pages;
     let abs = coordinate_resolver::resolve(
         &grid_pages,
         config.note_number_width as f32,
-        config.part_label_width_pt as f32,
+        config.page_frame(),
         resolve_font_sizes(&config),
     )
     .unwrap_or_else(|err| panic!("coordinate resolver should not fail in tests: {err:?}"));

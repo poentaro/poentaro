@@ -1,0 +1,12 @@
+metadata { title "Presets" },
+
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
+
+preset "Melody only" { visible parts [M], notation: numbered },
+
+preset "Bass on staff" { visible parts [B], notation: cello },
+
+score """
+    [M] 1 2 3 4
+    [B] 1 5 1 5
+    """,

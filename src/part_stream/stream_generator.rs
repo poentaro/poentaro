@@ -6,33 +6,30 @@ use quickcheck::{Arbitrary, Gen};
 
 use super::{format_part_stream, FormattedPartStream, StreamCursor};
 
-pub(super) const NOTES_AND_LYRICS: &str = r"# parts
-Melody [M] = notes
-Words [W] = lyrics[M]
-Accompaniment [A] = follow[M]
+pub(super) const NOTES_AND_LYRICS: &str = r#"parts ["Melody" [M]: notes, "Words" [W]: lyrics [M], "Accompaniment" [A]: follow [M]],
 
-# score
-[M] 1 2 3 4
-[W] a b c d
+score """
+    [M] 1 2 3 4
+    [W] a b c d
 
-[M] 5 6 - 1
-[W] e f g
+    [M] 5 6 - 1
+    [W] e f g
 
-[M] 3~ 3 5 6
-[A] 1 1 1 1
-";
+    [M] 3~ 3 5 6
+    [A] 1 1 1 1
+    """,
+"#;
 
-const CHORDS_AND_WORDS: &str = r"# parts
-Chords [C] = chords
-Words [W] = lyrics[C]
+const CHORDS_AND_WORDS: &str = r#"parts ["Chords" [C]: chords, "Words" [W]: lyrics [C]],
 
-# score
-[C] 1 - 4 -
-[W] (天) 空  好 (藍)
+score """
+    [C] 1 - 4 -
+    [W] (天) 空  好 (藍)
 
-[C] 0 5 - -
-[W] 我 （在）想 你
-";
+    [C] 0 5 - -
+    [W] 我 （在）想 你
+    """,
+"#;
 
 /// A part to generate streams for, and the tokens they're made of. Some
 /// tokens are deliberately errors, so streams with errors are covered too.

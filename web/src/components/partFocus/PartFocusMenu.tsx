@@ -1,7 +1,7 @@
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { ListMusic } from 'lucide-react'
 import { useState } from 'react'
-import { jianpuWasm, type StreamablePart } from '../../jianpuWasm'
+import { poentaroWasm, type StreamablePart } from '../../poentaroWasm'
 import { ensureWasmInit } from '../../wasmInit'
 import { ResponsiveMenu } from '../ResponsiveMenu'
 import './PartFocusEditor.css'
@@ -23,12 +23,12 @@ export function PartFocusMenu({ source, onChoose }: PartFocusMenuProps) {
   const loadParts = (open: boolean) => {
     if (!open) return
     void ensureWasmInit().then(() =>
-      setParts(jianpuWasm().listStreamableParts(source)),
+      setParts(poentaroWasm().listStreamableParts(source)),
     )
   }
 
   const choose = (part: StreamablePart) => {
-    const response = jianpuWasm().extractPartStream(source, part.abbreviation)
+    const response = poentaroWasm().extractPartStream(source, part.abbreviation)
     if (response.tag === 'ok') onChoose(part, response.val.text)
   }
 

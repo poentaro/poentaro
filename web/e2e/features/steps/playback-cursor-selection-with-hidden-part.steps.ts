@@ -38,31 +38,27 @@ import { Given, Then, When } from './fixtures'
  * never the stale, nonexistent written index 2.
  */
 const source = [
-  '# metadata',
-  'title = "playback cursor selection hidden part test"',
-  'max_measures_per_system = 1',
+  'metadata { title "playback cursor selection hidden part test", max measures per system 1 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
-  'Bass [B] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes, "Bass" [B]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
-  '[H] 5', // 1 note/measure
-  '[B] 3 4', // 2 notes/measure
+  'score """',
+  '[M] 1 2',
+  '[H] 5',
+  '[B] 3 4',
+  '""",',
 ].join('\n')
 
 async function loadFixture(page: import('@playwright/test').Page) {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'playback-cursor-hidden-part-test.jianpu',
-        userFiles: { 'playback-cursor-hidden-part-test.jianpu': src },
+        active: 'playback-cursor-hidden-part-test.poentaro',
+        userFiles: { 'playback-cursor-hidden-part-test.poentaro': src },
         bin: {},
         fileIds: {
-          'playback-cursor-hidden-part-test.jianpu':
+          'playback-cursor-hidden-part-test.poentaro':
             'playback-cursor-hidden-part-test-id-001',
         },
       }),
@@ -122,17 +118,17 @@ When(
     if (!firstBox || !secondBox) {
       throw new Error("Could not get bounding boxes for Bass's notes.")
     }
-    // Start from the note's own center, not its left edge: the left edge of
-    // a measure's first note sits right on the bar-line divider's own click
-    // target (`BarLineClickTarget`), which now always wins a click on its
-    // own, whole-measure-select terms regardless of modifier keys (see
+    // Click each note's own center, not an edge: a measure's outer notes
+    // sit right on the bar-line divider's own click target
+    // (`BarLineClickTarget`), which always wins a click on its own,
+    // whole-measure-select terms regardless of modifier keys (see
     // `previewClickHandler.ts`'s bar-line-handle check) — landing there would
-    // grab the bar line instead of this note.
+    // grab the bar line instead of the note.
     await clickAndClickSelect(
       page,
       firstBox.x + firstBox.width / 2,
       firstBox.y + firstBox.height / 2,
-      secondBox.x + secondBox.width - 2,
+      secondBox.x + secondBox.width / 2,
       secondBox.y + secondBox.height / 2,
     )
   },

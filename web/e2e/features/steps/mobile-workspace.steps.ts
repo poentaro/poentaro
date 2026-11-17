@@ -2,15 +2,14 @@ import { expect } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Mobile Workspace Test"',
+  'metadata { title "Mobile Workspace Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 Given('a seeded score and a mobile viewport', async ({ page }) => {
@@ -21,12 +20,12 @@ Given('a seeded score and a mobile viewport', async ({ page }) => {
 
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'original.jianpu',
-        userFiles: { 'original.jianpu': src },
+        active: 'original.poentaro',
+        userFiles: { 'original.poentaro': src },
         bin: {},
-        fileIds: { 'original.jianpu': crypto.randomUUID() },
+        fileIds: { 'original.poentaro': crypto.randomUUID() },
       }),
     )
   }, SOURCE)

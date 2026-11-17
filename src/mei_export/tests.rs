@@ -1,7 +1,7 @@
 use super::duration::{split_duration, split_undotted_duration};
 use super::pitch::{key_signature, spell, AccidentalTracker, Letter};
 use super::{score_to_mei, ClefChoice, StaffMeasure};
-use crate::ast::parsed::{Accidental, JianPuPitch, KeyChange, Note, NoteName};
+use crate::ast::parsed::{Accidental, KeyChange, Note, NoteName, NumberedPitch};
 use std::collections::HashMap;
 
 fn key(name: NoteName, accidental: Accidental) -> KeyChange {
@@ -15,7 +15,7 @@ fn key(name: NoteName, accidental: Accidental) -> KeyChange {
 }
 
 fn mei_of(source: &str) -> String {
-    let doc = crate::parser::parse(source, "test.jianpu", &[]).unwrap();
+    let doc = crate::parser::parse(source, "test.poentaro", &[]).unwrap();
     let score = crate::grouper::group(doc).unwrap();
     score_to_mei(&score, &HashMap::new(), ClefChoice::Automatic).mei
 }
@@ -33,16 +33,16 @@ fn key_signatures_follow_the_tonic() {
 #[test]
 fn degrees_are_spelled_by_letter_in_the_key() {
     let f_major = key(NoteName::F, Accidental::Natural);
-    let four = spell(&JianPuPitch::Four, &Accidental::Natural, 0, &f_major);
+    let four = spell(&NumberedPitch::Four, &Accidental::Natural, 0, &f_major);
     assert_eq!(four.letter, Letter::B);
     assert_eq!(four.alteration, -1);
     assert_eq!(four.octave, 4);
 
-    let low_six = spell(&JianPuPitch::Six, &Accidental::Natural, -1, &f_major);
+    let low_six = spell(&NumberedPitch::Six, &Accidental::Natural, -1, &f_major);
     assert_eq!(low_six.letter, Letter::D);
     assert_eq!(low_six.octave, 4);
 
-    let sharp_five = spell(&JianPuPitch::Five, &Accidental::Sharp, 0, &f_major);
+    let sharp_five = spell(&NumberedPitch::Five, &Accidental::Sharp, 0, &f_major);
     assert_eq!(sharp_five.letter, Letter::C);
     assert_eq!(sharp_five.alteration, 1);
     assert_eq!(sharp_five.octave, 5);
@@ -52,8 +52,8 @@ fn degrees_are_spelled_by_letter_in_the_key() {
 fn accidentals_are_written_only_against_the_key_or_an_earlier_one() {
     let f_major = key(NoteName::F, Accidental::Natural);
     let mut tracker = AccidentalTracker::new(&f_major);
-    let b_flat = spell(&JianPuPitch::Four, &Accidental::Natural, 0, &f_major);
-    let b_natural = spell(&JianPuPitch::Four, &Accidental::Sharp, 0, &f_major);
+    let b_flat = spell(&NumberedPitch::Four, &Accidental::Natural, 0, &f_major);
+    let b_natural = spell(&NumberedPitch::Four, &Accidental::Sharp, 0, &f_major);
     assert_eq!(tracker.attribute(b_flat), " accid.ges=\"f\"");
     assert_eq!(tracker.attribute(b_natural), " accid=\"n\"");
     assert_eq!(tracker.attribute(b_natural), "");
@@ -86,7 +86,13 @@ fn undotted_durations_split_dotted_values_in_two() {
 
 #[test]
 fn notes_carry_their_source_span_as_id() {
-    let source = "# parts\nMelody [m] = notes\n\n# score\nkey=C4 time=4/4\n[m] 1 2 3 4\n";
+    let source = r#"parts ["Melody" [m]: notes],
+
+score """
+    key=C4 time=4/4
+    [m] 1 2 3 4
+    """,
+"#;
     let start = source.find("1 2").unwrap();
     let mei = mei_of(source);
     let expected = format!(
@@ -99,9 +105,18 @@ fn notes_carry_their_source_span_as_id() {
 
 #[test]
 fn every_measure_is_listed_with_its_element_id() {
-    let source =
-        "# parts\nMelody [m] = notes\n\n# score\nkey=C4 time=2/4\n[m] 1 2\n\n[m] 3 4\n\n[m] 5 6\n";
-    let doc = crate::parser::parse(source, "test.jianpu", &[]).unwrap();
+    let source = r#"parts ["Melody" [m]: notes],
+
+score """
+    key=C4 time=2/4
+    [m] 1 2
+
+    [m] 3 4
+
+    [m] 5 6
+    """,
+"#;
+    let doc = crate::parser::parse(source, "test.poentaro", &[]).unwrap();
     let score = crate::grouper::group(doc).unwrap();
     let document = score_to_mei(&score, &HashMap::new(), ClefChoice::Automatic);
     assert_eq!(
@@ -126,7 +141,15 @@ fn every_measure_is_listed_with_its_element_id() {
 #[test]
 fn ties_slurs_and_beams_are_encoded() {
     let mei = mei_of(
-        "# parts\nMelody [m] = notes\n\n# score\nkey=C4 time=2/4\n[m] (1_2_) 3~\n\n[m] 3 -\n",
+        r#"parts ["Melody" [m]: notes],
+
+score """
+    key=C4 time=2/4
+    [m] (1_2_) 3~
+
+    [m] 3 -
+    """,
+"#,
     );
     assert!(mei.contains("<beam><note"), "{mei}");
     assert!(mei.contains("<slur staff=\"1\""));
@@ -137,7 +160,14 @@ fn ties_slurs_and_beams_are_encoded() {
 #[test]
 fn chord_parts_become_letter_name_symbols() {
     let mei = mei_of(
-        "# parts\nMelody [m] = notes\nChord [c] = chords\n\n# score\nkey=F4 time=4/4\n[m] 1 2 3 4\n[c] 6m - 5/7 -\n",
+        r#"parts ["Melody" [m]: notes, "Chord" [c]: chords],
+
+score """
+    key=F4 time=4/4
+    [m] 1 2 3 4
+    [c] 6m - 5/7 -
+    """,
+"#,
     );
     assert!(mei.contains(r#"<harm staff="1" tstamp="1">Dm</harm>"#));
     assert!(mei.contains(r#"<harm staff="1" tstamp="3">C/E</harm>"#));
@@ -146,18 +176,48 @@ fn chord_parts_become_letter_name_symbols() {
 #[test]
 fn lyric_parts_become_verses_on_their_target() {
     let mei = mei_of(
-        "# parts\nMelody [m] = notes\nWords [w] = lyrics[m]\n\n# score\nkey=C4 time=2/4\n[m] 1 2\n[w] 你好\n",
+        r#"parts ["Melody" [m]: notes, "Words" [w]: lyrics [m]],
+
+score """
+    key=C4 time=2/4
+    [m] 1 2
+    [w] 你好
+    """,
+"#,
     );
     assert!(mei.contains(r#"<verse n="1"><syl>你</syl></verse>"#));
     assert!(mei.contains(r#"<verse n="1"><syl>好</syl></verse>"#));
 }
 
 #[test]
+fn a_given_reading_follows_its_character_in_staff_notation() {
+    let mei = mei_of(
+        r#"parts ["Melody" [m]: notes, "Words" [w]: lyrics [m]],
+
+score """
+    key=C4 time=2/4
+    [m] 1 2
+    [w] 银行(hang2)
+    """,
+"#,
+    );
+    assert!(mei.contains(r#"<verse n="1"><syl>行(háng)</syl></verse>"#));
+}
+
+#[test]
 fn hidden_parts_get_no_staff() {
-    let source = "# parts\nSoprano [S] = notes\nAlto [A] = notes\nWords [w] = lyrics[A]\n\n# score\nkey=C4 time=2/4\n[S] 1 2\n[A] 5 6\n[w] 你好\n";
+    let source = r#"parts ["Soprano" [S]: notes, "Alto" [A]: notes, "Words" [w]: lyrics [A]],
+
+score """
+    key=C4 time=2/4
+    [S] 1 2
+    [A] 5 6
+    [w] 你好
+    """,
+"#;
     let mei = crate::render_mei_from_source_with_visibility(
         source,
-        "test.jianpu",
+        "test.poentaro",
         &crate::ResolvedPartVisibility {
             rendered_tracks: Some(vec!["S".into()]),
             ..Default::default()
@@ -174,10 +234,18 @@ fn hidden_parts_get_no_staff() {
 
 #[test]
 fn shown_lyrics_of_a_hidden_part_ride_an_invisible_staff() {
-    let source = "# parts\nSustain [sus] = notes\nBass [B] = notes\nWords [w] = lyrics[B]\n\n# score\nkey=C4 time=2/4\n[sus] 3~\n[B] 1 2\n[w] 你好\n";
+    let source = r#"parts ["Sustain" [sus]: notes, "Bass" [B]: notes, "Words" [w]: lyrics [B]],
+
+score """
+    key=C4 time=2/4
+    [sus] 3~
+    [B] 1 2
+    [w] 你好
+    """,
+"#;
     let mei = crate::render_mei_from_source_with_visibility(
         source,
-        "test.jianpu",
+        "test.poentaro",
         &crate::ResolvedPartVisibility {
             rendered_tracks: Some(vec!["sus".into(), "w".into()]),
             ..Default::default()
@@ -205,12 +273,19 @@ fn shown_lyrics_of_a_hidden_part_ride_an_invisible_staff() {
 }
 
 fn mei_with_clef(source: &str, clef_choice: ClefChoice) -> String {
-    let doc = crate::parser::parse(source, "test.jianpu", &[]).unwrap();
+    let doc = crate::parser::parse(source, "test.poentaro", &[]).unwrap();
     let score = crate::grouper::group(doc).unwrap();
     score_to_mei(&score, &HashMap::new(), clef_choice).mei
 }
 
-const HIGH_AND_LOW_PARTS: &str = "# parts\nMelody [m] = notes\nBass [b] = notes\n\n# score\nkey=C4 time=2/4\n[m] 1' 2'\n[b] 1,, 5,,\n";
+const HIGH_AND_LOW_PARTS: &str = r#"parts ["Melody" [m]: notes, "Bass" [b]: notes],
+
+score """
+    key=C4 time=2/4
+    [m] 1' 2'
+    [b] 1,, 5,,
+    """,
+"#;
 
 #[test]
 fn automatic_clefs_follow_each_parts_range() {

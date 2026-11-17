@@ -1,7 +1,7 @@
 Feature: Part hide/solo toggles
 
   # The "M — Melody" / "C — Chords" legend in the preview header lists only
-  # parts currently enabled by hide/solo state — a hidden or non-soloed part's
+  # the parts currently enabled by hide/solo state — a hidden or non-soloed part's
   # entry disappears from the legend along with its score content.
 
   Scenario: Hiding the notes row keeps the lyrics visible

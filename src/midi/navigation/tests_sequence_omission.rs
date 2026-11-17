@@ -28,6 +28,7 @@ fn metadata() -> Metadata {
         note_number_width: 8,
         parts_list_columns: 3,
         part_label_width_pt: 40,
+        page_margin_pt: 25,
         lyrics: text_style(14, 4, 12),
         notes: text_style(14, 4, 0),
         chords: text_style(14, 4, 0),
@@ -41,6 +42,7 @@ fn metadata() -> Metadata {
         section_label: text_style(12, 0, 0),
         part_label: text_style(12, 0, 0),
         page_number: text_style(14, 0, 0),
+        running_title: text_style(14, 0, 0),
         merge_duplicate_measures_across_parts: true,
         hide_resting_parts: true,
         hide_system_dividers: false,
@@ -80,9 +82,11 @@ fn measure_with_parts(index: usize, part_names: &[&str]) -> MultiPartMeasure {
                 PartRow::Timed(PartSlice {
                     name: Some(name.to_string()),
                     kind: PartKind::Notes,
-                    soundfont: Soundfont::default(),
+                    soundfont: Soundfont::CHOIR_AAHS,
                     volume: 100,
                     octave_offset: 0,
+                    range_instrument: None,
+                    singing_voice: None,
                     notes: Notes { events: vec![] },
                     lyrics: None,
                     has_error: false,
@@ -109,6 +113,8 @@ fn sequence_omit_parts_drops_named_parts_per_occurrence() {
                 start: 0,
                 end: 0,
                 omit_parts: vec!["S".to_string(), "A2".to_string()],
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
                 part_filter_display: None,
             },
             SequenceSpan {
@@ -116,6 +122,8 @@ fn sequence_omit_parts_drops_named_parts_per_occurrence() {
                 start: 0,
                 end: 0,
                 omit_parts: vec!["A2".to_string()],
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
                 part_filter_display: None,
             },
         ],
@@ -138,10 +146,10 @@ fn sequence_omit_parts_drops_named_parts_per_occurrence() {
 #[test]
 fn expand_for_measure_range_respect_sequence_false_ignores_sequence_omission() {
     // A single measure "Chorus" with three parts, played twice via
-    // `# sequence` with the first occurrence omitting S and A2. Selecting
+    // `sequence` with the first occurrence omitting S and A2. Selecting
     // the written measure with `respect_sequence: false` (as "play current
     // measure" does) must play it exactly as written, with all three parts,
-    // regardless of what any `# sequence` occurrence would have omitted.
+    // regardless of what any `sequence` occurrence would have omitted.
     let measures = vec![measure_with_parts(0, &["S", "A2", "T"])];
     let score = score_with_sequence(
         measures,
@@ -150,6 +158,8 @@ fn expand_for_measure_range_respect_sequence_false_ignores_sequence_omission() {
             start: 0,
             end: 0,
             omit_parts: vec!["S".to_string(), "A2".to_string()],
+            chosen_lines: Vec::new(),
+            line_choices_display: Vec::new(),
             part_filter_display: None,
         }],
     );
@@ -166,11 +176,11 @@ fn expand_for_measure_range_respect_sequence_false_ignores_sequence_omission() {
 
 #[test]
 fn expand_for_measure_range_with_sequence_entry_index_selects_exact_occurrence() {
-    // "Chorus" replayed three times via `# sequence`: unmarked, then with S
+    // "Chorus" replayed three times via `sequence`: unmarked, then with S
     // and A2 omitted, then with only A2 omitted. Every occurrence shares the
     // same written measure range (0..=0), so selecting by written index
     // alone (`entry_index: None`) can only ever reach the *first* one.
-    // Passing the entry's own `# sequence` index must reach any of them.
+    // Passing the entry's own `sequence` index must reach any of them.
     let measures = vec![measure_with_parts(0, &["S", "A2", "T"])];
     let score = score_with_sequence(
         measures,
@@ -180,6 +190,8 @@ fn expand_for_measure_range_with_sequence_entry_index_selects_exact_occurrence()
                 start: 0,
                 end: 0,
                 omit_parts: Vec::new(),
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
                 part_filter_display: None,
             },
             SequenceSpan {
@@ -187,6 +199,8 @@ fn expand_for_measure_range_with_sequence_entry_index_selects_exact_occurrence()
                 start: 0,
                 end: 0,
                 omit_parts: vec!["S".to_string(), "A2".to_string()],
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
                 part_filter_display: None,
             },
             SequenceSpan {
@@ -194,6 +208,8 @@ fn expand_for_measure_range_with_sequence_entry_index_selects_exact_occurrence()
                 start: 0,
                 end: 0,
                 omit_parts: vec!["A2".to_string()],
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
                 part_filter_display: None,
             },
         ],
@@ -222,12 +238,12 @@ fn expand_for_measure_range_with_sequence_entry_index_selects_exact_occurrence()
 
 #[test]
 fn expand_for_measure_range_with_sequence_entry_index_handles_reversed_written_order() {
-    // Reproduces a user report: `# sequence` is `X, Y(-b), Y, X` (X is
+    // Reproduces a user report: `sequence` is `X, Y(-b), Y, X` (X is
     // written measure 0, Y is written measure 1). Selecting the third and
     // fourth entries (the unmarked `Y`, then the second `X`) gives a
     // *written* range of `start: 1, end: 0` -- `Y`'s written index is
     // greater than `X`'s, even though `Y` is selected first -- because
-    // `# sequence` order and written order diverge. `expand_for_measure_range`
+    // `sequence` order and written order diverge. `expand_for_measure_range`
     // must still resolve this via `sequence_entry_range` instead of falling
     // into the `start_index > end_index` fallback (which silently swaps the
     // range and replays the literal written score, ignoring both the
@@ -244,6 +260,8 @@ fn expand_for_measure_range_with_sequence_entry_index_handles_reversed_written_o
                 start: 0,
                 end: 0,
                 omit_parts: Vec::new(),
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
                 part_filter_display: None,
             },
             SequenceSpan {
@@ -251,6 +269,8 @@ fn expand_for_measure_range_with_sequence_entry_index_handles_reversed_written_o
                 start: 1,
                 end: 1,
                 omit_parts: vec!["b".to_string()],
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
                 part_filter_display: None,
             },
             SequenceSpan {
@@ -258,6 +278,8 @@ fn expand_for_measure_range_with_sequence_entry_index_handles_reversed_written_o
                 start: 1,
                 end: 1,
                 omit_parts: Vec::new(),
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
                 part_filter_display: None,
             },
             SequenceSpan {
@@ -265,6 +287,8 @@ fn expand_for_measure_range_with_sequence_entry_index_handles_reversed_written_o
                 start: 0,
                 end: 0,
                 omit_parts: Vec::new(),
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
                 part_filter_display: None,
             },
         ],

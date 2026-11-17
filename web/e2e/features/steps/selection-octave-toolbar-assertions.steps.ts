@@ -9,7 +9,7 @@ import { Then, When } from './fixtures'
 // "the editor source contains {string}", "the stored source contains
 // {string}", and "the editor source still contains {string}" are all
 // already defined in `shift-part-octave-toolbar.steps.ts` with identical
-// semantics (both fixtures use the same `jianpu:files:v1` storage shape) —
+// semantics (both fixtures use the same `poentaro:files:v1` storage shape) —
 // playwright-bdd registers steps globally, so redefining them here would
 // conflict rather than shadow.
 

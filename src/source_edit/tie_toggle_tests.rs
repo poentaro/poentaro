@@ -23,18 +23,15 @@ fn range_of_prefix(source: &str, needle: &str, length: u32) -> ByteRange {
 
 #[test]
 fn ties_selected_same_pitch_neighbours() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 1 3 3 3
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 3 3 3
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of(source, "3 3 3")]);
     assert!(
@@ -51,18 +48,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn different_pitches_are_not_tied() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 1 2 3 4
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 2 3 4
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of(source, "1 2 3 4")]);
     assert_eq!(result.source, source);
@@ -71,18 +65,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn different_octaves_are_not_tied() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 1 1' 3 4
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 1' 3 4
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of(source, "1 1'")]);
     assert_eq!(result.source, source);
@@ -90,18 +81,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn a_rest_between_same_pitches_blocks_the_tie() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 3 0 3 4
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 3 0 3 4
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of(source, "3 0 3")]);
     assert_eq!(result.source, source);
@@ -109,18 +97,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn tie_goes_after_every_duration_suffix() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 3'_ 3'_ 3--
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 3'_ 3'_ 3--
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of(source, "3'_ 3'_")]);
     assert!(
@@ -132,18 +117,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn single_selected_note_is_tied_into_the_next_note() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 1 2 2 4
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 2 2 4
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of_prefix(source, "2 2 4", 1)]);
     assert!(
@@ -155,18 +137,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn multi_note_selection_does_not_tie_out_of_itself() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 1 1 2 2
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 1 2 2
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of(source, "1 1 2")]);
     assert!(
@@ -178,26 +157,23 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn ties_across_a_measure_boundary() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 1 2 3 4
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 2 3 4
+    [B] 5 6 7 1
 
-[M] 4 3 2 1
-[B] 1 7 6 5
+    [M] 4 3 2 1
+    [B] 1 7 6 5
+    """,
 "#;
     let result = toggle_range_tie(
         source,
         &[
-            range_of_prefix(source, "4\n[B] 5", 1),
+            range_of_prefix(source, "4\n    [B] 5", 1),
             range_of_prefix(source, "4 3 2 1", 1),
         ],
     );
@@ -215,23 +191,20 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn tying_then_toggling_again_restores_the_source() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 3 3 3 4
-[B] 5 5 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 3 3 3 4
+    [B] 5 5 7 1
+    """,
 "#;
-    let range = range_of(source, "3 3 3 4\n[B] 5 5");
+    let range = range_of(source, "3 3 3 4\n    [B] 5 5");
     let tied = toggle_range_tie(source, &[range]);
     assert!(
-        tied.source.contains("[M] 3~ 3~ 3 4\n[B] 5~ 5 7 1"),
+        tied.source.contains("[M] 3~ 3~ 3 4\n    [B] 5~ 5 7 1"),
         "got:\n{}",
         tied.source
     );
@@ -241,18 +214,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn tied_selection_is_remapped_onto_the_new_source() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 1 3 3 4
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 3 3 4
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of(source, "3 3")]);
     let [range] = result.ranges.as_slice() else {
@@ -264,18 +234,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn selection_touching_any_tie_unties_instead_of_tying() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 3~ 3 4 4
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 3~ 3 4 4
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of(source, "3~ 3 4 4")]);
     assert!(
@@ -287,18 +254,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn untie_keeps_a_glued_repeat_atom_separate() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 5~_ 5_ 5 5 5
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 5~_ 5_ 5 5 5
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of_prefix(source, "5~_", 1)]);
     assert!(
@@ -310,16 +274,14 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn ties_same_chords() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Chords [C] = chords
+parts ["Chords" [C]: chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[C] 1m 1m 4 5
+score """
+    time=4/4 key=C4 bpm=120
+    [C] 1m 1m 4 5
+    """,
 "#;
     let result = toggle_range_tie(source, &[range_of(source, "1m 1m 4")]);
     assert!(
@@ -331,18 +293,15 @@ time=4/4 key=C4 bpm=120
 
 #[test]
 fn empty_ranges_list_returns_source_unchanged() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody [M] = notes
-Bass [B] = notes
+parts ["Melody" [M]: notes, "Bass" [B]: notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[M] 3 3 3 4
-[B] 5 6 7 1
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 3 3 3 4
+    [B] 5 6 7 1
+    """,
 "#;
     let result = toggle_range_tie(source, &[]);
     assert_eq!(result.source, source);

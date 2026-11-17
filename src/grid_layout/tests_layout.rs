@@ -1,4 +1,4 @@
-use crate::ast::parsed::{JianPuPitch, Offset};
+use crate::ast::parsed::{NumberedPitch, Offset};
 use crate::compiler::types::{
     ColumnElement, CompileResult, ElementContent, MeasureBlock, MeasureRow, RowId,
 };
@@ -30,6 +30,7 @@ fn cfg_wide() -> RenderConfig {
         row_height: 30,
         note_number_width: 12,
         part_label_width_pt: 40,
+        page_margin_pt: 25,
         max_measures_per_system: 48,
         lyrics_font_size: 18,
         notes_font_size: 18,
@@ -64,7 +65,7 @@ fn make_block(row_id: &str, bar_col: u32) -> MeasureBlock {
                 ColumnElement {
                     column: 0,
                     content: ElementContent::NoteHead {
-                        pitch: JianPuPitch::One,
+                        pitch: NumberedPitch::One,
                         accidental: crate::ast::parsed::Accidental::Natural,
                         octave: 0,
                         dotted: false,
@@ -99,7 +100,14 @@ fn layout_single_block_produces_one_page() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     assert_eq!(pages.len(), 1);
 }
 
@@ -112,7 +120,14 @@ fn layout_page_has_correct_dimensions() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     assert!((pages[0].width_pt - 595.0).abs() < 0.001);
     assert!((pages[0].height_pt - 842.0).abs() < 0.001);
 }
@@ -126,7 +141,14 @@ fn layout_rows_include_header_and_footer() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     // At minimum: header title row, header subtitle+author row, footer row
     assert!(pages[0].rows.len() >= 3, "len={}", pages[0].rows.len());
 }
@@ -140,7 +162,14 @@ fn layout_page_total_height_does_not_exceed_page_height() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     for page in &pages {
         let total: f32 = page.rows.iter().map(|r| r.height_pt).sum();
         assert!(
@@ -165,8 +194,10 @@ fn footer_row_fills_remaining_page_height() {
         &compile_result,
         &cfg_wide(),
         &hdr(),
-        595.0,
-        page_height,
+        crate::grid_layout::PageLayout::Paged(crate::grid_layout::PageSize {
+            width_pt: 595.0,
+            height_pt: page_height,
+        }),
         None,
     )
     .pages;
@@ -176,7 +207,7 @@ fn footer_row_fills_remaining_page_height() {
         .map(|r| r.height_pt)
         .sum();
     let footer_height = page.rows.last().unwrap().height_pt;
-    let expected = page_height - 2.0 * crate::grid_layout::PAGE_MARGIN - non_footer_height;
+    let expected = page_height - 2.0 * cfg_wide().page_margin_pt as f32 - non_footer_height;
     assert!(
         (footer_height - expected).abs() < 0.001,
         "footer_height={footer_height} expected={expected}"
@@ -192,7 +223,14 @@ fn footer_element_valign_is_bottom() {
         tuplet_spans: vec![],
         lyric_links: vec![],
     };
-    let pages = layout(&compile_result, &cfg_wide(), &hdr(), 595.0, 842.0, None).pages;
+    let pages = layout(
+        &compile_result,
+        &cfg_wide(),
+        &hdr(),
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
     let footer_row = pages[0].rows.last().unwrap();
     assert!(
         footer_row
@@ -234,8 +272,7 @@ fn layout_draws_divider_between_systems_by_default() {
         &compile_result,
         &cfg_one_measure_per_system(false),
         &hdr(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -255,8 +292,7 @@ fn layout_omits_divider_when_hide_system_dividers_is_set() {
         &compile_result,
         &cfg_one_measure_per_system(true),
         &hdr(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -264,4 +300,27 @@ fn layout_omits_divider_when_hide_system_dividers_is_set() {
         !has_divider(&pages),
         "divider should be omitted when hide_system_dividers is true"
     );
+}
+
+#[test]
+fn pages_after_the_first_get_only_the_running_title() {
+    use crate::grid_layout::layout::make_header_rows;
+    let header = Header {
+        subtitle: Some("Sub".to_string()),
+        running_title_font_size: 14.0,
+        ..hdr()
+    };
+    let first_page = make_header_rows(&header, 30.0, true);
+    let later_page = make_header_rows(&header, 30.0, false);
+    let texts = |rows: &[crate::grid_layout::types::GridRow]| -> Vec<String> {
+        rows.iter()
+            .flat_map(|row| row.elements.iter())
+            .filter_map(|element| match &element.content {
+                GridContent::Text { content, .. } => Some(content.clone()),
+                _ => None,
+            })
+            .collect()
+    };
+    assert_eq!(texts(&first_page), vec!["Song", "Sub", "Me"]);
+    assert_eq!(texts(&later_page), vec!["Song"]);
 }

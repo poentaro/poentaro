@@ -20,15 +20,13 @@ import { Given, Then, When } from './fixtures'
  * during the range-select.
  */
 const rangeTestSource = [
-  '# metadata',
-  'title = "note range-select test"',
-  'max_measures_per_system = 48',
+  'metadata { title "note range-select test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — line 9
+  'score """',
+  '[M] 1 2 3 4',
+  '""",',
 ].join('\n')
 
 function noteRects(page: import('@playwright/test').Page) {
@@ -44,12 +42,12 @@ Given(
   async ({ page }) => {
     await page.addInitScript((source) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'note-range-test.jianpu',
-          userFiles: { 'note-range-test.jianpu': source },
+          active: 'note-range-test.poentaro',
+          userFiles: { 'note-range-test.poentaro': source },
           bin: {},
-          fileIds: { 'note-range-test.jianpu': 'note-range-test-id-001' },
+          fileIds: { 'note-range-test.poentaro': 'note-range-test-id-001' },
         }),
       )
     }, rangeTestSource)
@@ -68,14 +66,14 @@ Given(
 )
 
 Given(
-  'the editor is focused and jumped to line 9 to prime the measure round-trip',
+  'the editor is focused and jumped to line 6 to prime the measure round-trip',
   async ({ page, focusEditor }) => {
     // Prime the editor/worker round-trip the same way the measure
     // range-select spec does, so the highlighted-documents re-render this
     // test is guarding against is actually wired up before we range-select.
     await focusEditor()
     await page.keyboard.press('Control+g')
-    await page.keyboard.type('9')
+    await page.keyboard.type('6')
     await page.keyboard.press('Enter')
     await expect(page.locator('button.play-measure-btn')).toHaveText(
       /Measure/,

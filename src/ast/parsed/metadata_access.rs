@@ -19,6 +19,7 @@ impl ParsedMetadata {
             TextStyleKind::SectionLabel => &self.section_label_style,
             TextStyleKind::PartLabel => &self.part_label_style,
             TextStyleKind::PageNumber => &self.page_number_style,
+            TextStyleKind::RunningTitle => &self.running_title_style,
             TextStyleKind::Lyrics => &self.lyrics_style,
             TextStyleKind::Notes => &self.notes_style,
             TextStyleKind::Chords => &self.chords_style,
@@ -37,6 +38,7 @@ impl ParsedMetadata {
             TextStyleKind::SectionLabel => &mut self.section_label_style,
             TextStyleKind::PartLabel => &mut self.part_label_style,
             TextStyleKind::PageNumber => &mut self.page_number_style,
+            TextStyleKind::RunningTitle => &mut self.running_title_style,
             TextStyleKind::Lyrics => &mut self.lyrics_style,
             TextStyleKind::Notes => &mut self.notes_style,
             TextStyleKind::Chords => &mut self.chords_style,
@@ -51,6 +53,7 @@ impl ParsedMetadata {
             MetadataNumberKey::NoteNumberWidth => &mut self.note_number_width,
             MetadataNumberKey::PartsListColumns => &mut self.parts_list_columns,
             MetadataNumberKey::PartLabelWidthPt => &mut self.part_label_width_pt,
+            MetadataNumberKey::PageMarginPt => &mut self.page_margin_pt,
         }
     }
 
@@ -61,6 +64,7 @@ impl ParsedMetadata {
             MetadataNumberKey::NoteNumberWidth => self.note_number_width,
             MetadataNumberKey::PartsListColumns => self.parts_list_columns,
             MetadataNumberKey::PartLabelWidthPt => self.part_label_width_pt,
+            MetadataNumberKey::PageMarginPt => self.page_margin_pt,
         }
     }
 

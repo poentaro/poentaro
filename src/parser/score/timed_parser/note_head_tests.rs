@@ -1,4 +1,4 @@
-use crate::ast::parsed::{Accidental, JianPuPitch, ScoreEvent};
+use crate::ast::parsed::{Accidental, NumberedPitch, ScoreEvent};
 use crate::error::{Diagnostic, RecoverableErrorKind, Span};
 use crate::parser::score::timed_parser::{EventAttrs, NoteHead, ParseHeadError, TimedUnitHead};
 
@@ -36,7 +36,7 @@ fn parse_head_returns_recoverable_for_empty_input() {
     );
 }
 
-fn parse_to_note(input: &str) -> (JianPuPitch, Accidental, usize) {
+fn parse_to_note(input: &str) -> (NumberedPitch, Accidental, usize) {
     let chars: Vec<char> = input.chars().collect();
     let span = Span::new(0, input.len());
     let (head, next, _is_rest, _diags) =
@@ -62,7 +62,7 @@ fn parse_to_note(input: &str) -> (JianPuPitch, Accidental, usize) {
 #[test]
 fn sharp_suffix_parses_to_accidental_sharp() {
     let (pitch, accidental, next) = parse_to_note("7#");
-    assert_eq!(pitch, JianPuPitch::Seven);
+    assert_eq!(pitch, NumberedPitch::Seven);
     assert_eq!(accidental, Accidental::Sharp);
     assert_eq!(next, 2);
 }
@@ -70,7 +70,7 @@ fn sharp_suffix_parses_to_accidental_sharp() {
 #[test]
 fn flat_suffix_parses_to_accidental_flat() {
     let (pitch, accidental, next) = parse_to_note("1b");
-    assert_eq!(pitch, JianPuPitch::One);
+    assert_eq!(pitch, NumberedPitch::One);
     assert_eq!(accidental, Accidental::Flat);
     assert_eq!(next, 2);
 }
@@ -78,7 +78,7 @@ fn flat_suffix_parses_to_accidental_flat() {
 #[test]
 fn no_suffix_parses_to_accidental_natural() {
     let (pitch, accidental, next) = parse_to_note("5");
-    assert_eq!(pitch, JianPuPitch::Five);
+    assert_eq!(pitch, NumberedPitch::Five);
     assert_eq!(accidental, Accidental::Natural);
     assert_eq!(next, 1);
 }
@@ -86,7 +86,7 @@ fn no_suffix_parses_to_accidental_natural() {
 #[test]
 fn flat_suffix_before_dot_cursor_points_at_dot() {
     let (pitch, accidental, next) = parse_to_note("3b.");
-    assert_eq!(pitch, JianPuPitch::Three);
+    assert_eq!(pitch, NumberedPitch::Three);
     assert_eq!(accidental, Accidental::Flat);
     assert_eq!(next, 2);
 }

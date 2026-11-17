@@ -23,5 +23,10 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "scripts/**/*.ts"]
+  "include": [
+    "vite.config.ts",
+    "vite.bridge.config.ts",
+    "playwright.config.ts",
+    "scripts/**/*.ts"
+  ]
 }

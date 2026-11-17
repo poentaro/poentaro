@@ -2,29 +2,26 @@ import { expect } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SINGLE_PART_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 const MULTI_PART_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
-  '5 6 7 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    5 6 7 1',
+  '    """,',
 ].join('\n')
 
 async function loadSource(
@@ -33,12 +30,12 @@ async function loadSource(
 ) {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'test.jianpu',
-        userFiles: { 'test.jianpu': src },
+        active: 'test.poentaro',
+        userFiles: { 'test.poentaro': src },
         bin: {},
-        fileIds: { 'test.jianpu': crypto.randomUUID() },
+        fileIds: { 'test.poentaro': crypto.randomUUID() },
       }),
     )
   }, source)
@@ -133,7 +130,7 @@ When(
     // Dispatch two click events back-to-back in a single browser task so both
     // reach the handler before React can re-render the menu as closed,
     // exercising the `pdfExporting`/`splitPdfExporting` re-entrancy guard in
-    // `exportPdf` (useJianpuWorker.ts) rather than relying on real user timing.
+    // `exportPdf` (usePoentaroWorker.ts) rather than relying on real user timing.
     // The dedup happens before `requestDownload` is ever called twice, so
     // only a single rename modal opens.
     await item.evaluate((el: HTMLElement) => {
@@ -169,6 +166,27 @@ Then(
     expect(lastDownload?.suggestedFilename()).toBe(filename)
   },
 )
+
+/** The file names in a ZIP's central directory (each entry's header is
+ * `PK\x01\x02`, with the name length at byte 28 and the name at byte 46). */
+function zipEntryNames(zip: Buffer): string[] {
+  const names: string[] = []
+  for (
+    let at = zip.indexOf('PK\x01\x02');
+    at !== -1;
+    at = zip.indexOf('PK\x01\x02', at + 46)
+  ) {
+    const nameLength = zip.readUInt16LE(at + 28)
+    names.push(zip.toString('utf8', at + 46, at + 46 + nameLength))
+  }
+  return names
+}
+
+Then('the downloaded zip holds only {string}', async ({}, filename: string) => {
+  const fs = await import('node:fs')
+  const zip = fs.readFileSync((await lastDownload?.path()) as string)
+  expect(zipEntryNames(zip)).toEqual([filename])
+})
 
 Then('only a single PDF download ever fires', async () => {
   expect(downloadCount).toBe(1)

@@ -1,4 +1,4 @@
-use crate::ast::parsed::{Accidental, JianPuPitch};
+use crate::ast::parsed::{Accidental, NumberedPitch};
 use crate::compiler::types::BarLineKind;
 use crate::compositor::types::FontFamily;
 use crate::pitch_description::GuitarVoicing;
@@ -10,7 +10,7 @@ use crate::grid_layout::types::SequenceEntryInfo;
 #[derive(Debug, Clone)]
 pub enum PostArcGridContent {
     NoteHead {
-        pitch: JianPuPitch,
+        pitch: NumberedPitch,
         accidental: Accidental,
         octave: i8,
         dotted: bool,
@@ -54,6 +54,8 @@ pub enum PostArcGridContent {
     RowLabel(String),
     LyricSyllable {
         text: String,
+        ruby: Option<String>,
+        ruby_band_pt: f32,
         source_part_index: usize,
         note_id: usize,
     },

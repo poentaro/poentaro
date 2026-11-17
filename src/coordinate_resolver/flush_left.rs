@@ -1,4 +1,4 @@
-use crate::ast::parsed::JianPuPitch;
+use crate::ast::parsed::NumberedPitch;
 use crate::compiler::NoteHeadLabel;
 use crate::grid_layout::types::GridContent;
 
@@ -115,7 +115,7 @@ pub(super) fn flush_left_padding(content: &GridContent, config: RowResolveConfig
 /// The first character a note head draws: its letter name's letter in the
 /// letter-name view (see `compiler::label_note_heads`), its digit
 /// otherwise (the guitar chord view's label follows the digit).
-fn note_head_leading_char(pitch: &JianPuPitch, head_label: Option<&NoteHeadLabel>) -> char {
+fn note_head_leading_char(pitch: &NumberedPitch, head_label: Option<&NoteHeadLabel>) -> char {
     head_label
         .filter(|label| label.replaces_degree())
         .and_then(|label| label.text.chars().next())

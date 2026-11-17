@@ -20,7 +20,7 @@ const STATUSES: LaneViewStatus[] = [
 function lane(status: LaneViewStatus): LaneView {
   return {
     fileId: `f-${status}`,
-    fileName: `${status}.jianpu`,
+    fileName: `${status}.poentaro`,
     status,
     sentence: `Sentence for ${status}`,
     messages: [{ kindLabel: 'Edit', sizeLabel: '2 KB', createdLabel: '10:01' }],
@@ -77,7 +77,7 @@ describe('SyncPanel', () => {
     const html = renderToStaticMarkup(
       <SyncPanel {...makeProps([lane(status)])} />,
     )
-    expect(html).toContain(`${status}.jianpu`)
+    expect(html).toContain(`${status}.poentaro`)
     expect(html).toContain(`Sentence for ${status}`)
     expect(html).toContain(`data-status="${status}"`)
   })

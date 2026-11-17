@@ -1,4 +1,4 @@
-const LOCK_NAME = 'jianpu-outbox-looper'
+const LOCK_NAME = 'poentaro-outbox-looper'
 
 /**
  * Runs `task` only in the one tab that holds the outbox looper lock. Other tabs wait

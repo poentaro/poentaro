@@ -10,9 +10,9 @@ import { Given, Then, When } from './fixtures'
  * Regression fixture for the click-and-click *lyric* (syllable row, not the
  * `LyricLabel` row) range gesture crossing a verse boundary — the same-part
  * counterpart to `lyric-range-select-crosses-part.feature`'s cross-part
- * case. Today `Lyric ↔ Lyric` is only ID-resolved for a same-part,
+ * case. Before this fix `Lyric ↔ Lyric` was only ID-resolved for a same-part,
  * same-verse pair (guarded on matching `verse`); a different-verse pair
- * falls through to `Err` and the caller falls back to 'lyric' mode's
+ * fell through to `Err` and the caller fell back to 'lyric' mode's
  * pixel-marquee path — see `resolve_selection_range_response` in
  * `selection_range.rs` and `PLAN-clickable-element-id-selection.md`'s
  * "cross-verse (same part)" writeup.
@@ -27,21 +27,21 @@ import { Given, Then, When } from './fixtures'
  * every note.
  */
 const source = [
-  '# metadata',
-  'title = "cross verse lyric range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "cross verse lyric range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody verse 1 [Mv1] = lyrics[M]',
-  'Melody verse 2 [Mv2] = lyrics[M]',
-  'Melody verse 3 [Mv3] = lyrics[M]',
+  'parts [',
+  '    "Melody" [M]: notes,',
+  '    "Melody verse 1" [Mv1]: lyrics [M],',
+  '    "Melody verse 2" [Mv2]: lyrics [M],',
+  '    "Melody verse 3" [Mv3]: lyrics [M],',
+  '],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — note ids 0-3
-  '[Mv1] do re mi fa', // verse 0
-  '[Mv2] la ti fa sol', // verse 1
-  '[Mv3] ho ho ho ho', // verse 2 — distractor, outside the swept verse range
+  'score """',
+  '[M] 1 2 3 4',
+  '[Mv1] do re mi fa',
+  '[Mv2] la ti fa sol',
+  '[Mv3] ho ho ho ho',
+  '""",',
 ].join('\n')
 
 function lyricInVerse(
@@ -59,13 +59,13 @@ Given(
   async ({ page }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'cross-verse-lyric-range-test.jianpu',
-          userFiles: { 'cross-verse-lyric-range-test.jianpu': src },
+          active: 'cross-verse-lyric-range-test.poentaro',
+          userFiles: { 'cross-verse-lyric-range-test.poentaro': src },
           bin: {},
           fileIds: {
-            'cross-verse-lyric-range-test.jianpu':
+            'cross-verse-lyric-range-test.poentaro':
               'cross-verse-lyric-range-test-id-001',
           },
         }),

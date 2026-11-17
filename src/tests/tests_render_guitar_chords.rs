@@ -1,14 +1,13 @@
 use super::*;
 
-const SOURCE: &str = "# parts
-S = notes
-C = chords
+const SOURCE: &str = r#"parts ["S": notes, "C": chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[S] 1 2 3 4
-[C] 1 6m 4 1sus27
-";
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    [C] 1 6m 4 1sus27
+    """,
+"#;
 
 /// The `data-guitar-frets` of every guitar diagram group, in document order.
 fn diagram_frets(svg: &str) -> Vec<String> {
@@ -21,7 +20,7 @@ fn diagram_frets(svg: &str) -> Vec<String> {
 fn render(note_labels: NoteLabels) -> String {
     render_svgs_from_source_with_visibility(
         SOURCE,
-        "test.jianpu",
+        "test.poentaro",
         &ResolvedPartVisibility::default(),
         &[],
         note_labels,
@@ -40,7 +39,7 @@ fn the_guitar_view_draws_a_diagram_for_every_chord_with_a_voicing() {
 }
 
 #[test]
-fn the_jianpu_view_draws_no_diagrams() {
+fn the_numbered_view_draws_no_diagrams() {
     assert_eq!(
         diagram_frets(&render(NoteLabels::Degrees)),
         Vec::<String>::new()

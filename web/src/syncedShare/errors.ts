@@ -26,6 +26,9 @@ export interface SyncedShareFailure {
   authRejected: boolean
   httpStatus?: number
   httpStatusText?: string
+  /** The worker's trace ID for this request; absent when the request never
+   * reached the worker. */
+  traceId?: string
   /** Redacted (see `redactSecrets`) raw response body, kept only for
    * failure shapes this client doesn't specifically recognize. */
   rawResponseBody?: string
@@ -83,6 +86,7 @@ export function buildSyncedShareFailure(
     }
   }
   const { apiError, response } = error
+  const traceId = error.traceId ?? undefined
   if (apiError?.code === 'unauthorized') {
     return {
       operation,
@@ -91,6 +95,7 @@ export function buildSyncedShareFailure(
       attempts: apiError.attempts,
       httpStatus: response.status,
       httpStatusText: response.statusText,
+      traceId,
       authRejected: true,
     }
   }
@@ -100,6 +105,7 @@ export function buildSyncedShareFailure(
     failedAt: Date.now(),
     httpStatus: response.status,
     httpStatusText: response.statusText,
+    traceId,
     rawResponseBody: redactSecrets(describeRawBody(error.rawBody)),
     authRejected: false,
   }

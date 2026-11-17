@@ -85,7 +85,7 @@ fn measure_highlight_produces_prepended_rect_element() {
     let abs = resolve(
         &[page],
         12.0,
-        40.0,
+        super::tests::TEST_PAGE_FRAME,
         ResolveFontSizes {
             lyric: LyricFontSizes {
                 base: 14.4,
@@ -147,7 +147,7 @@ fn error_highlight_resolves_to_absolute_error_highlight() {
     let abs_pages: Vec<AbsolutePage> = resolve(
         &[page],
         8.0,
-        40.0,
+        super::tests::TEST_PAGE_FRAME,
         ResolveFontSizes {
             lyric: LyricFontSizes {
                 base: 14.4,
@@ -199,7 +199,7 @@ fn page_with_no_highlight_produces_no_extra_element() {
     let abs = resolve(
         &[page],
         12.0,
-        40.0,
+        super::tests::TEST_PAGE_FRAME,
         ResolveFontSizes {
             lyric: LyricFontSizes {
                 base: 14.4,
@@ -274,7 +274,7 @@ fn playback_cursor_reaches_final_bar_line_of_its_measure() {
     let abs_pages = resolve(
         &[page],
         8.0,
-        40.0,
+        super::tests::TEST_PAGE_FRAME,
         ResolveFontSizes {
             lyric: LyricFontSizes {
                 base: 14.4,

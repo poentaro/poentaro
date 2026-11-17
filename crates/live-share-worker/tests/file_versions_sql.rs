@@ -24,7 +24,7 @@ async fn setup() -> Result<SqliteConnection, sqlx::Error> {
     connection.execute(FILE_VERSIONS).await?;
     add_user(&mut connection, "u1").await?;
     add_user(&mut connection, "u2").await?;
-    add_file(&mut connection, "f1", "u1", "a.jianpu", "v0\n").await?;
+    add_file(&mut connection, "f1", "u1", "a.poentaro", "v0\n").await?;
     Ok(connection)
 }
 

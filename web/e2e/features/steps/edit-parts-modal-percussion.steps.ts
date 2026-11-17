@@ -2,34 +2,28 @@ import { expect, test } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Chords [C] = chords',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M], "Chords" [C]: chords],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
-  '[Mv1] twin- kle twin- kle',
-  '[C] 1 - - -',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    [Mv1] twin- kle twin- kle',
+  '    [C] 1 - - -',
+  '    """,',
 ].join('\n')
 
 const PERCUSSION_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Drums [D] = percussion',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M], "Drums" [D]: percussion],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
-  '[Mv1] twin- kle twin- kle',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    [Mv1] twin- kle twin- kle',
+  '    """,',
 ].join('\n')
 
 async function loadSource(
@@ -38,12 +32,12 @@ async function loadSource(
 ) {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'test.jianpu',
-        userFiles: { 'test.jianpu': src },
+        active: 'test.poentaro',
+        userFiles: { 'test.poentaro': src },
         bin: {},
-        fileIds: { 'test.jianpu': crypto.randomUUID() },
+        fileIds: { 'test.poentaro': crypto.randomUUID() },
       }),
     )
   }, source)
@@ -80,7 +74,7 @@ async function getEditorSource(page: import('@playwright/test').Page) {
 
 async function getStoredSource(page: import('@playwright/test').Page) {
   return page.evaluate(() => {
-    const raw = localStorage.getItem('jianpu:files:v1')
+    const raw = localStorage.getItem('poentaro:files:v1')
     if (!raw) return ''
     const store = JSON.parse(raw) as {
       active: string

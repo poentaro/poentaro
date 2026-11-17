@@ -14,30 +14,27 @@ Given(
 
 function buildSource(): string {
   return [
-    '# metadata',
-    'title = "chord lyrics test"',
+    'metadata { title "chord lyrics test" },',
     '',
-    '# parts',
-    'c = chords',
-    'l = lyrics[c]',
+    'parts ["c": chords, "l": lyrics [c]],',
     '',
-    '# score',
-    'time=4/4 key=C4 bpm=120',
-    `[c] ${state.chords}`,
-    `[l] ${state.lyrics}`,
-    '',
+    'score """',
+    '    time=4/4 key=C4 bpm=120',
+    `    [c] ${state.chords}`,
+    `    [l] ${state.lyrics}`,
+    '    """,',
   ].join('\n')
 }
 
 When('the chord-lyrics score is rendered', async ({ page }) => {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'chord-lyrics-test.jianpu',
-        userFiles: { 'chord-lyrics-test.jianpu': src },
+        active: 'chord-lyrics-test.poentaro',
+        userFiles: { 'chord-lyrics-test.poentaro': src },
         bin: {},
-        fileIds: { 'chord-lyrics-test.jianpu': 'chord-lyrics-test-id-001' },
+        fileIds: { 'chord-lyrics-test.poentaro': 'chord-lyrics-test-id-001' },
       }),
     )
   }, buildSource())

@@ -1,4 +1,4 @@
-use crate::ast::parsed::{Accidental, JianPuPitch, Offset};
+use crate::ast::parsed::{Accidental, NumberedPitch, Offset};
 use crate::compiler::types::{
     ColumnElement, CompileResult, ElementContent, MeasureBlock, MeasureRow, RowId,
 };
@@ -34,7 +34,7 @@ fn notes_row_with_two_notes() -> MeasureRow {
             ColumnElement {
                 column: 0,
                 content: ElementContent::NoteHead {
-                    pitch: JianPuPitch::One,
+                    pitch: NumberedPitch::One,
                     accidental: Accidental::Natural,
                     octave: 0,
                     dotted: false,
@@ -46,7 +46,7 @@ fn notes_row_with_two_notes() -> MeasureRow {
             ColumnElement {
                 column: 1,
                 content: ElementContent::NoteHead {
-                    pitch: JianPuPitch::Two,
+                    pitch: NumberedPitch::Two,
                     accidental: Accidental::Natural,
                     octave: 0,
                     dotted: false,
@@ -81,6 +81,7 @@ fn lyric_verse_row() -> MeasureRow {
                 column: 0,
                 content: ElementContent::Lyric {
                     text: "Ho".to_string(),
+                    ruby: None,
                     note_id: 0,
                 },
                 note_id: None,
@@ -89,6 +90,7 @@ fn lyric_verse_row() -> MeasureRow {
                 column: 1,
                 content: ElementContent::Lyric {
                     text: "Ho".to_string(),
+                    ruby: None,
                     note_id: 0,
                 },
                 note_id: None,
@@ -158,8 +160,7 @@ fn playback_cursor_target_extends_over_its_lyric_verse_row() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -210,8 +211,7 @@ fn note_click_target_does_not_extend_over_its_lyric_verse_row() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;

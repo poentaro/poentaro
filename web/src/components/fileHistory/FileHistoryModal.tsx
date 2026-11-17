@@ -7,7 +7,7 @@ import type {
   FileVersionSummary,
 } from '../../storage/cloudBackendTypes'
 import { WorkerRequestError } from '../../syncedShare/workerClient'
-import { DiffLayoutToggle, JianpuDiffEditor } from '../JianpuDiffEditor'
+import { DiffLayoutToggle, PoentaroDiffEditor } from '../PoentaroDiffEditor'
 import { SpinnerLabel } from '../SpinnerLabel'
 import './FileHistory.css'
 
@@ -181,7 +181,7 @@ function VersionPane({
   return (
     <div className="file-history__pane">
       <div className="file-history__diff" data-testid="file-history-diff">
-        <JianpuDiffEditor
+        <PoentaroDiffEditor
           original={currentContent}
           modified={version.value.content}
           layout={layout}

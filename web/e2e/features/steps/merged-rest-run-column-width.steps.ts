@@ -30,14 +30,11 @@ function denseMeasureTokens(noteCount: number): string {
 
 function buildSource(): string {
   const lines: string[] = [
-    '# metadata',
-    'title = "merged rest run column width test"',
-    `max_measures_per_system = ${state.maxMeasuresPerSystem}`,
+    `metadata { title "merged rest run column width test", max measures per system ${state.maxMeasuresPerSystem} },`,
     '',
-    '# parts',
-    'Melody [M] = notes',
+    'parts ["Melody" [M]: notes],',
     '',
-    '# score',
+    'score """',
   ]
   for (const measure of state.measures) {
     const tokens =
@@ -46,7 +43,7 @@ function buildSource(): string {
         : '0 0 0 0'
     lines.push(`[M] ${tokens}`, '')
   }
-  return lines.join('\n')
+  return [...lines, '""",'].join('\n')
 }
 
 Given('parts Melody [M] are declared', async () => {
@@ -79,13 +76,13 @@ When('the merged-rest-run-column-width score is laid out', async ({ page }) => {
   const source = buildSource()
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'merged-rest-run-column-width-test.jianpu',
-        userFiles: { 'merged-rest-run-column-width-test.jianpu': src },
+        active: 'merged-rest-run-column-width-test.poentaro',
+        userFiles: { 'merged-rest-run-column-width-test.poentaro': src },
         bin: {},
         fileIds: {
-          'merged-rest-run-column-width-test.jianpu':
+          'merged-rest-run-column-width-test.poentaro':
             'merged-rest-run-column-width-test-id-001',
         },
       }),

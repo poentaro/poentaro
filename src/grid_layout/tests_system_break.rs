@@ -1,6 +1,6 @@
 // ── `break` directive: forces a new system at the marked measure ────────────
 
-use crate::ast::parsed::{JianPuPitch, Offset};
+use crate::ast::parsed::{NumberedPitch, Offset};
 use crate::compiler::types::{ColumnElement, ElementContent, MeasureBlock, MeasureRow, RowId};
 use crate::grid_layout::layout::pack_into_systems;
 use crate::render_config::RenderConfig;
@@ -16,7 +16,7 @@ fn make_block(row_id: &str, bar_col: u32, system_break: bool) -> MeasureBlock {
                 ColumnElement {
                     column: 0,
                     content: ElementContent::NoteHead {
-                        pitch: JianPuPitch::One,
+                        pitch: NumberedPitch::One,
                         accidental: crate::ast::parsed::Accidental::Natural,
                         octave: 0,
                         dotted: false,

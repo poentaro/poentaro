@@ -1,7 +1,7 @@
 Feature: The file tree highlights the folders holding the hovered row
 
   Background:
-    Given the file tree is seeded with files "Hymns/Advent/O Come.jianpu", "Hymns/Amazing.jianpu" and "Scratch.jianpu" and an empty folder "Empty" with "Scratch.jianpu" active
+    Given the file tree is seeded with files "Hymns/Advent/O Come.poentaro", "Hymns/Amazing.poentaro" and "Scratch.poentaro" and an empty folder "Empty" with "Scratch.poentaro" active
 
   Scenario: Hovering a nested file highlights exactly its folders
     When the file tree app loads
@@ -19,7 +19,7 @@ Feature: The file tree highlights the folders holding the hovered row
     Then the file tree highlights the ancestor folders "Hymns"
 
   Scenario: Without a hovered row, the active file's folders are highlighted
-    Given the file tree active file is "Hymns/Advent/O Come.jianpu"
+    Given the file tree active file is "Hymns/Advent/O Come.poentaro"
     When the file tree app loads
     And I open the file tree list
     And I hover the file tree file "Scratch"

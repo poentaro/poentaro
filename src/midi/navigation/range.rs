@@ -1,7 +1,7 @@
 use crate::ast::grouped::Score;
 use crate::error::IrrecoverableError;
 
-use super::{build_expanded, expand_navigation_with_origins};
+use super::{build_expanded, expand_navigation_with_origins, playback_measures};
 
 /// Smallest position `>= min_pos` in `origins` whose value equals
 /// `written_index`, i.e. the earliest playback position (at or after
@@ -19,15 +19,15 @@ pub fn earliest_playback_position(
         .map(|(pos, _)| pos)
 }
 
-/// Resolves a `start..=end` range of **`# sequence` entry indices** (0-based
+/// Resolves a `start..=end` range of **`sequence` entry indices** (0-based
 /// positions in `score.sequence`, i.e. the order entries are written in
-/// `# sequence` — not written measure indices) directly into their playback
+/// `sequence` — not written measure indices) directly into their playback
 /// position range, by summing each entry's own span length instead of
 /// searching `origins` for the earliest/last occurrence of a written measure
 /// index.
 ///
 /// This sidesteps an ambiguity `expand_for_measure_range` can't resolve on
-/// its own: when a label recurs in `# sequence` (e.g. `A, B(-x), B`), every
+/// its own: when a label recurs in `sequence` (e.g. `A, B(-x), B`), every
 /// occurrence of `B` shares the same written measure range, so matching by
 /// written index alone always finds the *first* occurrence — the second
 /// `B` (or a `B(-x)`-then-`B` swap) is unreachable that way. Since the
@@ -44,12 +44,7 @@ fn expand_for_sequence_entry_range(
     entry_range: std::ops::RangeInclusive<usize>,
 ) -> (Score, usize, usize) {
     let (entry_start, entry_end) = (*entry_range.start(), *entry_range.end());
-    let idx: Vec<(usize, &[String])> = score
-        .sequence
-        .iter()
-        .flatten()
-        .flat_map(|span| (span.start..=span.end).map(move |i| (i, span.omit_parts.as_slice())))
-        .collect();
+    let playback = playback_measures(score.sequence.as_deref().unwrap_or_default());
     let mut position = 0usize;
     let mut start_pos = 0usize;
     let mut end_pos = 0usize;
@@ -63,7 +58,7 @@ fn expand_for_sequence_entry_range(
         }
         position += len;
     }
-    let (expanded, _origins) = build_expanded(score, &idx);
+    let (expanded, _origins) = build_expanded(score, &playback);
     (expanded, start_pos, end_pos)
 }
 
@@ -81,13 +76,13 @@ fn expand_for_sequence_entry_range(
 ///   `start`'s position, so that selecting an exact written range (e.g. the
 ///   web app's "play current measure", where `start == end`) plays only
 ///   that occurrence instead of overrunning into a later repeat pass.
-/// - If `respect_sequence` is `false`, `# sequence`
+/// - If `respect_sequence` is `false`, `sequence`
 ///   (including any `(-abbrev ...)` part omissions it applies to a given
 ///   occurrence) are ignored entirely: the range is returned unchanged
 ///   against the literal written score, so e.g. "play current measure"
 ///   always plays the measure exactly as written, regardless of which
-///   occurrence(s) of it a `# sequence` entry might otherwise select.
-/// - `sequence_entry_range`, when `Some`, names the exact `# sequence`
+///   occurrence(s) of it a `sequence` entry might otherwise select.
+/// - `sequence_entry_range`, when `Some`, names the exact `sequence`
 ///   entry/entries to play by their 0-based index into `score.sequence`
 ///   (see [`expand_for_sequence_entry_range`]) instead of resolving
 ///   `start_index`/`end_index` by written-index search — the only way to

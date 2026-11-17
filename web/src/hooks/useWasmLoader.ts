@@ -22,7 +22,7 @@ export function useWasmLoader(): WasmLoaderState {
     })
 
     // Instantiate, not just compile: the preview's click resolvers call
-    // `jianpuWasm()` synchronously, and a Synced/shared viewer mounts nothing
+    // `poentaroWasm()` synchronously, and a Synced/shared viewer mounts nothing
     // else that would instantiate the component before the first click.
     ensureWasmInit()
       .then(() => {

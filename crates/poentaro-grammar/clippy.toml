@@ -1,0 +1,2 @@
+# The code in this crate is generated, so it is checked with Clippy's default
+# settings rather than the repository's stricter ones in the root clippy.toml.

@@ -25,9 +25,8 @@ fn bar_number_click_target_sits_in_the_directive_row_above_the_musical_rows() {
     // `MeasureClickTarget` covers — so its own click target needs its own
     // row, not `MeasureClickTarget::row_start`/`row_end`.
     //
-    // `no_header()` still emits one row (the always-present, possibly-empty
-    // subtitle/author row — see `make_header_rows`), so the layout here is:
-    // row 0 = header, row 1 = directive line (bar number).
+    // `no_header()` has no title/subtitle/author, so `make_header_rows`
+    // emits no rows and the directive line (bar number) is row 0.
     let page_systems: Vec<Vec<Vec<MeasureBlock>>> =
         vec![vec![vec![block_with_directive(4, None, 1)]]];
 
@@ -40,7 +39,7 @@ fn bar_number_click_target_sits_in_the_directive_row_above_the_musical_rows() {
     );
 
     let (_, target) = targets.first().expect("one bar-number click target");
-    assert_eq!(target.row, 1, "should sit in the directive row, not row 0");
+    assert_eq!(target.row, 0, "should sit in the directive row");
     assert_eq!(
         target.column, LABEL_COLS,
         "the system's first block's bar number sits at its leading barline column"

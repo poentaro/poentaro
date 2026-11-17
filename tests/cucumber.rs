@@ -16,8 +16,8 @@
 
 use cucumber::gherkin::Step;
 use cucumber::{given, then, when, World as _};
-use jianpu_generator::ast::grouped::MultiPartMeasure;
-use jianpu_generator::compile;
+use poentaro::ast::grouped::MultiPartMeasure;
+use poentaro::compile;
 
 #[derive(Debug, Clone, Default)]
 struct PartSnapshot {
@@ -34,7 +34,7 @@ struct MeasureSnapshot {
 }
 
 #[derive(Debug, Default, cucumber::World)]
-struct JianpuWorld {
+struct PoentaroWorld {
     source: String,
     measures: Vec<MeasureSnapshot>,
 }
@@ -73,13 +73,13 @@ fn lyric_verses_of(measure: &MultiPartMeasure, target: &str) -> Vec<Vec<String>>
 }
 
 #[given(expr = "the score source:")]
-fn given_score_source(world: &mut JianpuWorld, step: &Step) {
+fn given_score_source(world: &mut PoentaroWorld, step: &Step) {
     world.source = step.docstring().cloned().unwrap_or_default();
 }
 
 #[when(expr = "it is compiled")]
-fn when_compiled(world: &mut JianpuWorld) {
-    let score = compile(&world.source, "test.jianpu", &[])
+fn when_compiled(world: &mut PoentaroWorld) {
+    let score = compile(&world.source, "test.poentaro", &[])
         .unwrap_or_else(|err| panic!("compile returned an irrecoverable error: {}", err.message()));
     world.measures = score
         .measures
@@ -105,7 +105,7 @@ fn when_compiled(world: &mut JianpuWorld) {
 }
 
 #[then(expr = "part {string} measure {int} has {int} note event(s)")]
-fn then_note_event_count(world: &mut JianpuWorld, name: String, measure: usize, count: usize) {
+fn then_note_event_count(world: &mut PoentaroWorld, name: String, measure: usize, count: usize) {
     let m = &world.measures[measure - 1];
     let part = find_part(m, &name);
     assert_eq!(
@@ -116,7 +116,7 @@ fn then_note_event_count(world: &mut JianpuWorld, name: String, measure: usize, 
 }
 
 #[then(expr = "part {string} measure {int} has {int} lyric verse(s)")]
-fn then_lyric_verse_count(world: &mut JianpuWorld, name: String, measure: usize, count: usize) {
+fn then_lyric_verse_count(world: &mut PoentaroWorld, name: String, measure: usize, count: usize) {
     let m = &world.measures[measure - 1];
     let part = find_part(m, &name);
     assert_eq!(
@@ -129,7 +129,7 @@ fn then_lyric_verse_count(world: &mut JianpuWorld, name: String, measure: usize,
 
 #[then(expr = "part {string} measure {int} verse {int} has syllables {string}")]
 fn then_verse_syllables(
-    world: &mut JianpuWorld,
+    world: &mut PoentaroWorld,
     name: String,
     measure: usize,
     verse: usize,
@@ -151,7 +151,7 @@ fn then_verse_syllables(
 
 #[then(expr = "part {string} measure {int} verse {int} has {int} syllables")]
 fn then_verse_syllable_count(
-    world: &mut JianpuWorld,
+    world: &mut PoentaroWorld,
     name: String,
     measure: usize,
     verse: usize,
@@ -168,7 +168,7 @@ fn then_verse_syllable_count(
 }
 
 #[then(expr = "measure {int} has no diagnostics")]
-fn then_no_diagnostics(world: &mut JianpuWorld, measure: usize) {
+fn then_no_diagnostics(world: &mut PoentaroWorld, measure: usize) {
     let m = &world.measures[measure - 1];
     assert!(
         m.diagnostics.is_empty(),
@@ -179,5 +179,5 @@ fn then_no_diagnostics(world: &mut JianpuWorld, measure: usize) {
 
 #[tokio::main]
 async fn main() {
-    JianpuWorld::run("tests/features/lyric_parts.feature").await;
+    PoentaroWorld::run("tests/features/lyric_parts.feature").await;
 }

@@ -15,27 +15,26 @@ import { Given, Then, When } from './fixtures'
  * (or fail to show) a cursor highlight at all.
  */
 const source = [
-  '# metadata',
-  'title = "playback cursor export test"',
+  'metadata { title "playback cursor export test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1',
+  '    """,',
 ].join('\n')
 
 Given('the playback-cursor export test fixture is loaded', async ({ page }) => {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'playback-cursor-export-test.jianpu',
-        userFiles: { 'playback-cursor-export-test.jianpu': src },
+        active: 'playback-cursor-export-test.poentaro',
+        userFiles: { 'playback-cursor-export-test.poentaro': src },
         bin: {},
         fileIds: {
-          'playback-cursor-export-test.jianpu':
+          'playback-cursor-export-test.poentaro':
             'playback-cursor-export-test-id-001',
         },
       }),

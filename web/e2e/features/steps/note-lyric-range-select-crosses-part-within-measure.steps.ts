@@ -12,7 +12,7 @@ import { Given, Then, When } from './fixtures'
  * `Note ↔ Lyric` counterpart to
  * `note-range-select-crosses-part-within-measure.feature`'s `Note ↔ Note`
  * case. `cross_part` in
- * `crates/jianpu-wasm/src/selection_range/note_lyric.rs` still ranges only
+ * `crates/poentaro-wasm/src/selection_range/note_lyric.rs` still ranges only
  * by `measure_index`, so two clicks landing in the same measure on
  * different parts (e.g. note 0 of `1 2 3`/"do re mi" on one part, syllable
  * 1 of `4 5 6`/"fa so la" on another) wrongly selects that whole measure's
@@ -27,21 +27,21 @@ import { Given, Then, When } from './fixtures'
  * syllable (position 2) unselected.
  */
 const source = [
-  '# metadata',
-  'title = "cross part within measure note lyric range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "cross part within measure note lyric range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Harmony [H] = notes',
-  'Harmony lyrics [Hv1] = lyrics[H]',
+  'parts [',
+  '    "Melody" [M]: notes,',
+  '    "Melody lyrics" [Mv1]: lyrics [M],',
+  '    "Harmony" [H]: notes,',
+  '    "Harmony lyrics" [Hv1]: lyrics [H],',
+  '],',
   '',
-  '# score',
-  '[M] 1 2 3', // measure 0 — Melody notes at position 0, 1, 2
-  '[Mv1] do re mi', // Melody verse 0
-  '[H] 4 5 6', // measure 0 — Harmony notes at position 0, 1, 2
-  '[Hv1] fa so la', // Harmony verse 0
+  'score """',
+  '[M] 1 2 3',
+  '[Mv1] do re mi',
+  '[H] 4 5 6',
+  '[Hv1] fa so la',
+  '""",',
 ].join('\n')
 
 // A note renders as two sibling `[data-tag="note"]` groups sharing the same
@@ -86,15 +86,15 @@ Given(
   async ({ page }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'cross-part-within-measure-note-lyric-range-test.jianpu',
+          active: 'cross-part-within-measure-note-lyric-range-test.poentaro',
           userFiles: {
-            'cross-part-within-measure-note-lyric-range-test.jianpu': src,
+            'cross-part-within-measure-note-lyric-range-test.poentaro': src,
           },
           bin: {},
           fileIds: {
-            'cross-part-within-measure-note-lyric-range-test.jianpu':
+            'cross-part-within-measure-note-lyric-range-test.poentaro':
               'cross-part-within-measure-note-lyric-range-test-id-001',
           },
         }),

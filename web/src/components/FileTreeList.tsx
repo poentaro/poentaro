@@ -8,7 +8,7 @@ import {
 } from '@radix-ui/react-icons'
 import { type CSSProperties, useState } from 'react'
 import { displayFileName } from '../fileStore'
-import type { CheckState, FileTreeViewRow } from '../jianpuWasm'
+import type { CheckState, FileTreeViewRow } from '../poentaroWasm'
 import { FileTabName } from './FileTabName'
 import { type FolderActions, FolderRowMenu } from './FolderRowMenu'
 import { HighlightedName } from './HighlightedName'

@@ -4,9 +4,17 @@ mod events;
 mod metadata_access;
 mod metadata_keys;
 mod pitch;
+mod pitch_range;
+mod preset;
+mod range_instrument;
+mod singing_voice;
 pub use events::*;
 pub use metadata_keys::*;
 pub use pitch::*;
+pub use pitch_range::*;
+pub use preset::*;
+pub use range_instrument::*;
+pub use singing_voice::*;
 
 #[derive(Debug)]
 pub enum ParsedMeasureSlot {
@@ -29,16 +37,17 @@ pub struct ParsedLyrics {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Soundfont(pub u8);
 
-impl Default for Soundfont {
-    fn default() -> Self {
-        Self(52) // Choir Aahs
-    }
+impl Soundfont {
+    pub const ACOUSTIC_GRAND_PIANO: Self = Self(0);
+    pub const CHOIR_AAHS: Self = Self(52);
+    /// A GM percussion key (not a program), for `percussion` parts.
+    pub const ACOUSTIC_SNARE: Self = Self(38);
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PartDecl {
     pub abbreviation: String,
-    /// Byte span of the abbreviation token on its `# parts` declaration line,
+    /// Byte span of the abbreviation token on its `parts` declaration line,
     /// used by rename-symbol to locate the declaration site.
     pub abbreviation_span: Span,
     pub display_name: String,
@@ -48,6 +57,79 @@ pub struct PartDecl {
     pub volume: u8,
     /// MIDI-only octave shift applied to every note in this part (−4..=+4).
     pub octave_offset: i8,
+    /// The instrument whose range this part's notes are checked against;
+    /// `None` checks nothing. A follow part inherits its target's.
+    pub range_instrument: Option<RangeInstrument>,
+    /// The range a `range` option writes, which this part's notes are
+    /// checked against in place of its instrument's. A follow part inherits
+    /// its target's unless it writes its own or names its own instrument.
+    pub written_range: Option<PitchRange>,
+    /// The voice a `notes` part sings in instead of playing `soundfont`
+    /// (`sound: chimera soprano`, or a choral instrument's default). `None`
+    /// on every other part.
+    pub singing_voice: Option<SingingVoice>,
+    /// Every part a lyric part's syllables are sung on (`lyrics [S, A, T, B]`),
+    /// as indices into the declaration list, in written order. Empty on other
+    /// parts. `PartKind::Lyrics::target_part_index` is the bottommost of them.
+    pub lyric_targets: Vec<usize>,
+    /// Set on a part's 2nd, 3rd, … line: the extra row a measure group gets
+    /// when it writes a part's `[Key]` line more than once (see `syntax.md`,
+    /// "Alternative lines"). `None` on every declared part.
+    pub alternative_line: Option<AlternativeLine>,
+}
+
+/// Which line of which declared part an alternative-line part holds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlternativeLine {
+    /// The declared part's abbreviation.
+    pub base: String,
+    /// The line's 1-based number among the part's lines; always 2 or more.
+    pub number: u32,
+}
+
+impl AlternativeLine {
+    /// The alternative line's own abbreviation, `S.2`: `.` can't appear in
+    /// a written abbreviation, so it never clashes with a declared part.
+    pub fn abbreviation(&self) -> String {
+        format!("{}.{}", self.base, self.number)
+    }
+
+    /// The alternative line an abbreviation like `S.2` names; `None` for a
+    /// declared part's.
+    pub fn of(abbreviation: &str) -> Option<Self> {
+        let (base, number) = abbreviation.rsplit_once('.')?;
+        let number = number.parse::<u32>().ok().filter(|number| *number >= 2)?;
+        Some(Self {
+            base: base.to_string(),
+            number,
+        })
+    }
+}
+
+/// What a part's notes are checked against: its written range, or else its
+/// instrument's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckedRange {
+    Written(PitchRange),
+    Instrument(RangeInstrument),
+}
+
+impl CheckedRange {
+    pub fn pitches(self) -> PitchRange {
+        match self {
+            Self::Written(range) => range,
+            Self::Instrument(instrument) => instrument.range(),
+        }
+    }
+
+    /// Whose range it is, as the out-of-range warning says it: `the part's`,
+    /// `the violin's`.
+    pub fn owner(self) -> String {
+        match self {
+            Self::Written(_) => "the part's".to_string(),
+            Self::Instrument(instrument) => format!("the {}'s", instrument.keyword()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -57,7 +139,8 @@ pub enum PartKind {
     Percussion,
     /// A `lyrics[X]` part: one verse of lyrics sung along to the notes of the
     /// part at `target_part_index` (an index into the declaration list, always
-    /// before this part). It has no notes of its own.
+    /// before this part; the bottommost when it names several, see
+    /// `PartDecl::lyric_targets`). It has no notes of its own.
     Lyrics {
         target_part_index: usize,
     },
@@ -68,6 +151,16 @@ impl PartKind {
     /// target's notes.
     pub fn sounds(self) -> bool {
         !matches!(self, Self::Lyrics { .. })
+    }
+
+    /// The soundfont a concrete part of this kind plays with when its
+    /// declaration names none.
+    pub fn default_soundfont(self) -> Soundfont {
+        match self {
+            Self::Chords | Self::Notes => Soundfont::ACOUSTIC_GRAND_PIANO,
+            Self::Percussion => Soundfont::ACOUSTIC_SNARE,
+            Self::Lyrics { .. } => Soundfont::CHOIR_AAHS,
+        }
     }
 }
 
@@ -85,6 +178,13 @@ pub struct ScoreLineSlot {
 }
 
 impl PartDecl {
+    /// The range this part's notes are checked against, if any.
+    pub fn checked_range(&self) -> Option<CheckedRange> {
+        self.written_range
+            .map(CheckedRange::Written)
+            .or(self.range_instrument.map(CheckedRange::Instrument))
+    }
+
     /// The one score line a part owns in each measure group.
     pub fn score_line_role(&self) -> ScoreLineRole {
         match self.kind {
@@ -108,6 +208,10 @@ pub struct ParsedTimedTrack {
     pub soundfont: Soundfont,
     pub volume: u8,
     pub octave_offset: i8,
+    pub range_instrument: Option<RangeInstrument>,
+    pub singing_voice: Option<SingingVoice>,
+    /// A lyric part's `PartDecl::lyric_targets`; empty on other parts.
+    pub lyric_targets: Vec<usize>,
     pub measure_slots: Vec<ParsedMeasureSlot>,
     pub lyrics: Option<ParsedLyrics>,
     /// Per-measure beat-overflow error (None = no overflow for that measure).
@@ -136,7 +240,7 @@ pub struct ParsedSlurGroup {
 }
 
 /// One `[Abbrev]` key-prefix reference to a part or group abbreviation in the
-/// `# score` section, with the abbreviation text's own byte span (excluding
+/// `score` section, with the abbreviation text's own byte span (excluding
 /// the surrounding brackets and whitespace). Used by rename-symbol to locate
 /// this reference site; kept separate from the wider bracket span used by
 /// `RecoverableError::part_key_unknown`, which must keep covering `[Abbrev]`.
@@ -152,7 +256,7 @@ pub struct ParsedDocument {
     pub declarations: Vec<PartDecl>,
     pub tracks: Vec<ParsedTrack>,
     pub directive_events_per_measure: Vec<Vec<Spanned<ScoreEvent>>>,
-    /// Every `[Abbrev]` key-prefix reference found in the `# score` section,
+    /// Every `[Abbrev]` key-prefix reference found in the `score` section,
     /// in file order. Used by rename-symbol to find all reference sites.
     pub abbreviation_references: Vec<AbbreviationReference>,
     /// Per-measure recoverable errors from desugaring (e.g. missing lyrics line).
@@ -163,11 +267,15 @@ pub struct ParsedDocument {
     pub parts_parse_errors: Vec<RecoverableError>,
     /// Recoverable errors from section structure validation (unknown/duplicate/missing sections).
     pub section_structure_errors: Vec<RecoverableError>,
-    /// The parsed `# sequence` section, if present: an ordered list of
+    /// The parsed `sequence` section, if present: an ordered list of
     /// section-label references defining explicit playback order.
     pub sequence: Option<crate::parser::sequence_parser::SequenceSection>,
-    /// Recoverable errors from parsing the `# sequence` section (e.g. empty entries).
+    /// Recoverable errors from parsing the `sequence` section (e.g. empty entries).
     pub sequence_parse_errors: Vec<RecoverableError>,
+    /// Every valid `preset` section, in file order.
+    pub presets: Vec<ParsedPreset>,
+    /// Errors and warnings from the `preset` sections.
+    pub preset_diagnostics: Vec<Diagnostic>,
 }
 
 keyword_enum! {
@@ -220,13 +328,16 @@ pub struct ParsedMetadata {
     /// `part_label_style`, since it's a layout constant rather than a text
     /// style component.
     pub part_label_width_pt: Option<u32>,
+    /// Blank margin (points) on every side of the page (see
+    /// `Metadata::page_margin_pt`).
+    pub page_margin_pt: Option<u32>,
     /// Title text style.
     pub title_style: TextStyle,
     /// Subtitle text style.
     pub subtitle_style: TextStyle,
     /// Author text style.
     pub author_style: TextStyle,
-    /// `# sequence` summary line text style.
+    /// `sequence` summary line text style.
     pub sequence_style: TextStyle,
     /// Part-name legend entry text style.
     pub part_legend_style: TextStyle,
@@ -236,6 +347,8 @@ pub struct ParsedMetadata {
     pub section_label_style: TextStyle,
     /// Page-number footer text style.
     pub page_number_style: TextStyle,
+    /// Running-title text style (the small title on pages after the first).
+    pub running_title_style: TextStyle,
     /// Part row-label text style (see `Metadata::part_label`).
     pub part_label_style: TextStyle,
     /// Lyric syllable text style, including the click-target's extra vertical
@@ -258,7 +371,7 @@ pub struct ParsedMetadata {
     pub hide_system_dividers: Option<bool>,
     /// Translation in points applied to every rendered directive row (bar number, section
     /// label, key, bpm, time signature, nav markers), after layout (see
-    /// `renderer::new_renderer::render_directive_line`). Not applied to the `# sequence`
+    /// `renderer::new_renderer::render_directive_line`). Not applied to the `sequence`
     /// summary header. Default: `(0, 0)`.
     pub directive_row_offset: Option<Offset>,
 }

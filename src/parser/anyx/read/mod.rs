@@ -1,0 +1,149 @@
+//! Reads an anyx document's tree into the document it describes.
+
+mod metadata;
+mod parts;
+mod preset;
+mod sequence;
+mod written_range;
+
+use anyx::StringLiteral;
+
+use super::decoded::{content_span, decode, invalid};
+use crate::ast::parsed::ParsedMetadata;
+use crate::error::{DocumentSection, RecoverableError, Span};
+use crate::parser::parts_parser::{InstrumentInfo, SourceRawPartDecl};
+use crate::parser::{ReadDocument, ScoreText};
+use poentaro_grammar::Spanned;
+
+pub(crate) use metadata::read_metadata_field;
+pub(crate) use preset::notation_of;
+
+/// Reads `source`'s tree. `instruments` names the sound a `sound : N` option picks.
+pub(crate) fn read(source: &str, instruments: &[InstrumentInfo]) -> ReadDocument {
+    let decoded = decode(source);
+    let doc_span = Span::new(0, source.len());
+    let document = &decoded.document;
+    let mut section_structure_errors = decoded.errors.clone();
+
+    let (metadata, metadata_parse_errors) = match &document.metadata {
+        Some(section) => metadata::read_metadata(&section.fields),
+        None => (ParsedMetadata::default(), Vec::new()),
+    };
+    if document.parts.is_none() {
+        section_structure_errors.push(RecoverableError::section_missing(
+            doc_span,
+            DocumentSection::Parts,
+        ));
+    }
+    let (declarations, parts_parse_errors) = parts::read_parts(
+        document.parts.as_ref().map(|section| &section.parts),
+        doc_span,
+        instruments,
+    );
+    if document.score.is_none() {
+        section_structure_errors.push(RecoverableError::section_missing(
+            doc_span,
+            DocumentSection::Score,
+        ));
+    }
+    let score = document
+        .score
+        .as_ref()
+        .map_or(Ok(empty_score()), |section| {
+            score_text(&section.text, source)
+        })
+        .unwrap_or_else(|error| {
+            section_structure_errors.push(error);
+            empty_score()
+        });
+    let presets = preset::read_presets(&document.preset, &declarations);
+    let (sequence, sequence_parse_errors) = match &document.sequence {
+        Some(section) => sequence::read_sequence(&section.entries),
+        None => (None, Vec::new()),
+    };
+    ReadDocument {
+        metadata,
+        metadata_parse_errors,
+        declarations,
+        parts_parse_errors,
+        section_structure_errors,
+        score,
+        presets,
+        sequence,
+        sequence_parse_errors,
+    }
+}
+
+/// `source`'s part declarations before follow inheritance.
+pub(crate) fn source_part_declarations(
+    source: &str,
+    errors: &mut Vec<RecoverableError>,
+    instruments: &[InstrumentInfo],
+) -> Vec<SourceRawPartDecl> {
+    let raw = decode(source)
+        .document
+        .parts
+        .map(|section| parts::raw_parts(&section.parts, instruments, errors))
+        .unwrap_or_default();
+    crate::parser::parts_parser::source_declarations(raw, source)
+}
+
+fn empty_score() -> ScoreText {
+    ScoreText {
+        text: String::new(),
+        offset: 0,
+    }
+}
+
+/// The score string's source text, which the score parser reads as it is. Its
+/// spans are spans in the document. A comment in it is a `//` line, as in any
+/// score, so it is blanked here, keeping offsets.
+fn score_text(
+    literal: &Spanned<StringLiteral>,
+    source: &str,
+) -> Result<ScoreText, RecoverableError> {
+    if literal.pieces.iter().any(|piece| !piece.verbatim) {
+        return Err(invalid(
+            literal.span,
+            "write the score as a raw string, without escapes, like `score \"\"\" … \"\"\"`",
+        ));
+    }
+    let content = content_span(literal);
+    Ok(ScoreText {
+        text: strip_comments(source.get(content.start..content.end).unwrap_or_default()),
+        offset: content.start,
+    })
+}
+
+/// Blanks out `//` line comments with spaces, preserving byte length and line
+/// structure so downstream byte offsets (used in error spans) stay valid.
+/// A `//` inside a double-quoted string (e.g. `title = "http://example.com"`)
+/// does not start a comment.
+fn strip_comments(input: &str) -> String {
+    let mut out = Vec::with_capacity(input.len());
+    let mut in_string = false;
+    let mut in_comment = false;
+    let mut bytes = input.as_bytes().iter().copied().peekable();
+    while let Some(byte) = bytes.next() {
+        match byte {
+            b'\n' => {
+                in_string = false;
+                in_comment = false;
+                out.push(byte);
+            }
+            b'"' if !in_comment => {
+                in_string = !in_string;
+                out.push(byte);
+            }
+            b'/' if !in_string && !in_comment && bytes.peek() == Some(&b'/') => {
+                in_comment = true;
+                out.push(b' ');
+            }
+            _ => out.push(if in_comment { b' ' } else { byte }),
+        }
+    }
+    // Every replaced byte is either an ASCII space or an unmodified original
+    // byte, so `out` stays valid UTF-8 even where a multi-byte character was
+    // blanked out.
+    String::from_utf8(out).unwrap_or_default()
+}

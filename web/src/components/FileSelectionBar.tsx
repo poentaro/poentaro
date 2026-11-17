@@ -18,7 +18,11 @@ import {
   selectionUnits,
 } from '../fileStoreQueries'
 import type { FileSelection } from '../hooks/useFileSelection'
-import type { SelectionMove, SelectionUnit, ShareOverview } from '../jianpuWasm'
+import type {
+  SelectionMove,
+  SelectionUnit,
+  ShareOverview,
+} from '../poentaroWasm'
 import { DeleteSelectionDialog } from './DeleteSelectionDialog'
 import { MoveToDialog } from './MoveToDialog'
 import { RenameFileDialog } from './RenameFileDialog'

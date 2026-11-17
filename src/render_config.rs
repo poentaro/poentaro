@@ -9,6 +9,9 @@ pub struct RenderConfig {
     pub row_height: u32,
     pub note_number_width: u32,
     pub part_label_width_pt: u32,
+    /// Blank margin in points on every side of the page (see
+    /// `Metadata::page_margin_pt`).
+    pub page_margin_pt: u32,
     pub max_measures_per_system: u32,
     pub lyrics_font_size: u32,
     pub notes_font_size: u32,
@@ -107,11 +110,21 @@ pub struct RenderConfig {
 }
 
 impl RenderConfig {
+    /// The page margin and part-label column every page is laid out in (see
+    /// `grid_layout::PageFrame`).
+    pub fn page_frame(&self) -> crate::grid_layout::PageFrame {
+        crate::grid_layout::PageFrame {
+            margin_pt: self.page_margin_pt as f32,
+            part_label_width_pt: self.part_label_width_pt as f32,
+        }
+    }
+
     pub fn from_metadata(meta: &Metadata) -> Self {
         RenderConfig {
             row_height: meta.row_height,
             note_number_width: meta.note_number_width,
             part_label_width_pt: meta.part_label_width_pt,
+            page_margin_pt: meta.page_margin_pt,
             max_measures_per_system: meta.max_measures_per_system,
             lyrics_font_size: meta.lyrics.font_size,
             notes_font_size: meta.notes.font_size,
@@ -304,6 +317,7 @@ mod tests {
             max_measures_per_system: 6,
             parts_list_columns: 3,
             part_label_width_pt: 40,
+            page_margin_pt: 25,
             lyrics: crate::ast::grouped::TextStyle {
                 vertical_padding_pt: 12,
                 ..text_style(18)
@@ -333,6 +347,7 @@ mod tests {
                 vertical_padding_pt: 4,
                 ..text_style(18)
             },
+            running_title: text_style(12),
         };
         let cfg = RenderConfig::from_metadata(&meta);
         assert_eq!(cfg.row_height, 30);

@@ -2,7 +2,7 @@ Feature: Show the selected note/chord's letter names in a bottom drawer
 
   # When a click-and-click selection in the preview settles on exactly one
   # note (notes part) or one chord (chords part), a drawer slides up from the
-  # bottom of the preview showing what that jianpu symbol means in letter
+  # bottom of the preview showing what that numbered symbol means in letter
   # names, resolved against the key in effect at that measure. Chords also
   # get a guitar chord diagram for every
   # voicing chords-db knows.

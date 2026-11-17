@@ -8,17 +8,17 @@ import {
 import { keepBoth } from './keepBoth'
 
 const state: FileStoreState = {
-  active: 'a.jianpu',
-  userFiles: { 'a.jianpu': 'local text' },
+  active: 'a.poentaro',
+  userFiles: { 'a.poentaro': 'local text' },
   bin: {},
-  fileIds: { 'a.jianpu': 'id-a' },
+  fileIds: { 'a.poentaro': 'id-a' },
 }
 
 const listing = jsonResponse(200, {
   files: [
     {
       id: 'id-a',
-      name: 'a.jianpu',
+      name: 'a.poentaro',
       content: 'server text',
       revision: 4,
       trashedAt: null,
@@ -46,7 +46,7 @@ async function run() {
 describe('keepBoth', () => {
   it('saves the local text as a copy named with the date', async () => {
     const { next } = await run()
-    expect(next.userFiles['a (conflicted copy 2026-10-10).jianpu']).toBe(
+    expect(next.userFiles['a (conflicted copy 2026-10-10).poentaro']).toBe(
       'local text',
     )
   })
@@ -60,7 +60,7 @@ describe('keepBoth', () => {
         .map((request) => request.clone().json()),
     )
     expect(bodies[0]).toMatchObject({
-      name: 'a (conflicted copy 2026-10-10).jianpu',
+      name: 'a (conflicted copy 2026-10-10).poentaro',
       content: 'local text',
     })
     expect(harness.looper.snapshot().summary.hasUnsynced).toBe(false)
@@ -68,7 +68,7 @@ describe('keepBoth', () => {
 
   it('reverts the original to the server version and keeps it open', async () => {
     const { next } = await run()
-    expect(next.userFiles['a.jianpu']).toBe('server text')
-    expect(next.active).toBe('a.jianpu')
+    expect(next.userFiles['a.poentaro']).toBe('server text')
+    expect(next.active).toBe('a.poentaro')
   })
 })

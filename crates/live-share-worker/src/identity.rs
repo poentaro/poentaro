@@ -19,8 +19,9 @@ const SESSION_REJECTED_REASON: &str =
 ///
 /// 1. Hash the token (SHA-256; the raw token is never stored) and look up
 ///    an unexpired `sessions` row.
-/// 2. If there is one, slide its expiry forward when it's due
-///    (`auth::session::extended_expiry`) and return its user.
+/// 2. If there is one, note its user in `request_meta` (for the request's
+///    `app_log` row, should it fail later), slide its expiry forward when
+///    it's due (`auth::session::extended_expiry`) and return its user.
 /// 3. If not, log `SessionRejected` and return the inner `Err`.
 ///
 /// The split between the two `Err`s matters to the web app
@@ -49,6 +50,9 @@ pub(crate) async fn resolve_verified_user_id(
         }));
     };
 
+    request_meta
+        .resolved_user_id
+        .replace(Some(session.user_id.clone()));
     if let Some(expires_at) = extended_expiry(session.expires_at, now) {
         db::extend_session(db, &token_hash, expires_at).await?;
     }

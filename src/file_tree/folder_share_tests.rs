@@ -41,12 +41,12 @@ fn overview(files: &[&str], folders: &[&str]) -> ShareOverview {
 fn a_path_inside_a_shared_folder_names_the_innermost_one() {
     let shares = overview(&[], &["Hymns", "Hymns/Advent"]);
     let via = shares
-        .shared_via(&path("Hymns/Advent/Rejoice.jianpu"))
+        .shared_via(&path("Hymns/Advent/Rejoice.poentaro"))
         .unwrap();
     assert_eq!(via.folder, "Hymns/Advent");
     assert_eq!(via.name, "Advent");
     assert_eq!(via.share_id, "folder-Hymns/Advent");
-    let outer = shares.shared_via(&path("Hymns/Amazing.jianpu")).unwrap();
+    let outer = shares.shared_via(&path("Hymns/Amazing.poentaro")).unwrap();
     assert_eq!(outer.folder, "Hymns");
 }
 
@@ -54,17 +54,17 @@ fn a_path_inside_a_shared_folder_names_the_innermost_one() {
 fn a_shared_folder_is_not_inside_itself_and_a_name_prefix_is_not_a_parent() {
     let shares = overview(&[], &["Hymns"]);
     assert_eq!(shares.shared_via(&path("Hymns")), None);
-    assert_eq!(shares.shared_via(&path("Hymns 2/x.jianpu")), None);
-    assert_eq!(shares.shared_via(&path("Other/x.jianpu")), None);
+    assert_eq!(shares.shared_via(&path("Hymns 2/x.poentaro")), None);
+    assert_eq!(shares.shared_via(&path("Other/x.poentaro")), None);
 }
 
 #[test]
 fn info_counts_files_and_folders_and_reports_the_own_link() {
     let state = store(
         &[
-            "Hymns/a.jianpu",
-            "Hymns/Advent/b.jianpu",
-            "Hymns/Advent/c.jianpu",
+            "Hymns/a.poentaro",
+            "Hymns/Advent/b.poentaro",
+            "Hymns/Advent/c.poentaro",
         ],
         &["Hymns/Empty"],
     );
@@ -80,7 +80,7 @@ fn info_counts_files_and_folders_and_reports_the_own_link() {
 
 #[test]
 fn info_for_a_nested_folder_reports_the_enclosing_share() {
-    let state = store(&["Hymns/Advent/b.jianpu"], &[]);
+    let state = store(&["Hymns/Advent/b.poentaro"], &[]);
     let shares = overview(&[], &["Hymns"]);
     let info = folder_share_info(&state, &shares, &path("Hymns/Advent")).unwrap();
     assert_eq!(info.share_id, None);
@@ -91,7 +91,7 @@ fn info_for_a_nested_folder_reports_the_enclosing_share() {
 fn info_is_none_for_a_missing_folder() {
     assert_eq!(
         folder_share_info(
-            &store(&["a.jianpu"], &[]),
+            &store(&["a.poentaro"], &[]),
             &ShareOverview::default(),
             &path("Nope")
         ),
@@ -102,20 +102,24 @@ fn info_is_none_for_a_missing_folder() {
 #[test]
 fn files_with_their_own_link_are_listed_relative_to_the_folder() {
     let state = store(
-        &["Hymns/a.jianpu", "Hymns/Advent/b.jianpu", "Other/c.jianpu"],
+        &[
+            "Hymns/a.poentaro",
+            "Hymns/Advent/b.poentaro",
+            "Other/c.poentaro",
+        ],
         &[],
     );
-    let shares = overview(&["Hymns/Advent/b.jianpu", "Other/c.jianpu"], &[]);
+    let shares = overview(&["Hymns/Advent/b.poentaro", "Other/c.poentaro"], &[]);
     let info = folder_share_info(&state, &shares, &path("Hymns")).unwrap();
     assert_eq!(
         info.own_link_warning.as_deref(),
-        Some("1 file inside already has its own synced link (Advent/b.jianpu). That link keeps working independently of this one.")
+        Some("1 file inside already has its own synced link (Advent/b.poentaro). That link keeps working independently of this one.")
     );
 }
 
 #[test]
 fn a_long_list_of_own_links_is_cut_short() {
-    let names: Vec<String> = (1..=7).map(|n| format!("F/{n}.jianpu")).collect();
+    let names: Vec<String> = (1..=7).map(|n| format!("F/{n}.poentaro")).collect();
     let refs: Vec<&str> = names.iter().map(String::as_str).collect();
     let state = store(&refs, &[]);
     let warning = folder_share_info(&state, &overview(&refs, &[]), &path("F"))
@@ -123,7 +127,7 @@ fn a_long_list_of_own_links_is_cut_short() {
         .own_link_warning
         .unwrap();
     assert!(warning
-        .starts_with("7 files inside already have their own synced links (1.jianpu, 2.jianpu"));
+        .starts_with("7 files inside already have their own synced links (1.poentaro, 2.poentaro"));
     assert!(warning.contains("and 2 more"));
 }
 
@@ -153,8 +157,10 @@ fn delete_warning_covers_nested_shares_enclosing_shares_and_file_links() {
     assert!(nested.contains("inside (A/B)"));
     let enclosing = folder_delete_share_warning(&overview(&[], &["A"]), &path("A/B")).unwrap();
     assert!(enclosing.contains("inside the shared folder \"A\""));
-    let file_links =
-        folder_delete_share_warning(&overview(&["A/x.jianpu", "A/y.jianpu"], &[]), &path("A"))
-            .unwrap();
+    let file_links = folder_delete_share_warning(
+        &overview(&["A/x.poentaro", "A/y.poentaro"], &[]),
+        &path("A"),
+    )
+    .unwrap();
     assert!(file_links.contains("2 files inside have their own synced links"));
 }

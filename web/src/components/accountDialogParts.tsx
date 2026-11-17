@@ -7,6 +7,7 @@ import {
   headerStyle,
   overlayStyle,
 } from './storageSettingsModalStyles'
+import { TraceId } from './TraceId'
 
 /**
  * The pieces `AccountAuthModal` and `ChangePasswordModal` share: the dialog
@@ -163,10 +164,18 @@ export function Field({
   )
 }
 
-export function ErrorBanner({ children }: { children: ReactNode }) {
+/** `traceId`, when given, is the failed request's (see `TraceId`). */
+export function ErrorBanner({
+  children,
+  traceId,
+}: {
+  children: ReactNode
+  traceId?: string | null
+}) {
   return (
     <div role="alert" style={errorBannerStyle}>
       {children}
+      <TraceId traceId={traceId} />
     </div>
   )
 }

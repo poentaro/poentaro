@@ -3,29 +3,27 @@ import { openFileList } from '../../fileSwitcherHelpers'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE_A = [
-  '# metadata',
-  'title = "File A"',
+  'metadata { title "File A" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 const EDITED_A = SOURCE_A.replace('1 2 3 4', '1 2 3 4 5')
 
 const SOURCE_B = [
-  '# metadata',
-  'title = "File B"',
+  'metadata { title "File B" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '5 6 7 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    5 6 7 1',
+  '    """,',
 ].join('\n')
 
 async function getStoredFile(
@@ -33,7 +31,7 @@ async function getStoredFile(
   name: string,
 ) {
   return page.evaluate((fileName) => {
-    const raw = localStorage.getItem('jianpu:files:v1')
+    const raw = localStorage.getItem('poentaro:files:v1')
     if (!raw) return ''
     const store = JSON.parse(raw) as {
       active: string
@@ -82,7 +80,7 @@ Given(
     await page.addInitScript(
       ({ sourceA, sourceB, fileNameA, fileNameB }) => {
         localStorage.setItem(
-          'jianpu:files:v1',
+          'poentaro:files:v1',
           JSON.stringify({
             active: fileNameA,
             userFiles: { [fileNameA]: sourceA, [fileNameB]: sourceB },

@@ -2,34 +2,34 @@ use super::{shift_part_octave, shift_range_octave, ByteRange};
 
 fn source_with_score(parts_body: &str, score_body: &str) -> String {
     format!(
-        "# metadata\ntitle = \"t\"\nauthor = \"a\"\n\n# parts\n{parts_body}\n\n# score\ntime=4/4 key=C4 bpm=120\n{score_body}\n"
+        "metadata {{ title \"t\", author \"a\" }},\n\nparts [{parts_body}],\n\nscore \"\"\"\ntime=4/4 key=C4 bpm=120\n{score_body}\n\"\"\",\n"
     )
 }
 
 #[test]
 fn shifts_every_note_uniformly() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1 2 3 4\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1 2 3 4\n");
     let result = shift_part_octave(&source, "M", 1);
     assert!(result.contains("[M] 1' 2' 3' 4'"), "got:\n{result}");
 }
 
 #[test]
 fn shifts_down_from_existing_marker() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1' 2' 3' 4'\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1' 2' 3' 4'\n");
     let result = shift_part_octave(&source, "M", -1);
     assert!(result.contains("[M] 1 2 3 4"), "got:\n{result}");
 }
 
 #[test]
 fn tied_notes_shift_together_and_stay_tied() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1~ 1 5 5\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1~ 1 5 5\n");
     let result = shift_part_octave(&source, "M", 1);
     assert!(result.contains("[M] 1'~ 1' 5' 5'"), "got:\n{result}");
 }
 
 #[test]
 fn drops_marker_when_net_octave_is_zero() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1' 2' 3' 4'\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1' 2' 3' 4'\n");
     let result = shift_part_octave(&source, "M", -1);
     assert!(
         !result.contains('\''),
@@ -39,21 +39,21 @@ fn drops_marker_when_net_octave_is_zero() {
 
 #[test]
 fn preserves_duration_and_dash_suffixes() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1_ 2_ 3- 4\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1_ 2_ 3- 4\n");
     let result = shift_part_octave(&source, "M", 1);
     assert!(result.contains("[M] 1'_ 2'_ 3'- 4'"), "got:\n{result}");
 }
 
 #[test]
 fn preserves_dot_suffix() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1. 2. 3\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1. 2. 3\n");
     let result = shift_part_octave(&source, "M", 1);
     assert!(result.contains("[M] 1'. 2'. 3'"), "got:\n{result}");
 }
 
 #[test]
 fn unknown_abbreviation_returns_source_unchanged() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1 2 3 4\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1 2 3 4\n");
     let result = shift_part_octave(&source, "NOMATCH", 1);
     assert_eq!(result, source);
 }
@@ -61,7 +61,7 @@ fn unknown_abbreviation_returns_source_unchanged() {
 #[test]
 fn follow_part_returns_source_unchanged() {
     let source = source_with_score(
-        "Melody [M] = notes\nChords [C] = follow[M]",
+        "\"Melody\" [M] : notes, \"Chords\" [C] : follow [M]",
         "[M] 1 2 3 4\n",
     );
     let result = shift_part_octave(&source, "C", 1);
@@ -70,7 +70,7 @@ fn follow_part_returns_source_unchanged() {
 
 #[test]
 fn zero_delta_returns_source_unchanged() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1 2 3 4\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1 2 3 4\n");
     let result = shift_part_octave(&source, "M", 0);
     assert_eq!(result, source);
 }
@@ -90,7 +90,7 @@ fn range_between(source: &str, start_needle: &str, end_needle: &str) -> ByteRang
 
 #[test]
 fn range_shifts_only_notes_overlapping_the_byte_range() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1 2 3 4\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1 2 3 4\n");
     let range = range_between(&source, "2 3", "2 3");
     let result = shift_range_octave(&source, &[range], 1).source;
     assert!(result.contains("[M] 1 2' 3' 4"), "got:\n{result}");
@@ -99,7 +99,7 @@ fn range_shifts_only_notes_overlapping_the_byte_range() {
 #[test]
 fn range_spanning_two_parts_shifts_notes_in_both() {
     let source = source_with_score(
-        "Melody [M] = notes\nBass [B] = notes",
+        "\"Melody\" [M] : notes, \"Bass\" [B] : notes",
         "[M] 1 2 3 4\n[B] 5 6 7 1\n",
     );
     // From the last Melody note through the first Bass note.
@@ -111,7 +111,7 @@ fn range_spanning_two_parts_shifts_notes_in_both() {
 
 #[test]
 fn range_spanning_two_measures_shifts_notes_in_both() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1 2 3 4\n\n[M] 5 6 7 1\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1 2 3 4\n\n[M] 5 6 7 1\n");
     // From the last note of measure 1 through the first note of measure 2.
     let range = range_between(&source, "4\n\n[M] 5", "4\n\n[M] 5");
     let result = shift_range_octave(&source, &[range], 1).source;
@@ -121,7 +121,7 @@ fn range_spanning_two_measures_shifts_notes_in_both() {
 
 #[test]
 fn range_with_no_overlapping_notes_returns_source_unchanged() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1 2 3 4\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1 2 3 4\n");
     let result = shift_range_octave(
         &source,
         &[ByteRange {
@@ -136,7 +136,7 @@ fn range_with_no_overlapping_notes_returns_source_unchanged() {
 
 #[test]
 fn range_zero_delta_returns_source_unchanged() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1 2 3 4\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1 2 3 4\n");
     let len = source.len() as u32;
     let result = shift_range_octave(
         &source,
@@ -152,7 +152,7 @@ fn range_zero_delta_returns_source_unchanged() {
 
 #[test]
 fn empty_ranges_list_returns_source_unchanged() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1 2 3 4\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1 2 3 4\n");
     let result = shift_range_octave(&source, &[], 1);
     assert_eq!(result.source, source);
     assert!(result.ranges.is_empty());
@@ -169,7 +169,7 @@ fn empty_ranges_list_returns_source_unchanged() {
 #[test]
 fn multiple_disjoint_ranges_shift_notes_in_each_without_touching_the_part_in_between() {
     let source = source_with_score(
-        "Melody [M] = notes\nHarmony [H] = notes",
+        "\"Melody\" [M] : notes, \"Harmony\" [H] : notes",
         "[M] 1 2\n[H] 5 6\n\n[M] 3 4\n[H] 7 1\n",
     );
     let measure_zero_melody = range_between(&source, "1 2", "1 2");
@@ -199,7 +199,7 @@ fn multiple_disjoint_ranges_shift_notes_in_each_without_touching_the_part_in_bet
 #[test]
 fn returned_ranges_preserve_a_disjoint_multicursor_selections_shape() {
     let source = source_with_score(
-        "Melody [M] = notes\nHarmony [H] = notes",
+        "\"Melody\" [M] : notes, \"Harmony\" [H] : notes",
         "[M] 1 2\n[H] 5 6\n\n[M] 3 4\n[H] 7 1\n",
     );
     let measure_zero_melody = range_between(&source, "1 2", "1 2");
@@ -241,7 +241,7 @@ fn returned_ranges_preserve_a_disjoint_multicursor_selections_shape() {
 /// even though every originally-selected note still got shifted.
 #[test]
 fn a_contiguous_multi_note_range_stays_a_single_range() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1 2 3 4\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1 2 3 4\n");
     let range = range_between(&source, "1 2 3 4", "1 2 3 4");
     let response = shift_range_octave(&source, &[range], 1);
 
@@ -267,7 +267,7 @@ fn a_contiguous_multi_note_range_stays_a_single_range() {
 /// malformed source that doesn't round-trip back to a bare `_`.
 #[test]
 fn shifting_up_then_down_restores_a_tied_repeat_atom_note() {
-    let source = source_with_score("Melody [M] = notes", "[M] 1~ _ 5 5\n");
+    let source = source_with_score("\"Melody\" [M] : notes", "[M] 1~ _ 5 5\n");
     let up = shift_part_octave(&source, "M", 1);
     let down = shift_part_octave(&up, "M", -1);
     assert_eq!(down, source, "roundtrip failed\nup:\n{up}\ndown:\n{down}");

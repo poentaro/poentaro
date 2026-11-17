@@ -1,4 +1,4 @@
-import type { SendRequest } from '../jianpuWasm'
+import type { SendRequest } from '../poentaroWasm'
 import {
   callWorker,
   type createWorkerClient,

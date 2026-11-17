@@ -1,5 +1,5 @@
 import fonts from '../../fonts/fonts.json'
-import type { FontFamily } from './jianpuWasm'
+import type { FontFamily } from './poentaroWasm'
 
 /** One `fonts/fonts.json` role entry (see that file's own comments). */
 export interface FontRole {

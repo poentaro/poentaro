@@ -4,13 +4,14 @@ use crate::error::Diagnostic;
 
 fn document(score: &str) -> ParsedDocument {
     let input = format!(
-        r#"# parts
-Melody = notes
+        r#"parts ["Melody": notes],
 
-# score
-{score}"#
+score """
+    {score}
+    """,
+"#
     );
-    parse(&input, "test.jianpu", &[]).expect("relative key must not abort parsing")
+    parse(&input, "test.poentaro", &[]).expect("relative key must not abort parsing")
 }
 
 /// The key each measure's directive line changes to, spelled like `key=`

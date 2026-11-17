@@ -1,5 +1,5 @@
 use super::*;
-use crate::ast::parsed::{JianPuPitch, ParsedNote, ParsedRest, ScoreEvent};
+use crate::ast::parsed::{NumberedPitch, ParsedNote, ParsedRest, ScoreEvent};
 use crate::error::Spanned;
 
 fn parse(input: &str) -> Result<TimedLineParse, IrrecoverableError> {
@@ -35,7 +35,7 @@ fn rest(events: &[Spanned<ScoreEvent>], i: usize) -> &ParsedRest {
 fn parses_full_beat_note() {
     let events = parse_events("1");
     let n = note(&events, 0);
-    assert_eq!(n.pitch, JianPuPitch::One);
+    assert_eq!(n.pitch, NumberedPitch::One);
     assert_eq!(n.duration, 4);
     assert_eq!(n.octave, 0);
     assert!(!n.slur);
@@ -45,7 +45,7 @@ fn parses_full_beat_note() {
 fn parses_half_beat_note() {
     let events = parse_events("3_");
     let n = note(&events, 0);
-    assert_eq!(n.pitch, JianPuPitch::Three);
+    assert_eq!(n.pitch, NumberedPitch::Three);
     assert_eq!(n.duration, 2);
 }
 
@@ -53,7 +53,7 @@ fn parses_half_beat_note() {
 fn parses_quarter_beat_note() {
     let events = parse_events("5=");
     let n = note(&events, 0);
-    assert_eq!(n.pitch, JianPuPitch::Five);
+    assert_eq!(n.pitch, NumberedPitch::Five);
     assert_eq!(n.duration, 1);
 }
 
@@ -301,7 +301,7 @@ fn cross_measure_group_sets_tie_on_opening_note() {
     let mut state = GroupStack::default();
     parse_with_state("111(1", &mut state).unwrap();
     let events = parse_with_state("2)345", &mut state).unwrap().events;
-    assert!(note(&events, 0).pitch == JianPuPitch::Two);
+    assert!(note(&events, 0).pitch == NumberedPitch::Two);
     assert!(!note(&events, 0).slur);
 }
 
@@ -313,7 +313,7 @@ fn open_group_continues_across_spaced_tokens_in_same_measure() {
     let events = parse_with_state("7", &mut state).unwrap().events;
     assert!(state.is_open());
     assert_eq!(events.len(), 1);
-    assert!(note(&events, 0).pitch == JianPuPitch::Seven);
+    assert!(note(&events, 0).pitch == NumberedPitch::Seven);
     assert!(note(&events, 0).slur);
 }
 
@@ -329,17 +329,17 @@ fn parses_nested_tie_group() {
     let events = parse_events("(3= (2_1_))");
     assert_eq!(events.len(), 3);
     let n0 = note(&events, 0);
-    assert_eq!(n0.pitch, JianPuPitch::Three);
+    assert_eq!(n0.pitch, NumberedPitch::Three);
     assert_eq!(n0.duration, 1);
     assert_eq!(n0.group_membership, 1);
     assert_eq!(n0.group_continuation, 1);
     let n1 = note(&events, 1);
-    assert_eq!(n1.pitch, JianPuPitch::Two);
+    assert_eq!(n1.pitch, NumberedPitch::Two);
     assert_eq!(n1.duration, 2);
     assert_eq!(n1.group_membership, 2);
     assert_eq!(n1.group_continuation, 2);
     let n2 = note(&events, 2);
-    assert_eq!(n2.pitch, JianPuPitch::One);
+    assert_eq!(n2.pitch, NumberedPitch::One);
     assert_eq!(n2.duration, 2);
     assert_eq!(n2.group_membership, 2);
     assert_eq!(n2.group_continuation, 0);
@@ -355,7 +355,7 @@ fn open_group_closes_on_spaced_tokens_across_measures() {
     let events = parse_with_state("7)", &mut state).unwrap().events;
     assert!(!state.is_open());
     assert_eq!(events.len(), 1);
-    assert!(note(&events, 0).pitch == JianPuPitch::Seven);
+    assert!(note(&events, 0).pitch == NumberedPitch::Seven);
     assert!(!note(&events, 0).slur);
 }
 

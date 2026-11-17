@@ -6,7 +6,9 @@ import './PartToggles.css'
 
 interface PartTogglesProps {
   parts: PartInfo[]
-  disabledParts: ReadonlySet<string>
+  hiddenParts: ReadonlySet<string>
+  /** Rendered between the "Parts" label and the pills. */
+  presetMenu?: React.ReactNode
   soloedParts: ReadonlySet<string>
   onPartToggle: (abbreviation: string, enabled: boolean) => void
   onSoloToggle: (abbreviation: string, soloed: boolean) => void
@@ -98,7 +100,8 @@ function TogglePill({
 
 export function PartToggles({
   parts,
-  disabledParts,
+  hiddenParts,
+  presetMenu,
   soloedParts,
   onPartToggle,
   onSoloToggle,
@@ -135,6 +138,7 @@ export function PartToggles({
           )}
           Parts
         </button>
+        {presetMenu}
         {collapsed ? null : (
           <ul className="part-toggles-list toolbar-scroll-list">
             {parts.map((part) => (
@@ -143,7 +147,7 @@ export function PartToggles({
                   label={part.abbreviation}
                   displayName={part.displayName}
                   lyric={!part.sounds}
-                  visible={!disabledParts.has(part.abbreviation)}
+                  visible={!hiddenParts.has(part.abbreviation)}
                   soloed={soloedParts.has(part.abbreviation)}
                   anySoloed={soloedParts.size > 0}
                   onVisibleChange={(visible) =>

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { type FileStoreState, mergeBackendResult } from '../fileStore'
-import type { SelectionMove, SelectionUnit } from '../jianpuWasm'
+import type { SelectionMove, SelectionUnit } from '../poentaroWasm'
 import type { StorageBackend } from '../storage/types'
 
 export interface FileOpError {

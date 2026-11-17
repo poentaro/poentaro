@@ -1,8 +1,8 @@
 #![allow(clippy::disallowed_macros)]
-use jianpu_generator::error::{Diagnostic, WarningKind};
-use jianpu_generator::render_svgs_from_source;
+use poentaro::error::{Diagnostic, WarningKind};
+use poentaro::render_svgs_from_source;
 
-/// A `.jianpu` source whose single measure is wider than the page on its own
+/// A `.poentaro` source whose single measure is wider than the page on its own
 /// — `pack_into_systems` breaks a system early before a measure that wouldn't
 /// fit, but a lone measure has nowhere to break, so its system's summed column
 /// rods still exceed the page's usable music width.
@@ -11,21 +11,19 @@ fn overflowing_fixture() -> String {
         .collect::<Vec<_>>()
         .join(" ");
     format!(
-        r#"# metadata
-title = "t"
-author = "a"
+        r#"metadata {{ title "t", author "a" }},
 
-# parts
-Melody = notes
+parts ["Melody": notes],
 
-# score
-time=32/4 key=C4 bpm=120
-[Melody] {notes}
+score """
+    time=32/4 key=C4 bpm=120
+    [Melody] {notes}
+    """,
 "#
     )
 }
 
-fn has_measure_overflow_warning(output: &jianpu_generator::RenderOutput) -> bool {
+fn has_measure_overflow_warning(output: &poentaro::RenderOutput) -> bool {
     output.diagnostics.iter().any(|d| {
         matches!(
             d,
@@ -37,7 +35,7 @@ fn has_measure_overflow_warning(output: &jianpu_generator::RenderOutput) -> bool
 #[test]
 fn tightly_packed_system_produces_measure_overflow_warning() {
     let source = overflowing_fixture();
-    let output = render_svgs_from_source(&source, "test.jianpu", &[])
+    let output = render_svgs_from_source(&source, "test.poentaro", &[])
         .expect("an overflowing system must not abort the render");
     assert!(
         !output.svgs.is_empty(),
@@ -56,18 +54,16 @@ fn tightly_packed_system_produces_measure_overflow_warning() {
 
 #[test]
 fn ordinary_score_produces_no_measure_overflow_warning() {
-    let source = r#"# metadata
-title = "t"
-author = "a"
+    let source = r#"metadata { title "t", author "a" },
 
-# parts
-Melody = notes
+parts ["Melody": notes],
 
-# score
-time=4/4 key=C4 bpm=120
-[Melody] 1 2 3 4
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    """,
 "#;
-    let output = render_svgs_from_source(source, "test.jianpu", &[])
+    let output = render_svgs_from_source(source, "test.poentaro", &[])
         .expect("a normal score must render without error");
     assert!(
         !has_measure_overflow_warning(&output),

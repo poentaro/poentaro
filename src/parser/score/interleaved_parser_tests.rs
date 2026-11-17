@@ -1,5 +1,5 @@
 use crate::ast::parsed::{
-    Accidental, JianPuPitch, ParsedChordNote, PartKind, ScoreEvent, TriadQuality,
+    Accidental, NumberedPitch, ParsedChordNote, PartKind, ScoreEvent, TriadQuality,
 };
 
 use super::test_helpers::{
@@ -9,21 +9,17 @@ use super::test_helpers::{
 
 #[test]
 fn chord_line_parses_spaced_slur_group() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Chord = chords\n",
-        "Melody = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Chord] (1 - 6m -)\n",
-        "[Melody] 1 1 5 5\n",
-    );
-    let doc = crate::parser::parse(input, "test.jianpu", &[]).unwrap();
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Chord": chords, "Melody": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Chord] (1 - 6m -)
+    [Melody] 1 1 5 5
+    """,
+"#;
+    let doc = crate::parser::parse(input, "test.poentaro", &[]).unwrap();
     let chord_events: Vec<_> = all_events(chord_track(&doc.tracks, "Chord"))
         .into_iter()
         .filter(|e| matches!(e.value, ScoreEvent::Chord(_)))
@@ -44,7 +40,7 @@ fn chord_column_events_are_parsed() {
     assert_eq!(
         events[3],
         &ScoreEvent::Chord(ParsedChordNote {
-            degree: JianPuPitch::One,
+            degree: NumberedPitch::One,
             accidental: Accidental::Natural,
             triad: TriadQuality::Major,
             extension: None,

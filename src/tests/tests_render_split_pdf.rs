@@ -3,33 +3,32 @@ use std::io::Read;
 use zip::ZipArchive;
 
 fn multi_track_input() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"test score\"\n",
-        "author = \"tester\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano 1 [S1] = notes\n",
-        "Soprano 1 lyrics [S1v1] = lyrics[S1]\n",
-        "Soprano 2 [S2] = notes\n",
-        "Soprano 2 lyrics [S2v1] = lyrics[S2]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S1] 1 2 3 4\n",
-        "[S1v1] do re mi fa\n",
-        "[S2] 5 6 7 1\n",
-        "[S2v1] sol la ti do\n",
-    )
+    r#"metadata { title "test score", author "tester" },
+
+parts [
+    "Soprano 1" [S1]: notes,
+    "Soprano 1 lyrics" [S1v1]: lyrics [S1],
+    "Soprano 2" [S2]: notes,
+    "Soprano 2 lyrics" [S2v1]: lyrics [S2],
+],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S1] 1 2 3 4
+    [S1v1] do re mi fa
+    [S2] 5 6 7 1
+    [S2v1] sol la ti do
+    """,
+"#
 }
 
 #[test]
 fn write_split_pdfs_from_source_produces_one_pdf_per_track() {
     let entries = write_split_pdfs_from_source(
         multi_track_input(),
-        "test.jianpu",
+        "test.poentaro",
         "test_split",
-        &[],
+        SplitSelection::default(),
         &fonts::FontBytesByFamily::embedded(),
         NoteLabels::Degrees,
     )
@@ -44,26 +43,49 @@ fn write_split_pdfs_from_source_produces_one_pdf_per_track() {
 }
 
 #[test]
-fn write_split_pdfs_from_source_single_part_uses_split_naming() {
-    let input = concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Melody lyrics [Melodyv1] = lyrics[Melody]\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Melodyv1] a b c d\n",
+fn write_split_pdfs_from_source_keeps_the_presets_parts_and_names_files_after_it() {
+    let input = format!(
+        r#"{}
+preset "Soprano 2" {{ visible parts [S2, S2v1] }},
+"#,
+        multi_track_input()
     );
     let entries = write_split_pdfs_from_source(
+        &input,
+        "test.poentaro",
+        "test_split",
+        SplitSelection {
+            tracks: &[],
+            preset_name: Some("Soprano 2"),
+        },
+        &fonts::FontBytesByFamily::embedded(),
+        NoteLabels::Degrees,
+    )
+    .unwrap();
+    let filenames: Vec<&str> = entries
+        .iter()
+        .map(|entry| entry.filename.as_str())
+        .collect();
+    assert_eq!(filenames, ["test_split (Soprano 2) - Soprano 2.pdf"]);
+}
+
+#[test]
+fn write_split_pdfs_from_source_single_part_uses_split_naming() {
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Melodyv1] a b c d
+    """,
+"#;
+    let entries = write_split_pdfs_from_source(
         input,
-        "test.jianpu",
+        "test.poentaro",
         "song",
-        &[],
+        SplitSelection::default(),
         &fonts::FontBytesByFamily::embedded(),
         NoteLabels::Degrees,
     )
@@ -76,12 +98,12 @@ fn write_split_pdfs_from_source_single_part_uses_split_naming() {
 #[test]
 fn write_split_pdfs_from_source_no_sections_returns_empty() {
     // Source with no section headers: section-structure errors are recoverable,
-    // so no Err is returned; the missing # parts section means no tracks exist.
+    // so no Err is returned; the missing parts section means no tracks exist.
     let entries = write_split_pdfs_from_source(
         "not valid",
-        "test.jianpu",
+        "test.poentaro",
         "song",
-        &[],
+        SplitSelection::default(),
         &fonts::FontBytesByFamily::embedded(),
         NoteLabels::Degrees,
     )
@@ -99,51 +121,47 @@ fn write_split_pdfs_from_source_no_sections_returns_empty() {
 // `build_header` in lib.rs), and assert the legend-bearing PDF is larger.
 
 fn with_legend_input() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano [S] = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S] 1 2 3 4\n",
-    )
+    r#"metadata { title "t", author "a" },
+
+parts ["Soprano" [S]: notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    """,
+"#
 }
 
 fn without_legend_input() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"t\"\n",
-        "author = \"a\"\n",
-        "\n",
-        "# parts\n",
-        "S = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[S] 1 2 3 4\n",
-    )
+    r#"metadata { title "t", author "a" },
+
+parts ["S": notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [S] 1 2 3 4
+    """,
+"#
 }
 
 #[test]
-fn write_pdf_from_source_filtered_includes_part_legend() {
-    let with_legend_pdf = write_pdf_from_source_filtered(
+fn write_pdf_from_source_with_visibility_includes_part_legend() {
+    let with_legend_pdf = write_pdf_from_source_with_visibility(
         with_legend_input(),
-        "test.jianpu",
-        None,
+        "test.poentaro",
+        &ResolvedPartVisibility::default(),
         &fonts::FontBytesByFamily::embedded(),
         &[],
+        NoteLabels::Degrees,
     )
     .unwrap();
-    let without_legend_pdf = write_pdf_from_source_filtered(
+    let without_legend_pdf = write_pdf_from_source_with_visibility(
         without_legend_input(),
-        "test.jianpu",
-        None,
+        "test.poentaro",
+        &ResolvedPartVisibility::default(),
         &fonts::FontBytesByFamily::embedded(),
         &[],
+        NoteLabels::Degrees,
     )
     .unwrap();
     assert!(
@@ -159,18 +177,18 @@ fn write_pdf_from_source_filtered_includes_part_legend() {
 fn write_split_pdfs_from_source_includes_part_legend() {
     let with_legend_entries = write_split_pdfs_from_source(
         with_legend_input(),
-        "test.jianpu",
+        "test.poentaro",
         "song",
-        &[],
+        SplitSelection::default(),
         &fonts::FontBytesByFamily::embedded(),
         NoteLabels::Degrees,
     )
     .unwrap();
     let without_legend_entries = write_split_pdfs_from_source(
         without_legend_input(),
-        "test.jianpu",
+        "test.poentaro",
         "song",
-        &[],
+        SplitSelection::default(),
         &fonts::FontBytesByFamily::embedded(),
         NoteLabels::Degrees,
     )
@@ -190,9 +208,9 @@ fn write_split_pdfs_from_source_includes_part_legend() {
 fn zip_split_pdfs_contains_named_entries() {
     let entries = write_split_pdfs_from_source(
         multi_track_input(),
-        "test.jianpu",
+        "test.poentaro",
         "test_split",
-        &[],
+        SplitSelection::default(),
         &fonts::FontBytesByFamily::embedded(),
         NoteLabels::Degrees,
     )

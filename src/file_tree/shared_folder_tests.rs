@@ -41,12 +41,16 @@ fn names(rows: &[TreeViewRow]) -> Vec<String> {
 #[test]
 fn the_first_file_is_the_first_in_tree_order_folders_before_files() {
     let shared = snapshot(
-        &["Zebra.jianpu", "Advent/Veni.jianpu", "Advent/O Come.jianpu"],
+        &[
+            "Zebra.poentaro",
+            "Advent/Veni.poentaro",
+            "Advent/O Come.poentaro",
+        ],
         &[],
     );
     assert_eq!(
         shared_folder_first_file(&shared).as_deref(),
-        Some("Advent/O Come.jianpu")
+        Some("Advent/O Come.poentaro")
     );
 }
 
@@ -57,11 +61,11 @@ fn a_folder_without_files_has_no_first_file() {
 
 #[test]
 fn the_view_is_rooted_at_the_shared_folder_without_demo_or_share_markers() {
-    let shared = snapshot(&["Advent/O Come.jianpu", "Amazing.jianpu"], &["Rounds"]);
-    let rows = shared_folder_view(&shared, "Advent/O Come.jianpu", &[]).unwrap();
+    let shared = snapshot(&["Advent/O Come.poentaro", "Amazing.poentaro"], &["Rounds"]);
+    let rows = shared_folder_view(&shared, "Advent/O Come.poentaro", &[]).unwrap();
     assert_eq!(
         names(&rows),
-        vec!["Advent", "  O Come.jianpu", "Rounds", "Amazing.jianpu"]
+        vec!["Advent", "  O Come.poentaro", "Rounds", "Amazing.poentaro"]
     );
     assert!(rows.iter().all(|row| row.share_id.is_none()
         && row.shared_via.is_none()
@@ -74,15 +78,15 @@ fn the_view_is_rooted_at_the_shared_folder_without_demo_or_share_markers() {
 
 #[test]
 fn view_rows_for_an_invalid_snapshot_are_an_error() {
-    let invalid = snapshot(&["../x.jianpu"], &[]);
+    let invalid = snapshot(&["../x.poentaro"], &[]);
     assert!(shared_folder_view(&invalid, "", &[]).is_err());
 }
 
 #[test]
 fn import_adds_the_folder_with_relative_paths_ids_and_empty_folders() {
-    let shared = snapshot(&["Advent/O Come.jianpu", "Amazing.jianpu"], &["Rounds"]);
+    let shared = snapshot(&["Advent/O Come.poentaro", "Amazing.poentaro"], &["Rounds"]);
     let imported = import_shared_folder(
-        &store(&["Mine.jianpu"], &[]),
+        &store(&["Mine.poentaro"], &[]),
         &shared,
         &ids(2),
         &FileOperationContext::default(),
@@ -91,38 +95,38 @@ fn import_adds_the_folder_with_relative_paths_ids_and_empty_folders() {
     assert_eq!(
         imported.user_files.keys().cloned().collect::<Vec<_>>(),
         vec![
-            "Hymns/Advent/O Come.jianpu",
-            "Hymns/Amazing.jianpu",
-            "Mine.jianpu"
+            "Hymns/Advent/O Come.poentaro",
+            "Hymns/Amazing.poentaro",
+            "Mine.poentaro"
         ]
     );
     assert_eq!(
-        imported.user_files["Hymns/Amazing.jianpu"],
-        "content of Amazing.jianpu"
+        imported.user_files["Hymns/Amazing.poentaro"],
+        "content of Amazing.poentaro"
     );
     assert_eq!(imported.file_ids.len(), 2);
     assert_eq!(
         imported.folders,
         vec![TreePath::parse("Hymns/Rounds").unwrap()]
     );
-    assert_eq!(imported.active, "Hymns/Advent/O Come.jianpu");
+    assert_eq!(imported.active, "Hymns/Advent/O Come.poentaro");
 }
 
 #[test]
 fn a_name_clash_with_a_folder_gets_a_numbered_name_and_leaves_the_original_alone() {
-    let existing = store(&["Hymns/Old.jianpu", "Hymns 2/Old.jianpu"], &[]);
+    let existing = store(&["Hymns/Old.poentaro", "Hymns 2/Old.poentaro"], &[]);
     let imported = import_shared_folder(
         &existing,
-        &snapshot(&["New.jianpu"], &[]),
+        &snapshot(&["New.poentaro"], &[]),
         &ids(1),
         &FileOperationContext::default(),
     )
     .unwrap();
-    assert_eq!(imported.user_files["Hymns/Old.jianpu"], "mine");
-    assert_eq!(imported.user_files["Hymns 2/Old.jianpu"], "mine");
+    assert_eq!(imported.user_files["Hymns/Old.poentaro"], "mine");
+    assert_eq!(imported.user_files["Hymns 2/Old.poentaro"], "mine");
     assert_eq!(
-        imported.user_files["Hymns 3/New.jianpu"],
-        "content of New.jianpu"
+        imported.user_files["Hymns 3/New.poentaro"],
+        "content of New.poentaro"
     );
 }
 
@@ -130,12 +134,12 @@ fn a_name_clash_with_a_folder_gets_a_numbered_name_and_leaves_the_original_alone
 fn a_name_clash_with_a_file_gets_a_numbered_name() {
     let imported = import_shared_folder(
         &store(&["Hymns"], &[]),
-        &snapshot(&["New.jianpu"], &[]),
+        &snapshot(&["New.poentaro"], &[]),
         &ids(1),
         &FileOperationContext::default(),
     )
     .unwrap();
-    assert!(imported.user_files.contains_key("Hymns 2/New.jianpu"));
+    assert!(imported.user_files.contains_key("Hymns 2/New.poentaro"));
 }
 
 #[test]
@@ -158,20 +162,20 @@ fn missing_ids_are_derived_from_the_context_id() {
     };
     let imported = import_shared_folder(
         &store(&[], &[]),
-        &snapshot(&["a.jianpu", "b.jianpu"], &[]),
+        &snapshot(&["a.poentaro", "b.poentaro"], &[]),
         &["only".to_string()],
         &context,
     )
     .unwrap();
-    assert_eq!(imported.file_ids["Hymns/a.jianpu"], "only");
-    assert_eq!(imported.file_ids["Hymns/b.jianpu"], "fresh-1");
+    assert_eq!(imported.file_ids["Hymns/a.poentaro"], "only");
+    assert_eq!(imported.file_ids["Hymns/b.poentaro"], "fresh-1");
 }
 
 #[test]
 fn an_invalid_snapshot_is_refused_and_nothing_is_imported() {
     let result = import_shared_folder(
         &store(&[], &[]),
-        &snapshot(&["a.jianpu", "a.jianpu/b.jianpu"], &[]),
+        &snapshot(&["a.poentaro", "a.poentaro/b.poentaro"], &[]),
         &ids(2),
         &FileOperationContext::default(),
     );

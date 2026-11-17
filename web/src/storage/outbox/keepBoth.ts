@@ -1,3 +1,4 @@
+import { FILE_EXTENSION } from '../../fileExtension'
 import type { FileStoreState } from '../../fileStore'
 import type { CloudBackend } from '../cloudBackendTypes'
 
@@ -13,11 +14,11 @@ function nameOfFile(state: FileStoreState, fileId: string): string | undefined {
   return Object.entries(state.fileIds).find(([, id]) => id === fileId)?.[0]
 }
 
-/** `a.jianpu` -> `a (conflicted copy 2026-10-10).jianpu` */
+/** `a.poentaro` -> `a (conflicted copy 2026-10-10).poentaro` */
 function conflictedCopyName(name: string, today: string): string {
   const dot = name.lastIndexOf('.')
   const stem = dot > 0 ? name.slice(0, dot) : name
-  const extension = dot > 0 ? name.slice(dot) : '.jianpu'
+  const extension = dot > 0 ? name.slice(dot) : FILE_EXTENSION
   return `${stem} (conflicted copy ${today})${extension}`
 }
 

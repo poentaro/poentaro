@@ -36,11 +36,11 @@ export function errorBannerMessage(
   error: CloudBackendError | null,
 ): string | null {
   if (!error) return null
-  if (error.kind === 'auth') {
-    return 'Your sign-in expired — reconnect to keep saving to the cloud.'
-  }
   if (error.kind === 'network') {
     return "You appear to be offline. Changes will save once you're back online."
+  }
+  if (error.kind === 'unknown') {
+    return `Couldn't save to the cloud: ${error.message}`
   }
   return null
 }

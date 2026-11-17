@@ -8,7 +8,7 @@ import { Given, Then, When } from './fixtures'
  * on the play button's visible "playing" state rather than just "didn't
  * crash".
  *
- * Uses the default demo file (demo/01-pitches.jianpu); line 10 is the first
+ * Uses the default demo file (demo/01-pitches.poentaro); line 7 is the first
  * note line ("[M] 1 2 3 0" → measure 0), as established by
  * `measure-label.spec.ts`.
  */

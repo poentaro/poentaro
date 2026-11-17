@@ -37,13 +37,13 @@ mod imp {
 
     /// No-op on non-wasm builds: the fonts are already embedded at compile
     /// time, so there's nothing to receive at runtime. Exists so callers
-    /// (e.g. `crates/jianpu-wasm`, which is also built for the host arch as
+    /// (e.g. `crates/poentaro-wasm`, which is also built for the host arch as
     /// a workspace member) don't need their own `cfg` gate.
     pub(crate) fn set_layout_font_bytes(_fonts: FontBytesByFamily) {}
 }
 
 // The wasm build has no compile-time font bytes: `set_layout_font_bytes` is
-// called at runtime (from `crates/jianpu-wasm`) once the app has fetched the
+// called at runtime (from `crates/poentaro-wasm`) once the app has fetched the
 // same font bytes it already needs for PDF export. Two `OnceLock`s per role
 // (rather than a `LazyLock`) so a render that races ahead of the fetch just
 // falls back to `FALLBACK_ADVANCE_WIDTH_RATIO` for that one call, instead of

@@ -9,11 +9,34 @@
 //! `emit_guitar_voicings`), keeping only each position's frets, base fret
 //! and barres so the wasm binary carries a compact table instead of the
 //! whole JSON.
+//!
+//! Also generates `src/file_tree/extension.rs`'s constants from
+//! `file-extension.json`, which the web app imports too, so both sides name
+//! files with the same extension.
 
 use serde::Deserialize;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FileExtensionManifest {
+    extension: String,
+    legacy_extension: String,
+}
+
+fn emit_file_extension(manifest_dir: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let path = PathBuf::from(manifest_dir).join("file-extension.json");
+    let manifest: FileExtensionManifest = serde_json::from_str(&fs::read_to_string(path)?)?;
+    Ok(format!(
+        "/// Every file the app saves ends in this.\n\
+         pub const FILE_EXTENSION: &str = {:?};\n\
+         /// What files ended in before the app was renamed to Poentaro.\n\
+         pub const LEGACY_FILE_EXTENSION: &str = {:?};\n",
+        manifest.extension, manifest.legacy_extension
+    ))
+}
 
 #[derive(Deserialize)]
 struct FontEntry {
@@ -131,6 +154,7 @@ fn emit_guitar_voicings(manifest_dir: &str) -> Result<String, Box<dyn std::error
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=fonts/fonts.json");
     println!("cargo:rerun-if-changed=vendor/chords-db/guitar.json");
+    println!("cargo:rerun-if-changed=file-extension.json");
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
     let manifest_json_path = PathBuf::from(&manifest_dir).join("fonts/fonts.json");
@@ -149,6 +173,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let guitar_voicings_path =
         PathBuf::from(env::var("OUT_DIR")?).join("guitar_voicings_generated.rs");
     fs::write(guitar_voicings_path, emit_guitar_voicings(&manifest_dir)?)?;
+
+    let file_extension_path =
+        PathBuf::from(env::var("OUT_DIR")?).join("file_extension_generated.rs");
+    fs::write(file_extension_path, emit_file_extension(&manifest_dir)?)?;
 
     Ok(())
 }

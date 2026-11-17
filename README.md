@@ -1,6 +1,12 @@
-# jianpu-generator
+# Poentaro
 
-Renders `.jianpu` scores (numbered musical notation) to SVG, PDF and MIDI, with a
+Poentaro (Esperanto for "a tally of points", so a score) lives at
+<https://poentaro.pages.dev>. It used to be called jianpu-generator, at
+`jianpu-generator.pages.dev`, which now hands your saved files over and
+redirects (see "Origin migration" in [`ARCHITECTURE.md`](ARCHITECTURE.md)).
+
+It renders `.poentaro` scores (numbered musical notation; files from before
+the rename end in `.jianpu`) to SVG, PDF and MIDI, with a
 web editor and a Cloudflare worker for synced sharing.
 
 - Input syntax: [`syntax.md`](syntax.md)
@@ -25,7 +31,7 @@ which needs Node ≥ 22.18 to load `cloudflare.config.ts`.
 ## Common commands
 
 ```sh
-cargo run -- generate svg simple.jianpu   # render a score to SVG
+cargo run -- generate svg simple.poentaro   # render a score to SVG
 just dev                                  # web app + live-share worker locally
 ```
 
@@ -36,7 +42,7 @@ database (id in
 [`crates/live-share-worker/deploy.json`](crates/live-share-worker/deploy.json)).
 Authenticate once with `pnpm exec cf auth login`, then run a saved query from
 [`crates/live-share-worker/queries/observability/`](crates/live-share-worker/queries/observability/)
-(see "Debugging production" in [`CLAUDE.md`](CLAUDE.md)):
+(see "Debugging production" in [`AGENTS.md`](AGENTS.md)):
 
 ```sh
 cd crates/live-share-worker

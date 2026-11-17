@@ -169,6 +169,7 @@ pub(super) fn render_note_head(
     // glyph was flush-left anchored.
     let center = elem.x + *note_number_width * 0.5;
     results.extend(inline_octave_dots(center, elem.y, octave, **base_font_size));
+    results.extend(glyph.slide_arrow(run_x, elem.y, *font_family, **base_font_size));
 
     results
 }

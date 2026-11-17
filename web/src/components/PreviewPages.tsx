@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import type { SvgDocument } from '../jianpuWasm'
+import type { SvgDocument } from '../poentaroWasm'
 import type { StaffScore } from '../worker/messages'
 import { renderSvgDocument } from './PreviewSvgRenderer'
 

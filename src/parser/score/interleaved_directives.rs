@@ -2,7 +2,7 @@ use crate::ast::parsed::{KeyChange, ScoreEvent};
 use crate::desugar::SourceLine;
 use crate::error::{Diagnostic, RecoverableError, Span, Spanned, Warning};
 use crate::parser::score::directive_keyword::{
-    classify_directive_token, DirectiveKey, DirectiveToken,
+    classify_directive_token, tokenize_directive_tokens, DirectiveKey, DirectiveToken,
 };
 use crate::parser::score::measure_group::{collect_groups, is_directive_line};
 
@@ -65,50 +65,6 @@ impl DirectiveDiagnostics {
             .chain(self.warnings.into_iter().map(Diagnostic::Warning))
             .collect()
     }
-}
-
-/// Returns `(token_text, byte_offset_within_inner)` pairs.
-fn tokenize_directive_tokens(inner: &str) -> Result<Vec<(String, usize)>, String> {
-    let mut tokens = Vec::new();
-    let mut current = String::new();
-    let mut current_start: usize = 0;
-    let mut in_quote = false;
-    let mut byte_offset: usize = 0;
-
-    for ch in inner.chars() {
-        if in_quote {
-            current.push(ch);
-            if ch == '"' {
-                in_quote = false;
-            }
-            byte_offset += ch.len_utf8();
-        } else if ch == '"' {
-            if current.is_empty() {
-                current_start = byte_offset;
-            }
-            current.push(ch);
-            in_quote = true;
-            byte_offset += ch.len_utf8();
-        } else if ch.is_whitespace() {
-            if !current.is_empty() {
-                tokens.push((std::mem::take(&mut current), current_start));
-            }
-            byte_offset += ch.len_utf8();
-        } else {
-            if current.is_empty() {
-                current_start = byte_offset;
-            }
-            current.push(ch);
-            byte_offset += ch.len_utf8();
-        }
-    }
-    if in_quote {
-        return Err("unclosed quote in directive line".to_string());
-    }
-    if !current.is_empty() {
-        tokens.push((current, current_start));
-    }
-    Ok(tokens)
 }
 
 fn parse_directive_line(
@@ -250,7 +206,7 @@ pub(crate) fn directive_line_label(line: &str) -> Option<String> {
 }
 
 /// Spans of every directive keyword (`bpm` in `bpm=92`, `break`) on the
-/// directive lines of a `# score` section's `content`.
+/// directive lines of a `score` section's `content`.
 pub(crate) fn directive_keyword_spans(content: &str, base_offset: usize) -> Vec<Span> {
     collect_groups(content)
         .iter()

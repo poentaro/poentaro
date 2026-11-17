@@ -5,7 +5,7 @@ fn parses_sharp_accidental() {
     assert_eq!(
         parse_symbol("1#"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Sharp,
             TriadQuality::Major,
             None,
@@ -19,7 +19,7 @@ fn parses_flat_accidental() {
     assert_eq!(
         parse_symbol("3b"),
         chord(
-            JianPuPitch::Three,
+            NumberedPitch::Three,
             Accidental::Flat,
             TriadQuality::Major,
             None,
@@ -31,7 +31,7 @@ fn parses_flat_accidental() {
 #[test]
 fn parses_slash_chord() {
     let bass = BassDegree {
-        degree: JianPuPitch::Five,
+        degree: NumberedPitch::Five,
         accidental: Accidental::Natural,
     };
     // Goes through the full pipeline (including the lexer in Chords context) so that
@@ -39,7 +39,7 @@ fn parses_slash_chord() {
     assert_eq!(
         parse_symbol("1/5"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Major,
             None,
@@ -51,13 +51,13 @@ fn parses_slash_chord() {
 #[test]
 fn parses_slash_chord_with_accidental_bass() {
     let bass = BassDegree {
-        degree: JianPuPitch::Four,
+        degree: NumberedPitch::Four,
         accidental: Accidental::Flat,
     };
     assert_eq!(
         parse_symbol("1/4b"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Major,
             None,
@@ -69,13 +69,13 @@ fn parses_slash_chord_with_accidental_bass() {
 #[test]
 fn parses_complex_slash_chord() {
     let bass = BassDegree {
-        degree: JianPuPitch::Five,
+        degree: NumberedPitch::Five,
         accidental: Accidental::Natural,
     };
     assert_eq!(
         parse_symbol("6m/5"),
         chord(
-            JianPuPitch::Six,
+            NumberedPitch::Six,
             Accidental::Natural,
             TriadQuality::Minor,
             None,
@@ -89,7 +89,7 @@ fn parses_sharp_with_dominant_seventh() {
     assert_eq!(
         parse_symbol("1#7"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Sharp,
             TriadQuality::Major,
             Some(Extension::DominantSeventh),
@@ -103,7 +103,7 @@ fn parses_flat_with_major_seventh() {
     assert_eq!(
         parse_symbol("3bM7"),
         chord(
-            JianPuPitch::Three,
+            NumberedPitch::Three,
             Accidental::Flat,
             TriadQuality::Major,
             Some(Extension::MajorSeventh),
@@ -117,7 +117,7 @@ fn parses_sharp_minor_dominant_seventh() {
     assert_eq!(
         parse_symbol("1#m7"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Sharp,
             TriadQuality::Minor,
             Some(Extension::DominantSeventh),
@@ -129,13 +129,13 @@ fn parses_sharp_minor_dominant_seventh() {
 #[test]
 fn parses_sharp_with_slash_chord() {
     let bass = BassDegree {
-        degree: JianPuPitch::Five,
+        degree: NumberedPitch::Five,
         accidental: Accidental::Natural,
     };
     assert_eq!(
         parse_symbol("1#/5"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Sharp,
             TriadQuality::Major,
             None,

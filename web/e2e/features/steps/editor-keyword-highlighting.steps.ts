@@ -1,20 +1,21 @@
 import { expect, type Page } from '@playwright/test'
+import { anyxLightThemeRules } from '../../../src/anyx-monaco'
 import { highlightKindStyles } from '../../../src/components/editorTheme'
-import type { HighlightKind } from '../../../src/jianpuWasm'
+import type { HighlightKind } from '../../../src/poentaroWasm'
 import { Given, Then } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'row_height = 30',
-  'colour = red',
+  '## Hymn',
+  'metadata {',
+  '    row height 30,',
+  '},',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Echo [E] = follow[M]',
+  'parts ["Melody" [MEL]: notes { volume : 80% }, "Echo" [E]: follow [MEL]],',
   '',
-  '# score',
-  'bpm=92 break',
-  '[M] 1 2 3 4',
+  'score """',
+  '    bpm=92 break',
+  '    [MEL] 1 2 3 4',
+  '    """,',
 ].join('\n')
 
 function hexToRgb(hex: string): string {
@@ -24,9 +25,11 @@ function hexToRgb(hex: string): string {
   return `rgb(${red}, ${green}, ${blue})`
 }
 
-const keywordColors = Object.values(highlightKindStyles).map(({ foreground }) =>
-  hexToRgb(foreground),
-)
+function anyxColor(tokenClass: string): string {
+  const rule = anyxLightThemeRules.find((rule) => rule.token === tokenClass)
+  if (!rule?.foreground) throw new Error(`No anyx color for ${tokenClass}`)
+  return hexToRgb(rule.foreground)
+}
 
 /**
  * Color of the shortest run of rendered editor spans starting with `text`
@@ -44,8 +47,9 @@ async function editorTokenColor(page: Page, text: string): Promise<string> {
           let joined = ''
           const colors = new Set<string>()
           for (const span of spans.slice(start)) {
-            joined += (span.textContent ?? '').replaceAll('\u00a0', ' ')
-            colors.add(getComputedStyle(span).color)
+            const text = (span.textContent ?? '').replaceAll('\u00a0', ' ')
+            joined = (joined + text).trimStart()
+            if (text.trim()) colors.add(getComputedStyle(span).color)
             if (joined.startsWith(wanted)) {
               return colors.size === 1 ? [...colors].join() : 'mixed'
             }
@@ -60,12 +64,12 @@ async function editorTokenColor(page: Page, text: string): Promise<string> {
 Given('the editor keyword-highlighting fixture is loaded', async ({ page }) => {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'highlighting.jianpu',
-        userFiles: { 'highlighting.jianpu': src },
+        active: 'highlighting.poentaro',
+        userFiles: { 'highlighting.poentaro': src },
         bin: {},
-        fileIds: { 'highlighting.jianpu': crypto.randomUUID() },
+        fileIds: { 'highlighting.poentaro': crypto.randomUUID() },
       }),
     )
   }, SOURCE)
@@ -84,15 +88,18 @@ Then(
 )
 
 Then(
-  'the editor text {string} is not colored as a keyword',
-  async ({ page }, text: string) => {
-    // Wait until highlighting has run, so a later keyword color can't
-    // still arrive.
+  'the editor text {string} is colored as an anyx {string}',
+  async ({ page }, text: string, tokenClass: string) => {
     await expect
-      .poll(() => editorTokenColor(page, 'row_height'))
-      .toBe(hexToRgb(highlightKindStyles['metadata-key'].foreground))
-    const color = await editorTokenColor(page, text)
-    expect(color).not.toBe('missing')
-    expect(keywordColors).not.toContain(color)
+      .poll(() => editorTokenColor(page, text))
+      .toBe(anyxColor(tokenClass))
+  },
+)
+
+Then(
+  'the editor text {string} is not colored as an anyx {string}',
+  async ({ page }, text: string, tokenClass: string) => {
+    await expect.poll(() => editorTokenColor(page, text)).not.toBe('missing')
+    expect(await editorTokenColor(page, text)).not.toBe(anyxColor(tokenClass))
   },
 )

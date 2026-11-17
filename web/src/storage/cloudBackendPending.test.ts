@@ -45,8 +45,8 @@ describe('pendingContentByFileId', () => {
 
 describe('applyPendingStructure', () => {
   const server = [
-    { id: 'a', name: 'a.jianpu', content: 'A', revision: 1, trashedAt: null },
-    { id: 'b', name: 'b.jianpu', content: 'B', revision: 1, trashedAt: null },
+    { id: 'a', name: 'a.poentaro', content: 'A', revision: 1, trashedAt: null },
+    { id: 'b', name: 'b.poentaro', content: 'B', revision: 1, trashedAt: null },
   ]
   const snapshotOf = (
     lanes: Array<{ fileId: string; messages: unknown[]; at?: bigint }>,
@@ -73,15 +73,15 @@ describe('applyPendingStructure', () => {
         {
           fileId: 'c',
           messages: [
-            { tag: 'create-file', val: { name: 'c.jianpu', content: 'C' } },
+            { tag: 'create-file', val: { name: 'c.poentaro', content: 'C' } },
           ],
         },
       ]),
     )
     expect(result.map((file) => file.name)).toEqual([
-      'a.jianpu',
-      'b.jianpu',
-      'c.jianpu',
+      'a.poentaro',
+      'b.poentaro',
+      'c.poentaro',
     ])
   })
 
@@ -91,7 +91,7 @@ describe('applyPendingStructure', () => {
       snapshotOf([
         {
           fileId: 'a',
-          messages: [{ tag: 'rename-file', val: { to: 'z.jianpu' } }],
+          messages: [{ tag: 'rename-file', val: { to: 'z.poentaro' } }],
         },
         {
           fileId: 'b',
@@ -99,7 +99,7 @@ describe('applyPendingStructure', () => {
         },
       ]),
     )
-    expect(result.find((file) => file.id === 'a')?.name).toBe('z.jianpu')
+    expect(result.find((file) => file.id === 'a')?.name).toBe('z.poentaro')
     expect(result.find((file) => file.id === 'b')?.trashedAt).toBeNull()
   })
 
@@ -114,8 +114,8 @@ describe('applyPendingStructure', () => {
               tag: 'rename-files',
               val: {
                 moves: [
-                  { fileId: 'a', to: 'New/a.jianpu' },
-                  { fileId: 'b', to: 'New/b.jianpu' },
+                  { fileId: 'a', to: 'New/a.poentaro' },
+                  { fileId: 'b', to: 'New/b.poentaro' },
                 ],
               },
             },
@@ -124,15 +124,15 @@ describe('applyPendingStructure', () => {
       ]),
     )
     expect(result.map((file) => file.name)).toEqual([
-      'New/a.jianpu',
-      'New/b.jianpu',
+      'New/a.poentaro',
+      'New/b.poentaro',
     ])
   })
 
   it('replays a batch and a per-file rename in the order they were made', () => {
     const batch = {
       tag: 'rename-files',
-      val: { moves: [{ fileId: 'a', to: 'New/a.jianpu' }] },
+      val: { moves: [{ fileId: 'a', to: 'New/a.poentaro' }] },
     }
     const olderBatch = applyPendingStructure(
       server,
@@ -158,7 +158,7 @@ describe('applyPendingStructure', () => {
     )
     expect(olderBatch.find((file) => file.id === 'a')?.name).toBe('z')
     expect(newerBatch.find((file) => file.id === 'a')?.name).toBe(
-      'New/a.jianpu',
+      'New/a.poentaro',
     )
   })
 })

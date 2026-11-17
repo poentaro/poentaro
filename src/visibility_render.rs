@@ -4,7 +4,7 @@ use crate::compiler::NoteLabels;
 use crate::error::IrrecoverableError;
 use crate::parser::parts_parser::InstrumentInfo;
 use crate::{
-    apply_track_filter, collect_measure_diagnostics, compile, filter_part_list,
+    apply_track_filter, collect_measure_diagnostics, compile_with_preset, filter_part_list,
     list_parts_from_source, render_svgs_with_parts, RenderOutput, ResolvedPartVisibility,
 };
 
@@ -24,7 +24,12 @@ pub fn render_svgs_from_source_with_visibility(
         list_parts_from_source(source, filename, instruments)?,
         enabled_tracks,
     );
-    let mut score = compile(source, filename, instruments)?;
+    let mut score = compile_with_preset(
+        source,
+        filename,
+        instruments,
+        visibility.preset_name.as_deref(),
+    )?;
     apply_track_filter(&mut score, enabled_tracks);
     let mut diagnostics = collect_measure_diagnostics(&score);
     let result = render_svgs_with_parts(&score, &parts, Some(source), note_labels)?;

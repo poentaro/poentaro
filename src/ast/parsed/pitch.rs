@@ -7,8 +7,15 @@ pub struct Offset {
     pub y: i32,
 }
 
+impl std::fmt::Display for Offset {
+    /// As the metadata form's text input shows it: `0 -4`.
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{} {}", self.x, self.y)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum JianPuPitch {
+pub enum NumberedPitch {
     One,
     Two,
     Three,
@@ -18,13 +25,13 @@ pub enum JianPuPitch {
     Seven,
 }
 
-impl JianPuPitch {
-    /// The jianpu digit glyph (`1`-`7`) a pitch renders as, shared by the
+impl NumberedPitch {
+    /// The numbered digit glyph (`1`-`7`) a pitch renders as, shared by the
     /// renderer (`render_note_head`) and the coordinate resolver (which needs
     /// the same leading character to measure the note head's own left-side
     /// bearing — see `coordinate_resolver::resolve::flush_left_padding`).
     pub(crate) fn to_digit(&self) -> char {
-        use JianPuPitch::*;
+        use NumberedPitch::*;
         match self {
             One => '1',
             Two => '2',

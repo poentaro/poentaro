@@ -1,7 +1,7 @@
 //! The payload of a static folder share link (`#share-folder=...`): a
 //! snapshot of a whole folder subtree. This module owns the JSON shape and
 //! its validation; compressing and base64url-encoding it (brotli lives in the
-//! wasm crate) is done by `jianpu-wasm`. The single-file `#share=` payload
+//! wasm crate) is done by `poentaro-wasm`. The single-file `#share=` payload
 //! (`{filename, content}`) is unrelated and decodes as before.
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;

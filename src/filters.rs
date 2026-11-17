@@ -1,6 +1,8 @@
 use crate::ast::grouped::Score;
+use crate::ast::parsed::AlternativeLine;
 
-/// Retain only parts whose names appear in `enabled_tracks`.
+/// Retain only parts whose names appear in `enabled_tracks`. A part's
+/// alternative line (`S.2`) goes with the part.
 ///
 /// `None` keeps every part. `Some([])` removes every part.
 pub fn apply_track_filter(score: &mut Score, enabled_tracks: Option<&[String]>) {
@@ -9,9 +11,11 @@ pub fn apply_track_filter(score: &mut Score, enabled_tracks: Option<&[String]>) 
     };
     for measure in &mut score.measures {
         measure.parts.retain(|part| {
-            part.name()
-                .as_ref()
-                .is_some_and(|name| tracks.contains(name))
+            part.name().as_ref().is_some_and(|name| {
+                let part_name =
+                    AlternativeLine::of(name).map_or_else(|| name.to_string(), |line| line.base);
+                tracks.contains(&part_name)
+            })
         });
     }
 }
@@ -33,6 +37,29 @@ pub struct PartToggleState {
     pub soloed_parts: Vec<String>,
 }
 
+/// The `preset` chosen in the preset menu, as far as part visibility and
+/// rendering need it (see [`crate::chosen_preset_from_source`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ChosenPreset {
+    pub name: String,
+    /// The preset's `visible_parts`; `None` when it leaves every part shown.
+    pub visible_parts: Option<Vec<String>>,
+    /// The preset's `soloed_parts`, added to the toggles' own solos.
+    pub soloed_parts: Vec<String>,
+}
+
+impl ChosenPreset {
+    /// The parts an export under this preset keeps: its `soloed_parts` when
+    /// it has any, else its `visible_parts`. Empty means every part.
+    pub fn exported_parts(self) -> Vec<String> {
+        if self.soloed_parts.is_empty() {
+            self.visible_parts.unwrap_or_default()
+        } else {
+            self.soloed_parts
+        }
+    }
+}
+
 /// What [`resolve_part_visibility`] decided for a score's parts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ResolvedPartVisibility {
@@ -43,26 +70,53 @@ pub struct ResolvedPartVisibility {
     pub sounding_tracks: Option<Vec<String>>,
     /// Display names of `sounding_tracks`, for export filenames.
     pub sounding_display_names: Option<Vec<String>>,
+    /// The chosen preset, whose `metadata` overrides the render applies.
+    /// `None` renders the song's own `metadata`.
+    pub preset_name: Option<String>,
+    /// Parts whose pill is off, in `parts` order: hidden ones and those the
+    /// preset's `visible_parts` leaves out. Solo doesn't change it.
+    pub hidden_parts: Vec<String>,
+    /// Parts whose solo button is on, in `parts` order: soloed in the
+    /// toggles or in the preset's `soloed_parts`.
+    pub soloed_parts: Vec<String>,
 }
 
-/// Resolves the raw toggle state against `parts`.
+/// Resolves the raw toggle state against `parts`, under the chosen preset.
 ///
-/// Solo wins over hide: once any part is soloed, only soloed parts show and
-/// hide flags are ignored. Solo entries naming no part are ignored.
+/// A part shows when the preset's `visible_parts` lists it (or the preset sets
+/// none) and it isn't hidden. Solo wins over both: once any part is soloed,
+/// in the toggles or in the preset's `soloed_parts`, only soloed parts show.
+/// Solo entries naming no part are ignored.
 pub fn resolve_part_visibility(
     parts: &[crate::part_info::PartInfo],
     state: &PartToggleState,
+    preset: Option<&ChosenPreset>,
 ) -> ResolvedPartVisibility {
     let contains =
         |names: &[String], part: &crate::part_info::PartInfo| names.contains(&part.abbreviation);
-    let any_solo = parts.iter().any(|part| contains(&state.soloed_parts, part));
+    let is_hidden = |part: &crate::part_info::PartInfo| {
+        contains(&state.hidden_parts, part)
+            || preset
+                .and_then(|preset| preset.visible_parts.as_deref())
+                .is_some_and(|visible| !contains(visible, part))
+    };
+    let is_soloed = |part: &crate::part_info::PartInfo| {
+        contains(&state.soloed_parts, part)
+            || preset.is_some_and(|preset| contains(&preset.soloed_parts, part))
+    };
+    let soloed_parts: Vec<String> = parts
+        .iter()
+        .filter(|part| is_soloed(part))
+        .map(|part| part.abbreviation.clone())
+        .collect();
+    let any_solo = !soloed_parts.is_empty();
     let shown: Vec<_> = parts
         .iter()
         .filter(|part| {
             if any_solo {
-                contains(&state.soloed_parts, part)
+                is_soloed(part)
             } else {
-                !contains(&state.hidden_parts, part)
+                !is_hidden(part)
             }
         })
         .collect();
@@ -85,6 +139,13 @@ pub fn resolve_part_visibility(
             |part| part.display_name.clone(),
             |part| part.sounds,
         ),
+        preset_name: preset.map(|preset| preset.name.clone()),
+        hidden_parts: parts
+            .iter()
+            .filter(|part| is_hidden(part))
+            .map(|part| part.abbreviation.clone())
+            .collect(),
+        soloed_parts,
     }
 }
 

@@ -1,20 +1,20 @@
-use crate::ast::grouped::{PartFilterDisplay, Score, SequenceSpan};
+use crate::ast::grouped::{ChosenLine, PartFilterDisplay, Score, SequenceSpan};
 use crate::ast::parsed::PartDecl;
-use crate::error::{Diagnostic, RecoverableError, Span};
-use crate::parser::sequence_parser::{PartFilter, PartFilterKind, SequenceSection};
+use crate::error::{Diagnostic, RecoverableError, Span, Warning};
+use crate::parser::sequence_parser::{PartFilter, PartFilterKind, SequenceEntry, SequenceSection};
 
-/// Resolves a parsed `# sequence` section against `score.measures`' labels
+/// Resolves a parsed `sequence` section against `score.measures`' labels
 /// and stores the result on `score.sequence`, or leaves it `None` if the
 /// section is absent or invalid.
 ///
 /// - Each label must be defined on at most one measure; a duplicate
 ///   definition is a recoverable error (attached to the second occurrence)
 ///   and the sequence is dropped, since it would be ambiguous which measure
-///   a `# sequence` entry refers to.
-/// - A `# sequence` entry referencing an undefined label is a recoverable
+///   a `sequence` entry refers to.
+/// - A `sequence` entry referencing an undefined label is a recoverable
 ///   document-level error; that entry is skipped but the rest of the
 ///   sequence still resolves.
-/// - A label defined but never referenced by `# sequence` is not an error.
+/// - A label defined but never referenced by `sequence` is not an error.
 /// - An entry's `(-abbrev ...)` / `(abbrev ...)` suffix referencing an
 ///   abbreviation that matches no declared part is a recoverable
 ///   document-level error; that abbreviation is dropped from the entry's
@@ -88,12 +88,14 @@ fn build_spans(label_starts: &[(String, usize)], measure_count: usize) -> Vec<Se
                 end,
                 omit_parts: Vec::new(),
                 part_filter_display: None,
+                chosen_lines: Vec::new(),
+                line_choices_display: Vec::new(),
             }
         })
         .collect()
 }
 
-/// Resolves each `# sequence` entry against the known spans, attaching a
+/// Resolves each `sequence` entry against the known spans, attaching a
 /// recoverable error and skipping any entry that references an undefined
 /// label.
 fn resolve_entries(
@@ -115,12 +117,15 @@ fn resolve_entries(
                         entry.span,
                         declarations,
                     );
+                    let lines = resolve_line_choices(score, &entry, declarations);
                     Some(SequenceSpan {
                         label: span.label.clone(),
                         start: span.start,
                         end: span.end,
                         omit_parts: resolved.omit_parts,
                         part_filter_display: resolved.display,
+                        chosen_lines: lines.chosen,
+                        line_choices_display: lines.display,
                     })
                 }
                 None => {
@@ -140,7 +145,7 @@ fn resolve_entries(
 /// The result of resolving an entry's `(-abbrev ...)` / `(abbrev ...)`
 /// suffix: the part abbreviations to filter out at MIDI-expansion time
 /// (`omit_parts`, already expanded from an `Only` filter to its complement
-/// against `# parts`), and the suffix as written, for display (`display`).
+/// against `parts`), and the suffix as written, for display (`display`).
 struct ResolvedPartFilter {
     omit_parts: Vec<String>,
     display: Option<PartFilterDisplay>,
@@ -200,6 +205,59 @@ fn resolve_part_filter(
         omit_parts,
         display,
     }
+}
+
+/// An entry's `WITH (…)` choices, resolved: those that swap in an
+/// alternative line, and all of them as written for display.
+struct ResolvedLineChoices {
+    chosen: Vec<ChosenLine>,
+    display: Vec<ChosenLine>,
+}
+
+/// Validates each `WITH` choice: an unknown part is an error and is dropped;
+/// a line the part never writes falls back to its first line, with a warning.
+fn resolve_line_choices(
+    score: &mut Score,
+    entry: &SequenceEntry,
+    declarations: &[PartDecl],
+) -> ResolvedLineChoices {
+    let mut chosen = Vec::new();
+    let mut display = Vec::new();
+    for choice in &entry.line_choices {
+        if !is_declared(&choice.part, declarations) {
+            score
+                .document_diagnostics
+                .push(Diagnostic::Error(RecoverableError::general(
+                    choice.part_span,
+                    format!(
+                        "sequence entry \"{}\" picks a line of unknown part \"{}\"",
+                        entry.label, choice.part
+                    ),
+                )));
+            continue;
+        }
+        let line = ChosenLine {
+            part: choice.part.clone(),
+            line: choice.line,
+        };
+        match line.alternative_abbreviation() {
+            Some(alternative) if !is_declared(&alternative, declarations) => {
+                score
+                    .document_diagnostics
+                    .push(Diagnostic::Warning(Warning::new(
+                        choice.span,
+                        format!(
+                            "part [{}] has no line {} in any measure; playing its line 1",
+                            choice.part, choice.line
+                        ),
+                    )));
+            }
+            Some(_) => chosen.push(line.clone()),
+            None => {}
+        }
+        display.push(line);
+    }
+    ResolvedLineChoices { chosen, display }
 }
 
 #[cfg(test)]

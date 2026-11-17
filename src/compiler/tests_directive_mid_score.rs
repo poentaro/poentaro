@@ -8,23 +8,20 @@ fn score_from(source: &str) -> crate::ast::grouped::Score {
 #[test]
 fn hide_resting_parts_directive_toggles_mid_score() {
     let score = score_from(
-        "# metadata
-title=\"t\"
-author=\"a\"
+        r#"metadata { title "t", author "a" },
 
-# parts
-A = notes
-B = chords
+parts ["A": notes, "B": chords],
 
-# score
-time=4/4 key=C4 bpm=120
-[A] 1 2 3 4
-la la la la
+score """
+    time=4/4 key=C4 bpm=120
+    [A] 1 2 3 4
+    la la la la
 
-hide_resting_parts=no
-[A] 5 6 7 1
-lo lo lo lo
-",
+    hide_resting_parts=no
+    [A] 5 6 7 1
+    lo lo lo lo
+    """,
+"#,
     );
     let result = compile(&score);
     let blocks = result.blocks;

@@ -4,7 +4,7 @@ import type { LaneView } from './syncPanelTypes'
 
 const lane: LaneView = {
   fileId: 'f1',
-  fileName: 'song.jianpu',
+  fileName: 'song.poentaro',
   status: 'possibly-stuck',
   sentence: 'Stuck',
   retryInSeconds: 30,
@@ -15,7 +15,7 @@ const lane: LaneView = {
 describe('buildDiagnostics', () => {
   it('reports lane, status, messages and attempts', () => {
     const text = buildDiagnostics([lane])
-    expect(text).toContain('song.jianpu')
+    expect(text).toContain('song.poentaro')
     expect(text).toContain('possibly-stuck')
     expect(text).toContain('Edit, 2 KB, 1m ago')
     expect(text).toContain('10:00: Timed out')

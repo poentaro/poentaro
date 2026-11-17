@@ -8,29 +8,26 @@
 //! them as the feature is implemented; run with `cargo test chord_lyrics --
 //! --ignored` to see them fail/pass meanwhile.
 #![allow(clippy::disallowed_macros, clippy::panic)]
-use jianpu_generator::error::Diagnostic;
-use jianpu_generator::render_svgs_from_source;
+use poentaro::error::Diagnostic;
+use poentaro::render_svgs_from_source;
 
 fn source(chords: &str, lyrics: &str) -> String {
     format!(
-        r#"# metadata
-title = "t"
-author = "a"
+        r#"metadata {{ title "t", author "a" }},
 
-# parts
-c = chords
-l = lyrics[c]
+parts ["c": chords, "l": lyrics [c]],
 
-# score
-time=4/4 key=C4 bpm=120
-[c] {chords}
-[l] {lyrics}
+score """
+    time=4/4 key=C4 bpm=120
+    [c] {chords}
+    [l] {lyrics}
+    """,
 "#
     )
 }
 
-fn render(chords: &str, lyrics: &str) -> jianpu_generator::RenderOutput {
-    render_svgs_from_source(&source(chords, lyrics), "test.jianpu", &[]).unwrap_or_else(|err| {
+fn render(chords: &str, lyrics: &str) -> poentaro::RenderOutput {
+    render_svgs_from_source(&source(chords, lyrics), "test.poentaro", &[]).unwrap_or_else(|err| {
         panic!(
             "a chord-lyrics mistake must be a diagnostic, not an abort: {}",
             err.message()
@@ -38,11 +35,11 @@ fn render(chords: &str, lyrics: &str) -> jianpu_generator::RenderOutput {
     })
 }
 
-fn messages(output: &jianpu_generator::RenderOutput) -> Vec<String> {
+fn messages(output: &poentaro::RenderOutput) -> Vec<String> {
     output.diagnostics.iter().map(Diagnostic::message).collect()
 }
 
-fn error_count(output: &jianpu_generator::RenderOutput) -> usize {
+fn error_count(output: &poentaro::RenderOutput) -> usize {
     output
         .diagnostics
         .iter()
@@ -50,7 +47,7 @@ fn error_count(output: &jianpu_generator::RenderOutput) -> usize {
         .count()
 }
 
-fn assert_no_diagnostics(output: &jianpu_generator::RenderOutput) {
+fn assert_no_diagnostics(output: &poentaro::RenderOutput) {
     assert!(
         output.diagnostics.is_empty(),
         "expected no diagnostics, got: {:?}",
@@ -58,7 +55,7 @@ fn assert_no_diagnostics(output: &jianpu_generator::RenderOutput) {
     );
 }
 
-fn assert_one_error(output: &jianpu_generator::RenderOutput) {
+fn assert_one_error(output: &poentaro::RenderOutput) {
     assert_eq!(
         error_count(output),
         1,
@@ -134,9 +131,9 @@ fn chord_rest_is_not_an_attack_so_matching_brackets_are_fine() {
 
 #[test]
 fn every_syllable_gets_a_source_span_and_a_distinct_note_id() {
-    let spans = jianpu_generator::lyric_spans::list_lyric_spans_from_source(
+    let spans = poentaro::lyric_spans::list_lyric_spans_from_source(
         &source("1 - 4 -", "(~) 只剩下 (陪) 我"),
-        "test.jianpu",
+        "test.poentaro",
         None,
     )
     .unwrap_or_else(|err| panic!("{}", err.message()))
@@ -150,9 +147,9 @@ fn every_syllable_gets_a_source_span_and_a_distinct_note_id() {
 
 #[test]
 fn bracketed_syllables_share_their_chords_note_ids() {
-    let spans = jianpu_generator::lyric_spans::list_lyric_spans_from_source(
+    let spans = poentaro::lyric_spans::list_lyric_spans_from_source(
         &source("1 - 4 -", "(啦) 啦 (啦)"),
-        "test.jianpu",
+        "test.poentaro",
         None,
     )
     .unwrap_or_else(|err| panic!("{}", err.message()))

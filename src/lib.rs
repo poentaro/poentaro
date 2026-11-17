@@ -22,6 +22,7 @@ pub mod compositor;
 pub mod consolidator;
 pub mod coordinate_resolver;
 pub mod desugar;
+pub mod document;
 mod document_render;
 pub mod error;
 pub mod error_reporter;
@@ -29,28 +30,35 @@ pub mod file_tree;
 pub mod filters;
 mod font_metrics;
 pub mod fonts;
+pub mod format_anyx;
 pub mod format_source;
 pub mod grid_layout;
 pub mod grouper;
 pub mod grouping;
 pub mod highlight;
 pub mod layout;
+mod lyric_paired_target;
 mod lyric_slots;
 pub mod lyric_spans;
+mod lyric_targets_rhythm;
 pub mod measure_spans;
 pub mod mei_export;
-pub mod migrate_lyrics;
 pub mod note_spans;
 pub mod parser;
 mod part_info;
 pub mod part_stream;
+pub mod pinyin;
 pub mod pitch_description;
 pub mod render_config;
 pub mod renderer;
 pub mod serializer;
 pub mod sound_label;
+mod sounding_pitch;
 pub mod source_edit;
 pub mod source_embed;
+pub mod span_selection;
+#[cfg(feature = "wav")]
+mod split_audio;
 pub mod split_track;
 pub mod staff_export;
 pub mod symbols;
@@ -62,6 +70,8 @@ mod visibility_render;
 pub mod midi;
 #[cfg(feature = "pdf")]
 pub mod pdf;
+#[cfg(feature = "midi")]
+pub mod sing;
 #[cfg(feature = "wav")]
 pub mod wav;
 
@@ -71,15 +81,19 @@ pub use compiler::NoteLabels;
 pub use document_render::{
     render_documents_from_source_with_visibility,
     render_documents_with_highlight_range_and_visibility, render_mei_from_source_with_visibility,
-    RenderDocumentOutput,
+    RenderDocumentOutput, RenderView,
 };
 pub use filters::*;
 pub use lyric_spans::*;
 pub use measure_spans::*;
 pub use note_spans::*;
 pub use part_info::{
-    list_part_declarations_from_source, list_parts_from_source, PartInfo, SourcePartDeclaration,
+    list_part_declarations_from_source, list_parts_from_source, PartInfo, RangeBoundLabels,
+    SourcePartDeclaration,
 };
+pub use span_selection::*;
+#[cfg(feature = "wav")]
+pub use split_audio::*;
 pub use split_track::*;
 pub use visibility_render::*;
 
@@ -113,7 +127,7 @@ pub fn collect_measure_diagnostics(score: &Score) -> Vec<Diagnostic> {
         .collect()
 }
 
-/// Parse and group a `.jianpu` source string into a [`Score`].
+/// Parse and group a `.poentaro` source string into a [`Score`].
 pub fn compile(
     source: &str,
     filename: &str,
@@ -121,6 +135,37 @@ pub fn compile(
 ) -> Result<Score, IrrecoverableError> {
     let doc = parser::parse(source, filename, instruments)?;
     grouper::group(doc)
+}
+
+/// Like [`compile`], with `metadata` overlaid by the `preset` named
+/// `preset_name`. `None`, or a name no preset has, compiles the song's own
+/// `metadata`.
+pub fn compile_with_preset(
+    source: &str,
+    filename: &str,
+    instruments: &[InstrumentInfo],
+    preset_name: Option<&str>,
+) -> Result<Score, IrrecoverableError> {
+    let doc = parser::parse(source, filename, instruments)?;
+    grouper::group(match preset_name {
+        Some(name) => doc.with_preset(name),
+        None => doc,
+    })
+}
+
+/// The `preset` named `preset_name`, for [`resolve_part_visibility`].
+/// `None` when the source has no such preset (the menu then shows Default).
+pub fn chosen_preset_from_source(
+    source: &str,
+    filename: &str,
+    preset_name: &str,
+) -> Result<Option<ChosenPreset>, IrrecoverableError> {
+    let doc = parser::parse(source, filename, &[])?;
+    Ok(doc.preset(preset_name).map(|preset| ChosenPreset {
+        name: preset.name.clone(),
+        visible_parts: preset.visible_abbreviations(),
+        soloed_parts: preset.soloed_abbreviations(),
+    }))
 }
 
 /// Supply every `FontFamily` role's raw font bytes for real glyph-advance
@@ -170,6 +215,7 @@ fn build_header(score: &Score, parts: &[PartInfo]) -> grid_layout::types::Header
                         parts: display.parts.clone(),
                     }
                 }),
+                lines: span.line_choices_display.clone(),
             })
             .collect()
     });
@@ -201,6 +247,17 @@ fn build_header(score: &Score, parts: &[PartInfo]) -> grid_layout::types::Header
         part_legend_italic: score.metadata.part_legend.italic,
         part_legend_underline: score.metadata.part_legend.underline,
         part_legend_font_family: score.metadata.part_legend.font_family,
+        part_legend_vertical_padding_pt: score.metadata.part_legend.vertical_padding_pt as f32,
+        sequence_vertical_padding_pt: score.metadata.sequence.vertical_padding_pt as f32,
+        title_vertical_padding_pt: score.metadata.title_style.vertical_padding_pt as f32,
+        subtitle_vertical_padding_pt: score.metadata.subtitle_style.vertical_padding_pt as f32,
+        author_vertical_padding_pt: score.metadata.author_style.vertical_padding_pt as f32,
+        running_title_font_size: score.metadata.running_title.font_size as f32,
+        running_title_bold: score.metadata.running_title.bold,
+        running_title_italic: score.metadata.running_title.italic,
+        running_title_underline: score.metadata.running_title.underline,
+        running_title_font_family: score.metadata.running_title.font_family,
+        running_title_vertical_padding_pt: score.metadata.running_title.vertical_padding_pt as f32,
     }
 }
 
@@ -225,11 +282,17 @@ fn render_svg_docs_with_parts(
     let grid_layout::LayoutOutput {
         pages: grid_pages,
         diagnostics,
-    } = grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None);
+    } = grid_layout::layout(
+        &compile_result,
+        &config,
+        &header,
+        grid_layout::PageLayout::A4,
+        None,
+    );
     let abs = coordinate_resolver::resolve(
         &grid_pages,
         config.note_number_width as f32,
-        config.part_label_width_pt as f32,
+        config.page_frame(),
         coordinate_resolver::ResolveFontSizes {
             lyric: config.lyric_font_sizes(),
             notes: config.notes_font_size(),
@@ -292,7 +355,7 @@ pub fn render_svgs(score: &Score) -> Result<Vec<String>, IrrecoverableError> {
     Ok(render_svgs_with_parts(score, &[], None, NoteLabels::Degrees)?.svgs)
 }
 
-/// Parse, group, and render a `.jianpu` source string into SVG page strings.
+/// Parse, group, and render a `.poentaro` source string into SVG page strings.
 pub fn render_svgs_from_source(
     source: &str,
     filename: &str,
@@ -318,28 +381,6 @@ pub fn render_svgs_from_source_filtered(
             rendered_tracks: enabled_tracks.map(<[String]>::to_vec),
             ..Default::default()
         },
-        instruments,
-        NoteLabels::Degrees,
-    )
-}
-
-/// Parse, group, optionally filter tracks, and write PDF bytes.
-#[cfg(feature = "pdf")]
-pub fn write_pdf_from_source_filtered(
-    source: &str,
-    filename: &str,
-    enabled_tracks: Option<&[String]>,
-    fonts: &fonts::FontBytesByFamily,
-    instruments: &[InstrumentInfo],
-) -> Result<Vec<u8>, IrrecoverableError> {
-    write_pdf_from_source_with_visibility(
-        source,
-        filename,
-        &ResolvedPartVisibility {
-            rendered_tracks: enabled_tracks.map(<[String]>::to_vec),
-            ..Default::default()
-        },
-        fonts,
         instruments,
         NoteLabels::Degrees,
     )

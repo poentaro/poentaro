@@ -1,4 +1,4 @@
-import type { NameMatch } from '../jianpuWasm'
+import type { NameMatch } from '../poentaroWasm'
 
 /** `text` with the range Rust matched against the search query marked. */
 export function HighlightedName({

@@ -7,7 +7,7 @@ fn path(raw: &str) -> TreePath {
 fn context() -> FileOperationContext {
     FileOperationContext {
         demo_files: vec![DemoFile {
-            path: path("Demo.jianpu"),
+            path: path("Demo.poentaro"),
             content: "demo content".to_string(),
         }],
         new_file_id: "new-id".to_string(),
@@ -40,31 +40,31 @@ fn file_names(state: &FileStoreState) -> Vec<&str> {
 
 #[test]
 fn create_file_at_top_level_is_named_and_active() {
-    let state = store(&["a.jianpu"], &[]);
+    let state = store(&["a.poentaro"], &[]);
     let next = create_file(&state, None, "  Song ", "template", &context()).unwrap();
-    assert_eq!(next.active, "Song.jianpu");
-    assert_eq!(next.user_files["Song.jianpu"], "template");
-    assert_eq!(next.file_ids["Song.jianpu"], "new-id");
+    assert_eq!(next.active, "Song.poentaro");
+    assert_eq!(next.user_files["Song.poentaro"], "template");
+    assert_eq!(next.file_ids["Song.poentaro"], "new-id");
 }
 
 #[test]
 fn create_file_keeps_an_existing_extension() {
     let state = store(&[], &[]);
-    let next = create_file(&state, None, "Song.jianpu", "t", &context()).unwrap();
-    assert_eq!(next.active, "Song.jianpu");
+    let next = create_file(&state, None, "Song.poentaro", "t", &context()).unwrap();
+    assert_eq!(next.active, "Song.poentaro");
 }
 
 #[test]
 fn create_file_in_folder_is_scoped_to_that_folder() {
-    let state = store(&["Song.jianpu", "Hymns/Other.jianpu"], &[]);
+    let state = store(&["Song.poentaro", "Hymns/Other.poentaro"], &[]);
     let next = create_file(&state, Some(&path("Hymns")), "Song", "t", &context()).unwrap();
-    assert_eq!(next.active, "Hymns/Song.jianpu");
+    assert_eq!(next.active, "Hymns/Song.poentaro");
 }
 
 #[test]
 fn create_file_rejects_a_taken_name() {
-    let state = store(&["Song.jianpu"], &[]);
-    for taken in ["Song", "Song.jianpu"] {
+    let state = store(&["Song.poentaro"], &[]);
+    for taken in ["Song", "Song.poentaro"] {
         assert!(
             matches!(
                 create_file(&state, None, taken, "t", &context()),
@@ -84,71 +84,71 @@ fn create_file_rejects_an_empty_or_nested_name() {
 
 #[test]
 fn create_file_error_explains_a_clash_but_not_success() {
-    let state = store(&["Song.jianpu"], &[]);
+    let state = store(&["Song.poentaro"], &[]);
     assert!(create_file_error(&state, None, "Song", &context()).is_some());
     assert_eq!(create_file_error(&state, None, "New", &context()), None);
 }
 
 #[test]
 fn create_file_inside_a_file_is_rejected() {
-    let state = store(&["a.jianpu"], &[]);
+    let state = store(&["a.poentaro"], &[]);
     assert_eq!(
-        create_file(&state, Some(&path("a.jianpu")), "t", "t", &context()),
+        create_file(&state, Some(&path("a.poentaro")), "t", "t", &context()),
         Err(FileStoreError::AncestorIsFile {
-            path: path("a.jianpu")
+            path: path("a.poentaro")
         })
     );
 }
 
 #[test]
 fn duplicate_stays_in_the_same_folder() {
-    let state = store(&["Hymns/Advent/song.jianpu"], &[]);
-    let next = duplicate_file(&state, &path("Hymns/Advent/song.jianpu"), &context()).unwrap();
-    assert_eq!(next.active, "Hymns/Advent/song 2.jianpu");
+    let state = store(&["Hymns/Advent/song.poentaro"], &[]);
+    let next = duplicate_file(&state, &path("Hymns/Advent/song.poentaro"), &context()).unwrap();
+    assert_eq!(next.active, "Hymns/Advent/song 2.poentaro");
     assert_eq!(
-        next.user_files["Hymns/Advent/song 2.jianpu"],
-        "content of Hymns/Advent/song.jianpu"
+        next.user_files["Hymns/Advent/song 2.poentaro"],
+        "content of Hymns/Advent/song.poentaro"
     );
     assert_ne!(
-        next.file_ids["Hymns/Advent/song 2.jianpu"],
-        "id:Hymns/Advent/song.jianpu"
+        next.file_ids["Hymns/Advent/song 2.poentaro"],
+        "id:Hymns/Advent/song.poentaro"
     );
 }
 
 #[test]
 fn duplicate_skips_binned_names_and_copies_demo_files_to_top_level() {
-    let state = store(&["a.jianpu"], &["a 2.jianpu"]);
-    let next = duplicate_file(&state, &path("a.jianpu"), &context()).unwrap();
-    assert_eq!(next.active, "a 3.jianpu");
-    let next = duplicate_file(&state, &path("Demo.jianpu"), &context()).unwrap();
-    assert_eq!(next.active, "Demo 2.jianpu");
-    assert_eq!(next.user_files["Demo 2.jianpu"], "demo content");
+    let state = store(&["a.poentaro"], &["a 2.poentaro"]);
+    let next = duplicate_file(&state, &path("a.poentaro"), &context()).unwrap();
+    assert_eq!(next.active, "a 3.poentaro");
+    let next = duplicate_file(&state, &path("Demo.poentaro"), &context()).unwrap();
+    assert_eq!(next.active, "Demo 2.poentaro");
+    assert_eq!(next.user_files["Demo 2.poentaro"], "demo content");
 }
 
 #[test]
 fn rename_keeps_content_and_file_id() {
-    let state = store(&["a.jianpu"], &[]);
-    let next = rename_file(&state, "a.jianpu", "b", &context()).unwrap();
-    assert_eq!(file_names(&next), vec!["b.jianpu"]);
-    assert_eq!(next.user_files["b.jianpu"], "content of a.jianpu");
-    assert_eq!(next.file_ids["b.jianpu"], "id:a.jianpu");
-    assert!(!next.file_ids.contains_key("a.jianpu"));
-    assert_eq!(next.active, "b.jianpu");
+    let state = store(&["a.poentaro"], &[]);
+    let next = rename_file(&state, "a.poentaro", "b", &context()).unwrap();
+    assert_eq!(file_names(&next), vec!["b.poentaro"]);
+    assert_eq!(next.user_files["b.poentaro"], "content of a.poentaro");
+    assert_eq!(next.file_ids["b.poentaro"], "id:a.poentaro");
+    assert!(!next.file_ids.contains_key("a.poentaro"));
+    assert_eq!(next.active, "b.poentaro");
 }
 
 #[test]
 fn move_file_into_new_folder_keeps_file_id() {
-    let state = store(&["a.jianpu"], &[]);
-    let next = rename_file(&state, "a.jianpu", "Hymns/Advent/a.jianpu", &context()).unwrap();
-    assert_eq!(file_names(&next), vec!["Hymns/Advent/a.jianpu"]);
-    assert_eq!(next.file_ids["Hymns/Advent/a.jianpu"], "id:a.jianpu");
+    let state = store(&["a.poentaro"], &[]);
+    let next = rename_file(&state, "a.poentaro", "Hymns/Advent/a.poentaro", &context()).unwrap();
+    assert_eq!(file_names(&next), vec!["Hymns/Advent/a.poentaro"]);
+    assert_eq!(next.file_ids["Hymns/Advent/a.poentaro"], "id:a.poentaro");
 }
 
 #[test]
 fn rename_to_same_path_is_a_no_op() {
-    let state = store(&["a.jianpu"], &[]);
+    let state = store(&["a.poentaro"], &[]);
     assert_eq!(
-        rename_file(&state, "a.jianpu", " a ", &context()),
+        rename_file(&state, "a.poentaro", " a ", &context()),
         Ok(state)
     );
 }
@@ -156,11 +156,11 @@ fn rename_to_same_path_is_a_no_op() {
 #[test]
 fn rename_collisions_are_rejected() {
     let state = store(
-        &["a.jianpu", "b.jianpu", "F.jianpu/x.jianpu"],
-        &["gone.jianpu"],
+        &["a.poentaro", "b.poentaro", "F.poentaro/x.poentaro"],
+        &["gone.poentaro"],
     );
-    for target in ["b.jianpu", "gone.jianpu", "F.jianpu", "Demo.jianpu"] {
-        let result = rename_file(&state, "a.jianpu", target, &context());
+    for target in ["b.poentaro", "gone.poentaro", "F.poentaro", "Demo.poentaro"] {
+        let result = rename_file(&state, "a.poentaro", target, &context());
         assert!(
             matches!(result, Err(FileStoreError::Collision { .. })),
             "{target}: {result:?}"
@@ -170,88 +170,88 @@ fn rename_collisions_are_rejected() {
 
 #[test]
 fn rename_under_a_file_or_with_bad_path_is_rejected() {
-    let state = store(&["a.jianpu", "b.jianpu"], &[]);
+    let state = store(&["a.poentaro", "b.poentaro"], &[]);
     assert!(matches!(
-        rename_file(&state, "a.jianpu", "b.jianpu/c", &context()),
+        rename_file(&state, "a.poentaro", "b.poentaro/c", &context()),
         Err(FileStoreError::AncestorIsFile { .. })
     ));
     assert!(matches!(
-        rename_file(&state, "a.jianpu", "x//y", &context()),
+        rename_file(&state, "a.poentaro", "x//y", &context()),
         Err(FileStoreError::InvalidPath { .. })
     ));
     assert!(matches!(
-        rename_file(&state, "a.jianpu", "folder/", &context()),
+        rename_file(&state, "a.poentaro", "folder/", &context()),
         Err(FileStoreError::InvalidPath { .. })
     ));
     assert!(matches!(
-        rename_file(&state, "a.jianpu", &"x".repeat(1020), &context()),
+        rename_file(&state, "a.poentaro", &"x".repeat(1020), &context()),
         Err(FileStoreError::InvalidPath { .. })
     ));
 }
 
 #[test]
 fn demo_and_missing_files_cannot_be_renamed_or_deleted() {
-    let state = store(&["a.jianpu"], &[]);
+    let state = store(&["a.poentaro"], &[]);
     assert!(matches!(
-        rename_file(&state, "Demo.jianpu", "x", &context()),
+        rename_file(&state, "Demo.poentaro", "x", &context()),
         Err(FileStoreError::DemoFileReadOnly { .. })
     ));
     assert!(matches!(
-        delete_file(&state, "Demo.jianpu", &context()),
+        delete_file(&state, "Demo.poentaro", &context()),
         Err(FileStoreError::DemoFileReadOnly { .. })
     ));
     assert!(matches!(
-        delete_file(&state, "nope.jianpu", &context()),
+        delete_file(&state, "nope.poentaro", &context()),
         Err(FileStoreError::NotFound { .. })
     ));
 }
 
 #[test]
 fn delete_bins_under_full_path_and_picks_next_active() {
-    let state = store(&["A/a.jianpu", "b.jianpu"], &[]);
-    let next = delete_file(&state, "A/a.jianpu", &context()).unwrap();
-    assert_eq!(next.bin["A/a.jianpu"], "content of A/a.jianpu");
-    assert_eq!(next.active, "b.jianpu");
-    assert_eq!(next.file_ids["A/a.jianpu"], "id:A/a.jianpu");
-    let next = delete_file(&next, "b.jianpu", &context()).unwrap();
-    assert_eq!(next.active, "Demo.jianpu");
+    let state = store(&["A/a.poentaro", "b.poentaro"], &[]);
+    let next = delete_file(&state, "A/a.poentaro", &context()).unwrap();
+    assert_eq!(next.bin["A/a.poentaro"], "content of A/a.poentaro");
+    assert_eq!(next.active, "b.poentaro");
+    assert_eq!(next.file_ids["A/a.poentaro"], "id:A/a.poentaro");
+    let next = delete_file(&next, "b.poentaro", &context()).unwrap();
+    assert_eq!(next.active, "Demo.poentaro");
 }
 
 #[test]
 fn restore_goes_back_to_original_path_recreating_the_folder() {
-    let state = store(&["b.jianpu"], &["Hymns/Advent/a.jianpu"]);
-    let next = restore_file(&state, "Hymns/Advent/a.jianpu", &context()).unwrap();
-    assert_eq!(next.active, "Hymns/Advent/a.jianpu");
+    let state = store(&["b.poentaro"], &["Hymns/Advent/a.poentaro"]);
+    let next = restore_file(&state, "Hymns/Advent/a.poentaro", &context()).unwrap();
+    assert_eq!(next.active, "Hymns/Advent/a.poentaro");
     assert_eq!(
-        next.user_files["Hymns/Advent/a.jianpu"],
-        "binned Hymns/Advent/a.jianpu"
+        next.user_files["Hymns/Advent/a.poentaro"],
+        "binned Hymns/Advent/a.poentaro"
     );
     assert!(next.bin.is_empty());
     assert_eq!(
-        next.file_ids["Hymns/Advent/a.jianpu"],
-        "id:Hymns/Advent/a.jianpu"
+        next.file_ids["Hymns/Advent/a.poentaro"],
+        "id:Hymns/Advent/a.poentaro"
     );
 }
 
 #[test]
 fn restore_picks_unique_name_when_path_is_taken() {
-    let state = store(&["F/a.jianpu"], &["F/a.jianpu_"]);
+    let state = store(&["F/a.poentaro"], &["F/a.poentaro_"]);
     let mut state = state;
-    state.bin.insert("F/a.jianpu".into(), "old".into());
-    state.bin.remove("F/a.jianpu_");
+    state.bin.insert("F/a.poentaro".into(), "old".into());
+    state.bin.remove("F/a.poentaro_");
     // A live file now shares the bin key (e.g. from an older flat store).
-    let next = restore_file(&state, "F/a.jianpu", &context()).unwrap();
-    assert_eq!(next.active, "F/a 2.jianpu");
-    assert_eq!(next.user_files["F/a 2.jianpu"], "old");
-    assert_eq!(next.user_files["F/a.jianpu"], "content of F/a.jianpu");
-    assert_eq!(next.file_ids["F/a 2.jianpu"], "id:F/a.jianpu");
+    let next = restore_file(&state, "F/a.poentaro", &context()).unwrap();
+    assert_eq!(next.active, "F/a 2.poentaro");
+    assert_eq!(next.user_files["F/a 2.poentaro"], "old");
+    assert_eq!(next.user_files["F/a.poentaro"], "content of F/a.poentaro");
+    assert_eq!(next.file_ids["F/a 2.poentaro"], "id:F/a.poentaro");
 }
 
 #[test]
 fn restore_under_a_file_fails_and_keeps_the_bin() {
-    let state = store(&["F"], &["F/a.jianpu"]);
+    let state = store(&["F"], &["F/a.poentaro"]);
     assert!(matches!(
-        restore_file(&state, "F/a.jianpu", &context()),
+        restore_file(&state, "F/a.poentaro", &context()),
         Err(FileStoreError::AncestorIsFile { .. })
     ));
     assert!(matches!(
@@ -262,8 +262,8 @@ fn restore_under_a_file_fails_and_keeps_the_bin() {
 
 #[test]
 fn rename_to_the_reserved_placeholder_leaf_is_rejected() {
-    let state = store(&["a.jianpu"], &[]);
-    let error = rename_file(&state, "a.jianpu", "Songs/.keep", &context()).unwrap_err();
+    let state = store(&["a.poentaro"], &[]);
+    let error = rename_file(&state, "a.poentaro", "Songs/.keep", &context()).unwrap_err();
     assert_eq!(
         error,
         FileStoreError::ReservedName {
@@ -278,16 +278,16 @@ fn rename_to_the_reserved_placeholder_leaf_is_rejected() {
 
 #[test]
 fn rename_error_reports_the_reserved_leaf() {
-    let state = store(&["a.jianpu"], &[]);
+    let state = store(&["a.poentaro"], &[]);
     assert_eq!(
-        rename_error(&state, "a.jianpu", "Songs/.keep", &context()).as_deref(),
+        rename_error(&state, "a.poentaro", "Songs/.keep", &context()).as_deref(),
         Some("`.keep` is a reserved name and cannot be used")
     );
 }
 
 #[test]
 fn a_name_that_merely_starts_with_keep_is_fine() {
-    let state = store(&["a.jianpu"], &[]);
-    let next = rename_file(&state, "a.jianpu", "Songs/.keep.jianpu", &context()).unwrap();
-    assert!(next.user_files.contains_key("Songs/.keep.jianpu"));
+    let state = store(&["a.poentaro"], &[]);
+    let next = rename_file(&state, "a.poentaro", "Songs/.keep.poentaro", &context()).unwrap();
+    assert!(next.user_files.contains_key("Songs/.keep.poentaro"));
 }

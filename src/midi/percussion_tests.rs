@@ -72,15 +72,16 @@ fn controller_events_on_channel(midi_bytes: &[u8], target_channel: u8) -> usize 
 }
 
 fn two_part_fixture() -> &'static str {
-    concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\n",
-        "Snare = percussion \"38: Acoustic Snare\"\n",
-        "Kick = percussion \"36: Bass Drum 1\"\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n",
-        "[Snare] x 0 x 0\n",
-        "[Kick] x 0 x 0\n",
-    )
+    r#"metadata { title "t", author "a" },
+
+parts ["Snare": percussion { sound 38 }, "Kick": percussion { sound 36 }],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Snare] x 0 x 0
+    [Kick] x 0 x 0
+    """,
+"#
 }
 
 #[test]
@@ -131,15 +132,16 @@ fn no_volume_controller_events_on_percussion_channel() {
 
 #[test]
 fn melodic_channel_numbering_unaffected_by_percussion_presence() {
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\n",
-        "Melody = notes\n",
-        "Snare = percussion \"38: Acoustic Snare\"\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n",
-        "[Melody] 1 2 3 4\n",
-        "[Snare] x 0 x 0\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes, "Snare": percussion { sound 38 }],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Melody] 1 2 3 4
+    [Snare] x 0 x 0
+    """,
+"#;
     let midi_bytes = parse_write(input);
     let events = note_on_events(&midi_bytes);
     let melody_channels: Vec<u8> = events
@@ -155,12 +157,15 @@ fn melodic_channel_numbering_unaffected_by_percussion_presence() {
 
 #[test]
 fn tied_hit_defers_note_off_until_tie_resolves() {
-    let input = concat!(
-        "# metadata\ntitle=\"t\"\nauthor=\"a\"\n\n",
-        "# parts\nSnare = percussion \"38: Acoustic Snare\"\n\n",
-        "# score\ntime=4/4 key=C4 bpm=120\n",
-        "[Snare] x~x 0 0\n",
-    );
+    let input = r#"metadata { title "t", author "a" },
+
+parts ["Snare": percussion { sound 38 }],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [Snare] x~x 0 0
+    """,
+"#;
     let midi_bytes = parse_write(input);
     let note_offs: Vec<(u8, u8)> = note_off_events(&midi_bytes)
         .into_iter()

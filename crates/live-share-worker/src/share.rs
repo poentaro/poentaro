@@ -36,8 +36,8 @@ pub fn empty_doc() -> SyncedDoc {
     }
 }
 
-/// The last segment of the file's path (`Hymns/Advent/O Come.jianpu` ->
-/// `O Come.jianpu`): a viewer of one shared file gets its name for the title
+/// The last segment of the file's path (`Hymns/Advent/O Come.poentaro` ->
+/// `O Come.poentaro`): a viewer of one shared file gets its name for the title
 /// and download, never the owner's folder names.
 fn file_name_only(path: &str) -> String {
     path.rsplit('/').next().unwrap_or(path).to_string()

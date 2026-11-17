@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { jianpuWasm, type SoundChoices } from '../jianpuWasm'
+import { poentaroWasm, type SoundChoices } from '../poentaroWasm'
 import { GM_INSTRUMENTS } from '../utils/gmInstruments'
 import { ensureWasmInit } from '../wasmInit'
 
 let cachedSoundChoices: SoundChoices | null = null
 
 function soundChoices(): SoundChoices {
-  cachedSoundChoices ??= jianpuWasm().listSoundChoices(GM_INSTRUMENTS)
+  cachedSoundChoices ??= poentaroWasm().listSoundChoices(GM_INSTRUMENTS)
   return cachedSoundChoices
 }
 

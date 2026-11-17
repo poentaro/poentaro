@@ -3,12 +3,14 @@
 //! folder). No I/O and no wasm glue here; see ARCHITECTURE.md "File tree".
 
 mod bin_entries;
+mod extension;
 mod file_ops;
 mod folder_ops;
 mod folder_queries;
 mod folder_share;
 mod folder_snapshot;
 mod move_targets;
+mod origin_migration;
 mod path;
 mod placeholder;
 mod selection;
@@ -19,6 +21,10 @@ mod unique_name;
 mod view;
 
 pub use bin_entries::{bin_entries, BinEntry};
+pub use extension::{
+    current_extension_path, rename_legacy_extensions, strip_file_extension, FILE_EXTENSION,
+    LEGACY_FILE_EXTENSION,
+};
 pub use file_ops::{
     create_file, create_file_error, delete_file, duplicate_file, rename_file, restore_file,
 };
@@ -38,6 +44,7 @@ pub use folder_snapshot::{
     SnapshotFile, MAX_STATIC_FOLDER_LINK_CHARS, MAX_UNCOMPRESSED_SNAPSHOT_BYTES,
 };
 pub use move_targets::{move_destination, move_targets, rename_error, MoveTarget};
+pub use origin_migration::{merge_migrated_file_store, MIGRATED_FOLDER_NAME};
 pub use path::{PathError, TreePath, MAX_PATH_BYTES};
 pub use placeholder::{
     classify_cloud_listing, is_placeholder_path, placeholder_path, FolderPlaceholder, ListedEntry,
@@ -59,6 +66,8 @@ pub use view::{
 #[cfg(test)]
 mod bin_entries_tests;
 #[cfg(test)]
+mod extension_tests;
+#[cfg(test)]
 mod file_ops_tests;
 #[cfg(test)]
 mod folder_ops_tests;
@@ -70,6 +79,8 @@ mod folder_share_tests;
 mod folder_snapshot_tests;
 #[cfg(test)]
 mod move_targets_tests;
+#[cfg(test)]
+mod origin_migration_tests;
 #[cfg(test)]
 mod path_tests;
 #[cfg(test)]

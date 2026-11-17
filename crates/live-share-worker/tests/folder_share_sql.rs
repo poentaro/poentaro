@@ -15,8 +15,8 @@ async fn the_migration_keeps_existing_file_shares_and_backfills_their_owner(
     migrate_up_to_file_shares(&mut connection).await?;
     add_user(&mut connection, "u1").await?;
     add_user(&mut connection, "u2").await?;
-    add_file(&mut connection, "f1", "u1", "Hymns/a.jianpu", "one").await?;
-    add_file(&mut connection, "f2", "u2", "b.jianpu", "two").await?;
+    add_file(&mut connection, "f1", "u1", "Hymns/a.poentaro", "one").await?;
+    add_file(&mut connection, "f2", "u2", "b.poentaro", "two").await?;
     sqlx::query(
         "INSERT INTO docs (share_id, owner_user_id, filename, content, ended, created_at, updated_at, external_file_id) \
          VALUES ('share-live', 'u1', 'x', 'x', 0, 11, 11, 'f1'), ('share-stopped', 'u2', 'x', 'x', 1, 12, 13, 'f2')",
@@ -79,7 +79,7 @@ async fn the_migration_keeps_existing_file_shares_and_backfills_their_owner(
 #[tokio::test]
 async fn a_share_is_either_a_file_or_a_folder_never_both_or_neither() -> Result<(), sqlx::Error> {
     let mut connection = migrated().await?;
-    add_file(&mut connection, "f1", "u1", "a.jianpu", "").await?;
+    add_file(&mut connection, "f1", "u1", "a.poentaro", "").await?;
 
     let both = connection
         .execute("INSERT INTO shares (share_id, owner_user_id, file_id, folder_prefix, created_at) VALUES ('s1','u1','f1','Hymns',0)")
@@ -151,7 +151,7 @@ async fn only_the_owner_can_stop_or_see_a_folder_share() -> Result<(), sqlx::Err
 #[tokio::test]
 async fn a_file_share_upsert_records_the_owner_and_reuses_its_id() -> Result<(), sqlx::Error> {
     let mut connection = migrated().await?;
-    add_file(&mut connection, "f1", "u1", "a.jianpu", "").await?;
+    add_file(&mut connection, "f1", "u1", "a.poentaro", "").await?;
     let upsert = |id: &'static str| {
         sqlx::query(UPSERT_SHARE)
             .bind(id)

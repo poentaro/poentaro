@@ -1,7 +1,7 @@
 # TODO: file tree (folders of unlimited depth)
 
 Design drafts: file tree storage model and before/after UX (Artifact mockups, captured from the real app).
-Model is tentative: file name is a slash-separated path (`Hymns/Advent/O Come.jianpu`); a folder is a shared prefix; `fileIds` stay stable.
+Model is tentative: file name is a slash-separated path (`Hymns/Advent/O Come.poentaro`); a folder is a shared prefix; `fileIds` stay stable.
 
 ## Decisions needed first
 
@@ -48,7 +48,7 @@ Model is tentative: file name is a slash-separated path (`Hymns/Advent/O Come.ji
 
 - [x] Paths as names in the cloud store; uniqueness on full path
 - [x] Batch-rename message in the outbox (no half-delivered folder move)
-- [x] Explicit empty folders: placeholder file `<folder>/.keep` (reserved leaf name with no `.jianpu` extension, so users can't collide); worker stays unaware of folders
+- [x] Explicit empty folders: placeholder file `<folder>/.keep` (reserved leaf name with no `.poentaro` extension, so users can't collide); worker stays unaware of folders
 - [x] Collision-retry naming for folders
 - [x] Capture signed-in / Start Sync share states from the real app for mockups
 
@@ -65,4 +65,4 @@ Model is tentative: file name is a slash-separated path (`Hymns/Advent/O Come.ji
 - [x] Viewer: same toolbar as today, file picker rooted at the shared folder, read-only
 - [x] Viewer: "Import this folder" (name clash becomes `Hymns 2`) and Discard
 - [x] Viewer: "no longer shared" screen (updates on reload, no live push)
-- [x] Update `syntax.md` only if `.jianpu` syntax changes (not expected) — unchanged, no syntax change
+- [x] Update `syntax.md` only if `.poentaro` syntax changes (not expected) — unchanged, no syntax change

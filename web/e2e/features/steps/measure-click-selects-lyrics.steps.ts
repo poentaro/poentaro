@@ -11,8 +11,8 @@ import { Given, Then, When } from './fixtures'
  * Cmd/Ctrl-clicking (or click-and-clicking across) a measure in the SVG
  * preview selects every note/rest cell in that measure (see
  * `measure-click-selects-notes.spec.ts`) — and, alongside them, every lyric
- * syllable in that same measure, via `previewSelection.ts`'s
- * `lyricCellsInMeasureRange`. A plain click / click-and-click resolves to
+ * syllable in that same measure (resolved in wasm by
+ * `resolve_selection_range_response`). A plain click / click-and-click resolves to
  * note/chord/syllable granularity instead and never pulls in lyric cells
  * from a note hit (see `Preview.tsx`'s `onMouseDown`).
  *
@@ -23,32 +23,30 @@ import { Given, Then, When } from './fixtures'
  * Measure 1 : [M] 5 6     / sol la        — 2 notes, 2 syllables
  */
 const clickTestSource = [
-  '# metadata',
-  'title = "measure click lyric test"',
-  'max_measures_per_system = 48',
+  'metadata { title "measure click lyric test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — line 9
-  '[Mv1] do re mi fa', // line 10
+  'score """',
+  '[M] 1 2 3 4',
+  '[Mv1] do re mi fa',
   '',
-  '[M] 5 6', // measure 1 — line 12
-  '[Mv1] sol la', // line 13
+  '[M] 5 6',
+  '[Mv1] sol la',
+  '""",',
 ].join('\n')
 
 async function loadClickTestFixture(page: import('@playwright/test').Page) {
   await page.addInitScript((source) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'measure-click-lyric-test.jianpu',
-        userFiles: { 'measure-click-lyric-test.jianpu': source },
+        active: 'measure-click-lyric-test.poentaro',
+        userFiles: { 'measure-click-lyric-test.poentaro': source },
         bin: {},
         fileIds: {
-          'measure-click-lyric-test.jianpu': 'measure-click-lyric-test-id-001',
+          'measure-click-lyric-test.poentaro':
+            'measure-click-lyric-test-id-001',
         },
       }),
     )
@@ -61,7 +59,7 @@ async function loadClickTestFixture(page: import('@playwright/test').Page) {
 async function primeMeasureSpans(page: import('@playwright/test').Page) {
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('10')
+  await page.keyboard.type('6')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,

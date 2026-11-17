@@ -25,25 +25,22 @@ import { Given, Then, When } from './fixtures'
  * measure either part appears in.
  */
 const source = [
-  '# metadata',
-  'title = "note partlabel range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "note partlabel range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1', // measure 0 — system 0
+  'score """',
+  '[M] 1',
   '[H] 5',
   '',
   'break',
-  '[M] 2', // measure 1 — system 1
+  '[M] 2',
   '[H] 6',
   '',
   'break',
-  '[M] 3', // measure 2 — system 2, distractor
+  '[M] 3',
   '[H] 7',
+  '""",',
 ].join('\n')
 
 // A note group carries a sibling `Tag::Note` group for its
@@ -77,13 +74,13 @@ Given(
   async ({ page }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'note-partlabel-range-test.jianpu',
-          userFiles: { 'note-partlabel-range-test.jianpu': src },
+          active: 'note-partlabel-range-test.poentaro',
+          userFiles: { 'note-partlabel-range-test.poentaro': src },
           bin: {},
           fileIds: {
-            'note-partlabel-range-test.jianpu':
+            'note-partlabel-range-test.poentaro':
               'note-partlabel-range-test-id-001',
           },
         }),

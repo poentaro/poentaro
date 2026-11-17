@@ -95,6 +95,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
+name = "anyx"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyx?rev=de017324fe42cb7faefad998442d6c843a4e6717#de017324fe42cb7faefad998442d6c843a4e6717"
+
+[[package]]
+name = "anyx-generator"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyx?rev=de017324fe42cb7faefad998442d6c843a4e6717#de017324fe42cb7faefad998442d6c843a4e6717"
+dependencies = [
+ "anyx",
+ "regex",
+ "regex-automata",
+]
+
+[[package]]
+name = "anyx-protocol"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyx?rev=de017324fe42cb7faefad998442d6c843a4e6717#de017324fe42cb7faefad998442d6c843a4e6717"
+dependencies = [
+ "anyx",
+ "base64",
+]
+
+[[package]]
+name = "anyx-protocol-generate"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyx?rev=de017324fe42cb7faefad998442d6c843a4e6717#de017324fe42cb7faefad998442d6c843a4e6717"
+dependencies = [
+ "anyx-generator",
+ "anyx-protocol",
+]
+
+[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -348,6 +381,16 @@ dependencies = [
  "cfg-if",
  "cpufeatures 0.3.1",
  "rand_core 0.10.1",
+]
+
+[[package]]
+name = "chimera"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/chimera-vocal-synth?rev=955665cf59e0f66c428f363c603e2c3bb901948e#955665cf59e0f66c428f363c603e2c3bb901948e"
+dependencies = [
+ "libm",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1404,43 +1447,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
-name = "jianpu-generator"
-version = "0.1.0"
-dependencies = [
- "ariadne",
- "base64",
- "clap",
- "cucumber",
- "hound",
- "itertools 0.13.0",
- "midly",
- "nonempty",
- "oxisynth",
- "pdf-writer",
- "quickcheck",
- "rusty_mp3",
- "serde",
- "serde_json",
- "svg2pdf",
- "tokio",
- "ttf-parser 0.25.1",
- "zip",
-]
-
-[[package]]
-name = "jianpu-wasm"
-version = "0.1.0"
-dependencies = [
- "brotli",
- "cloud-outbox",
- "itertools 0.13.0",
- "jianpu-generator",
- "serde",
- "wit-bindgen",
- "zip",
-]
-
-[[package]]
 name = "js-sys"
 version = "0.3.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1548,7 +1554,9 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "diffy",
- "jianpu-generator",
+ "itertools 0.13.0",
+ "poentaro",
+ "poentaro-protocol",
  "proptest",
  "serde",
  "serde_json",
@@ -1613,6 +1621,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "207d755f4cb882d20c4da58d707ca9130a0c9bc5061f657a4f299b8e36362b7a"
 dependencies = [
  "rayon",
+]
+
+[[package]]
+name = "migrate-comments"
+version = "0.1.0"
+dependencies = [
+ "anyx",
+ "live-share-worker",
+ "poentaro",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1939,6 +1958,81 @@ dependencies = [
  "fdeflate",
  "flate2",
  "miniz_oxide",
+]
+
+[[package]]
+name = "poentaro"
+version = "0.1.0"
+dependencies = [
+ "anyx",
+ "ariadne",
+ "base64",
+ "clap",
+ "cucumber",
+ "hound",
+ "itertools 0.13.0",
+ "midly",
+ "nonempty",
+ "oxisynth",
+ "pdf-writer",
+ "poentaro-grammar",
+ "poentaro-singer",
+ "quickcheck",
+ "rusty_mp3",
+ "serde",
+ "serde_json",
+ "svg2pdf",
+ "tokio",
+ "ttf-parser 0.25.1",
+ "zip",
+]
+
+[[package]]
+name = "poentaro-grammar"
+version = "0.1.0"
+dependencies = [
+ "anyx",
+ "anyx-generator",
+]
+
+[[package]]
+name = "poentaro-protocol"
+version = "0.1.0"
+dependencies = [
+ "anyx-protocol",
+ "anyx-protocol-generate",
+]
+
+[[package]]
+name = "poentaro-singer"
+version = "0.1.0"
+dependencies = [
+ "chimera",
+ "flate2",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "poentaro-singer-wasm"
+version = "0.1.0"
+dependencies = [
+ "poentaro-singer",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "poentaro-wasm"
+version = "0.1.0"
+dependencies = [
+ "brotli",
+ "cloud-outbox",
+ "itertools 0.13.0",
+ "poentaro",
+ "proptest",
+ "serde",
+ "wit-bindgen",
+ "zip",
 ]
 
 [[package]]

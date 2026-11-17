@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { usePartSettingLimits } from '../hooks/usePartSettingLimits'
+import { usePartSettingOptions } from '../hooks/usePartSettingOptions'
 import type { PartDeclaration, PartInfo, PartSettings } from '../types'
 import { PartRow } from './PartRow'
 
@@ -44,7 +44,7 @@ export function EditPartsModal({
   stopPreviewInstrument,
   previewAudioPlaying,
 }: EditPartsModalProps) {
-  const limits = usePartSettingLimits(open)
+  const options = usePartSettingOptions(open)
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -105,19 +105,23 @@ export function EditPartsModal({
               }}
             >
               <colgroup>
-                <col style={{ width: '14%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '21%' }} />
-                <col style={{ width: '16%' }} />
-                <col style={{ width: '12%' }} />
                 <col style={{ width: '10%' }} />
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '9%' }} />
               </colgroup>
               <thead>
                 <tr>
                   <th style={thStyle}>Name</th>
                   <th style={thStyle}>Abbr</th>
                   <th style={thStyle}>Kind / Follow</th>
+                  <th style={thStyle}>Instrument</th>
+                  <th style={thStyle}>Range</th>
                   <th style={thStyle}>Soundfont</th>
                   <th style={thStyle}>Volume</th>
                   <th style={thStyle}>MIDI octave</th>
@@ -125,12 +129,12 @@ export function EditPartsModal({
                 </tr>
               </thead>
               <tbody>
-                {limits !== null &&
+                {options !== null &&
                   partDeclarations.map((declaration, index) => (
                     <PartRow
                       key={declaration.abbreviation}
                       declaration={declaration}
-                      limits={limits}
+                      options={options}
                       allParts={allParts}
                       isFirstPart={index === 0}
                       onPartDeclarationChange={onPartDeclarationChange}

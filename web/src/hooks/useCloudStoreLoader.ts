@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { FileStoreState } from '../fileStore'
 import type { StorageBackend } from '../storage/types'
-import { WorkerRequestError } from '../syncedShare/workerClient'
+import { traceIdOf, WorkerRequestError } from '../syncedShare/workerClient'
 
 const INITIAL_RETRY_DELAY_MS = 1_000
 const MAX_RETRY_DELAY_MS = 30_000
@@ -24,6 +24,12 @@ export function isAuthRejection(error: unknown): boolean {
   )
 }
 
+/** The last failed load while a retry is pending. `traceId` is `null` when
+ * the request never reached the worker. */
+export interface CloudLoadFailure {
+  traceId: string | null
+}
+
 /**
  * (Re)loads the cloud listing whenever the backend identity changes (kind or
  * token). A failed load used to leave `cloudStore` at `null` forever (an
@@ -36,12 +42,17 @@ export function isAuthRejection(error: unknown): boolean {
  * - Any other failure (worker mid-deploy, a 5xx, offline) is retried with
  *   `cloudLoadRetryDelayMs` backoff, and immediately when the browser comes
  *   back online.
+ *
+ * Returns the last failure until a load succeeds, so the UI can say the
+ * listing is being retried and show the failed request's trace ID.
  */
 export function useCloudStoreLoader(
   backend: StorageBackend,
   setCloudStore: (state: FileStoreState | null) => void,
   clearAccountAuth: () => void,
-): void {
+): CloudLoadFailure | null {
+  const [failure, setFailure] = useState<CloudLoadFailure | null>(null)
+
   useEffect(() => {
     if (backend.kind !== 'cloud') return
     let cancelled = false
@@ -53,7 +64,9 @@ export function useCloudStoreLoader(
       retryTimer = undefined
       backend.load().then(
         (state) => {
-          if (!cancelled) setCloudStore(state)
+          if (cancelled) return
+          setFailure(null)
+          setCloudStore(state)
         },
         (error: unknown) => {
           if (cancelled) return
@@ -61,6 +74,7 @@ export function useCloudStoreLoader(
             clearAccountAuth()
             return
           }
+          setFailure({ traceId: traceIdOf(error) })
           retryTimer = setTimeout(load, cloudLoadRetryDelayMs(attempt))
           attempt += 1
         },
@@ -73,6 +87,7 @@ export function useCloudStoreLoader(
     }
 
     setCloudStore(null)
+    setFailure(null)
     load()
     window.addEventListener('online', retryNow)
     return () => {
@@ -81,4 +96,6 @@ export function useCloudStoreLoader(
       window.removeEventListener('online', retryNow)
     }
   }, [backend, setCloudStore, clearAccountAuth])
+
+  return backend.kind === 'cloud' ? failure : null
 }

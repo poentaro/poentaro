@@ -5,20 +5,20 @@
 use live_share_worker::e2e_reset::{emails_to_reset, parse_reset_emails};
 
 fn allowed() -> Vec<String> {
-    vec!["a@jianpu.test".to_string(), "b@jianpu.test".to_string()]
+    vec!["a@poentaro.test".to_string(), "b@poentaro.test".to_string()]
 }
 
 #[test]
 fn parses_a_json_array_of_emails_into_their_normalized_form() {
     assert_eq!(
-        parse_reset_emails(r#"["A@Jianpu.test"," b@jianpu.test"]"#),
+        parse_reset_emails(r#"["A@Poentaro.test"," b@poentaro.test"]"#),
         Ok(allowed()),
     );
 }
 
 #[test]
 fn rejects_a_value_that_is_not_a_json_array_of_emails() {
-    assert!(parse_reset_emails("a@jianpu.test").is_err());
+    assert!(parse_reset_emails("a@poentaro.test").is_err());
     assert!(parse_reset_emails(r#"["e2e-test-user"]"#).is_err());
     assert!(parse_reset_emails("[987654321]").is_err());
 }
@@ -30,17 +30,20 @@ fn resets_every_allowed_email_when_none_are_requested() {
 
 #[test]
 fn resets_only_the_requested_emails() {
-    let requested = ["B@jianpu.test".to_string()];
+    let requested = ["B@poentaro.test".to_string()];
 
     assert_eq!(
         emails_to_reset(&allowed(), Some(&requested)),
-        Ok(vec!["b@jianpu.test".to_string()]),
+        Ok(vec!["b@poentaro.test".to_string()]),
     );
 }
 
 #[test]
 fn refuses_a_requested_email_outside_the_allowlist() {
-    let requested = ["a@jianpu.test".to_string(), "real@example.com".to_string()];
+    let requested = [
+        "a@poentaro.test".to_string(),
+        "real@example.com".to_string(),
+    ];
 
     assert!(emails_to_reset(&allowed(), Some(&requested)).is_err());
 }

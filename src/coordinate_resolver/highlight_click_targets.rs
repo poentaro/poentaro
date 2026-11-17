@@ -1,6 +1,6 @@
+use super::page_geometry::PageGeometry;
 use crate::compositor::types::{AbsoluteContent, AbsoluteElement};
 use crate::grid_layout::types::GridRow;
-use crate::grid_layout::PAGE_MARGIN;
 
 use super::highlights::{resolve_row_range_geometry, RowLayoutContext};
 
@@ -13,14 +13,12 @@ pub(super) fn resolve_note_click_target(
     target: &crate::grid_layout::types::PlaybackCursorTarget,
     rows: &[GridRow],
     row_tops: &[f32],
-    usable_width: f32,
-    part_label_width_pt: f32,
+    page_geometry: PageGeometry,
 ) -> Option<AbsoluteElement> {
     let ctx = RowLayoutContext {
         rows,
         row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
     };
     let geometry = resolve_row_range_geometry(
         target.row_start,
@@ -45,14 +43,12 @@ pub(super) fn resolve_measure_click_target(
     target: &crate::grid_layout::types::MeasureClickTarget,
     rows: &[GridRow],
     row_tops: &[f32],
-    usable_width: f32,
-    part_label_width_pt: f32,
+    page_geometry: PageGeometry,
 ) -> Option<AbsoluteElement> {
     let ctx = RowLayoutContext {
         rows,
         row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
     };
     let geometry = resolve_row_range_geometry(
         target.row_start,
@@ -99,8 +95,8 @@ pub(super) fn resolve_bar_number_click_target(
 ) -> Option<AbsoluteElement> {
     let row = ctx.rows.get(target.row)?;
     let y = *ctx.row_tops.get(target.row)?;
-    let geometry = row.column_geometry(ctx.usable_width, ctx.part_label_width_pt);
-    let x = PAGE_MARGIN + geometry.x_start(target.column as f32);
+    let geometry = ctx.page_geometry.row_geometry(row);
+    let x = geometry.x_start(target.column as f32);
     let digits_width =
         crate::font_metrics::span_width(&super::content_conversion::bar_number_text_span(
             target.measure_index as u32 + 1,
@@ -137,16 +133,15 @@ pub(super) fn resolve_bar_line_click_target(
     target: &crate::grid_layout::types::BarLineClickTarget,
     rows: &[GridRow],
     row_tops: &[f32],
-    usable_width: f32,
-    part_label_width_pt: f32,
+    page_geometry: PageGeometry,
 ) -> Option<AbsoluteElement> {
     let start_row = rows.get(target.row_start)?;
     let y = *row_tops.get(target.row_start)?;
     if target.row_end >= rows.len() {
         return None;
     }
-    let geometry = start_row.column_geometry(usable_width, part_label_width_pt);
-    let x_center = PAGE_MARGIN + geometry.x_start(target.column);
+    let geometry = page_geometry.row_geometry(start_row);
+    let x_center = geometry.x_start(target.column);
     let height = rows
         .get(target.row_start..=target.row_end)
         .map(|slice| slice.iter().map(|row| row.height_pt).sum())
@@ -170,14 +165,12 @@ pub(super) fn resolve_part_label_click_target(
     target: &crate::grid_layout::types::PartLabelClickTarget,
     rows: &[GridRow],
     row_tops: &[f32],
-    usable_width: f32,
-    part_label_width_pt: f32,
+    page_geometry: PageGeometry,
 ) -> Option<AbsoluteElement> {
     let ctx = RowLayoutContext {
         rows,
         row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
     };
     let geometry = resolve_row_range_geometry(
         target.row_start,
@@ -206,14 +199,12 @@ pub(super) fn resolve_lyric_label_click_target(
     target: &crate::grid_layout::types::LyricLabelClickTarget,
     rows: &[GridRow],
     row_tops: &[f32],
-    usable_width: f32,
-    part_label_width_pt: f32,
+    page_geometry: PageGeometry,
 ) -> Option<AbsoluteElement> {
     let ctx = RowLayoutContext {
         rows,
         row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
     };
     let geometry = resolve_row_range_geometry(
         target.row,
@@ -244,13 +235,12 @@ pub(super) fn resolve_lyric_click_target(
     target: &crate::grid_layout::types::LyricClickTarget,
     rows: &[GridRow],
     row_tops: &[f32],
-    usable_width: f32,
-    part_label_width_pt: f32,
+    page_geometry: PageGeometry,
 ) -> Option<AbsoluteElement> {
     let row = rows.get(target.row)?;
     let target_y = row_tops.get(target.row)?;
-    let geometry = row.column_geometry(usable_width, part_label_width_pt);
-    let target_x = PAGE_MARGIN + geometry.x_start(target.column_start);
+    let geometry = page_geometry.row_geometry(row);
+    let target_x = geometry.x_start(target.column_start);
     let target_width = geometry.x_start(target.column_end) - geometry.x_start(target.column_start);
     Some(AbsoluteElement {
         x: target_x,

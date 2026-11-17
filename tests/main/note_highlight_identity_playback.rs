@@ -2,7 +2,7 @@
 use crate::note_highlight_identity::{
     multi_part_source_with_ties_rests_and_chord, note_ids_in_svg,
 };
-use jianpu_generator::{
+use poentaro::{
     measure_start_times_from_source, note_timings_for_range_from_source, note_timings_from_source,
     render_svgs_from_source, render_svgs_from_source_filtered, MeasureRangeSelection,
 };
@@ -22,7 +22,7 @@ use std::collections::HashSet;
 #[test]
 fn note_timings_with_track_filter_keep_original_part_indices() {
     let source = multi_part_source_with_ties_rests_and_chord();
-    let filename = "note_highlight_identity_track_filter.jianpu";
+    let filename = "note_highlight_identity_track_filter.poentaro";
 
     let render_output = render_svgs_from_source(source, filename, &[]).unwrap();
     let svg_ids = note_ids_in_svg(&render_output.svgs);
@@ -63,23 +63,21 @@ fn note_timings_with_track_filter_keep_original_part_indices() {
 /// (which `merge_rest_runs` collapses into a single `MultiMeasureRest` glyph
 /// since `MIN_REST_RUN_LENGTH` is 2), then notes again.
 fn score_with_merged_rest_run() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"note highlight identity merged rest\"\n",
-        "\n",
-        "# parts\n",
-        "Melody [M] = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[M] 1 2 3 4\n",
-        "\n",
-        "[M] 0 0 0 0\n",
-        "\n",
-        "[M] 0 0 0 0\n",
-        "\n",
-        "[M] 5 6 7 1\n",
-    )
+    r#"metadata { title "note highlight identity merged rest" },
+
+parts ["Melody" [M]: notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [M] 1 2 3 4
+
+    [M] 0 0 0 0
+
+    [M] 0 0 0 0
+
+    [M] 5 6 7 1
+    """,
+"#
 }
 
 #[test]
@@ -87,12 +85,13 @@ fn note_ids_match_between_grid_layout_and_midi_timing_with_merged_rest_run() {
     let source = score_with_merged_rest_run();
 
     let render_output =
-        render_svgs_from_source(source, "note_highlight_identity_merged_rest.jianpu", &[]).unwrap();
+        render_svgs_from_source(source, "note_highlight_identity_merged_rest.poentaro", &[])
+            .unwrap();
     let svg_ids = note_ids_in_svg(&render_output.svgs);
 
     let note_timings = note_timings_from_source(
         source,
-        "note_highlight_identity_merged_rest.jianpu",
+        "note_highlight_identity_merged_rest.poentaro",
         None,
         None,
         &[],
@@ -146,22 +145,19 @@ fn note_ids_match_between_grid_layout_and_midi_timing_with_merged_rest_run() {
 /// full-score compile in `note_timings_seconds` used to miss entirely (see
 /// the "playback cursor rest collapse with hidden part" e2e regression).
 fn score_with_filter_induced_merged_rest_run() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"note highlight identity filter induced merged rest\"\n",
-        "\n",
-        "# parts\n",
-        "Melody [M] = notes\n",
-        "Harmony [H] = notes\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120\n",
-        "[H] 1 2 3 4\n",
-        "\n",
-        "[H] 5 6 7 1\n",
-        "\n",
-        "[M] 1 2 3 4\n",
-    )
+    r#"metadata { title "note highlight identity filter induced merged rest" },
+
+parts ["Melody" [M]: notes, "Harmony" [H]: notes],
+
+score """
+    time=4/4 key=C4 bpm=120
+    [H] 1 2 3 4
+
+    [H] 5 6 7 1
+
+    [M] 1 2 3 4
+    """,
+"#
 }
 
 /// Regression test: hiding Harmony (the part-visibility toggle, e.g.
@@ -178,7 +174,7 @@ fn score_with_filter_induced_merged_rest_run() -> &'static str {
 #[test]
 fn note_timings_with_visibility_filter_match_filter_induced_merged_rest() {
     let source = score_with_filter_induced_merged_rest_run();
-    let filename = "note_highlight_identity_visibility_filter_merged_rest.jianpu";
+    let filename = "note_highlight_identity_visibility_filter_merged_rest.poentaro";
 
     let visible_tracks = ["M".to_string()];
     let render_output =
@@ -221,7 +217,7 @@ fn note_timings_with_visibility_filter_match_filter_induced_merged_rest() {
 #[test]
 fn note_timings_for_range_start_at_zero_and_match_full_score_ids() {
     let source = multi_part_source_with_ties_rests_and_chord();
-    let filename = "note_highlight_identity_range.jianpu";
+    let filename = "note_highlight_identity_range.poentaro";
 
     let render_output = render_svgs_from_source(source, filename, &[]).unwrap();
     let svg_ids = note_ids_in_svg(&render_output.svgs);
@@ -287,41 +283,38 @@ fn note_timings_for_range_start_at_zero_and_match_full_score_ids() {
     );
 }
 
-/// A `# sequence` that reorders/repeats labeled spans (`A, B, B, C`), so a
+/// A `sequence` that reorders/repeats labeled spans (`A, B, B, C`), so a
 /// written measure's position in playback order differs from its literal
 /// written index — `C` is written measure 2 but plays at position 3.
 fn sequence_source_with_reordered_spans() -> &'static str {
-    concat!(
-        "# metadata\n",
-        "title = \"note highlight identity respect_sequence false\"\n",
-        "\n",
-        "# parts\n",
-        "Soprano [S] = notes\n",
-        "\n",
-        "# sequence\n",
-        "A, B, B, C\n",
-        "\n",
-        "# score\n",
-        "time=4/4 key=C4 bpm=120 label=\"A\"\n",
-        "[S] 1\n",
-        "\n",
-        "label=\"B\"\n",
-        "[S] 2\n",
-        "\n",
-        "label=\"C\"\n",
-        "[S] 3\n",
-    )
+    r#"metadata { title "note highlight identity respect_sequence false" },
+
+parts ["Soprano" [S]: notes],
+
+sequence ["A", "B", "B", "C"],
+
+score """
+    time=4/4 key=C4 bpm=120 label="A"
+    [S] 1
+
+    label="B"
+    [S] 2
+
+    label="C"
+    [S] 3
+    """,
+"#
 }
 
 /// Regression test: "play current measure" (`respect_sequence: false`) on a
-/// written measure that a `# sequence` also plays at a *different* position
+/// written measure that a `sequence` also plays at a *different* position
 /// elsewhere (here, `C` is written index 2 but plays at position 3, since `B`
 /// occupies position 2) must still report `C`'s own `note_id`, not whichever
-/// measure occupies that position in the `# sequence`-expanded timeline.
+/// measure occupies that position in the `sequence`-expanded timeline.
 #[test]
 fn note_timings_for_range_ignore_sequence_use_written_index_identity() {
     let source = sequence_source_with_reordered_spans();
-    let filename = "note_highlight_identity_ignore_sequence.jianpu";
+    let filename = "note_highlight_identity_ignore_sequence.poentaro";
 
     let render_output = render_svgs_from_source(source, filename, &[]).unwrap();
     let svg_ids = note_ids_in_svg(&render_output.svgs);
@@ -356,7 +349,7 @@ fn note_timings_for_range_ignore_sequence_use_written_index_identity() {
     assert_eq!(
         timing.note_id, 2,
         "measure C is the third written note (note_id 2, after A's 0 and B's 1); \
-         `respect_sequence: false` must not resolve it against the # sequence-expanded \
+         `respect_sequence: false` must not resolve it against the sequence-expanded \
          playback position (which would land on B's note_id 1)"
     );
 }

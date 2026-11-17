@@ -3,7 +3,7 @@
 //! `layout_spacing.rs` to keep that file under the max line-count lint. See
 //! **Rod and spring** in `ARCHITECTURE.md`.
 
-use crate::ast::parsed::{Accidental, JianPuPitch};
+use crate::ast::parsed::{Accidental, NumberedPitch};
 use crate::compiler::types::{
     ElementContent, MeasureBlock, NoteHeadLabel, MULTI_MEASURE_REST_WIDTH,
 };
@@ -145,7 +145,7 @@ pub(super) fn multi_measure_rest_weight(count: usize, config: &RenderConfig) -> 
 /// sharp/flat plus the real width of the digit followed by its letter name
 /// (`1 (C)`), drawn as the same one text run.
 fn note_head_weight(
-    pitch: &JianPuPitch,
+    pitch: &NumberedPitch,
     accidental: &Accidental,
     head_label: Option<&NoteHeadLabel>,
     config: &RenderConfig,

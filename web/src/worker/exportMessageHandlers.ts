@@ -1,10 +1,11 @@
 import {
   type Diagnostic,
   type FontBytesByFamily,
-  jianpuWasm,
-} from '../jianpuWasm'
-import type { WorkerRequest, WorkerResponse } from './jianpu.worker'
+  poentaroWasm,
+} from '../poentaroWasm'
 import { noteLabelsFor } from './noteLabels'
+import type { WorkerRequest, WorkerResponse } from './poentaro.worker'
+import { splitVocalsFor, type TrackVocals } from './singer'
 
 type LoadedFonts = FontBytesByFamily | null
 
@@ -28,7 +29,7 @@ export function handleGeneratePdf(
     } satisfies WorkerResponse)
     return
   }
-  const result = jianpuWasm().generatePdf(
+  const result = poentaroWasm().generatePdf(
     msg.source,
     msg.visibility,
     loadedFonts,
@@ -66,9 +67,10 @@ export function handleGenerateSplitPdf(
     } satisfies WorkerResponse)
     return
   }
-  const result = jianpuWasm().generateSplitPdfs(
+  const result = poentaroWasm().generateSplitPdfs(
     msg.source,
     msg.baseName,
+    msg.presetName,
     loadedFonts,
     noteLabelsFor(msg.notation),
   )
@@ -95,7 +97,7 @@ export function handleGenerateSplitPdf(
 export function handleGenerateMidi(
   msg: Extract<WorkerRequest, { type: 'generateMidi' }>,
 ): void {
-  const result = jianpuWasm().generateMidi(msg.source, msg.enabledTracks)
+  const result = poentaroWasm().generateMidi(msg.source, msg.enabledTracks)
   if (result.tag === 'ok') {
     const midiBuffer = binaryBufferFromResult(result.val.midi)
     postMessage(
@@ -119,7 +121,11 @@ export function handleGenerateMidi(
 export function handleGenerateSplitMidi(
   msg: Extract<WorkerRequest, { type: 'generateSplitMidi' }>,
 ): void {
-  const result = jianpuWasm().generateSplitMidis(msg.source, msg.baseName)
+  const result = poentaroWasm().generateSplitMidis(
+    msg.source,
+    msg.baseName,
+    msg.presetName,
+  )
   if (result.tag === 'ok') {
     const zipBuffer = binaryBufferFromResult(result.val.zip)
     postMessage(
@@ -140,10 +146,10 @@ export function handleGenerateSplitMidi(
   } satisfies WorkerResponse)
 }
 
-export function handleGenerateSplitWav(
+export async function handleGenerateSplitWav(
   msg: Extract<WorkerRequest, { type: 'generateSplitWav' }>,
   loadedSoundfont: Uint8Array | null,
-): void {
+): Promise<void> {
   if (!loadedSoundfont) {
     postMessage({
       type: 'splitWavErr',
@@ -152,10 +158,23 @@ export function handleGenerateSplitWav(
     } satisfies WorkerResponse)
     return
   }
-  const result = jianpuWasm().generateSplitWavs(
+  let vocals: TrackVocals[]
+  try {
+    vocals = await splitVocalsFor(msg.source, msg.presetName)
+  } catch (error) {
+    postMessage({
+      type: 'splitWavErr',
+      id: msg.id,
+      diagnostics: singleErrorDiagnostic(`Could not sing the lyrics: ${error}`),
+    } satisfies WorkerResponse)
+    return
+  }
+  const result = poentaroWasm().generateSplitWavs(
     msg.source,
     msg.baseName,
+    msg.presetName,
     loadedSoundfont,
+    vocals,
   )
   if (result.tag === 'ok') {
     const zipBuffer = binaryBufferFromResult(result.val.zip)
@@ -177,10 +196,10 @@ export function handleGenerateSplitWav(
   } satisfies WorkerResponse)
 }
 
-export function handleGenerateSplitMp3(
+export async function handleGenerateSplitMp3(
   msg: Extract<WorkerRequest, { type: 'generateSplitMp3' }>,
   loadedSoundfont: Uint8Array | null,
-): void {
+): Promise<void> {
   if (!loadedSoundfont) {
     postMessage({
       type: 'splitMp3Err',
@@ -189,10 +208,23 @@ export function handleGenerateSplitMp3(
     } satisfies WorkerResponse)
     return
   }
-  const result = jianpuWasm().generateSplitMp3s(
+  let vocals: TrackVocals[]
+  try {
+    vocals = await splitVocalsFor(msg.source, msg.presetName)
+  } catch (error) {
+    postMessage({
+      type: 'splitMp3Err',
+      id: msg.id,
+      diagnostics: singleErrorDiagnostic(`Could not sing the lyrics: ${error}`),
+    } satisfies WorkerResponse)
+    return
+  }
+  const result = poentaroWasm().generateSplitMp3s(
     msg.source,
     msg.baseName,
+    msg.presetName,
     loadedSoundfont,
+    vocals,
   )
   if (result.tag === 'ok') {
     const zipBuffer = binaryBufferFromResult(result.val.zip)

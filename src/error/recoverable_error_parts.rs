@@ -1,15 +1,6 @@
 use crate::error::{DocumentSection, RecoverableError, RecoverableErrorKind, Span};
 
 impl RecoverableError {
-    pub fn parts_malformed_line(span: Span, line: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::PartsMalformedLine {
-                line: line.to_string(),
-            },
-        }
-    }
-
     pub fn parts_duplicate_abbreviation(span: Span, abbrev: &str) -> Self {
         Self {
             span,
@@ -56,22 +47,6 @@ impl RecoverableError {
         }
     }
 
-    pub fn section_unknown(span: Span, name: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::SectionUnknown {
-                name: name.to_string(),
-            },
-        }
-    }
-
-    pub fn section_duplicate(span: Span, section: DocumentSection) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::SectionDuplicate { section },
-        }
-    }
-
     pub fn section_missing(span: Span, section: DocumentSection) -> Self {
         Self {
             span,
@@ -93,6 +68,15 @@ impl RecoverableError {
         }
     }
 
+    pub fn lyrics_pinyin_invalid(span: Span, text: &str) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::LyricsPinyinInvalid {
+                text: text.to_string(),
+            },
+        }
+    }
+
     pub fn lyrics_bracket_count_mismatch(
         span: Span,
         brackets: usize,
@@ -105,6 +89,16 @@ impl RecoverableError {
                 brackets,
                 attacks,
                 first_syllable_takes_beat_one,
+            },
+        }
+    }
+
+    pub fn lyrics_targets_differ(span: Span, paired: &str, other: &str) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::LyricsTargetsDiffer {
+                paired: paired.to_string(),
+                other: other.to_string(),
             },
         }
     }
@@ -154,11 +148,83 @@ impl RecoverableError {
         }
     }
 
+    pub fn parts_unknown_instrument(span: Span, name: &str) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsUnknownInstrument {
+                name: name.to_string(),
+            },
+        }
+    }
+
+    pub fn parts_instrument_on_non_notes_part(span: Span) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsInstrumentOnNonNotesPart,
+        }
+    }
+
+    pub fn parts_malformed_range(span: Span) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsMalformedRange,
+        }
+    }
+
+    pub fn parts_malformed_range_pitch(span: Span, pitch: &str) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsMalformedRangePitch {
+                pitch: pitch.to_string(),
+            },
+        }
+    }
+
+    pub fn parts_range_low_above_high(span: Span, lowest: &str, highest: &str) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsRangeLowAboveHigh {
+                lowest: lowest.to_string(),
+                highest: highest.to_string(),
+            },
+        }
+    }
+
+    pub fn parts_range_on_non_notes_part(span: Span) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsRangeOnNonNotesPart,
+        }
+    }
+
     pub fn parts_follow_unknown_target(span: Span, target: &str) -> Self {
         Self {
             span,
             kind: RecoverableErrorKind::PartsFollowUnknownTarget {
                 target: target.to_string(),
+            },
+        }
+    }
+
+    pub fn parts_singing_part_without_lyrics(span: Span, part: &str) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsSingingPartWithoutLyrics {
+                part: part.to_string(),
+            },
+        }
+    }
+
+    pub fn parts_singing_part_with_several_lyrics(
+        span: Span,
+        part: &str,
+        lyric_parts: Vec<String>,
+    ) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::PartsSingingPartWithSeveralLyrics {
+                part: part.to_string(),
+                lyric_parts,
             },
         }
     }

@@ -1,4 +1,4 @@
-import type { HighlightKind, HighlightToken, Span } from './jianpuWasm'
+import type { HighlightKind, HighlightToken, Span } from './poentaroWasm'
 
 /** Where a UTF-8 byte offset falls, as Monaco counts it: 0-indexed line and
  * UTF-16 column. */

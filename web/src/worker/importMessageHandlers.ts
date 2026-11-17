@@ -1,5 +1,5 @@
-import { jianpuWasm } from '../jianpuWasm'
-import type { WorkerRequest, WorkerResponse } from './jianpu.worker'
+import { poentaroWasm } from '../poentaroWasm'
+import type { WorkerRequest, WorkerResponse } from './poentaro.worker'
 
 export function handleImportFromFile(
   msg: Extract<WorkerRequest, { type: 'importFromFile' }>,
@@ -7,8 +7,8 @@ export function handleImportFromFile(
   const bytes = new Uint8Array(msg.bytes)
   const source =
     msg.kind === 'svg'
-      ? jianpuWasm().extractSourceFromSvg(bytes)
-      : jianpuWasm().extractSourceFromPdf(bytes)
+      ? poentaroWasm().extractSourceFromSvg(bytes)
+      : poentaroWasm().extractSourceFromPdf(bytes)
 
   if (source === undefined) {
     postMessage({ type: 'importErr', id: msg.id } satisfies WorkerResponse)

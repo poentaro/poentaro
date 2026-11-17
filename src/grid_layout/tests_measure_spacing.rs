@@ -1,6 +1,6 @@
 // ── Proportional (density-based) measure widths ──────────────────────────────
 
-use crate::ast::parsed::{JianPuPitch, Offset};
+use crate::ast::parsed::{NumberedPitch, Offset};
 use crate::compiler::types::{ColumnElement, ElementContent, MeasureBlock, MeasureRow, RowId};
 use crate::coordinate_resolver::LyricFontSizes;
 use crate::font_metrics;
@@ -58,7 +58,7 @@ fn make_block_with_notes(row_id: &str, note_count: u32, bar_col: u32) -> Measure
         .map(|col| ColumnElement {
             column: col,
             content: ElementContent::NoteHead {
-                pitch: JianPuPitch::One,
+                pitch: NumberedPitch::One,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
                 dotted: false,
@@ -103,7 +103,7 @@ fn make_block_with_dash(row_id: &str, bar_col: u32) -> MeasureBlock {
                 ColumnElement {
                     column: 0,
                     content: ElementContent::NoteHead {
-                        pitch: JianPuPitch::One,
+                        pitch: NumberedPitch::One,
                         accidental: crate::ast::parsed::Accidental::Natural,
                         octave: 0,
                         dotted: false,

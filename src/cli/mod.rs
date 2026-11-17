@@ -2,23 +2,24 @@ use crate::error::{Diagnostic, IrrecoverableError, IrrecoverableErrorKind, Span}
 use std::path::Path;
 
 pub mod generate;
+mod sung_vocals;
 
 pub use generate::GenerateInput;
 
 #[cfg(feature = "wav")]
 pub static SF2_BYTES: &[u8] = include_bytes!("../../fonts/GeneralUser_GS.sf2");
 
-/// Outcome of checking a `.jianpu` file for diagnostics.
+/// Outcome of checking a `.poentaro` file for diagnostics.
 pub struct CheckOutcome {
     /// `true` when the file parses with no errors (warnings are still allowed).
     pub ok: bool,
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// Parse and group a `.jianpu` file, returning whether it has any errors and the
+/// Parse and group a `.poentaro` file, returning whether it has any errors and the
 /// full list of collected diagnostics.
 pub fn check(input: &Path) -> Result<CheckOutcome, IrrecoverableError> {
-    let score = parse_and_group(input)?;
+    let score = parse_and_group(input, None)?;
     let diagnostics = crate::collect_measure_diagnostics(&score);
     let ok = !diagnostics
         .iter()
@@ -36,13 +37,56 @@ pub fn read_source(input: &Path) -> Result<String, IrrecoverableError> {
     })
 }
 
+/// Reads a document to compile. A document with anyx errors is an error
+/// listing each one, since part of what it says can't be read.
+pub fn read_document_source(input: &Path) -> Result<String, IrrecoverableError> {
+    let source = read_source(input)?;
+    let errors = crate::document::anyx_errors(&source, &[]);
+    if errors.is_empty() {
+        return Ok(source);
+    }
+    let report = errors
+        .iter()
+        .map(|error| {
+            let position = anyx::line_column(&source, error.span.start);
+            format!(
+                "{}:{}:{}: {}",
+                input.display(),
+                position.line,
+                position.column,
+                error.message()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    Err(IrrecoverableError::new(
+        IrrecoverableErrorKind::AnyxSourceInvalid {
+            span: Span::new(0, 0),
+            report,
+        },
+    ))
+}
+
+/// Formats a document in place.
+pub fn format_file(input: &Path) -> Result<(), IrrecoverableError> {
+    let source = read_source(input)?;
+    let formatted = crate::format_anyx::format_anyx(&source);
+    if formatted == source {
+        return Ok(());
+    }
+    write_file(input, formatted.as_bytes())
+}
+
+/// Parse and group a `.poentaro` file, with `metadata` overlaid by the
+/// `preset` named `preset_name`.
 pub(crate) fn parse_and_group(
     input: &Path,
+    preset_name: Option<&str>,
 ) -> Result<crate::ast::grouped::Score, IrrecoverableError> {
-    let content = read_source(input)?;
+    let content = read_document_source(input)?;
     let filename = input.to_string_lossy().to_string();
-    let doc = crate::parser::parse(&content, &filename, &[]).map_err(|e| e.with_path(input))?;
-    crate::grouper::group(doc).map_err(|e| e.with_path(input))
+    crate::compile_with_preset(&content, &filename, &[], preset_name)
+        .map_err(|e| e.with_path(input))
 }
 
 pub fn write_file(path: &Path, bytes: &[u8]) -> Result<(), IrrecoverableError> {

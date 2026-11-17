@@ -1,5 +1,5 @@
 //! Property tests for `file_history`: they target our inputs (CJK, `\r\n`,
-//! no trailing newline, real `.jianpu` files) and our chain glue, not the
+//! no trailing newline, real `.poentaro` files) and our chain glue, not the
 //! diff library's algorithm.
 #![allow(clippy::disallowed_macros)]
 #![cfg(not(target_arch = "wasm32"))]
@@ -10,11 +10,11 @@ use live_share_worker::file_history::{
 use proptest::prelude::*;
 
 const REAL_FILES: &[&str] = &[
-    include_str!("../../../demo/03-slurs-and-ties.jianpu"),
-    include_str!("../../../demo/05-lyrics.jianpu"),
-    include_str!("../../../demo/10-multi-part.jianpu"),
-    include_str!("../../../scores/Air on G String.jianpu"),
-    include_str!("../../../scores/Minuet in G.jianpu"),
+    include_str!("../../../demo/03-slurs-and-ties.poentaro"),
+    include_str!("../../../demo/05-lyrics.poentaro"),
+    include_str!("../../../demo/10-multi-part.poentaro"),
+    include_str!("../../../scores/Air on G String.poentaro"),
+    include_str!("../../../scores/Minuet in G.poentaro"),
 ];
 
 /// One line, biased toward what diff libraries get wrong.

@@ -1,7 +1,7 @@
 Feature: Empty folders in the cloud are kept as hidden placeholder files
 
   Background:
-    Given an account is signed in as "e2e-test-user@jianpu.test"
+    Given an account is signed in as "e2e-test-user@poentaro.test"
 
   Scenario: A new empty folder is stored as a placeholder and survives a reload
     When the app loads the cloud-backed file list
@@ -42,7 +42,7 @@ Feature: Empty folders in the cloud are kept as hidden placeholder files
     And the file tree does not show the folder "CloudEmptyD"
 
   Scenario: A file cannot be given the reserved placeholder name
-    Given a cloud file named "CloudEmptyE/song.jianpu" is seeded for the signed-in account
+    Given a cloud file named "CloudEmptyE/song.poentaro" is seeded for the signed-in account
     When the app loads the cloud-backed file list
     And I open the cloud file "CloudEmptyE/song" from the file list
     And I type "CloudEmptyE/.keep" in the active file's rename input in the list

@@ -105,7 +105,7 @@ repeated in the step descriptions.
   equivalent non-tuplet measure.
   **Verify**: existing demo files (none use tuplets) render pixel-identically before/after —
   multiplier defaults to 1, should be a no-op diff. Diff generated SVG output for
-  `demo/01-pitches.jianpu` etc. before/after this step.
+  `demo/01-pitches.poentaro` etc. before/after this step.
 
   Implemented as: `midi::midi_notes::duration_to_ticks(quarter_beats, multiplier)` now takes
   `multiplier` and computes `quarter_beats * TPQ / (4 * multiplier)`, threaded from
@@ -125,7 +125,7 @@ repeated in the step descriptions.
   `column_weight_sum`, so a tuplet-inflated `col_count`'s extra columns (all
   zero-weight, since no element sits at them) never reach a raw pixel width. Documented
   this invariant with comments on both functions and in the **Tuplet** glossary entry
-  (`ARCHITECTURE.md`) rather than force an artificial division. All 14 `demo/*.jianpu`
+  (`ARCHITECTURE.md`) rather than force an artificial division. All 14 `demo/*.poentaro`
   files render byte-identical SVG *and* MIDI output before/after this step.
 
 - [x] **Step 7 — Rendering: tuplet brackets**
@@ -189,9 +189,9 @@ repeated in the step descriptions.
   in the pipeline-layers section + glossary.
 
 - [x] **Step 9 — E2E fixture + final verification**
-  New `demo/12-tuplets.jianpu` (check existing numbered `demo/*.jianpu` files for the next
+  New `demo/12-tuplets.poentaro` (check existing numbered `demo/*.poentaro` files for the next
   free number first) exercising a triplet, a duplet, and a quintuplet.
-  `cargo run -- generate svg demo/12-tuplets.jianpu` — visually confirm brackets render above
+  `cargo run -- generate svg demo/12-tuplets.poentaro` — visually confirm brackets render above
   the note row without colliding with slur arcs, octave dots, or beam underlines.
   If the project has SVG snapshot/golden-file tests under `tests/`, add one for this fixture.
   Run full `cargo test` and the e2e suite. Delete this file (`TUPLET_PLAN.md`) once all steps
@@ -199,7 +199,7 @@ repeated in the step descriptions.
 
   Implemented as: `tests/main/demo_source.rs` already iterates every file under `demo/` and
   asserts each parses/renders with zero diagnostics, so no separate snapshot test was needed —
-  `demo/12-tuplets.jianpu` is automatically covered by `demo_files_parse_and_render`,
+  `demo/12-tuplets.poentaro` is automatically covered by `demo_files_parse_and_render`,
   `demo_files_have_no_diagnostics`, and `demo_files_render_expected_content` the moment it
   exists in that directory.
 
@@ -241,7 +241,7 @@ repeated in the step descriptions.
   eighth notes sits in a disjoint column range — no collisions. Full `cargo test` passes (762
   tests: 709 lib + 53 integration). `cargo clippy --all-targets` fails on this branch
   independent of this step's change (`git diff --stat` for this commit touches only
-  `demo/12-tuplets.jianpu` and this file) — the failures are pre-existing `too_many_arguments`/
+  `demo/12-tuplets.poentaro` and this file) — the failures are pre-existing `too_many_arguments`/
   `too_many_lines` lints plus a `disallowed_macros` hit on the `debug_assert!` in
   `part_grouper.rs` added by Step 4, all predating this step and out of scope to fix here.
 
@@ -252,7 +252,7 @@ condensed, sequenced version of the same content.)
 
 ### Context
 
-The `.jianpu` grammar has no way to notate tuplets (triplets, duplets, quintuplets...).
+The `.poentaro` grammar has no way to notate tuplets (triplets, duplets, quintuplets...).
 Duration is currently a plain `u32` "quarter-beat" count (1 = a sixteenth note) used
 identically across parsing, measure-capacity validation, beat-grouping rules, SVG
 grid-column layout, and MIDI tick export. Tuplets need fractional beat subdivisions (e.g. an
@@ -299,5 +299,5 @@ rescaling pass per measure, between "parser produces `ScoreEvent`s for this line
 Parser-level (implicit ratio table, explicit `{N:M:...}`, ambiguous-N error, note-count
 mismatch error, nesting with `(...)` both directions, unclosed-tuplet error), grouper-level
 (measure-capacity validation, half-bar-boundary/dotted-eighth-tail around a tuplet), e2e
-(`demo/12-tuplets.jianpu` rendered via `cargo run -- generate svg`), MIDI export (tick sum
+(`demo/12-tuplets.poentaro` rendered via `cargo run -- generate svg`), MIDI export (tick sum
 round-trip check).

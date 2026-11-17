@@ -4,9 +4,13 @@ import type {
   TextStyleDefaults,
   TextStyleFields,
   TextStyleKind,
-} from '../jianpuWasm'
+} from '../poentaroWasm'
 import { FieldLabel } from './FieldHelpModal'
-import { NumberStepper } from './MetadataFieldRows'
+import {
+  inheritedStyle,
+  NumberStepper,
+  ResetOverrideButton,
+} from './MetadataFieldRows'
 import { optionalNumber } from './MetadataFieldsTableBody'
 import {
   type BooleanColumn,
@@ -23,6 +27,11 @@ export interface StyleRowSpec {
   value: TextStyleFields
   /** What each component resolves to when unset. */
   placeholder: TextStyleDefaults
+  /** Editing a preset: unset components show the song's `metadata`
+   * values, muted. */
+  editingPreset: boolean
+  /** Set while the preset overrides any component: clears them all. */
+  onReset?: () => void
   /** No row currently sets this `false` — every kind, including
    * `notes`/`chords`/`note_dash` (whose glyph widths are re-measured
    * against whichever font `font_family` resolves to, see `syntax.md`),
@@ -152,7 +161,17 @@ function StyleTableRow({
   showHelp: (label: string, help: string) => void
   onChange: (value: TextStyleComponentValue) => void
 }) {
-  const { label, help, value, placeholder, showFontFamily = true } = row
+  const {
+    label,
+    help,
+    value,
+    placeholder,
+    editingPreset,
+    onReset,
+    showFontFamily = true,
+  } = row
+  const mutedIfInherited = (component: unknown) =>
+    editingPreset && component == null ? inheritedStyle : undefined
   // A row that opts out of the font-family selector (see
   // `StyleRowSpec.showFontFamily`'s doc comment) has no way to change away
   // from its fixed default face, so there's no capability restriction to
@@ -163,7 +182,10 @@ function StyleTableRow({
   return (
     <tr>
       <td style={tdLabelStyle}>
-        <FieldLabel label={label} help={help} onShowHelp={showHelp} />
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <FieldLabel label={label} help={help} onShowHelp={showHelp} />
+          <ResetOverrideButton label={label} onReset={onReset} />
+        </span>
       </td>
       {numericColumns.map((column) => (
         <td key={column.field} style={tdStyle}>
@@ -188,7 +210,14 @@ function StyleTableRow({
             ? `${fontFamilyOptionLabels[effectiveFontFamily]} has no ${column.field} face, so this has no visible effect`
             : undefined
         return (
-          <td key={column.field} style={{ ...tdStyle, textAlign: 'center' }}>
+          <td
+            key={column.field}
+            style={{
+              ...tdStyle,
+              textAlign: 'center',
+              ...mutedIfInherited(value[column.field]),
+            }}
+          >
             <StyleToggleButton
               column={column}
               checked={checked}
@@ -203,7 +232,10 @@ function StyleTableRow({
         {showFontFamily && (
           <select
             aria-label={`${label} Font Family`}
-            style={fontFamilySelectStyle}
+            style={{
+              ...fontFamilySelectStyle,
+              ...mutedIfInherited(value.fontFamily),
+            }}
             value={value.fontFamily ?? placeholder.fontFamily}
             onChange={(e) =>
               onChange({

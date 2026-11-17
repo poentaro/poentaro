@@ -5,8 +5,8 @@ import { Given, Then, When } from './fixtures'
 
 /**
  * Regression fixture for the click-and-click note-range gesture not
- * spanning a system boundary (see `previewRangeHighlights.ts`'s
- * `cellsInMarquee`): the gesture resolves to a plain axis-aligned rectangle
+ * spanning a system boundary: the gesture used to resolve to a plain
+ * axis-aligned pixel rectangle
  * between the anchor and the second click's screen point, rather than "every
  * note in reading order between the two clicks" — so an anchor/target pair
  * that both sit near the same x-column (the left edge of their own system)
@@ -20,18 +20,16 @@ import { Given, Then, When } from './fixtures'
  * reproduce the boundary.
  */
 const crossSystemSource = [
-  '# metadata',
-  'title = "cross system range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "cross system range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0 — system 1 — notes 0-3
+  'score """',
+  '[M] 1 2 3 4',
   '',
   'break',
-  '[M] 5 6 7 1', // measure 1 — system 2 — notes 4-7
+  '[M] 5 6 7 1',
+  '""",',
 ].join('\n')
 
 function noteRects(page: import('@playwright/test').Page) {
@@ -54,13 +52,14 @@ Given(
   async ({ page }) => {
     await page.addInitScript((source) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'cross-system-range-test.jianpu',
-          userFiles: { 'cross-system-range-test.jianpu': source },
+          active: 'cross-system-range-test.poentaro',
+          userFiles: { 'cross-system-range-test.poentaro': source },
           bin: {},
           fileIds: {
-            'cross-system-range-test.jianpu': 'cross-system-range-test-id-001',
+            'cross-system-range-test.poentaro':
+              'cross-system-range-test-id-001',
           },
         }),
       )

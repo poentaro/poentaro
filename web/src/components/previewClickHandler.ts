@@ -64,7 +64,6 @@ function handleAnchorClick(
   const { anchorStateRef } = args
   const partLabel = getPartLabelAtPoint(e.clientX, e.clientY)
   if (partLabel !== undefined) {
-    const point = { x: e.clientX, y: e.clientY }
     // Cmd/Ctrl-click on a part label elevates the selection from "this one
     // part's system" to "every part in every system touched" — see
     // `PreviewAnchorState`'s 'part-label-system' doc comment. Checked ahead of
@@ -72,7 +71,11 @@ function handleAnchorClick(
     if (e.metaKey || e.ctrlKey) {
       anchorAndCommit(
         anchorStateRef,
-        { mode: 'part-label-system', anchor: point, current: point },
+        {
+          mode: 'part-label-system',
+          anchorId: partLabelClickableElementId(partLabel),
+          currentId: partLabelClickableElementId(partLabel),
+        },
         args,
       )
       e.preventDefault()
@@ -82,9 +85,8 @@ function handleAnchorClick(
       anchorStateRef,
       {
         mode: 'part-label',
-        anchor: point,
-        current: point,
         anchorId: partLabelClickableElementId(partLabel),
+        currentId: partLabelClickableElementId(partLabel),
       },
       args,
     )
@@ -95,14 +97,12 @@ function handleAnchorClick(
   // label (e.g. "M:v1"), scoped to that one verse instead of a whole part.
   const lyricLabel = getLyricLabelAtPoint(e.clientX, e.clientY)
   if (lyricLabel !== undefined) {
-    const point = { x: e.clientX, y: e.clientY }
     anchorAndCommit(
       anchorStateRef,
       {
         mode: 'lyric-label',
-        anchor: point,
-        current: point,
         anchorId: lyricLabelClickableElementId(lyricLabel),
+        currentId: lyricLabelClickableElementId(lyricLabel),
       },
       args,
     )
@@ -186,14 +186,12 @@ function handleAnchorClick(
   // `resolve_click_target_elements`'s append order.
   const lyricCell = getLyricAtPoint(e.clientX, e.clientY)
   if (lyricCell !== undefined) {
-    const point = { x: e.clientX, y: e.clientY }
     anchorAndCommit(
       anchorStateRef,
       {
         mode: 'lyric',
-        anchor: point,
-        current: point,
         anchorId: lyricClickableElementId(lyricCell),
+        currentId: lyricClickableElementId(lyricCell),
       },
       args,
     )
@@ -202,14 +200,12 @@ function handleAnchorClick(
   }
   const noteCell = getNoteAtPoint(e.clientX, e.clientY)
   if (noteCell !== undefined) {
-    const point = { x: e.clientX, y: e.clientY }
     anchorAndCommit(
       anchorStateRef,
       {
         mode: 'note',
-        anchor: point,
-        current: point,
         anchorId: noteClickableElementId(noteCell),
+        currentId: noteClickableElementId(noteCell),
       },
       args,
     )
@@ -281,7 +277,7 @@ function handleCommitClick(
  * click gesture), which would silently break every Cmd/Ctrl-gated mode below
  * (`'measure'` off a bare click, `'part-label-system'`) — `mousedown` has no
  * such gap. Split out of `Preview` to keep that component under its
- * line-count cap; the per-mode marquee/range resolution itself lives in
+ * line-count cap; the per-mode range resolution itself lives in
  * `previewSelectionResolver.ts` for the same reason.
  */
 export function handlePreviewClick(

@@ -1,11 +1,10 @@
 Feature: Toggling a part while a measure is focused
 
-  # The default demo source (demo/01-pitches.jianpu) declares a single part:
+  # The default demo source (demo/01-pitches.poentaro) declares its parts:
   #
-  #   # parts
-  #   Melody [M] = notes
+  #   parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],
   #
-  # Line 10 in the editor (`[M] 1 2 3 0`) is the first note line of measure 1.
+  # Line 7 in the editor (`[M] 1 2 3 0`) is the first note line of measure 1.
   #
   # Regression: when the cursor is inside a measure, `highlightedSvgs` is shown
   # in the Preview. Toggling a part should re-render `highlightedSvgs` with the

@@ -30,10 +30,10 @@ fn store(files: &[&str]) -> FileStoreState {
 
 fn sample() -> FileStoreState {
     store(&[
-        "Hymns/Advent/O Come.jianpu",
-        "Hymns/Advent/Rejoice.jianpu",
-        "Hymns/Amazing.jianpu",
-        "Scratch.jianpu",
+        "Hymns/Advent/O Come.poentaro",
+        "Hymns/Advent/Rejoice.poentaro",
+        "Hymns/Amazing.poentaro",
+        "Scratch.poentaro",
     ])
 }
 
@@ -48,7 +48,7 @@ fn unit_paths(units: &[SelectionUnit]) -> Vec<String> {
 fn checks(selected: &[&str]) -> Vec<(String, Option<CheckState>)> {
     tree()
         .view_rows(&TreeViewInput {
-            active: "Scratch.jianpu",
+            active: "Scratch.poentaro",
             expanded: &strings(&["Hymns", "Hymns/Advent"]),
             demo_file_names: &[],
             shares: &ShareOverview::default(),
@@ -64,15 +64,18 @@ fn checks(selected: &[&str]) -> Vec<(String, Option<CheckState>)> {
 fn a_folder_is_checked_only_when_all_its_files_are_selected() {
     use CheckState::*;
     assert_eq!(
-        checks(&["Hymns/Advent/O Come.jianpu", "Hymns/Advent/Rejoice.jianpu"]),
+        checks(&[
+            "Hymns/Advent/O Come.poentaro",
+            "Hymns/Advent/Rejoice.poentaro"
+        ]),
         vec![
             ("Empty".to_string(), Some(Unchecked)),
             ("Hymns".to_string(), Some(Mixed)),
             ("Advent".to_string(), Some(Checked)),
-            ("O Come.jianpu".to_string(), Some(Checked)),
-            ("Rejoice.jianpu".to_string(), Some(Checked)),
-            ("Amazing.jianpu".to_string(), Some(Unchecked)),
-            ("Scratch.jianpu".to_string(), Some(Unchecked)),
+            ("O Come.poentaro".to_string(), Some(Checked)),
+            ("Rejoice.poentaro".to_string(), Some(Checked)),
+            ("Amazing.poentaro".to_string(), Some(Unchecked)),
+            ("Scratch.poentaro".to_string(), Some(Unchecked)),
         ]
     );
 }
@@ -88,60 +91,62 @@ fn an_empty_folder_is_never_checked() {
 
 #[test]
 fn toggling_a_file_flips_only_that_file() {
-    let once = tree().toggle_selection(&[], "Scratch.jianpu");
-    assert_eq!(once, strings(&["Scratch.jianpu"]));
-    assert!(tree().toggle_selection(&once, "Scratch.jianpu").is_empty());
+    let once = tree().toggle_selection(&[], "Scratch.poentaro");
+    assert_eq!(once, strings(&["Scratch.poentaro"]));
+    assert!(tree()
+        .toggle_selection(&once, "Scratch.poentaro")
+        .is_empty());
 }
 
 #[test]
 fn toggling_a_folder_selects_everything_inside_then_clears_it() {
-    let selected = tree().toggle_selection(&strings(&["Scratch.jianpu"]), "Hymns");
+    let selected = tree().toggle_selection(&strings(&["Scratch.poentaro"]), "Hymns");
     assert_eq!(
         selected,
         strings(&[
-            "Hymns/Advent/O Come.jianpu",
-            "Hymns/Advent/Rejoice.jianpu",
-            "Hymns/Amazing.jianpu",
-            "Scratch.jianpu",
+            "Hymns/Advent/O Come.poentaro",
+            "Hymns/Advent/Rejoice.poentaro",
+            "Hymns/Amazing.poentaro",
+            "Scratch.poentaro",
         ])
     );
     assert_eq!(
         tree().toggle_selection(&selected, "Hymns"),
-        strings(&["Scratch.jianpu"])
+        strings(&["Scratch.poentaro"])
     );
 }
 
 #[test]
 fn toggling_a_half_selected_folder_selects_the_rest() {
-    let selected = tree().toggle_selection(&strings(&["Hymns/Amazing.jianpu"]), "Hymns");
+    let selected = tree().toggle_selection(&strings(&["Hymns/Amazing.poentaro"]), "Hymns");
     assert_eq!(selected.len(), 3);
 }
 
 #[test]
 fn toggling_drops_selected_paths_that_no_longer_exist() {
     assert_eq!(
-        tree().toggle_selection(&strings(&["Gone.jianpu"]), "Scratch.jianpu"),
-        strings(&["Scratch.jianpu"])
+        tree().toggle_selection(&strings(&["Gone.poentaro"]), "Scratch.poentaro"),
+        strings(&["Scratch.poentaro"])
     );
 }
 
 #[test]
 fn toggling_an_unknown_key_changes_nothing() {
     assert_eq!(
-        tree().toggle_selection(&strings(&["Scratch.jianpu"]), "Nowhere"),
-        strings(&["Scratch.jianpu"])
+        tree().toggle_selection(&strings(&["Scratch.poentaro"]), "Nowhere"),
+        strings(&["Scratch.poentaro"])
     );
 }
 
 #[test]
 fn a_fully_selected_folder_is_one_unit_without_its_children() {
     let units = tree().selection_units(&strings(&[
-        "Hymns/Advent/O Come.jianpu",
-        "Hymns/Advent/Rejoice.jianpu",
-        "Hymns/Amazing.jianpu",
-        "Scratch.jianpu",
+        "Hymns/Advent/O Come.poentaro",
+        "Hymns/Advent/Rejoice.poentaro",
+        "Hymns/Amazing.poentaro",
+        "Scratch.poentaro",
     ]));
-    assert_eq!(unit_paths(&units), vec!["Hymns", "Scratch.jianpu"]);
+    assert_eq!(unit_paths(&units), vec!["Hymns", "Scratch.poentaro"]);
     assert_eq!(units[0].file_count, 3);
     assert!(units[0].is_folder);
 }
@@ -149,8 +154,8 @@ fn a_fully_selected_folder_is_one_unit_without_its_children() {
 #[test]
 fn a_partly_selected_folder_contributes_its_selected_files() {
     let units = tree().selection_units(&strings(&[
-        "Hymns/Advent/O Come.jianpu",
-        "Hymns/Advent/Rejoice.jianpu",
+        "Hymns/Advent/O Come.poentaro",
+        "Hymns/Advent/Rejoice.poentaro",
     ]));
     assert_eq!(unit_paths(&units), vec!["Hymns/Advent"]);
 }
@@ -159,7 +164,7 @@ fn a_partly_selected_folder_contributes_its_selected_files() {
 fn moving_files_into_a_folder_keeps_their_names() {
     let plan = selection_move_plan(
         &sample(),
-        &strings(&["Scratch.jianpu", "Hymns/Amazing.jianpu"]),
+        &strings(&["Scratch.poentaro", "Hymns/Amazing.poentaro"]),
         Some("Empty"),
         &context(),
     );
@@ -168,13 +173,13 @@ fn moving_files_into_a_folder_keeps_their_names() {
         plan.moves,
         vec![
             SelectionMove {
-                from: "Hymns/Amazing.jianpu".to_string(),
-                to: "Empty/Amazing.jianpu".to_string(),
+                from: "Hymns/Amazing.poentaro".to_string(),
+                to: "Empty/Amazing.poentaro".to_string(),
                 is_folder: false,
             },
             SelectionMove {
-                from: "Scratch.jianpu".to_string(),
-                to: "Empty/Scratch.jianpu".to_string(),
+                from: "Scratch.poentaro".to_string(),
+                to: "Empty/Scratch.poentaro".to_string(),
                 is_folder: false,
             },
         ]
@@ -185,7 +190,10 @@ fn moving_files_into_a_folder_keeps_their_names() {
 fn moving_a_whole_folder_moves_it_as_a_folder() {
     let plan = selection_move_plan(
         &sample(),
-        &strings(&["Hymns/Advent/O Come.jianpu", "Hymns/Advent/Rejoice.jianpu"]),
+        &strings(&[
+            "Hymns/Advent/O Come.poentaro",
+            "Hymns/Advent/Rejoice.poentaro",
+        ]),
         Some("Empty"),
         &context(),
     );
@@ -202,7 +210,7 @@ fn moving_a_whole_folder_moves_it_as_a_folder() {
 
 #[test]
 fn units_already_in_the_target_are_left_out() {
-    let plan = selection_move_plan(&sample(), &strings(&["Scratch.jianpu"]), None, &context());
+    let plan = selection_move_plan(&sample(), &strings(&["Scratch.poentaro"]), None, &context());
     assert_eq!(plan.moves, vec![]);
     assert_eq!(
         plan.error,
@@ -213,32 +221,41 @@ fn units_already_in_the_target_are_left_out() {
 #[test]
 fn two_selected_files_with_the_same_name_clash() {
     let state = store(&[
-        "A/Song.jianpu",
-        "A/Other.jianpu",
-        "B/Song.jianpu",
-        "B/Other.jianpu",
+        "A/Song.poentaro",
+        "A/Other.poentaro",
+        "B/Song.poentaro",
+        "B/Other.poentaro",
     ]);
     let plan = selection_move_plan(
         &state,
-        &strings(&["A/Song.jianpu", "B/Song.jianpu"]),
+        &strings(&["A/Song.poentaro", "B/Song.poentaro"]),
         None,
         &context(),
     );
-    assert_eq!(plan.error, Some("`Song.jianpu` already exists".to_string()));
+    assert_eq!(
+        plan.error,
+        Some("`Song.poentaro` already exists".to_string())
+    );
 }
 
 #[test]
 fn a_clash_with_an_existing_file_is_reported() {
-    let state = store(&["A/Song.jianpu", "A/Other.jianpu", "Song.jianpu"]);
-    let plan = selection_move_plan(&state, &strings(&["A/Song.jianpu"]), None, &context());
-    assert_eq!(plan.error, Some("`Song.jianpu` already exists".to_string()));
+    let state = store(&["A/Song.poentaro", "A/Other.poentaro", "Song.poentaro"]);
+    let plan = selection_move_plan(&state, &strings(&["A/Song.poentaro"]), None, &context());
+    assert_eq!(
+        plan.error,
+        Some("`Song.poentaro` already exists".to_string())
+    );
 }
 
 #[test]
 fn a_folder_cannot_move_into_itself() {
     let plan = selection_move_plan(
         &sample(),
-        &strings(&["Hymns/Advent/O Come.jianpu", "Hymns/Advent/Rejoice.jianpu"]),
+        &strings(&[
+            "Hymns/Advent/O Come.poentaro",
+            "Hymns/Advent/Rejoice.poentaro",
+        ]),
         Some("Hymns/Advent"),
         &context(),
     );
@@ -253,15 +270,15 @@ fn the_delete_summary_lists_files_and_folders() {
     let summary = selection_delete_summary(
         &sample(),
         &strings(&[
-            "Hymns/Advent/O Come.jianpu",
-            "Hymns/Advent/Rejoice.jianpu",
-            "Scratch.jianpu",
+            "Hymns/Advent/O Come.poentaro",
+            "Hymns/Advent/Rejoice.poentaro",
+            "Scratch.poentaro",
         ]),
         &ShareOverview::default(),
     );
     assert_eq!(
         summary.lines,
-        vec!["Hymns/Advent/ (2 files)", "Scratch.jianpu"]
+        vec!["Hymns/Advent/ (2 files)", "Scratch.poentaro"]
     );
     assert_eq!(
         summary.message,
@@ -274,7 +291,7 @@ fn the_delete_summary_lists_files_and_folders() {
 fn the_delete_summary_of_one_file_is_singular() {
     let summary = selection_delete_summary(
         &sample(),
-        &strings(&["Scratch.jianpu"]),
+        &strings(&["Scratch.poentaro"]),
         &ShareOverview::default(),
     );
     assert_eq!(
@@ -295,9 +312,9 @@ fn deleting_a_shared_folder_carries_the_share_warning() {
     let summary = selection_delete_summary(
         &sample(),
         &strings(&[
-            "Hymns/Advent/O Come.jianpu",
-            "Hymns/Advent/Rejoice.jianpu",
-            "Hymns/Amazing.jianpu",
+            "Hymns/Advent/O Come.poentaro",
+            "Hymns/Advent/Rejoice.poentaro",
+            "Hymns/Amazing.poentaro",
         ]),
         &shares,
     );

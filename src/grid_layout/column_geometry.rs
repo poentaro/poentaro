@@ -25,6 +25,7 @@ impl GridRow {
             if self.measure_layout.is_empty() {
                 let music_cols = self.column_count - LABEL_COLS;
                 return ColumnGeometry {
+                    origin_x: 0.0,
                     label_cols: LABEL_COLS,
                     label_col_width,
                     first_segment: ColumnSegment {
@@ -83,25 +84,33 @@ impl GridRow {
                 accidental_lead: 0.0,
             });
             ColumnGeometry {
+                origin_x: 0.0,
                 label_cols: LABEL_COLS,
                 label_col_width,
                 first_segment,
                 rest_segments: segments.collect(),
             }
         } else {
-            let col_width = usable_width_pt / self.column_count as f32;
-            ColumnGeometry {
-                label_cols: 0,
-                label_col_width: col_width,
-                first_segment: ColumnSegment {
-                    start_col: 0.0,
-                    col_count: self.column_count as f32,
-                    col_width,
-                    x_start: 0.0,
-                    accidental_lead: 0.0,
-                },
-                rest_segments: Vec::new(),
-            }
+            self.uniform_column_geometry(usable_width_pt)
+        }
+    }
+
+    /// A row without a label region (header, footer, separator): its
+    /// columns split the full width evenly.
+    fn uniform_column_geometry(&self, usable_width_pt: f32) -> ColumnGeometry {
+        let col_width = usable_width_pt / self.column_count as f32;
+        ColumnGeometry {
+            origin_x: 0.0,
+            label_cols: 0,
+            label_col_width: col_width,
+            first_segment: ColumnSegment {
+                start_col: 0.0,
+                col_count: self.column_count as f32,
+                col_width,
+                x_start: 0.0,
+                accidental_lead: 0.0,
+            },
+            rest_segments: Vec::new(),
         }
     }
 }
@@ -133,6 +142,10 @@ struct ColumnSegment {
 /// function of `column`.
 #[derive(Debug, Clone)]
 pub struct ColumnGeometry {
+    /// x-offset added to every position below: `0.0` for a row-relative
+    /// geometry, the page's left margin once [`ColumnGeometry::offset_by`]
+    /// places the row on the page.
+    origin_x: f32,
     label_cols: u32,
     label_col_width: f32,
     /// The music region's first segment, split out from `rest_segments` so
@@ -143,6 +156,13 @@ pub struct ColumnGeometry {
 }
 
 impl ColumnGeometry {
+    /// The same geometry, shifted right by `origin_x` (e.g. the page's left
+    /// margin), so `x_start` returns page coordinates instead of positions
+    /// relative to the row's left edge.
+    pub fn offset_by(self, origin_x: f32) -> Self {
+        Self { origin_x, ..self }
+    }
+
     /// Finds the segment `column` falls into. Segments are contiguous and
     /// sorted by `start_col`; a column past the last segment's end resolves
     /// to that last segment (segments are never empty).
@@ -156,16 +176,18 @@ impl ColumnGeometry {
             .unwrap_or_else(|| self.rest_segments.last().unwrap_or(&self.first_segment))
     }
 
-    /// x-offset of the start of `column`, relative to the row's left edge.
-    /// `column` may be fractional (e.g. a highlight's `column_start`); it is
-    /// never expected to straddle the label/music boundary.
+    /// x-offset of the start of `column`, relative to the row's left edge
+    /// plus `origin_x` (see [`ColumnGeometry::offset_by`]). `column` may be
+    /// fractional (e.g. a highlight's `column_start`); it is never expected
+    /// to straddle the label/music boundary.
     pub fn x_start(&self, column: f32) -> f32 {
-        if column < self.label_cols as f32 {
+        let row_x = if column < self.label_cols as f32 {
             column * self.label_col_width
         } else {
             let seg = self.segment_for(column);
             seg.x_start + (column - seg.start_col) * seg.col_width
-        }
+        };
+        self.origin_x + row_x
     }
 
     /// Width of a single column at `column`.

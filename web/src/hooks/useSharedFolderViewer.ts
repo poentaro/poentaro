@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FileStoreState } from '../fileStore'
-import type { FileTreeViewRow, FolderSnapshot } from '../jianpuWasm'
+import type { FileTreeViewRow, FolderSnapshot } from '../poentaroWasm'
 import { sharedFolderFirstFile, sharedFolderView } from '../sharedFolder'
 import { clearShareHash, parseFolderShareFromHash } from '../shareUrl'
 import type { StorageBackend } from '../storage/types'
@@ -33,7 +33,7 @@ export interface SharedFolderViewer {
   onToggleFolder: (key: string) => void
   /** Copies the folder into the viewer's own files, then leaves viewer mode. */
   onImport: () => Promise<void>
-  /** Leaves viewer mode without importing (static links only). */
+  /** Leaves viewer mode without importing. */
   onDiscard: () => void
 }
 
@@ -46,7 +46,7 @@ export interface SharedFolderViewer {
  */
 export function useSharedFolderViewer(
   syncedFolder: FolderSnapshot | null,
-  clearSyncedFolder: () => void,
+  leaveSyncedShare: () => void,
   store: FileStoreState,
   backend: StorageBackend,
   setStore: (
@@ -109,11 +109,11 @@ export function useSharedFolderViewer(
       clearShareHash()
       setStaticFolder(null)
     } else {
-      clearSyncedFolder()
+      leaveSyncedShare()
     }
     setSelectedPath(null)
     setExpanded([])
-  }, [staticFolder, clearSyncedFolder])
+  }, [staticFolder, leaveSyncedShare])
 
   const onImport = useCallback(async () => {
     if (!snapshot) return

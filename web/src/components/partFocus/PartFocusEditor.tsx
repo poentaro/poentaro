@@ -1,20 +1,25 @@
-import MonacoEditor, { type Monaco, type OnMount } from '@monaco-editor/react'
+import MonacoEditor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type RefObject, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  jianpuWasm,
   type PartToggleState,
+  poentaroWasm,
   type StreamablePart,
-} from '../../jianpuWasm'
+} from '../../poentaroWasm'
+import type { EditorSelection, PartFocusSelectionHandle } from '../../types'
 import {
   byteOffsetToStringIndex,
   stringIndexToByteOffset,
 } from '../../utils/byteSpan'
 import { buildDiagnosticMarkers } from '../editorDiagnosticViewZones'
-import { defineJianpuEditorTheme, EDITOR_THEME } from '../editorTheme'
+import { definePoentaroEditorTheme, EDITOR_THEME } from '../editorTheme'
 import '../FileDialogs.css'
 import { applyPartFocusViewZones } from './partFocusViewZones'
 import './PartFocusEditor.css'
+import {
+  type MountedEditor,
+  usePartFocusSelection,
+} from './usePartFocusSelection'
 
 const MARKER_OWNER = 'part-focus'
 const FORMAT_EDIT_SOURCE = 'part-focus-format'
@@ -32,11 +37,16 @@ interface PartFocusEditorProps {
   onDraftChange: (draftSource: string | null) => void
   onApply: (newSource: string) => void
   onCancel: () => void
-}
-
-interface MountedEditor {
-  ed: editor.IStandaloneCodeEditor
-  monacoApi: Monaco
+  /** Set while mounted, so the preview's selections land in the stream. */
+  handleRef: RefObject<PartFocusSelectionHandle | null>
+  /** The stream selection as draft source lines, like `Editor`'s. */
+  onSelectionChange: (
+    startLine: number,
+    endLine: number,
+    isEmpty: boolean,
+  ) => void
+  /** The stream selection as draft source byte ranges, like `Editor`'s. */
+  onSelectionOffsetChange: (ranges: EditorSelection[], isEmpty: boolean) => void
 }
 
 function changedMeasuresLabel(count: number): string {
@@ -59,6 +69,9 @@ export function PartFocusEditor({
   onDraftChange,
   onApply,
   onCancel,
+  handleRef,
+  onSelectionChange,
+  onSelectionOffsetChange,
 }: PartFocusEditorProps) {
   const abbreviation = part.abbreviation
   const [text, setText] = useState(initialStream)
@@ -70,6 +83,14 @@ export function PartFocusEditor({
   useEffect(() => {
     sourceRef.current = source
     onCancelRef.current = onCancel
+  })
+  const { goodDraftRef, reportSelection } = usePartFocusSelection({
+    mounted,
+    source,
+    abbreviation,
+    handleRef,
+    onSelectionChange,
+    onSelectionOffsetChange,
   })
 
   // Escape cancels, unless Monaco used it (e.g. to close its find widget).
@@ -84,17 +105,19 @@ export function PartFocusEditor({
   }, [])
 
   const result = useMemo(
-    () => jianpuWasm().applyPartStream(source, abbreviation, text),
+    () => poentaroWasm().applyPartStream(source, abbreviation, text),
     [source, abbreviation, text],
   )
   // A draft with errors has no source; the preview keeps the last good one.
   useEffect(() => {
-    if (result.source !== undefined) onDraftChange(result.source)
-  }, [result.source, onDraftChange])
+    if (result.source === undefined) return
+    goodDraftRef.current = { stream: text, draft: result.source }
+    onDraftChange(result.source)
+  }, [result.source, text, onDraftChange, goodDraftRef])
   useEffect(() => () => onDraftChange(null), [onDraftChange])
 
   const focusMeasures = useMemo(() => {
-    const response = jianpuWasm().partFocusMeasures(
+    const response = poentaroWasm().partFocusMeasures(
       source,
       abbreviation,
       partToggles,
@@ -144,7 +167,7 @@ export function PartFocusEditor({
     const format = () => {
       const current = model.getValue()
       const selections = ed.getSelections() ?? []
-      const formatted = jianpuWasm().formatPartStream(
+      const formatted = poentaroWasm().formatPartStream(
         sourceRef.current,
         abbreviation,
         current,
@@ -193,6 +216,7 @@ export function PartFocusEditor({
       }
       queueMicrotask(format)
     })
+    ed.onDidChangeCursorSelection(() => reportSelection(ed))
     ed.onDidCompositionStart(() => {
       composing = true
     })
@@ -256,7 +280,7 @@ export function PartFocusEditor({
           theme={EDITOR_THEME}
           path={`part-focus://${fileId}/${abbreviation}`}
           defaultValue={initialStream}
-          beforeMount={defineJianpuEditorTheme}
+          beforeMount={definePoentaroEditorTheme}
           onMount={handleMount}
           options={{
             minimap: { enabled: false },

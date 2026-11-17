@@ -4,7 +4,7 @@ import { moveDestination } from '../fileStoreQueries'
 import type { StorageBackend } from '../storage/types'
 import type { FileOpError } from './useFileOperations'
 
-/** Recovers a lost `.jianpu` source from a previously exported `.svg`/`.pdf`
+/** Recovers a lost `.poentaro` source from a previously exported `.svg`/`.pdf`
  * file and imports it as a new user file. Kept separate from
  * `useFileOperations` since it needs the worker's `importFromFile`
  * extraction step before it has a source to hand to the backend. */

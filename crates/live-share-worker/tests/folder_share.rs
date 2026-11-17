@@ -93,8 +93,8 @@ fn a_folder_over_either_limit_is_refused() {
 #[test]
 fn the_viewer_tree_uses_paths_relative_to_the_shared_folder() {
     let rows = [
-        row("Hymns/Advent/O Come.jianpu", "[M] 1", 2),
-        row("Hymns/Advent/Sub/Deep.jianpu", "[M] 2", 0),
+        row("Hymns/Advent/O Come.poentaro", "[M] 1", 2),
+        row("Hymns/Advent/Sub/Deep.poentaro", "[M] 2", 0),
     ];
 
     let doc = to_public_folder_doc(&header(None), &rows);
@@ -109,8 +109,8 @@ fn the_viewer_tree_uses_paths_relative_to_the_shared_folder() {
             folder: Some(SharedFolder {
                 name: "Advent".to_string(),
                 files: vec![
-                    shared_file("O Come.jianpu", "[M] 1", 2),
-                    shared_file("Sub/Deep.jianpu", "[M] 2", 0),
+                    shared_file("O Come.poentaro", "[M] 1", 2),
+                    shared_file("Sub/Deep.poentaro", "[M] 2", 0),
                 ],
                 empty_folders: vec![],
             }),
@@ -124,13 +124,13 @@ fn placeholders_are_not_files_and_mark_only_folders_without_files() {
         row("Hymns/Advent/.keep", "", 0),
         row("Hymns/Advent/Empty/.keep", "", 0),
         row("Hymns/Advent/Full/.keep", "", 0),
-        row("Hymns/Advent/Full/a.jianpu", "x", 1),
+        row("Hymns/Advent/Full/a.poentaro", "x", 1),
         row("Hymns/Advent/Nested/Inner/.keep", "", 0),
     ];
 
     let folder = to_public_folder_doc(&header(None), &rows).folder.unwrap();
 
-    assert_eq!(folder.files, vec![shared_file("Full/a.jianpu", "x", 1)]);
+    assert_eq!(folder.files, vec![shared_file("Full/a.poentaro", "x", 1)]);
     assert_eq!(folder.empty_folders, vec!["Empty", "Nested/Inner"]);
 }
 
@@ -151,7 +151,7 @@ fn a_folder_without_files_is_a_live_empty_tree() {
 
 #[test]
 fn a_stopped_folder_share_hides_everything() {
-    let doc = to_public_folder_doc(&header(Some(5)), &[row("Hymns/Advent/a.jianpu", "x", 1)]);
+    let doc = to_public_folder_doc(&header(Some(5)), &[row("Hymns/Advent/a.poentaro", "x", 1)]);
 
     assert_eq!(doc, empty_doc());
 }
@@ -167,7 +167,7 @@ fn a_file_share_and_an_ended_share_have_no_folder_key_on_the_wire() -> Result<()
 #[test]
 fn the_folder_tree_serializes_in_camel_case_without_internal_ids() -> Result<(), serde_json::Error>
 {
-    let doc = to_public_folder_doc(&header(None), &[row("Hymns/Advent/a.jianpu", "x", 1)]);
+    let doc = to_public_folder_doc(&header(None), &[row("Hymns/Advent/a.poentaro", "x", 1)]);
 
     let json = serde_json::to_value(doc)?;
 
@@ -175,7 +175,7 @@ fn the_folder_tree_serializes_in_camel_case_without_internal_ids() -> Result<(),
         json["folder"],
         serde_json::json!({
             "name": "Advent",
-            "files": [{"path": "a.jianpu", "content": "x", "revision": 1}],
+            "files": [{"path": "a.poentaro", "content": "x", "revision": 1}],
             "emptyFolders": [],
         })
     );
@@ -219,8 +219,8 @@ fn prefixes(values: &[&str]) -> Vec<String> {
 fn a_folder_rename_rewrites_the_shared_prefix() {
     let plan = plan_prefix_rewrites(
         &prefixes(&["Hymns"]),
-        &moves(&[("a", "Songs/a.jianpu"), ("b", "Songs/Sub/b.jianpu")]),
-        &current(&[("a", "Hymns/a.jianpu"), ("b", "Hymns/Sub/b.jianpu")]),
+        &moves(&[("a", "Songs/a.poentaro"), ("b", "Songs/Sub/b.poentaro")]),
+        &current(&[("a", "Hymns/a.poentaro"), ("b", "Hymns/Sub/b.poentaro")]),
     );
 
     assert_eq!(plan, vec![rewrite("Hymns", "Songs")]);
@@ -230,8 +230,8 @@ fn a_folder_rename_rewrites_the_shared_prefix() {
 fn a_folder_moved_into_another_folder_rewrites_to_the_new_path() {
     let plan = plan_prefix_rewrites(
         &prefixes(&["Hymns"]),
-        &moves(&[("a", "Archive/Old/Hymns/a.jianpu")]),
-        &current(&[("a", "Hymns/a.jianpu")]),
+        &moves(&[("a", "Archive/Old/Hymns/a.poentaro")]),
+        &current(&[("a", "Hymns/a.poentaro")]),
     );
 
     assert_eq!(plan, vec![rewrite("Hymns", "Archive/Old/Hymns")]);
@@ -241,8 +241,8 @@ fn a_folder_moved_into_another_folder_rewrites_to_the_new_path() {
 fn a_nested_shared_folder_moves_with_its_parent_and_has_its_own_rewrite() {
     let plan = plan_prefix_rewrites(
         &prefixes(&["Hymns", "Hymns/Advent"]),
-        &moves(&[("a", "Songs/a.jianpu"), ("b", "Songs/Advent/b.jianpu")]),
-        &current(&[("a", "Hymns/a.jianpu"), ("b", "Hymns/Advent/b.jianpu")]),
+        &moves(&[("a", "Songs/a.poentaro"), ("b", "Songs/Advent/b.poentaro")]),
+        &current(&[("a", "Hymns/a.poentaro"), ("b", "Hymns/Advent/b.poentaro")]),
     );
 
     assert_eq!(
@@ -258,8 +258,8 @@ fn a_nested_shared_folder_moves_with_its_parent_and_has_its_own_rewrite() {
 fn renaming_only_a_shared_subfolder_leaves_the_parent_share_alone() {
     let plan = plan_prefix_rewrites(
         &prefixes(&["Hymns", "Hymns/Advent"]),
-        &moves(&[("b", "Hymns/Lent/b.jianpu")]),
-        &current(&[("a", "Hymns/a.jianpu"), ("b", "Hymns/Advent/b.jianpu")]),
+        &moves(&[("b", "Hymns/Lent/b.poentaro")]),
+        &current(&[("a", "Hymns/a.poentaro"), ("b", "Hymns/Advent/b.poentaro")]),
     );
 
     assert_eq!(plan, vec![rewrite("Hymns/Advent", "Hymns/Lent")]);
@@ -269,10 +269,10 @@ fn renaming_only_a_shared_subfolder_leaves_the_parent_share_alone() {
 fn a_folder_sharing_only_a_string_prefix_is_not_the_shared_folder() {
     let plan = plan_prefix_rewrites(
         &prefixes(&["Hymns"]),
-        &moves(&[("x", "Songs/x.jianpu")]),
+        &moves(&[("x", "Songs/x.poentaro")]),
         // `current` is whatever the files query returned; only whole path
         // segments count as inside `Hymns`.
-        &current(&[("a", "Hymns/a.jianpu"), ("x", "Hymns 2/x.jianpu")]),
+        &current(&[("a", "Hymns/a.poentaro"), ("x", "Hymns 2/x.poentaro")]),
     );
 
     assert_eq!(plan, vec![]);
@@ -282,8 +282,8 @@ fn a_folder_sharing_only_a_string_prefix_is_not_the_shared_folder() {
 fn moving_some_files_out_does_not_move_the_share() {
     let plan = plan_prefix_rewrites(
         &prefixes(&["Hymns"]),
-        &moves(&[("a", "Elsewhere/a.jianpu")]),
-        &current(&[("a", "Hymns/a.jianpu"), ("b", "Hymns/b.jianpu")]),
+        &moves(&[("a", "Elsewhere/a.poentaro")]),
+        &current(&[("a", "Hymns/a.poentaro"), ("b", "Hymns/b.poentaro")]),
     );
 
     assert_eq!(plan, vec![]);
@@ -293,8 +293,8 @@ fn moving_some_files_out_does_not_move_the_share() {
 fn moving_every_file_to_different_places_does_not_move_the_share() {
     let plan = plan_prefix_rewrites(
         &prefixes(&["Hymns"]),
-        &moves(&[("a", "One/a.jianpu"), ("b", "Two/b.jianpu")]),
-        &current(&[("a", "Hymns/a.jianpu"), ("b", "Hymns/b.jianpu")]),
+        &moves(&[("a", "One/a.poentaro"), ("b", "Two/b.poentaro")]),
+        &current(&[("a", "Hymns/a.poentaro"), ("b", "Hymns/b.poentaro")]),
     );
 
     assert_eq!(plan, vec![]);
@@ -304,8 +304,8 @@ fn moving_every_file_to_different_places_does_not_move_the_share() {
 fn renaming_a_file_inside_the_folder_does_not_move_the_share() {
     let plan = plan_prefix_rewrites(
         &prefixes(&["Hymns"]),
-        &moves(&[("a", "Hymns/renamed.jianpu")]),
-        &current(&[("a", "Hymns/a.jianpu")]),
+        &moves(&[("a", "Hymns/renamed.poentaro")]),
+        &current(&[("a", "Hymns/a.poentaro")]),
     );
 
     assert_eq!(plan, vec![]);
@@ -315,8 +315,8 @@ fn renaming_a_file_inside_the_folder_does_not_move_the_share() {
 fn moving_everything_to_the_top_level_does_not_move_the_share() {
     let plan = plan_prefix_rewrites(
         &prefixes(&["Hymns"]),
-        &moves(&[("a", "a.jianpu")]),
-        &current(&[("a", "Hymns/a.jianpu")]),
+        &moves(&[("a", "a.poentaro")]),
+        &current(&[("a", "Hymns/a.poentaro")]),
     );
 
     assert_eq!(plan, vec![]);

@@ -8,7 +8,7 @@ interface RevealSelection {
 }
 
 /** The element the preview scrolls into view for a measure selection.
- * A `# sequence` chain selection's `highlightRanges` can paint several
+ * A `sequence` chain selection's `highlightRanges` can paint several
  * disjoint highlight rects (e.g. "Intro" and "C"), and the first one in DOM
  * order is wherever the chain's earliest entry sits in the document — not
  * necessarily `revealMeasureIndex`. So only the caret-only highlight (a

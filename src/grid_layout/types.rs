@@ -1,11 +1,12 @@
-use crate::ast::parsed::{Accidental, JianPuPitch};
+use crate::ast::parsed::{Accidental, NumberedPitch};
 use crate::compiler::types::{ArcKind, BarLineKind};
 use crate::pitch_description::GuitarVoicing;
 
 #[path = "click_target_types.rs"]
 mod click_target_types;
 pub use click_target_types::{
-    BarLineClickTarget, BarNumberClickTarget, MeasureClickTarget, PartLabelClickTarget,
+    BarLineClickTarget, BarNumberClickTarget, LyricClickTarget, LyricLabelClickTarget,
+    MeasureClickTarget, PartLabelClickTarget,
 };
 
 #[path = "sequence_entry_info.rs"]
@@ -137,7 +138,7 @@ pub enum GridContent {
     /// `LowOctaveDots` element instead (with `octave` left at 0 here), since
     /// they must hang beneath its underlines rather than the digit.
     NoteHead {
-        pitch: JianPuPitch,
+        pitch: NumberedPitch,
         accidental: Accidental,
         octave: i8,
         dotted: bool,
@@ -165,7 +166,7 @@ pub enum GridContent {
     /// its `NoteHead` (see `flush_left_padding`).
     LowOctaveDots {
         count: u8,
-        pitch: JianPuPitch,
+        pitch: NumberedPitch,
         head_label: Option<crate::compiler::NoteHeadLabel>,
     },
     ChordSymbol {
@@ -222,6 +223,12 @@ pub enum GridContent {
     /// see `renderer::new_types::Tag::Lyric`.
     LyricSyllable {
         text: String,
+        /// Pinyin printed above `text` (see `ElementContent::Lyric::ruby`).
+        ruby: Option<String>,
+        /// How much taller the row grew for pinyin above its syllables (`0`
+        /// when none has any): the syllable sits that much lower than the
+        /// row's middle, with the pinyin in the band above it.
+        ruby_band_pt: f32,
         source_part_index: usize,
         note_id: usize,
     },
@@ -249,7 +256,7 @@ pub enum GridContent {
         underline: bool,
         font_family: crate::compositor::types::FontFamily,
     },
-    /// The resolved `# sequence` playback order, rendered as "Sequence: "
+    /// The resolved `sequence` playback order, rendered as "Sequence: "
     /// followed by each label (styled like an inline section label) joined
     /// by " › ".
     SequenceLine {
@@ -275,7 +282,7 @@ pub struct Header {
     pub author: Option<String>,
     pub part_list: Vec<PartListEntry>,
     pub parts_list_columns: u32,
-    /// The resolved `# sequence` playback order, one entry per label
+    /// The resolved `sequence` playback order, one entry per label
     /// reference (e.g. `["A", "B", "A"]`), if present. Rendered as a line
     /// near the top of the score; does not affect SVG/PDF measure order.
     pub sequence: Option<Vec<SequenceEntryInfo>>,
@@ -285,7 +292,7 @@ pub struct Header {
     pub subtitle_font_size: f32,
     /// Font size in points for `author` (see `Metadata::author_font_size`).
     pub author_font_size: f32,
-    /// Font size in points for the `# sequence` summary line (see
+    /// Font size in points for the `sequence` summary line (see
     /// `Metadata::sequence_font_size`).
     pub sequence_font_size: f32,
     /// Font size in points for the part-name legend entries (see
@@ -311,6 +318,25 @@ pub struct Header {
     pub part_legend_italic: bool,
     pub part_legend_underline: bool,
     pub part_legend_font_family: crate::compositor::types::FontFamily,
+    /// Extra space (points) added above and below each part legend row (see
+    /// `Metadata::part_legend.vertical_padding_pt`).
+    pub part_legend_vertical_padding_pt: f32,
+    /// Extra space (points) added above and below the `sequence` summary
+    /// line (see `Metadata::sequence.vertical_padding_pt`).
+    pub sequence_vertical_padding_pt: f32,
+    /// Extra space (points) added above and below the title row and the shared subtitle/author
+    /// row (the larger of the two wins); see `Metadata::*_style.vertical_padding_pt`.
+    pub title_vertical_padding_pt: f32,
+    pub subtitle_vertical_padding_pt: f32,
+    pub author_vertical_padding_pt: f32,
+    /// See `Metadata::running_title`: the small title (no subtitle/author)
+    /// that replaces the full header on pages after the first.
+    pub running_title_font_size: f32,
+    pub running_title_bold: bool,
+    pub running_title_italic: bool,
+    pub running_title_underline: bool,
+    pub running_title_font_family: crate::compositor::types::FontFamily,
+    pub running_title_vertical_padding_pt: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -322,7 +348,7 @@ pub struct MeasureHighlight {
 }
 
 /// One inclusive `global_measure_index` range to highlight in the SVG
-/// preview. A `# sequence` chain selection (e.g. range-selecting "C" -> "A"
+/// preview. A `sequence` chain selection (e.g. range-selecting "C" -> "A"
 /// across "A, B, C, A") can highlight several disjoint measures at once, so
 /// callers pass a `Vec<MeasureRange>` rather than a single range — see
 /// `compute_measure_highlights_for_range`.
@@ -354,36 +380,4 @@ pub struct PlaybackCursorTarget {
     pub column_end: f32,
     pub source_part_index: usize,
     pub note_id: usize,
-}
-
-/// Invisible click hit target for one lyric syllable, in its own row,
-/// starting at the syllable's own grid column but widened to match its
-/// note's full written column span (attack plus any dash-continuation
-/// columns — see `grid_layout::click_targets::compute_all_lyric_click_targets`)
-/// so a multi-beat note's syllable box covers its whole duration —
-/// independent of its note's own [`PlaybackCursorTarget`]-derived click
-/// target, so a click on the syllable itself always wins hit-testing there
-/// (see `renderer::new_types::Tag::Lyric`).
-#[derive(Debug, Clone)]
-pub struct LyricClickTarget {
-    pub row: usize,
-    pub column_start: f32,
-    pub column_end: f32,
-    pub source_part_index: usize,
-    pub note_id: usize,
-}
-
-/// Invisible hit target laid over one verse's `RowLabel` text (e.g.
-/// "M:v1"), spanning that one verse row within the fixed-width label region
-/// (columns `0..LABEL_COLS`) — the lyric-side mirror of
-/// [`PartLabelClickTarget`]. Clicking or range-selecting it is a shortcut for
-/// selecting every syllable that verse sings across the whole system the
-/// label sits in — `measure_index_start`/`measure_index_end` give that
-/// system's full measure range, same as `PartLabelClickTarget`'s.
-#[derive(Debug, Clone)]
-pub struct LyricLabelClickTarget {
-    pub row: usize,
-    pub source_part_index: usize,
-    pub measure_index_start: usize,
-    pub measure_index_end: usize,
 }

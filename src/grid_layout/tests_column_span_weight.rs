@@ -8,7 +8,7 @@
 // rod-floor invariants and `tests_measure_spacing.rs`'s span-1 proportional
 // invariants (both of which stay numerically unaffected by this change).
 
-use crate::ast::parsed::{JianPuPitch, Offset};
+use crate::ast::parsed::{NumberedPitch, Offset};
 use crate::compiler::types::{ColumnElement, ElementContent, MeasureBlock, MeasureRow, RowId};
 use crate::font_metrics;
 use crate::grid_layout::layout::{build_measure_column_layout, measure_column_weights};
@@ -67,7 +67,7 @@ fn note_head(column: u32) -> ColumnElement {
     ColumnElement {
         column,
         content: ElementContent::NoteHead {
-            pitch: JianPuPitch::One,
+            pitch: NumberedPitch::One,
             accidental: crate::ast::parsed::Accidental::Natural,
             octave: 0,
             dotted: false,

@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import { useCallback, useRef, useState } from 'react'
-import type { WorkerRequest } from '../worker/jianpu.worker'
+import type { WorkerRequest } from '../worker/poentaro.worker'
 
 interface UseInstrumentPreviewParams {
   workerRef: RefObject<Worker | null>

@@ -6,7 +6,7 @@ pub use irrecoverable::{IrrecoverableError, IrrecoverableErrorKind};
 pub use recoverable_error::RecoverableError;
 pub use recoverable_kind::RecoverableErrorKind;
 
-/// One of the document's top-level sections (`# sequence` is optional; the
+/// One of the document's top-level sections (`sequence` is optional; the
 /// others are required).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DocumentSection {
@@ -19,15 +19,15 @@ pub enum DocumentSection {
 impl DocumentSection {
     pub fn header(self) -> &'static str {
         match self {
-            Self::Metadata => "# metadata",
-            Self::Parts => "# parts",
-            Self::Score => "# score",
-            Self::Sequence => "# sequence",
+            Self::Metadata => "metadata { ... }",
+            Self::Parts => "parts [ ... ]",
+            Self::Score => "score \"\"\" ... \"\"\"",
+            Self::Sequence => "sequence [ ... ]",
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -70,6 +70,10 @@ pub enum WarningKind {
     /// page's usable music width — the layout overflows rather than
     /// over-compressing glyphs (see **Rod and spring** in `ARCHITECTURE.md`).
     MeasureOverflow,
+    /// A preset draws staff notation (violin/cello), which ignores its text styles.
+    PresetTextStylesIgnored,
+    /// A note sounds outside the range of its part's instrument.
+    NoteOutOfRange,
 }
 
 impl WarningKind {
@@ -83,6 +87,8 @@ impl WarningKind {
             Self::HalfBarBoundaryCrossed => "half_bar_boundary_crossed",
             Self::GroupTooFewNotes => "group_too_few_notes",
             Self::MeasureOverflow => "measure_overflow",
+            Self::PresetTextStylesIgnored => "preset_text_styles_ignored",
+            Self::NoteOutOfRange => "note_out_of_range",
         }
     }
 }
@@ -113,6 +119,14 @@ impl Warning {
         }
     }
 
+    pub fn note_out_of_range(span: Span, message: String) -> Self {
+        Self {
+            span,
+            message,
+            kind: WarningKind::NoteOutOfRange,
+        }
+    }
+
     pub fn group_too_few_notes(span: Span) -> Self {
         Self {
             span,
@@ -129,6 +143,16 @@ impl Warning {
                  is available; reduce measures per system or font size"
             ),
             kind: WarningKind::MeasureOverflow,
+        }
+    }
+
+    pub fn preset_text_styles_ignored(span: Span, notation: &str) -> Self {
+        Self {
+            span,
+            message: format!(
+                "{notation} notation is drawn as a staff, which ignores this preset's text styles"
+            ),
+            kind: WarningKind::PresetTextStylesIgnored,
         }
     }
 }

@@ -1,5 +1,5 @@
 import fontsManifest from '../../../fonts/fonts.json'
-import type { FontBytesByFamily } from '../jianpuWasm'
+import type { FontBytesByFamily } from '../poentaroWasm'
 import type { AssetLoaderState, AssetStatus } from './useAssetLoader'
 import { useAssetLoader } from './useAssetLoader'
 

@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import type { PreviewLayout } from '../hooks/usePreviewLayout'
 import type { StaffNotation } from '../hooks/useStaffNotation'
 import type {
   MetadataEdit,
@@ -6,7 +7,7 @@ import type {
   NoteTiming,
   PartToggleState,
   SvgDocument,
-} from '../jianpuWasm'
+} from '../poentaroWasm'
 import type {
   Diagnostic,
   DiagnosticViewZone,
@@ -16,6 +17,7 @@ import type {
   MeasureSpan,
   NoteSpan,
   PartDeclaration,
+  PartFocusSelectionHandle,
   PartInfo,
   PartSettings,
   PitchDescription,
@@ -42,10 +44,13 @@ export interface AppWorkspaceProps {
    * nothing to edit or expand back into. */
   hideEditor: boolean
   editorRef: RefObject<EditorHandle | null>
+  /** Set by the part focus editor while it is open, so the preview selects
+   * in it. */
+  partFocusHandleRef: RefObject<PartFocusSelectionHandle | null>
   fileId: string
   source: string
   handleSourceChange: (value: string) => void
-  /** "Format" toolbar action: drops redundant `# score` lines and
+  /** "Format" toolbar action: drops redundant `score` lines and
    * normalizes whitespace. */
   handleFormatScore: () => void
   /** "Octave up"/"Octave down"/"Slur/Unslur"/"Tie/Untie" toolbar actions:
@@ -109,6 +114,7 @@ export interface AppWorkspaceProps {
   previewAudioPlaying: boolean
   editMetadataOpen: boolean
   parsedMetadata: MetadataFields | null
+  metadataPresetName: string | null
   handleMetadataFieldChange: (edit: MetadataEdit) => void
   documents: SvgDocument[]
   highlightedDocuments: SvgDocument[]
@@ -127,9 +133,8 @@ export interface AppWorkspaceProps {
    * `measureRangeNoteByteRanges`). */
   selectedNoteByteRanges: EditorSelection[]
   /** Per-note/rest `(source_part_index, note_id) → measure_index` mapping,
-   * used to resolve a measure click into every note cell it contains
-   * (see `Preview.tsx`'s `noteCellsInMeasureRange`) without relying on
-   * pixel geometry. */
+   * passed to wasm, which resolves every selection gesture into the note
+   * cells it covers without relying on pixel geometry. */
   noteSpans: NoteSpan[]
   /** Fired on the second click after a lyric-syllable range-select (see
    * `useLyricSelection`). Independent of `handleNoteRangeSelect` — a lyric
@@ -141,9 +146,8 @@ export interface AppWorkspaceProps {
   handleLyricEditorSelectionChange: (ranges: EditorSelection[]) => void
   selectedLyricCells: LyricCell[]
   /** Per-lyric-syllable `(source_part_index, note_id, verse) → measure_index`
-   * mapping, used to resolve a measure click into every lyric cell it
-   * contains alongside `noteSpans` (see `Preview.tsx`'s
-   * `lyricCellsInMeasureRange`). */
+   * mapping, passed to wasm alongside `noteSpans` to resolve every
+   * selection gesture's lyric cells. */
   lyricSpans: LyricSpan[]
   /** Fired for a measure/bar-line click or range-select with both the note cells and
    * lyric cells it resolved — see `Preview.tsx`'s `onMeasureRangeSelect`. */
@@ -163,6 +167,7 @@ export interface AppWorkspaceProps {
   measureAudioElement: HTMLAudioElement | null
   noPartsSelected: boolean
   staffNotation: StaffNotation
+  previewLayout: PreviewLayout
   /** Passed through to the part focus editor's ghost lines. */
   partToggles: PartToggleState
   /** The part focus editor's draft source, which the preview follows. */

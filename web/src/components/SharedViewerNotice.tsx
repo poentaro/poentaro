@@ -1,4 +1,5 @@
 import type { SyncedShareViewerStatus } from '../hooks/useSyncedShareViewer'
+import { TraceId } from './TraceId'
 
 /** Viewer states that replace the score with a full-page message. */
 export function showsSharedViewerNotice(
@@ -12,8 +13,10 @@ export function showsSharedViewerNotice(
  * stopped share completely, so the viewer cannot tell which it was. */
 export function SharedViewerNotice({
   status,
+  traceId,
 }: {
   status: SyncedShareViewerStatus
+  traceId: string | null
 }) {
   const notice = noticeFor(status)
   if (!notice) return null
@@ -21,6 +24,7 @@ export function SharedViewerNotice({
     <main className="shared-viewer-notice" data-testid="shared-viewer-notice">
       <h1>{notice.title}</h1>
       <p>{notice.detail}</p>
+      <TraceId traceId={traceId} />
     </main>
   )
 }

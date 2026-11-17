@@ -14,7 +14,7 @@ mod tests_recovery;
 mod tests_extensions;
 
 fn chord(
-    degree: JianPuPitch,
+    degree: NumberedPitch,
     acc: Accidental,
     triad: TriadQuality,
     ext: Option<Extension>,
@@ -79,7 +79,7 @@ fn parses_major_chord() {
     assert_eq!(
         parse_symbol("1"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Major,
             None,
@@ -93,7 +93,7 @@ fn parses_minor_chord() {
     assert_eq!(
         parse_symbol("1m"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Minor,
             None,
@@ -107,7 +107,7 @@ fn parses_diminished() {
     assert_eq!(
         parse_symbol("1o"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Diminished,
             None,
@@ -121,7 +121,7 @@ fn parses_augmented() {
     assert_eq!(
         parse_symbol("1+"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Augmented,
             None,
@@ -135,7 +135,7 @@ fn parses_sus2() {
     assert_eq!(
         parse_symbol("1sus2"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Sus2,
             None,
@@ -149,7 +149,7 @@ fn parses_sus4() {
     assert_eq!(
         parse_symbol("1sus4"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Sus4,
             None,
@@ -163,7 +163,7 @@ fn parses_bare_sus_as_sus4() {
     assert_eq!(
         parse_symbol("1sus"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Sus4,
             None,
@@ -177,7 +177,7 @@ fn parses_sus4_with_dominant_seventh() {
     assert_eq!(
         parse_symbol("1sus47"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Sus4,
             Some(Extension::DominantSeventh),
@@ -191,7 +191,7 @@ fn parses_dominant_seventh() {
     assert_eq!(
         parse_symbol("17"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Major,
             Some(Extension::DominantSeventh),
@@ -205,7 +205,7 @@ fn parses_major_seventh() {
     assert_eq!(
         parse_symbol("1M7"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Major,
             Some(Extension::MajorSeventh),
@@ -219,7 +219,7 @@ fn parses_minor_dominant_seventh() {
     assert_eq!(
         parse_symbol("1m7"),
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Minor,
             Some(Extension::DominantSeventh),
@@ -241,7 +241,7 @@ fn parses_extend() {
     assert_eq!(
         events[0],
         chord(
-            JianPuPitch::One,
+            NumberedPitch::One,
             Accidental::Natural,
             TriadQuality::Major,
             None,
@@ -257,21 +257,21 @@ fn parses_multiple_tokens() {
         parse_line("1 4m 5"),
         vec![
             chord(
-                JianPuPitch::One,
+                NumberedPitch::One,
                 Accidental::Natural,
                 TriadQuality::Major,
                 None,
                 None
             ),
             chord(
-                JianPuPitch::Four,
+                NumberedPitch::Four,
                 Accidental::Natural,
                 TriadQuality::Minor,
                 None,
                 None
             ),
             chord(
-                JianPuPitch::Five,
+                NumberedPitch::Five,
                 Accidental::Natural,
                 TriadQuality::Major,
                 None,

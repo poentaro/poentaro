@@ -1,5 +1,10 @@
-import NEW_FILE_TEMPLATE from '../../new_file_template.jianpu?raw'
+import NEW_FILE_TEMPLATE from '../../new_file_template.poentaro?raw'
 import { DEMO_FILE_NAMES, DEMO_FILES } from './defaultSource'
+import {
+  FILE_EXTENSION,
+  stripFileExtension,
+  withFileExtension,
+} from './fileExtension'
 import {
   fromWasmState,
   storeResult,
@@ -12,8 +17,8 @@ import type {
   FileStoreResponse,
   PathChange,
   FileStoreState as WasmFileStoreState,
-} from './jianpuWasm'
-import { jianpuWasm } from './jianpuWasm'
+} from './poentaroWasm'
+import { poentaroWasm } from './poentaroWasm'
 
 export { DEMO_FILE_NAMES }
 
@@ -24,11 +29,11 @@ const DEMO_FILE_CONTENT: Record<string, string> = Object.fromEntries(
 )
 
 const DEMO_FILE_IDS: Record<string, string> = Object.fromEntries(
-  DEMO_FILE_NAMES.map((name) => [name, `jianpu:reference:${name}`]),
+  DEMO_FILE_NAMES.map((name) => [name, `poentaro:reference:${name}`]),
 )
 
-export const FILE_STORE_KEY = 'jianpu:files:v1'
-export const STORAGE_KEY = 'jianpu:source:v5'
+export const FILE_STORE_KEY = 'poentaro:files:v1'
+export const STORAGE_KEY = 'poentaro:source:v5'
 
 export const DEFAULT_FILE_STORE: FileStoreState = {
   active: DEMO_FILE_NAMES[0] ?? '',
@@ -97,22 +102,21 @@ function uniqueName(base: string, taken: Set<string>): string {
   if (!taken.has(base)) return base
   const dot = base.lastIndexOf('.')
   const stem = dot > 0 ? base.slice(0, dot) : base
-  const ext = dot > 0 ? base.slice(dot) : '.jianpu'
+  const ext = dot > 0 ? base.slice(dot) : FILE_EXTENSION
   let n = 2
   while (taken.has(`${stem} ${n}${ext}`)) n++
   return `${stem} ${n}${ext}`
 }
 
-/** Strips the redundant `.jianpu` extension for display — every file is a
- * `.jianpu` file, so showing it in pickers/tabs is just noise. */
+/** Strips the redundant extension for display — every file is a
+ * `.poentaro` file, so showing it in pickers/tabs is just noise. */
 export function displayFileName(name: string): string {
-  return name.endsWith('.jianpu') ? name.slice(0, -'.jianpu'.length) : name
+  return stripFileExtension(name)
 }
 
 function sanitizeFileName(raw: string): string {
   const trimmed = raw.trim()
-  if (!trimmed) return 'untitled.jianpu'
-  return trimmed.endsWith('.jianpu') ? trimmed : `${trimmed}.jianpu`
+  return withFileExtension(trimmed || 'untitled')
 }
 
 export function updateActiveContent(
@@ -152,6 +156,35 @@ function applyOrKeep(
   return result.ok ? result.state : state
 }
 
+/** The file store an origin migration carried from the old origin merged
+ * into `current` (see `file_tree::merge_migrated_file_store`), or `null` if
+ * Rust refused it. */
+export function mergeMigratedFileStore(
+  current: FileStoreState,
+  carried: FileStoreState,
+): FileStoreState | null {
+  const result = storeResult(
+    poentaroWasm().fileStoreMergeMigrated(
+      toWasmState(current),
+      toWasmState(carried),
+      operationContext(),
+    ),
+  )
+  return result.ok ? result.state : null
+}
+
+/** `state` with its files saved under the legacy extension renamed (see
+ * `file_tree::rename_legacy_extensions`), or `null` when none need it. */
+export function renameLegacyExtensions(
+  state: FileStoreState,
+): FileStoreState | null {
+  const renamed = poentaroWasm().fileStoreRenameLegacyExtensions(
+    toWasmState(state),
+    operationContext(),
+  )
+  return renamed === undefined ? null : fromWasmState(renamed)
+}
+
 /** New file `name` in `folder` (top level when omitted). Kept as is when
  * `createFileError` objects. */
 export function createFile(
@@ -160,7 +193,7 @@ export function createFile(
   name: string,
 ): FileStoreState {
   return applyOrKeep(state, (wasmState, context) =>
-    jianpuWasm().fileStoreCreateFile(
+    poentaroWasm().fileStoreCreateFile(
       wasmState,
       folder,
       name,
@@ -178,14 +211,14 @@ export function createFolder(
   name: string,
 ): FileStoreState {
   return applyOrKeep(state, (wasmState, context) =>
-    jianpuWasm().fileStoreCreateFolder(wasmState, parent, name, context),
+    poentaroWasm().fileStoreCreateFolder(wasmState, parent, name, context),
   )
 }
 
 /** Copies the active file next to itself, in the same folder. */
 export function duplicateFile(state: FileStoreState): FileStoreState {
   return applyOrKeep(state, (wasmState, context) =>
-    jianpuWasm().fileStoreDuplicateFile(wasmState, state.active, context),
+    poentaroWasm().fileStoreDuplicateFile(wasmState, state.active, context),
   )
 }
 
@@ -196,7 +229,7 @@ export function renameFile(
   toRaw: string,
 ): FileStoreState {
   return applyOrKeep(state, (wasmState, context) =>
-    jianpuWasm().fileStoreRenameFile(wasmState, from, toRaw, context),
+    poentaroWasm().fileStoreRenameFile(wasmState, from, toRaw, context),
   )
 }
 
@@ -205,7 +238,7 @@ export function deleteFile(
   name: string,
 ): FileStoreState {
   return applyOrKeep(state, (wasmState, context) =>
-    jianpuWasm().fileStoreDeleteFile(wasmState, name, context),
+    poentaroWasm().fileStoreDeleteFile(wasmState, name, context),
   )
 }
 
@@ -214,7 +247,7 @@ export function restoreFile(
   name: string,
 ): FileStoreState {
   return applyOrKeep(state, (wasmState, context) =>
-    jianpuWasm().fileStoreRestoreFile(wasmState, name, context),
+    poentaroWasm().fileStoreRestoreFile(wasmState, name, context),
   )
 }
 
@@ -229,7 +262,7 @@ export function moveFolder(
   from: string,
   to: string,
 ): FolderMoveResult {
-  const response = jianpuWasm().fileStoreMoveFolder(
+  const response = poentaroWasm().fileStoreMoveFolder(
     toWasmState(state),
     from,
     to,
@@ -250,7 +283,7 @@ export function deleteFolder(
   folder: string,
 ): FileStoreState {
   return applyOrKeep(state, (wasmState, context) =>
-    jianpuWasm().fileStoreDeleteFolder(wasmState, folder, context),
+    poentaroWasm().fileStoreDeleteFolder(wasmState, folder, context),
   )
 }
 
@@ -343,7 +376,7 @@ export function importSharedFile(
 ): FileStoreState {
   let name = sanitizeFileName(filenameRaw)
   if (isDemoFile(name)) {
-    name = 'shared.jianpu'
+    name = 'shared.poentaro'
   }
 
   const taken = reservedNames(state)

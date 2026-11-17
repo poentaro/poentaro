@@ -53,6 +53,7 @@ pub(super) fn apply(source: &str, abbreviation: &str, stream: &str) -> PartStrea
         .enumerate()
         .filter_map(|(index, measure)| {
             measure_edit(
+                source,
                 measure,
                 &part,
                 key,
@@ -64,20 +65,7 @@ pub(super) fn apply(source: &str, abbreviation: &str, stream: &str) -> PartStrea
     let appended: Vec<&String> = split.chunks.iter().skip(document.measures.len()).collect();
     let changed_measure_count = edits.len() + appended.len();
     if !appended.is_empty() {
-        let separator = if document.measures.is_empty() {
-            ""
-        } else {
-            "\n\n"
-        };
-        let text = appended
-            .iter()
-            .map(|chunk| format!("[{key}] {chunk}"))
-            .join("\n\n");
-        edits.push(SourceEdit::new(
-            document.append_offset,
-            document.append_offset,
-            format!("{separator}{text}"),
-        ));
+        edits.push(appended_measures(source, &document, key, &appended));
     }
     PartStreamApplyResult {
         source: Some(splice(source, edits)),
@@ -85,6 +73,56 @@ pub(super) fn apply(source: &str, abbreviation: &str, stream: &str) -> PartStrea
         measure_starts: split.measure_starts,
         changed_measure_count,
     }
+}
+
+/// New measures past the last one, indented like the score's lines. A score
+/// with no measures may be an empty raw string, whose closing quotes keep their
+/// own line, or `""`, which becomes a raw string since measures span lines.
+fn appended_measures(
+    source: &str,
+    document: &ScoreDocument,
+    key: &str,
+    chunks: &[&String],
+) -> SourceEdit {
+    let offset = document.append_offset;
+    let lines = |indent: &str| {
+        chunks
+            .iter()
+            .map(|chunk| format!("{indent}[{key}] {chunk}"))
+            .join("\n\n")
+    };
+    if let Some(measure) = document.measures.first() {
+        let text = lines(line_indent(source, measure.start));
+        return SourceEdit::new(offset, offset, format!("\n\n{text}"));
+    }
+    let before = source.get(..offset).unwrap_or_default();
+    let after = source.get(offset..).unwrap_or_default();
+    if before.ends_with('"') && after.starts_with('"') {
+        let indent = "    ";
+        let text = format!("\"\"\"\n{}\n{indent}\"\"\"", lines(indent));
+        return SourceEdit::new(offset - 1, offset + 1, text);
+    }
+    let start = line_start(source, offset);
+    let line = source.get(start..).unwrap_or_default();
+    if line.trim_start_matches([' ', '\t']).starts_with('"') {
+        let text = lines(line_indent(source, start));
+        return SourceEdit::new(start, start, format!("{text}\n"));
+    }
+    SourceEdit::new(offset, offset, lines(""))
+}
+
+fn line_start(source: &str, offset: usize) -> usize {
+    source
+        .get(..offset)
+        .and_then(|before| before.rfind('\n'))
+        .map_or(0, |newline| newline + 1)
+}
+
+/// The whitespace that starts the line `offset` sits on.
+fn line_indent(source: &str, offset: usize) -> &str {
+    let line = source.get(line_start(source, offset)..).unwrap_or_default();
+    line.get(..line.len() - line.trim_start_matches([' ', '\t']).len())
+        .unwrap_or_default()
 }
 
 struct LoadedPart {
@@ -115,6 +153,7 @@ enum MeasureTarget<'a> {
 
 /// The edit that turns `original` into `edited` in one measure, if any.
 fn measure_edit(
+    source: &str,
     measure: &ScoreMeasure,
     part: &EditablePart,
     key: &str,
@@ -138,6 +177,7 @@ fn measure_edit(
         (MeasureTarget::Write(content), Some(line)) => (line.content != content)
             .then(|| SourceEdit::new(line.content_start, line.content_end(), content)),
         (MeasureTarget::Write(content), None) => Some(insert_line(
+            source,
             measure,
             part.index,
             &format!("[{key}] {content}"),
@@ -169,14 +209,19 @@ fn remove_line(measure: &ScoreMeasure, line: &ScoreLine) -> SourceEdit {
 
 /// A new `[Key] chunk` line, placed before the first line of a part declared
 /// after this one, or after the group's last line.
-fn insert_line(measure: &ScoreMeasure, part_index: usize, line: &str) -> SourceEdit {
+fn insert_line(source: &str, measure: &ScoreMeasure, part_index: usize, line: &str) -> SourceEdit {
+    let indent = line_indent(source, measure.start);
     match measure
         .data_lines
         .iter()
         .find(|existing| existing.part_index > part_index)
     {
-        Some(later) => SourceEdit::new(later.line_start, later.line_start, format!("{line}\n")),
-        None => SourceEdit::new(measure.end, measure.end, format!("\n{line}")),
+        Some(later) => SourceEdit::new(
+            later.line_start,
+            later.line_start,
+            format!("{indent}{line}\n"),
+        ),
+        None => SourceEdit::new(measure.end, measure.end, format!("\n{indent}{line}")),
     }
 }
 

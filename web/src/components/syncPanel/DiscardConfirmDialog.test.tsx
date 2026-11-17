@@ -13,7 +13,7 @@ function makeProps(
 ): DiscardConfirmDialogProps {
   return {
     open: true,
-    fileName: 'song.jianpu',
+    fileName: 'song.poentaro',
     onDownloadFirst: vi.fn(),
     onConfirm: vi.fn(),
     onCancel: vi.fn(),
@@ -57,7 +57,7 @@ describe('DiscardConfirmDialog', () => {
 
   it('states the revert and loss consequences with the file name', () => {
     const body = text(root(makeProps()))
-    expect(body).toContain('song.jianpu')
+    expect(body).toContain('song.poentaro')
     expect(body).toContain("server's version")
     expect(body).toContain('lost')
   })

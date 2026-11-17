@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { type ReactElement, useEffect, useMemo, useState } from 'react'
-import type { FileName } from '../../jianpuWasm'
+import type { FileName } from '../../poentaroWasm'
 import type { OutboxLooper } from '../../storage/outbox/outboxLooper'
 import { SyncPanel } from '../syncPanel/SyncPanel'
 import type { SyncPanelProps } from '../syncPanel/syncPanelTypes'

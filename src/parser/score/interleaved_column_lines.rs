@@ -8,7 +8,7 @@ use crate::error::{
 };
 use crate::parser::lyrics::tokenize_bracketed_lyrics;
 use crate::parser::score::token_parser;
-use crate::utils::{count_lyric_slots_in_events, tokenize_lyrics};
+use crate::utils::{count_lyric_slots_in_events, tokenize_lyrics_with_errors};
 
 fn is_recoverable_chord_line_error(_kind: &IrrecoverableErrorKind) -> bool {
     false
@@ -97,7 +97,9 @@ fn process_lyrics_column_line(
         ctx.extra_document_errors.extend(errors);
         bracketed.syllables
     } else {
-        tokenize_lyrics(line, line_span.start)
+        let tokens = tokenize_lyrics_with_errors(line, line_span.start);
+        ctx.extra_document_errors.extend(tokens.errors);
+        tokens.syllables
     };
 
     let acc = ctx.accumulators.get_mut(track_index).ok_or_else(|| {

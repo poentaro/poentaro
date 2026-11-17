@@ -1,6 +1,6 @@
 use super::{EventAttrs, ParseHeadError, TimedUnitHead};
 use crate::ast::parsed::{
-    Accidental, BassDegree, Extension, JianPuPitch, ParsedChordNote, ParsedRest, ScoreEvent,
+    Accidental, BassDegree, Extension, NumberedPitch, ParsedChordNote, ParsedRest, ScoreEvent,
     TriadQuality,
 };
 use crate::error::{
@@ -8,7 +8,7 @@ use crate::error::{
 };
 
 pub struct ChordHead {
-    degree: JianPuPitch,
+    degree: NumberedPitch,
     accidental: Accidental,
     triad: TriadQuality,
     extension: Option<Extension>,
@@ -17,7 +17,7 @@ pub struct ChordHead {
 }
 
 struct ParsedChordSymbolFields {
-    degree: JianPuPitch,
+    degree: NumberedPitch,
     accidental: Accidental,
     triad: TriadQuality,
     extension: Option<Extension>,
@@ -56,7 +56,7 @@ impl TimedUnitHead for ChordHead {
         if degree_char == '0' {
             return Ok((
                 ChordHead {
-                    degree: JianPuPitch::One,
+                    degree: NumberedPitch::One,
                     accidental: Accidental::Natural,
                     triad: TriadQuality::Major,
                     extension: None,
@@ -277,15 +277,15 @@ fn parse_bass(s: &str, span: Span, errors: &mut Vec<Diagnostic>) -> Option<BassD
     Some(BassDegree { degree, accidental })
 }
 
-fn char_to_pitch(c: char) -> Option<JianPuPitch> {
+fn char_to_pitch(c: char) -> Option<NumberedPitch> {
     match c {
-        '1' => Some(JianPuPitch::One),
-        '2' => Some(JianPuPitch::Two),
-        '3' => Some(JianPuPitch::Three),
-        '4' => Some(JianPuPitch::Four),
-        '5' => Some(JianPuPitch::Five),
-        '6' => Some(JianPuPitch::Six),
-        '7' => Some(JianPuPitch::Seven),
+        '1' => Some(NumberedPitch::One),
+        '2' => Some(NumberedPitch::Two),
+        '3' => Some(NumberedPitch::Three),
+        '4' => Some(NumberedPitch::Four),
+        '5' => Some(NumberedPitch::Five),
+        '6' => Some(NumberedPitch::Six),
+        '7' => Some(NumberedPitch::Seven),
         _ => None,
     }
 }

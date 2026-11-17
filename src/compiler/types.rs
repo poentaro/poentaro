@@ -1,5 +1,5 @@
 use super::ChordDegrees;
-use crate::ast::parsed::{Accidental, JianPuPitch, PartKind};
+use crate::ast::parsed::{Accidental, NumberedPitch, PartKind};
 use crate::error::{Diagnostic, Span};
 use crate::pitch_description::GuitarVoicing;
 
@@ -111,8 +111,8 @@ pub struct ColumnElement {
     pub note_id: Option<usize>,
 }
 
-/// What a note head reads as besides, or in place of, its jianpu digit: its
-/// letter name (`F♯`) or its harmonica tab (`-4`), as set by
+/// What a note head reads as besides, or in place of, its numbered digit: its
+/// letter name (`F♯`) or its harmonica tab (`(4)`), as set by
 /// `label_note_heads`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NoteHeadLabel {
@@ -120,6 +120,9 @@ pub struct NoteHeadLabel {
     /// True when the pitch can't be played on the instrument the label is
     /// for (a harmonica tab with no hole for it), drawn as a warning.
     pub unplayable: bool,
+    /// True when the note is played with a chromatic harmonica's slide
+    /// button pressed in, drawn as an arrow (`←`) above the label.
+    pub slide_button: bool,
     pub placement: HeadLabelPlacement,
 }
 
@@ -127,7 +130,7 @@ pub struct NoteHeadLabel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeadLabelPlacement {
     /// Drawn in place of the degree: the letter-name (`F♯`) and
-    /// harmonica-tab (`-4`) views.
+    /// harmonica-tab (`(4)`) views.
     InPlaceOfDegree,
     /// Drawn after the degree, in parentheses: the guitar chord view
     /// (`3 (F♯)`).
@@ -139,7 +142,16 @@ impl NoteHeadLabel {
         Self {
             text,
             unplayable: false,
+            slide_button: false,
             placement: HeadLabelPlacement::InPlaceOfDegree,
+        }
+    }
+
+    /// A label for a pitch the instrument can't play, drawn as a warning.
+    pub fn unplayable(text: String) -> Self {
+        Self {
+            unplayable: true,
+            ..Self::playable(text)
         }
     }
 
@@ -162,7 +174,7 @@ impl NoteHeadLabel {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ElementContent {
     NoteHead {
-        pitch: JianPuPitch,
+        pitch: NumberedPitch,
         accidental: Accidental,
         octave: i8,
         dotted: bool,
@@ -213,6 +225,9 @@ pub enum ElementContent {
     /// A syllable of a lyric part.
     Lyric {
         text: String,
+        /// The pinyin printed above `text`, tone-marked (`háng`), when the
+        /// lyric line gave the character's reading: `行(hang2)`.
+        ruby: Option<String>,
         /// Identity of the note this syllable is sung on — the same id its
         /// note's own `ColumnElement::note_id` carries (not stored on this
         /// element's own `ColumnElement::note_id`, which stays `None`: see

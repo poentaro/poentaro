@@ -1,9 +1,9 @@
-# Plan: migrate `jianpu-wasm`'s JS boundary from `wasm-bindgen`/`tsify` to `wit-bindgen`/`cargo-component`/`jco`
+# Plan: migrate `poentaro-wasm`'s JS boundary from `wasm-bindgen`/`tsify` to `wit-bindgen`/`cargo-component`/`jco`
 
 ## Status
 
 **Phase 1 done**, on branch `wit-bindgen-migration` (not yet merged to
-`master`). `crates/jianpu-wasm/Cargo.toml` drops `[lints] workspace = true`
+`master`). `crates/poentaro-wasm/Cargo.toml` drops `[lints] workspace = true`
 for a local lint table (`unsafe_code`/`unreachable_pub`/
 `unused_qualifications` relaxed, everything else copied verbatim) and gains
 `[package.metadata.component]`/`wit/` per the original plan. `cargo
@@ -35,25 +35,25 @@ files:
    `selection_range/mod.rs`'s `resolve_selection_range`) and their
    feature-specific `responses_*`/`types_export` plumbing in
    `responses.rs`/`types.rs` are now gated the same way. `wasm-pack build`,
-   `cargo test -p jianpu-wasm` (82 passed), and `cargo clippy` (both
+   `cargo test -p poentaro-wasm` (82 passed), and `cargo clippy` (both
    boundary-on and boundary-off) all still pass clean.
 
-`crates/jianpu-wasm/src/component.rs` is the `wit-bindgen` skeleton itself:
+`crates/poentaro-wasm/src/component.rs` is the `wit-bindgen` skeleton itself:
 a trivial `greet(name: string) -> string` world (`wit/world.wit`), proving
 the pipeline works end-to-end on the retrofitted crate. Real types/functions
 still need Phase 2/3. `src/bindings.rs` (cargo-component's scratch output)
 is gitignored per the plan.
 
-**Phase 2 done.** Every type in `crates/jianpu-wasm/src/{types,
+**Phase 2 done.** Every type in `crates/poentaro-wasm/src/{types,
 note_selection_types, lyric_selection_types, metadata_types, svg_types,
 types_export, responses*, selection_range/types}.rs` is now ported into
-`crates/jianpu-wasm/wit/world.wit` as flat world-level `record`/`variant`/
+`crates/poentaro-wasm/wit/world.wit` as flat world-level `record`/`variant`/
 `enum` declarations (the flat-vs-`interface` decision: **flat**, per the
 plan's recommendation — the file stayed easy to navigate at full size, no
 need for `interface` grouping). No `#[wasm_bindgen] fn`s were touched;
-`crates/jianpu-wasm/src/component.rs`'s `Guest` impl still only implements
+`crates/poentaro-wasm/src/component.rs`'s `Guest` impl still only implements
 `greet`. `cargo component build` (debug and `--release`), `cargo build`/
-`cargo test -p jianpu-wasm` (82 passed), and `cargo clippy` all still pass
+`cargo test -p poentaro-wasm` (82 passed), and `cargo clippy` all still pass
 clean on both the `wasm-bindgen-boundary`-on (default) and -off
 (`--no-default-features --features wav,mp3,pdf,midi --target
 wasm32-unknown-unknown`) builds — matching Phase 1's verification bar
@@ -83,7 +83,7 @@ each field, per Phase 2's mapping note. `cargo component build`
 (debug and `--release`, default `wasm32-wasip1` target — matching how
 Phase 1/2 were verified; Phase 5 is what pins `wasm32-unknown-unknown` for
 the real asset build), `cargo build --target wasm32-unknown-unknown`,
-`cargo test -p jianpu-wasm --features wav,mp3,pdf,midi` (82 passed), and
+`cargo test -p poentaro-wasm --features wav,mp3,pdf,midi` (82 passed), and
 `cargo clippy` on both the boundary-on (default) and boundary-off
 (`--no-default-features --features wav,mp3,pdf,midi --target
 wasm32-unknown-unknown`) builds all pass clean.
@@ -116,7 +116,7 @@ and mapping over `.iter()` instead of `.into_iter()`; `MeasureSpanOut`/
 `SectionRangeOut`/`SequenceEntryOut` weren't flagged since they contain
 `String`/`Option<String>` fields, which are consumed, not just copied.
 `cargo component build` (debug and `--release`), `cargo build --target
-wasm32-unknown-unknown`, `cargo test -p jianpu-wasm --features
+wasm32-unknown-unknown`, `cargo test -p poentaro-wasm --features
 wav,mp3,pdf,midi` (82 passed), and `cargo clippy` on both the
 boundary-on (default) and boundary-off (`--no-default-features --features
 wav,mp3,pdf,midi --target wasm32-unknown-unknown`) builds all pass clean —
@@ -147,7 +147,7 @@ findings beyond groups 1/2:
 
 1. **`cargo component build` needs `--no-default-features` on this crate**
    (plus the real feature set), confirmed necessary starting this group
-   when building from inside `crates/jianpu-wasm/` directly (`cargo
+   when building from inside `crates/poentaro-wasm/` directly (`cargo
    component build --features wav,mp3,pdf,midi` alone still links the
    `wasm-bindgen-boundary` feature, which is on by default, and fails with
    the same `__wbindgen_placeholder__` error Phase 1 first hit) — not a new
@@ -172,7 +172,7 @@ findings beyond groups 1/2:
 
 `cargo component build` (debug and `--release`, default `wasm32-wasip1`
 target), `cargo build --target wasm32-unknown-unknown`, `cargo test -p
-jianpu-wasm --features wav,mp3,pdf,midi` (82 passed), and `cargo clippy` on
+poentaro-wasm --features wav,mp3,pdf,midi` (82 passed), and `cargo clippy` on
 both the boundary-on (default) and boundary-off (`--no-default-features
 --features wav,mp3,pdf,midi --target wasm32-unknown-unknown`) builds all
 pass clean — same verification bar as groups 1/2.
@@ -217,7 +217,7 @@ convention is safe.
 `cargo component build` (debug and `--release`,
 `--no-default-features --features wav,mp3,pdf,midi`), `cargo build
 --target wasm32-unknown-unknown --features wav,mp3,pdf,midi` (now passes,
-confirming the rename fixed the collision), `cargo test -p jianpu-wasm
+confirming the rename fixed the collision), `cargo test -p poentaro-wasm
 --features wav,mp3,pdf,midi`, and `cargo clippy` on both the boundary-on
 (default) and boundary-off (`--no-default-features --features
 wav,mp3,pdf,midi --target wasm32-unknown-unknown`) builds all pass clean —
@@ -290,7 +290,7 @@ here so they aren't silently dropped from the plan's radar.
 `cargo component build` (debug and `--release`,
 `--no-default-features --features wav,mp3,pdf,midi`), `cargo build --target
 wasm32-unknown-unknown --features wav,mp3,pdf,midi`, `cargo test -p
-jianpu-wasm --features wav,mp3,pdf,midi` (82 passed), and `cargo clippy` on
+poentaro-wasm --features wav,mp3,pdf,midi` (82 passed), and `cargo clippy` on
 both the boundary-on (default, `--features wav,mp3,pdf,midi`) and
 boundary-off (`--no-default-features --features wav,mp3,pdf,midi --target
 wasm32-unknown-unknown`) builds all pass clean — same verification bar as
@@ -397,7 +397,7 @@ already had a separate `crate::` response function to call, several didn't):
 
 - `get_metadata_defaults`/the six `get_default_*_font_size` getters: call
   the exact same `crate::metadata_types::MetadataDefaultsOut::default()`/
-  `jianpu_generator::ast::grouped::default_*_font_size` the old
+  `poentaro::ast::grouped::default_*_font_size` the old
   `#[wasm_bindgen] fn`s call directly (their own bodies were already a
   one-line direct call, not a separate response function) — duplicated
   directly in the `Guest` method body rather than extracted, since
@@ -411,13 +411,13 @@ already had a separate `crate::` response function to call, several didn't):
 - `set_layout_fonts`/`shift_part_octave`/`format_score`: same
   duplicate-the-one-line-call treatment as the font-size getters — their
   bodies were already direct one/three-line calls into
-  `jianpu_generator::{set_directive_line_font_bytes,set_lyric_font_bytes,
+  `poentaro::{set_directive_line_font_bytes,set_lyric_font_bytes,
   set_monospace_font_bytes}`/`source_edit::shift_part_octave`/
   `format_source::format_score`, no separate response function existed to
   reuse.
 - `extract_source_from_svg`/`extract_source_from_pdf`: same
   duplicate-the-call treatment — bodies were already a direct one/two-line
-  call into `jianpu_generator::source_embed::{extract_embedded_source,
+  call into `poentaro::source_embed::{extract_embedded_source,
   extract_embedded_source_from_pdf}`, both already unconditional (not
   gated on any Cargo feature at all in the core crate), so no
   prerequisite-ungating fix was needed either.
@@ -482,7 +482,7 @@ Two new findings, neither anticipated by groups 1-6:
 `cargo component build` (debug and `--release`,
 `--no-default-features --features wav,mp3,pdf,midi`), `cargo build --target
 wasm32-unknown-unknown --features wav,mp3,pdf,midi`, `cargo test -p
-jianpu-wasm --features wav,mp3,pdf,midi` (81 passed), and `cargo clippy` on
+poentaro-wasm --features wav,mp3,pdf,midi` (81 passed), and `cargo clippy` on
 both the boundary-on (default, `--features wav,mp3,pdf,midi`) and
 boundary-off (`--no-default-features --features wav,mp3,pdf,midi --target
 wasm32-unknown-unknown`) builds all pass clean — same verification bar as
@@ -547,7 +547,7 @@ hand-written functions individually crossed either threshold.
 `cargo component build` (debug and `--release`,
 `--no-default-features --features wav,mp3,pdf,midi`), `cargo build --target
 wasm32-unknown-unknown --features wav,mp3,pdf,midi`, `cargo test -p
-jianpu-wasm --features wav,mp3,pdf,midi` (82 passed), and `cargo clippy` on
+poentaro-wasm --features wav,mp3,pdf,midi` (82 passed), and `cargo clippy` on
 both the boundary-on (default, `--features wav,mp3,pdf,midi`) and
 boundary-off (`--no-default-features --features wav,mp3,pdf,midi --target
 wasm32-unknown-unknown`) builds all pass clean — same verification bar as
@@ -564,7 +564,7 @@ compiles the jco-transpiled component's core `.wasm` exactly once, mirroring
 `ensureWasmComponentCoreModule` -> `instantiateWasmComponentFromModule` chain,
 sharing one in-flight promise the same way `ensureWasmInit` does). The old
 `ensureWasmModule`/`ensureWasmInit` and every real call site across `web/`
-(render/list_parts/generate_*/etc., all still importing from `'jianpu-wasm'`,
+(render/list_parts/generate_*/etc., all still importing from `'poentaro-wasm'`,
 the wasm-bindgen package) are completely untouched — confirmed deliberate, not
 an oversight:
 
@@ -573,7 +573,7 @@ an oversight:
   and Phase 6 ("Cutover and cleanup") is explicitly where call sites switch
   and the old `#[wasm_bindgen]` exports get deleted. Since Phase 4's own task
   says not to touch call sites elsewhere, and every call site depends on
-  `ensureWasmInit()`'s `init()` populating the `'jianpu-wasm'` module those
+  `ensureWasmInit()`'s `init()` populating the `'poentaro-wasm'` module those
   call sites import from, rewriting `wasmInit.ts` in place (replacing rather
   than adding to its exports) would have broken every one of those call
   sites immediately — not a real option. So this phase adds the new
@@ -582,7 +582,7 @@ an oversight:
   sites onto once every function is cut over.
 - **Manual build artifact used for testing** (not wired into
   `web/package.json` — that's Phase 5), produced with, run from
-  `crates/jianpu-wasm/`:
+  `crates/poentaro-wasm/`:
   ```sh
   cargo component build --release --no-default-features \
     --features wav,mp3,pdf,midi --target wasm32-unknown-unknown
@@ -591,16 +591,16 @@ an oversight:
   `package.json`):
   ```sh
   npx @bytecodealliance/jco transpile \
-    ../target/wasm32-unknown-unknown/release/jianpu_wasm.wasm \
-    --instantiation async -o ../crates/jianpu-wasm/pkg-component
+    ../target/wasm32-unknown-unknown/release/poentaro_wasm.wasm \
+    --instantiation async -o ../crates/poentaro-wasm/pkg-component
   ```
-  Output landed at `crates/jianpu-wasm/pkg-component/` (`jianpu_wasm.js`,
-  `jianpu_wasm.d.ts`, `jianpu_wasm.core.wasm`), gitignored — mirrors the
-  existing gitignored `crates/jianpu-wasm/pkg/` convention `wasm-pack`
+  Output landed at `crates/poentaro-wasm/pkg-component/` (`poentaro_wasm.js`,
+  `poentaro_wasm.d.ts`, `poentaro_wasm.core.wasm`), gitignored — mirrors the
+  existing gitignored `crates/poentaro-wasm/pkg/` convention `wasm-pack`
   already uses, and `web/src/wasmInit.ts` imports directly from this path
   (an `?url` import for the core wasm, an ordinary import for the
   `instantiate` glue + its `Root` export-map type), the same way it already
-  imports `pkg/jianpu_wasm_bg.wasm?url` directly rather than through an
+  imports `pkg/poentaro_wasm_bg.wasm?url` directly rather than through an
   alias. Confirmed via `jco --version` (1.32.1) that no separate install
   step was needed beyond `npx`'s own on-demand fetch. **Real, not toy,
   confirmation this actually runs**: a throwaway Node script instantiated
@@ -615,7 +615,7 @@ an oversight:
   `.wit` — no extra nesting from jco's transpile step.
 - New test: `web/src/wasmComponentInit.test.ts`, mirroring
   `mainThreadWasmInit.race.test.ts`'s style (mocks the generated
-  `jianpu_wasm.js` module, stubs `fetch`/`WebAssembly.compileStreaming`)
+  `poentaro_wasm.js` module, stubs `fetch`/`WebAssembly.compileStreaming`)
   — proves fetch-and-compile-once sharing across concurrent callers, proves
   `instantiateWasmComponentFromModule` takes no fetch path at all (the
   worker's future entry point once a module arrives via `postMessage`), and
@@ -623,7 +623,7 @@ an oversight:
   `instantiate` call's actual arguments.
 
 **One real, pre-existing blocker found and fixed, not anticipated by any
-prior phase's Status entry**: `crates/jianpu-wasm/src/lib.rs`'s `mod
+prior phase's Status entry**: `crates/poentaro-wasm/src/lib.rs`'s `mod
 component;` has been unconditional (not feature-gated) since Phase 3 group 1
 (`ea49b26`), unlike every other wit-bindgen-vs-wasm-bindgen-exclusive file in
 this crate. Once `component.rs` started implementing real `Guest` methods
@@ -633,7 +633,7 @@ compiled into the *same* `.wasm` binary as every `#[wasm_bindgen] fn`, even
 in the default (`wasm-bindgen-boundary`-on) build `wasm-pack` uses.
 `wasm-bindgen-cli`'s `--target web` postprocessing lists every exported
 symbol from that binary — hyphenated ones included — as unquoted properties
-of the generated `InitOutput` interface in `pkg/jianpu_wasm.d.ts`, which is
+of the generated `InitOutput` interface in `pkg/poentaro_wasm.d.ts`, which is
 not valid TypeScript syntax (`readonly cabi_post_generate-split-midis: ...`
 parses as subtraction, not an identifier) and made `tsc` fail with 60-200+
 syntax errors depending on how many functions were ported by that point.
@@ -652,16 +652,16 @@ pattern exactly: `#[cfg(not(feature = "wasm-bindgen-boundary"))]` on `mod
 component;` in `lib.rs`, the same mutual-exclusion convention every other
 wit-bindgen-only file already uses. Verified: `cargo component build`
 (boundary off) unaffected, `wasm-pack build --features wav,mp3,pdf,midi`
-(boundary on, the real build) now produces a clean `pkg/jianpu_wasm.d.ts`
+(boundary on, the real build) now produces a clean `pkg/poentaro_wasm.d.ts`
 with no hyphenated properties, `tsc -b` passes with zero errors, `cargo
-test -p jianpu-wasm --features wav,mp3,pdf,midi` (81 passed) and `cargo
+test -p poentaro-wasm --features wav,mp3,pdf,midi` (81 passed) and `cargo
 clippy` on both boundary-on and boundary-off builds stay clean. This narrows
 clippy's coverage of `component.rs` itself to the boundary-off build only
 (it's simply not compiled at all in the boundary-on build now) — a coverage
 change, not a behavior change, and consistent with every other
 wit-bindgen-exclusive file in the crate.
 
-Verification run this phase: `cargo test -p jianpu-wasm --features
+Verification run this phase: `cargo test -p poentaro-wasm --features
 wav,mp3,pdf,midi` (81 passed), `cargo clippy` on both boundary-on and
 boundary-off builds (clean), `cargo component build --release
 --no-default-features --features wav,mp3,pdf,midi --target
@@ -674,7 +674,7 @@ abnormally (possibly out of memory)`, reproduced identically on a single
 untouched file with 24GB of system RAM available — an environment issue,
 not a regression from this phase's changes). Also manually ran `pnpm run
 dev` and confirmed via `curl` that Vite's dev server resolves and
-transforms `wasmInit.ts`'s new imports (`pkg-component/jianpu_wasm.js` and
+transforms `wasmInit.ts`'s new imports (`pkg-component/poentaro_wasm.js` and
 `?url` core-wasm import) into working `/@fs/...` module URLs with no
 resolution errors; a full interactive browser check wasn't available in
 this sandbox (no real TTY for `terminal-browser`), so this build-level
@@ -690,7 +690,7 @@ authoritative than that bullet's phrasing — *"Every phase through Phase 5
 can run with the old `wasm-bindgen` build fully intact and unmodified ...
 nothing forces committing to the new mechanism until Phase 6 deletes the old
 code"* — and Phase 4 already confirmed every real call site in `web/`
-resolves exclusively through wasm-pack's `pkg/` output via the `jianpu-wasm`
+resolves exclusively through wasm-pack's `pkg/` output via the `poentaro-wasm`
 alias in `vite.config.ts`/`tsconfig.app.json`, with the component/jco path
 still unused by any call site. Taking the bullet literally (repointing
 `predev`/`prebuild`/`build:wasm` at the component pipeline) would have broken
@@ -704,11 +704,11 @@ yet.
 Concretely, added to `web/package.json`:
 
 - New script `build:wasm-component`: `cargo component build --manifest-path
-  ../crates/jianpu-wasm/Cargo.toml --profile release-wasm
+  ../crates/poentaro-wasm/Cargo.toml --profile release-wasm
   --no-default-features --features wav,mp3,pdf,midi --target
   wasm32-unknown-unknown && jco transpile
-  ../target/wasm32-unknown-unknown/release-wasm/jianpu_wasm.wasm
-  --instantiation async -o ../crates/jianpu-wasm/pkg-component` — the exact
+  ../target/wasm32-unknown-unknown/release-wasm/poentaro_wasm.wasm
+  --instantiation async -o ../crates/poentaro-wasm/pkg-component` — the exact
   commands Phase 4 ran by hand, now permanent and scripted, not wired into
   `predev`/`prebuild`/`build` (that's Phase 6's job once call sites cut
   over).
@@ -724,7 +724,7 @@ Concretely, added to `web/package.json`:
 
 **Output path/import convention: kept Phase 4's `pkg-component/` as final**,
 not changed. `jco transpile`'s output filenames
-(`jianpu_wasm.js`/`jianpu_wasm.d.ts`/`jianpu_wasm.core.wasm`) are identical
+(`poentaro_wasm.js`/`poentaro_wasm.d.ts`/`poentaro_wasm.core.wasm`) are identical
 between Phase 4's manual scratch run and this phase's scripted one (jco
 names them after the input `.wasm`'s stem regardless of source path), so
 `web/src/wasmInit.ts`'s existing imports needed zero changes. `pkg-component/`
@@ -744,7 +744,7 @@ strip = true
 `cargo component build --release` (i.e. plain `release`) inherits the
 workspace's `[profile.release] debug = true` (kept for native CLI
 debugging) and produced a **142.3 MiB** `.wasm` — over 20x wasm-pack's
-current **6.9 MiB** `pkg/jianpu_wasm_bg.wasm`, and 8 MiB over
+current **6.9 MiB** `pkg/poentaro_wasm_bg.wasm`, and 8 MiB over
 `scripts/check-wasm-size.py`'s size gate (not run against this artifact
 today, but would fail it). Building the same crate/feature set against the
 new `release-wasm` profile instead (`debug = false`, `strip = true`,
@@ -752,7 +752,7 @@ everything else inherited from `release` unchanged) produced a **5.5 MiB**
 core `.wasm` — smaller than wasm-pack's current output, despite wasm-pack's
 build not running `wasm-opt` either (`--no-opt`). Scoping the override to a
 separate profile rather than changing `[profile.release]` itself keeps the
-native `jianpu` CLI's existing debug-symbol release build (and wasm-pack's
+native `poentaro` CLI's existing debug-symbol release build (and wasm-pack's
 own build, which still runs under plain `release`) completely unaffected —
 `build:wasm-component`'s cargo invocation is the only thing that requests
 `release-wasm`. No further stripping/optimization pass (`wasm-opt`) was
@@ -761,14 +761,14 @@ is flagged.
 
 **Verification performed**: `pnpm run build:wasm-component` (new script)
 runs clean and produces the three expected files at
-`crates/jianpu-wasm/pkg-component/` with matching filenames; `pnpm run
+`crates/poentaro-wasm/pkg-component/` with matching filenames; `pnpm run
 build:wasm` (unchanged wasm-pack script) still runs clean, confirming
 `predev`/`prebuild`/`build:wasm` are untouched in behavior; `pnpm exec tsc
 -b` (clean); `pnpm run test:unit` (106 passed, same count as Phase 4 — no
 test changes needed since no call site or `wasmInit.ts` code changed);
 `pnpm run build` (`tsc -b && vite build`, clean); `pnpm run preview` serving
 and responding 200 on `/`; `pnpm run lint:ast-grep` (clean); `cargo test -p
-jianpu-wasm --features wav,mp3,pdf,midi` (81 passed); `cargo clippy` on both
+poentaro-wasm --features wav,mp3,pdf,midi` (81 passed); `cargo clippy` on both
 the boundary-on (default, `--features wav,mp3,pdf,midi`) and boundary-off
 (`--no-default-features --features wav,mp3,pdf,midi --target
 wasm32-unknown-unknown`) builds (both clean) — confirming the profile/script
@@ -827,14 +827,14 @@ is gone (its old body — `wasm-pack build ... --features wav,mp3,pdf,midi`
 — deleted, not kept as a dead alias). `web/vite.config.ts`'s dev-mode
 auto-rebuild-on-Rust-file-change plugin (`wasmDevPlugin`) now shells out to
 `cargo component build` + `jco transpile` (via `node_modules/.bin/jco`)
-instead of `wasm-pack`, invalidating the new `pkg-component/jianpu_wasm.js`
+instead of `wasm-pack`, invalidating the new `pkg-component/poentaro_wasm.js`
 module in Vite's module graph on rebuild instead of the old
-`pkg/jianpu_wasm.js`. The `jianpu-wasm` module alias in
-`vite.config.ts`'s `resolve.alias` and the `"jianpu-wasm"` path mapping in
+`pkg/poentaro_wasm.js`. The `poentaro-wasm` module alias in
+`vite.config.ts`'s `resolve.alias` and the `"poentaro-wasm"` path mapping in
 `tsconfig.app.json` are both deleted outright (not just left unused) —
 safe only because stage 2 (landed as a paired commit immediately after,
 not truly a standalone gate) already moved every real import off the bare
-`jianpu-wasm` specifier. `playwright.config.ts`'s stale wasm-pack-specific
+`poentaro-wasm` specifier. `playwright.config.ts`'s stale wasm-pack-specific
 comment updated to describe the new pipeline. **`wasm-pack` itself stays a
 listed `devDependency` for now** — confirmed genuinely unused by `knip`
 (`--include dependencies`) as of this stage, but left in place until stage
@@ -842,21 +842,21 @@ listed `devDependency` for now** — confirmed genuinely unused by `knip`
 removal land together, not split across two unrelated-looking diffs.
 
 **Stage 2** (`5aec21d`): every real call site in `web/` that imported from
-the wasm-bindgen `'jianpu-wasm'` package (function calls *and* type-only
+the wasm-bindgen `'poentaro-wasm'` package (function calls *and* type-only
 imports — `NoteTimingOut`, `SvgDocumentOut`, `PartOut`, `SymbolOut`,
 `GenerateWavResponse` and siblings, etc.) now imports from a new
-`web/src/jianpuWasm.ts` instead. Cross-checked exhaustively against
-`crates/jianpu-wasm`'s 42-function inventory (the same grep-and-diff
+`web/src/poentaroWasm.ts` instead. Cross-checked exhaustively against
+`crates/poentaro-wasm`'s 42-function inventory (the same grep-and-diff
 discipline Phase 3 group 7's "genuinely, exhaustively complete" cross-check
 established) — every function with a real `web/` call site is cut over;
 `get_measure_index_at_offset` is the one ported function with *no* real
-`web/` call site today (confirmed via grep), included in `jianpuWasm.ts`
+`web/` call site today (confirmed via grep), included in `poentaroWasm.ts`
 anyway for parity rather than silently dropped.
 
 **Design decision made explicitly at this stage, not dictated verbatim by
-the plan text**: `jianpuWasm.ts` is a compatibility bridge, not a
+the plan text**: `poentaroWasm.ts` is a compatibility bridge, not a
 transliteration. It exposes the *exact same* function names, signatures,
-and output shapes the old `pkg/jianpu_wasm.d.ts` did (snake_case fields
+and output shapes the old `pkg/poentaro_wasm.d.ts` did (snake_case fields
 where tsify emitted snake_case, a flat `{ status: 'ok' | 'err', ... }`
 response envelope, `SvgElementOut`'s recursive tree shape, etc.), doing the
 real WIT-typed `Root` call internally and converting the result back. The
@@ -865,7 +865,7 @@ the WIT/jco output shape (camelCase fields, `{ tag, val }` variants, the
 flattened `SvgDocument` arena) all the way out to every consumer — was
 deliberately rejected after tracing the real blast radius: `web/`'s ~50
 files reference these output shapes by field name far beyond the ~30 files
-that `import ... from 'jianpu-wasm'` directly (component props, hook
+that `import ... from 'poentaro-wasm'` directly (component props, hook
 return types, test fixtures, all flowing from `types.ts`'s
 `PartInfo = PartOut`-style re-exports). Rereading the plan's own "Why"
 section settled this: the type-safety gap this migration exists to close
@@ -876,7 +876,7 @@ convention is not what "don't leave lingering manual any-shaped types"
 was asking for. Every function below genuinely passes a real WIT-typed
 argument to `Root` (the actual fix); only the return value's field names/
 variant encoding are translated back, confined entirely to
-`jianpuWasm.ts` itself. Two non-trivial conversions this bridge does for
+`poentaroWasm.ts` itself. Two non-trivial conversions this bridge does for
 real, not just renaming: un-flattening `SvgDocument`'s pre-order arena
 (Phase 3 group 4's flattening, reversed) back into the nested
 `SvgElementOut` tree `PreviewSvgRenderer.tsx` already recurses over, and
@@ -901,11 +901,11 @@ future function's conversion trips the same thing.
 `wasmInit.ts`'s `ensureWasmModule`/`ensureWasmInit` now do what were
 separately-named `ensureWasmComponentCoreModule`/`ensureWasmComponentInit`
 during the Phase 3-5 coexistence window (fetch/compile/instantiate the
-component, then `setWasmRoot()` into `jianpuWasm.ts`) — the old
+component, then `setWasmRoot()` into `poentaroWasm.ts`) — the old
 wasm-bindgen-specific `ensureWasmModule`/`ensureWasmInit` bodies are gone,
-not kept alongside. `jianpu.worker.ts` mirrors this on its own thread:
+not kept alongside. `poentaro.worker.ts` mirrors this on its own thread:
 `ensureInit()` now calls `instantiateWasmComponentFromModule` +
-`jianpuWasm.setWasmRoot` instead of the wasm-bindgen `init()`, and reports
+`poentaroWasm.setWasmRoot` instead of the wasm-bindgen `init()`, and reports
 every export as available unconditionally (`audioAvailable`/
 `pdfAvailable`/`midiAvailable`/`mp3Available` all hardcoded `true` in the
 worker's `ready` message) since the component build always ships every
@@ -918,11 +918,11 @@ applies — every function is unconditionally present in the component
 `Root`.
 
 Three wasm-init tests updated to mock the jco-generated component glue
-module (`../../crates/jianpu-wasm/pkg-component/jianpu_wasm.js`, matched
+module (`../../crates/poentaro-wasm/pkg-component/poentaro_wasm.js`, matched
 by resolved path, not textual specifier — confirmed each test's relative
-`vi.mock` path resolves to the same file `wasmInit.ts`/`jianpu.worker.ts`
-import) instead of the old bare `'jianpu-wasm'` specifier:
-`mainThreadWasmInit.race.test.ts`, `worker/jianpu.worker.raceInit.test.ts`,
+`vi.mock` path resolves to the same file `wasmInit.ts`/`poentaro.worker.ts`
+import) instead of the old bare `'poentaro-wasm'` specifier:
+`mainThreadWasmInit.race.test.ts`, `worker/poentaro.worker.raceInit.test.ts`,
 and `wasmComponentInit.test.ts` (the Phase 4 test exercising
 `ensureWasmComponentCoreModule`/`ensureWasmComponentInit` directly, now
 renamed in-place to exercise the folded-in `ensureWasmModule`/
@@ -939,7 +939,7 @@ path only, before any deletion (the plan's explicit gate)**:
   was added or removed net, only the three wasm-init tests' mock targets
   changed).
 - `pnpm run build` (`tsc -b && vite build`): clean; `dist/` contains
-  `jianpu_wasm.core-*.wasm` (6.6 MiB) and no `jianpu_wasm_bg.wasm` — the
+  `poentaro_wasm.core-*.wasm` (6.6 MiB) and no `poentaro_wasm_bg.wasm` — the
   wasm-bindgen artifact is gone from the shipped build, not just unused
   source.
 - `pnpm run check` (knip): flags `wasm-pack` as an unused devDependency
@@ -969,7 +969,7 @@ path only, before any deletion (the plan's explicit gate)**:
   `vite` directly (bypassing Playwright's own webServer wiring) and drove
   a headless Chromium against it with a throwaway script (`chromium-cli`
   unavailable in this sandbox), screenshotting the app after it loaded a
-  real `.jianpu` file. The screenshot shows a correctly rendered "Pitches"
+  real `.poentaro` file. The screenshot shows a correctly rendered "Pitches"
   score (3 measures, section labels, editor/preview in sync) — real,
   visual proof that `render_svg` (and every function the initial file-load
   path depends on) works end-to-end through the component path with the
@@ -1009,7 +1009,7 @@ stripped, and nothing in Tsify's JS-codegen role is missed since
 time (never actually constructed — grouping over already-typed spans/cells
 can't fail) — kept (`#[allow(dead_code)]`, documented inline) rather than
 reshaping the WIT-facing response shape, since `component.rs`/
-`wit/world.wit`/`jianpuWasm.ts` already treat them as a real API shape for
+`wit/world.wit`/`poentaroWasm.ts` already treat them as a real API shape for
 parity with every other spans-based response.
 
 **Phase 6, stage 5 confirmed a no-op**: none of `experiments/
@@ -1026,7 +1026,7 @@ nothing to delete.
 **Phase 6, stage 6 done** (`ae5d80c`) — `ARCHITECTURE.md` gained a "WASM
 boundary mechanism" section (ahead of the existing "WASM exports" section)
 documenting `component.rs`/`wit/world.wit`, the `cargo-component`/`jco`
-build, and `jianpuWasm.ts`'s compatibility-bridge role, per `CLAUDE.md`'s
+build, and `poentaroWasm.ts`'s compatibility-bridge role, per `CLAUDE.md`'s
 rule. The exported functions' own signatures/shapes (in "WASM exports")
 are unchanged from the reader's perspective — that's the bridge's whole
 point — so that section's content stays accurate; only the mechanism
@@ -1034,12 +1034,12 @@ producing it changed. Also fixed two stale file-path references left over
 from an earlier, unrelated `selection_range` directory split
 (`selection_range_types.rs` → `selection_range/types.rs`,
 `selection_range.rs` → `selection_range/mod.rs`). `syntax.md` needed no
-change, confirming the plan's own prediction — no user-facing `.jianpu`
+change, confirming the plan's own prediction — no user-facing `.poentaro`
 syntax was touched anywhere in this migration.
 
 **Post-deletion re-verification** (this session, after stages 4-6 landed):
-`cargo test -p jianpu-wasm --features wav,mp3,pdf,midi` — 82 passed;
-`cargo clippy -p jianpu-wasm --features wav,mp3,pdf,midi --all-targets` —
+`cargo test -p poentaro-wasm --features wav,mp3,pdf,midi` — 82 passed;
+`cargo clippy -p poentaro-wasm --features wav,mp3,pdf,midi --all-targets` —
 clean (this now runs `--all-targets` successfully, unlike every earlier
 phase's boundary-off variant, since there's no cfg-off build configuration
 left to trip the previously-documented pre-existing `--all-targets`
@@ -1050,14 +1050,14 @@ configuration to verify, matching the plan's Goal/Non-goals ("delete
 [wasm-bindgen/tsify] rather than keep two boundary mechanisms alive").
 
 **Phase 6, and the whole migration, is complete.** Every function in
-`crates/jianpu-wasm` is exposed exclusively through `wit-bindgen`/
+`crates/poentaro-wasm` is exposed exclusively through `wit-bindgen`/
 `component.rs`/`wit/world.wit`; `web/` builds and ships exclusively
 through `cargo-component`/`jco` (`pnpm run build`'s `dist/` contains only
 the jco-generated core `.wasm`, no wasm-bindgen artifact); the full
 Playwright e2e suite passed (260 scenarios, 240 clean + 20 known-flake
 retries, 0 real failures, recorded under stage 3 above) against this
 component-only build before stage 4 deleted the old mechanism. The
-`web/src/jianpuWasm.ts` compatibility bridge (reshaping the WIT-typed
+`web/src/poentaroWasm.ts` compatibility bridge (reshaping the WIT-typed
 `Root`'s outputs back to the old snake_case/flat-`{status,...}` convention
 real call sites already expect) is a deliberate, permanent architectural
 piece, not a migration leftover — it stays because the plan's actual
@@ -1068,7 +1068,7 @@ cleanup changed that.
 ## Goal
 
 Replace `wasm-bindgen` + `tsify` as the Rust↔TS boundary mechanism for the
-whole `jianpu-wasm` crate with `wit-bindgen` (guest) + `cargo-component`
+whole `poentaro-wasm` crate with `wit-bindgen` (guest) + `cargo-component`
 (build) + `jco` (JS/TS glue), so every function's full signature — inputs
 *and* outputs — is generated from one `.wit` schema instead of only outputs
 being generated and inputs being hand-tallied `JsValue`/`any`.
@@ -1076,7 +1076,7 @@ being generated and inputs being hand-tallied `JsValue`/`any`.
 ## Non-goals
 
 - No backward compatibility to preserve — single user, no external
-  consumers of `jianpu-wasm`'s JS API, no need for a long parallel-support
+  consumers of `poentaro-wasm`'s JS API, no need for a long parallel-support
   period.
 - Not attempting to also adopt Component Model features irrelevant to a
   browser target (resources, async, WASI) — `wasm32-unknown-unknown` stays
@@ -1133,7 +1133,7 @@ to `wasmInit.ts`, since `wasmInit.ts` already does its own manual
 `fetchWithProgress`/`WebAssembly.compileStreaming`/worker-sharing and gains
 nothing from jco's default fetch path. Concretely: transpile with `jco
 transpile --instantiation async`, keep the existing `?url` import (pointed
-at the new generated core `.wasm` file instead of `jianpu_wasm_bg.wasm`),
+at the new generated core `.wasm` file instead of `poentaro_wasm_bg.wasm`),
 and on the worker side call `instantiate((_) => receivedModule, {})` with
 no fetch at all, since the module already arrived via `postMessage`.
 
@@ -1159,27 +1159,27 @@ plus a `wit/` directory, plus `wit-bindgen` as a normal dependency. This
 worked on the first `cargo component build` invocation once two
 prerequisite issues (found via direct testing, not inference) were
 resolved — see Phase 1 below, since one of them is a real, required code
-change to `crates/jianpu-wasm/Cargo.toml` before any porting can start:
+change to `crates/poentaro-wasm/Cargo.toml` before any porting can start:
 
 1. **Blocking**: the root workspace sets
    `[workspace.lints.rust] unsafe_code = "forbid"`, inherited by
-   `crates/jianpu-wasm/Cargo.toml`'s `[lints] workspace = true`.
+   `crates/poentaro-wasm/Cargo.toml`'s `[lints] workspace = true`.
    `wit-bindgen`'s `export!`/`generate!` macros expand to
    `unsafe extern "C"` functions, which `forbid(unsafe_code)` rejects as a
    hard compile error (not downgradable once inherited via `forbid`).
    Cargo also refuses to mix `workspace = true` with any local `[lints.*]`
    table in the same manifest, so the fix is all-or-nothing: drop
-   `[lints] workspace = true` from `crates/jianpu-wasm/Cargo.toml`, copy the
+   `[lints] workspace = true` from `crates/poentaro-wasm/Cargo.toml`, copy the
    workspace's clippy lints into it verbatim, and locally relax
    `unsafe_code`, `unreachable_pub`, and `unused_qualifications` (the three
    that conflict) while keeping the rest as-is.
-2. **Non-blocking but adjacent**: `jianpu-generator` itself has a
+2. **Non-blocking but adjacent**: `poentaro` itself has a
    pre-existing, unrelated latent bug — `src/audio_source.rs` unconditionally
    imports symbols that are only used inside `#[cfg(feature = "wav")]`/
    `#[cfg(feature = "midi")]` code, so building it (or anything depending on
    it) with less than the full feature set trips `-D unused-imports`.
    Confirmed against the real, unmodified crate:
-   `cargo check -p jianpu-wasm --no-default-features` fails identically
+   `cargo check -p poentaro-wasm --no-default-features` fails identically
    today, independent of this migration. It never surfaces in practice
    because `web/package.json` always builds with
    `--features wav,mp3,pdf,midi`. Not something this plan needs to fix, but
@@ -1188,7 +1188,7 @@ change to `crates/jianpu-wasm/Cargo.toml` before any porting can start:
    do with `wit-bindgen`.
 
 **Root workspace side effects**: confirmed via `git diff` before/after —
-`crates/jianpu-wasm/` untouched; root `Cargo.toml` gains exactly one line
+`crates/poentaro-wasm/` untouched; root `Cargo.toml` gains exactly one line
 (the new member's path, nothing else — no resolver/profile changes); root
 `Cargo.lock` gains the new member's own dependencies plus one real but
 harmless side effect worth knowing about: `wit-bindgen`'s transitive
@@ -1227,7 +1227,7 @@ kebab-case WIT names became `snake_case` Rust automatically, and
 `String`/`Vec<T>`/records/variants all mapped unambiguously. This flatness
 is specifically because the spike declared every function as a direct
 `export` of the WIT `world`, not grouped under a named `interface` — Phase
-2 should decide deliberately whether `jianpu-wasm`'s real `.wit` groups its
+2 should decide deliberately whether `poentaro-wasm`'s real `.wit` groups its
 10+ functions under `interface` blocks (more conventional for a
 larger API, but was not spike-tested and may reintroduce a
 `bindings::exports::<pkg>::<world>::...` nesting depth) or keeps everything
@@ -1237,7 +1237,7 @@ becomes hard to navigate at full size.
 
 ## Complicating factor found while scoping this plan
 
-`web/package.json` always builds `jianpu-wasm` with every optional feature
+`web/package.json` always builds `poentaro-wasm` with every optional feature
 on (`--features wav,mp3,pdf,midi` in `predev`/`prebuild`/`build:wasm`,
 `wav,mp3` only in the unused `build:wasm:audio` script) — so in practice
 there is exactly one feature combination that ships, and (per the
@@ -1251,7 +1251,7 @@ callers) and either ported or dropped as part of Phase 5.
 
 ### Phase 1 — Fix prerequisites, then bootstrap tooling and crate skeleton
 
-- **New, required first step**: edit `crates/jianpu-wasm/Cargo.toml` to
+- **New, required first step**: edit `crates/poentaro-wasm/Cargo.toml` to
   drop `[lints] workspace = true`, replace it with the workspace's clippy
   lints copied verbatim plus `unsafe_code`, `unreachable_pub`, and
   `unused_qualifications` relaxed locally (see "Resolved risks" above for
@@ -1263,24 +1263,24 @@ callers) and either ported or dropped as part of Phase 5.
 - Add `@bytecodealliance/jco` as a local devDependency in `web/`
   (`package.json`), not global.
 - Add `[package.metadata.component]` (WIT package name, e.g.
-  `jianpu:wasm`) and `[package.metadata.component.target] path = "wit"` to
-  `crates/jianpu-wasm/Cargo.toml`, and a `wit/` directory — confirmed this
+  `poentaro:wasm`) and `[package.metadata.component.target] path = "wit"` to
+  `crates/poentaro-wasm/Cargo.toml`, and a `wit/` directory — confirmed this
   is all that's needed on an existing workspace member; no
   `cargo component new`-only scaffolding is required.
 - Sanity-check with a single trivial exported function
   (`greet(name: string) -> string` or similar) before porting any real
   logic — **build it with the full feature set the real app always uses**
   (`--features wav,mp3,pdf,midi`), not a bare build, since
-  `jianpu-generator` itself fails a bare/partial-feature build for reasons
+  `poentaro` itself fails a bare/partial-feature build for reasons
   unrelated to this migration (see "Resolved risks" above).
-- Gitignore `crates/jianpu-wasm/src/bindings.rs` — `cargo component build`
+- Gitignore `crates/poentaro-wasm/src/bindings.rs` — `cargo component build`
   writes this scratch file to disk on every build (IDE/rust-analyzer
   visibility only; the macro still expands in-place at compile time, this
   file isn't itself referenced by `lib.rs`).
 
 ### Phase 2 — Port the type schema to `.wit`
 
-Translate every type in `crates/jianpu-wasm/src/{types,note_selection_types,
+Translate every type in `crates/poentaro-wasm/src/{types,note_selection_types,
 lyric_selection_types,metadata_types,selection_range_types,svg_types,
 types_export,responses*}.rs` into `.wit` records/variants/enums. Every
 shape actually in use maps cleanly, confirmed by spike:
@@ -1352,7 +1352,7 @@ override** approach rather than jco's default relative fetch (see
 - Main thread: keep the existing `fetchWithProgress` download-progress
   plumbing and `WebAssembly.compileStreaming`/`compile` exactly as today,
   just against the new generated core `.wasm`'s `?url` import instead of
-  `jianpu_wasm_bg.wasm`. `postMessage` the compiled `WebAssembly.Module` to
+  `poentaro_wasm_bg.wasm`. `postMessage` the compiled `WebAssembly.Module` to
   the render worker as today.
 - Worker: call `instantiate((_) => receivedModule, {})` — no fetch, no
   `?url` import needed on the worker side at all, since the module already
@@ -1381,7 +1381,7 @@ override** approach rather than jco's default relative fetch (see
   decision in this phase (not new to this migration, but worth comparing
   against current `wasm-pack --no-opt` output size deliberately rather
   than being surprised by it).
-- Update `crates/jianpu-wasm/Cargo.toml`: drop `tsify`,
+- Update `crates/poentaro-wasm/Cargo.toml`: drop `tsify`,
   `serde-wasm-bindgen`, `wasm-bindgen`; add `wit-bindgen` (version pinned
   to what the spikes used, 0.44.0, or whatever's current at implementation
   time).
@@ -1399,15 +1399,15 @@ override** approach rather than jco's default relative fetch (see
   `worktree-agent-aff1c327b381d7ca7`).
 - Update `ARCHITECTURE.md` per `CLAUDE.md`'s rule (entry-function
   signatures and module paths are changing) and `syntax.md` only if any
-  user-facing `.jianpu` syntax is incidentally touched (unlikely — this is
+  user-facing `.poentaro` syntax is incidentally touched (unlikely — this is
   a boundary-mechanism change, not a syntax change).
 
 ## Remaining open items (genuinely unresolved, smaller in scope than before)
 
 - **Full-scale bundle size / build time** versus the current `wasm-pack`
   pipeline has only been sanity-checked on trivial/toy crates (tens of
-  bytes to a few KB), never on a crate with `jianpu-wasm`'s real size and
-  dependency graph (fonts, `brotli`, the full `jianpu-generator` surface).
+  bytes to a few KB), never on a crate with `poentaro-wasm`'s real size and
+  dependency graph (fonts, `brotli`, the full `poentaro` surface).
   Worth measuring once Phase 3 has a few real functions ported, not
   assumed from the spikes.
 - **Flat world-exports vs. `interface`-grouped WIT** at full 10+ function
@@ -1423,7 +1423,7 @@ Every phase through Phase 5 can run with the old `wasm-bindgen` build
 fully intact and unmodified (new component built as a separate artifact,
 cut over per call site) — nothing forces committing to the new mechanism
 until Phase 6 deletes the old code. The one exception is Phase 1's lint
-fix to `crates/jianpu-wasm/Cargo.toml` (dropping `[lints] workspace =
+fix to `crates/poentaro-wasm/Cargo.toml` (dropping `[lints] workspace =
 true`), which is required before any `wit-bindgen` code compiles in this
 crate at all — but that change alone is inert (no behavior change) until
 `wit-bindgen`-based code actually exists to trip the relaxed lints, so it

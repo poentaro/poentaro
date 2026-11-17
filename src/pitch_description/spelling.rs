@@ -1,4 +1,4 @@
-use crate::ast::parsed::{Accidental, JianPuPitch, KeyChange, NoteName};
+use crate::ast::parsed::{Accidental, KeyChange, NoteName, NumberedPitch};
 
 /// A pitch spelled as a letter plus a number of sharps (positive) or flats
 /// (negative), ignoring octave. Spelling by letter rather than by pitch class
@@ -40,7 +40,7 @@ impl SpelledPitch {
 
     /// Spells scale degree `degree` (plus its written `#`/`b`) of the major
     /// scale starting on this tonic.
-    pub(crate) fn scale_degree(self, degree: &JianPuPitch, accidental: &Accidental) -> Self {
+    pub(crate) fn scale_degree(self, degree: &NumberedPitch, accidental: &Accidental) -> Self {
         let raised = self.up(major_scale_interval(degree));
         Self {
             alteration: raised.alteration + accidental_alteration(accidental),
@@ -68,7 +68,15 @@ impl SpelledPitch {
         self.name_with_accidentals("#", "b")
     }
 
-    /// Like [`Self::name`], with the engraved `♯`/`♭` signs the jianpu view
+    /// [`Self::name`] plus the octave number of `midi` (C4 = 60), the
+    /// sounding pitch this spelling names. The octave goes by letter, so
+    /// MIDI 60 spelled as B# is `B#3`.
+    pub(crate) fn name_with_octave(self, midi: u8) -> String {
+        let octave = (i32::from(midi) - i32::from(self.alteration)).div_euclid(12) - 1;
+        format!("{}{octave}", self.name())
+    }
+
+    /// Like [`Self::name`], with the engraved `♯`/`♭` signs the numbered view
     /// draws its own accidentals with (see `font_metrics::accidental_symbol`).
     pub(crate) fn engraved_name(self) -> String {
         self.name_with_accidentals("\u{266F}", "\u{266D}")
@@ -102,15 +110,15 @@ fn accidental_alteration(accidental: &Accidental) -> i8 {
     }
 }
 
-fn major_scale_interval(degree: &JianPuPitch) -> Interval {
+fn major_scale_interval(degree: &NumberedPitch) -> Interval {
     let letter_steps = match degree {
-        JianPuPitch::One => 0,
-        JianPuPitch::Two => 1,
-        JianPuPitch::Three => 2,
-        JianPuPitch::Four => 3,
-        JianPuPitch::Five => 4,
-        JianPuPitch::Six => 5,
-        JianPuPitch::Seven => 6,
+        NumberedPitch::One => 0,
+        NumberedPitch::Two => 1,
+        NumberedPitch::Three => 2,
+        NumberedPitch::Four => 3,
+        NumberedPitch::Five => 4,
+        NumberedPitch::Six => 5,
+        NumberedPitch::Seven => 6,
     };
     Interval {
         letter_steps,

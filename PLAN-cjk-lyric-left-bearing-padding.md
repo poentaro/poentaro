@@ -172,9 +172,9 @@ plan needs it.
    new helper compile and existing tests still pass.
 2. Visual check (same method as the flush-left anchoring change):
    ```
-   cargo run -- generate svg demo/05-lyrics.jianpu
+   cargo run -- generate svg demo/05-lyrics.poentaro
    ```
-   `05-lyrics.jianpu` is Latin-only — grep a CJK-lyrics fixture instead (or
+   `05-lyrics.poentaro` is Latin-only — grep a CJK-lyrics fixture instead (or
    write a throwaway one) if none exists in `demo/`, to actually exercise
    the new branch. Confirm the CJK syllable's `x` sits visibly closer to its
    note's `x` than a Latin syllable would at the same padding, without

@@ -3,18 +3,15 @@ import { stableBoundingBox } from '../../rangeSelectHelpers'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Test"',
-  'subtitle = "Sub"',
+  'metadata { title "Test", subtitle "Sub" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
-  '[Mv1] twin- kle twin- kle',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    [Mv1] twin- kle twin- kle',
+  '    """,',
 ].join('\n')
 
 async function loadSource(
@@ -23,12 +20,12 @@ async function loadSource(
 ) {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'test.jianpu',
-        userFiles: { 'test.jianpu': src },
+        active: 'test.poentaro',
+        userFiles: { 'test.poentaro': src },
         bin: {},
-        fileIds: { 'test.jianpu': crypto.randomUUID() },
+        fileIds: { 'test.poentaro': crypto.randomUUID() },
       }),
     )
   }, source)
@@ -65,7 +62,7 @@ async function getEditorSource(page: import('@playwright/test').Page) {
 
 async function getStoredSource(page: import('@playwright/test').Page) {
   return page.evaluate(() => {
-    const raw = localStorage.getItem('jianpu:files:v1')
+    const raw = localStorage.getItem('poentaro:files:v1')
     if (!raw) return ''
     const store = JSON.parse(raw) as {
       active: string
@@ -94,20 +91,18 @@ Given(
 )
 
 Given(
-  'a jianpu score with 40 measures and row_height 200 is loaded, and the viewport is 1400 by 900',
+  'a numbered score with 40 measures and row_height 200 is loaded, and the viewport is 1400 by 900',
   async ({ page }) => {
     const manyMeasures = Array.from({ length: 40 }, () => '1 1 5 5').join('\n')
     const source = [
-      '# metadata',
-      'title = "Test"',
-      'row_height = 200',
+      'metadata { title "Test", row height 200 },',
       '',
-      '# parts',
-      'Melody [M] = notes',
+      'parts ["Melody" [M]: notes],',
       '',
-      '# score',
+      'score """',
       '(bpm=120 key=C4 time=4/4)',
       manyMeasures,
+      '""",',
     ].join('\n')
 
     await loadSource(page, source)

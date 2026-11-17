@@ -1,7 +1,7 @@
-//! Spelling jianpu degrees as staff pitches: letter names, key signatures and
+//! Spelling numbered degrees as staff pitches: letter names, key signatures and
 //! when an accidental must be written.
 
-use crate::ast::parsed::{Accidental, JianPuPitch, KeyChange, NoteName};
+use crate::ast::parsed::{Accidental, KeyChange, NoteName, NumberedPitch};
 use std::collections::HashMap;
 
 /// A written pitch: letter, octave, and alteration in semitones from the
@@ -112,27 +112,27 @@ struct SteppedLetter {
     octaves: i32,
 }
 
-pub(super) fn degree_steps(pitch: &JianPuPitch) -> usize {
+pub(super) fn degree_steps(pitch: &NumberedPitch) -> usize {
     match pitch {
-        JianPuPitch::One => 0,
-        JianPuPitch::Two => 1,
-        JianPuPitch::Three => 2,
-        JianPuPitch::Four => 3,
-        JianPuPitch::Five => 4,
-        JianPuPitch::Six => 5,
-        JianPuPitch::Seven => 6,
+        NumberedPitch::One => 0,
+        NumberedPitch::Two => 1,
+        NumberedPitch::Three => 2,
+        NumberedPitch::Four => 3,
+        NumberedPitch::Five => 4,
+        NumberedPitch::Six => 5,
+        NumberedPitch::Seven => 6,
     }
 }
 
-fn major_scale_semitone(pitch: &JianPuPitch) -> i32 {
+fn major_scale_semitone(pitch: &NumberedPitch) -> i32 {
     match pitch {
-        JianPuPitch::One => 0,
-        JianPuPitch::Two => 2,
-        JianPuPitch::Three => 4,
-        JianPuPitch::Four => 5,
-        JianPuPitch::Five => 7,
-        JianPuPitch::Six => 9,
-        JianPuPitch::Seven => 11,
+        NumberedPitch::One => 0,
+        NumberedPitch::Two => 2,
+        NumberedPitch::Three => 4,
+        NumberedPitch::Four => 5,
+        NumberedPitch::Five => 7,
+        NumberedPitch::Six => 9,
+        NumberedPitch::Seven => 11,
     }
 }
 
@@ -150,10 +150,10 @@ fn tonic_midi(key: &KeyChange) -> i32 {
         + accidental_offset(&key.note.accidental)
 }
 
-/// MIDI pitch of a jianpu degree, `octave` octaves (dots plus part offset)
+/// MIDI pitch of a numbered degree, `octave` octaves (dots plus part offset)
 /// from the key's tonic octave.
 pub(super) fn sounding_midi(
-    pitch: &JianPuPitch,
+    pitch: &NumberedPitch,
     accidental: &Accidental,
     octave: i32,
     key: &KeyChange,
@@ -164,7 +164,7 @@ pub(super) fn sounding_midi(
 /// Spells a scale degree in the key: the letter follows the degree, so `#4`
 /// in C is F♯ and `b5` is G♭.
 pub(super) fn spell(
-    pitch: &JianPuPitch,
+    pitch: &NumberedPitch,
     accidental: &Accidental,
     octave: i32,
     key: &KeyChange,

@@ -1,8 +1,9 @@
 import type { RefObject } from 'react'
 import { useCallback, useRef, useState } from 'react'
-import type { NoteTiming } from '../jianpuWasm'
+import type { NoteTiming } from '../poentaroWasm'
 import type { NoteCell } from '../utils/noteSpanSelection'
-import type { WorkerRequest } from '../worker/jianpu.worker'
+import type { WorkerRequest } from '../worker/poentaro.worker'
+import type { SelectedSequenceRange } from './useSequenceNavigation'
 
 interface UseMeasureAudioPlaybackParams {
   workerRef: RefObject<Worker | null>
@@ -13,15 +14,10 @@ interface UseMeasureAudioPlaybackParams {
   /**
    * Read at click time rather than depended on directly, since the selection
    * is owned by `useSequenceNavigation` in `App.tsx`, downstream of this hook
-   * (which is itself owned by `useJianpuWorker`) — a ref avoids the circular
+   * (which is itself owned by `usePoentaroWorker`) — a ref avoids the circular
    * dependency of threading a fresh value back into this hook's own call.
    */
-  selectedSequenceRangeRef: RefObject<{
-    start: number
-    end: number
-    entryStartIndex: number
-    entryEndIndex: number
-  } | null>
+  selectedSequenceRangeRef: RefObject<SelectedSequenceRange | null>
   /** The visible-part abbreviations a no-mounted-editor (Synced/shared
    * viewer) measure/bar-line/part-label selection touched — `undefined`
    * when there's no such restriction to apply (an editor is mounted, no
@@ -33,8 +29,8 @@ interface UseMeasureAudioPlaybackParams {
   /** Total measures in the score (`measureSpans.length`), used by `playAll`
    * to span from the first measure through the last written one. */
   totalMeasures: number
-  /** Number of `# sequence` entries (`0` when the score has none), used by
-   * `playAll` to play every entry in `# sequence` order. */
+  /** Number of `sequence` entries (`0` when the score has none), used by
+   * `playAll` to play every entry in `sequence` order. */
   sequenceEntryCount: number
 }
 
@@ -150,14 +146,42 @@ export function useMeasureAudioPlayback({
     [],
   )
 
+  // A selected `sequence` entry plays as that occurrence, with its
+  // `WITH`/`WITHOUT`/`ONLY` (e.g. the second `A WITH [i] 2` sings line 2),
+  // for as long as the selection is still the entry's measures. Returns
+  // whether it played.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSequenceRangeRef is a stable ref read at call time, not a reactive dependency
+  const playSelectedSequenceEntry = useCallback(
+    (selected: { start: number; end: number }) => {
+      const entry = selectedSequenceRangeRef.current
+      if (
+        entry === null ||
+        entry.coveredMeasures.start !== selected.start ||
+        entry.coveredMeasures.end !== selected.end
+      )
+        return false
+      playMeasureRange(
+        entry.start,
+        entry.end,
+        false,
+        true,
+        entry.entryStartIndex,
+        entry.entryEndIndex,
+      )
+      return true
+    },
+    [playMeasureRange],
+  )
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: measureRangeSelectedPartNamesRef is a stable ref read at call time, not a reactive dependency
   const playSelectedMeasures = useCallback(() => {
     if (selectedMeasureRange === null) return
+    if (playSelectedSequenceEntry(selectedMeasureRange)) return
     // Exact range: stop at the end measure's first occurrence, so a
     // single-measure selection (e.g. "play current measure") doesn't
     // overrun into a later D.C./D.S. al Coda repeat pass. Ignore
-    // # sequence/D.C./D.S. entirely, so "play current measure" always plays
-    // exactly what is written, regardless of any part omission a # sequence
+    // sequence/D.C./D.S. entirely, so "play current measure" always plays
+    // exactly what is written, regardless of any part omission a sequence
     // entry might apply to this measure's occurrence(s).
     //
     // `enabledTracksOverride` mutes every part outside a no-mounted-editor
@@ -177,13 +201,13 @@ export function useMeasureAudioPlayback({
       undefined,
       measureRangeSelectedPartNamesRef.current,
     )
-  }, [selectedMeasureRange, playMeasureRange])
+  }, [selectedMeasureRange, playMeasureRange, playSelectedSequenceEntry])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSequenceRangeRef is a stable ref read at call time, not a reactive dependency
   const playFromCurrentMeasure = useCallback(() => {
     const range = selectedSequenceRangeRef.current
     if (range === null) return
-    // Exact range: play only the selected `# sequence` entries, stopping at
+    // Exact range: play only the selected `sequence` entries, stopping at
     // the end of the last one. No D.C./D.S./sequence continuation past it.
     // `respectSequence: true` so any `(-abbrev ...)` part omission on the
     // selected entry/entries is honored, not just the written score.
@@ -204,7 +228,7 @@ export function useMeasureAudioPlayback({
 
   // Plays the whole score — the same performance `generateFullAudio`
   // (Export WAV) renders, but through this hook's autoplay + cursor-sync
-  // channel instead of a static downloadable player. With a `# sequence`,
+  // channel instead of a static downloadable player. With a `sequence`,
   // every entry is passed as an explicit entry range: resolving the written
   // first/last measures by occurrence instead would clip (or fall back to
   // written order) whenever the sequence doesn't start at the first written
@@ -237,6 +261,13 @@ export function useMeasureAudioPlayback({
       selectedPartNames: string[],
       selectedCells: NoteCell[],
     ) => {
+      if (
+        playSelectedSequenceEntry({
+          start: minMeasureIndex,
+          end: maxMeasureIndex,
+        })
+      )
+        return
       playMeasureRange(
         minMeasureIndex,
         maxMeasureIndex,
@@ -248,7 +279,7 @@ export function useMeasureAudioPlayback({
         selectedCells,
       )
     },
-    [playMeasureRange],
+    [playMeasureRange, playSelectedSequenceEntry],
   )
 
   return {

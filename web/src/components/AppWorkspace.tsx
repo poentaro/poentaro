@@ -3,7 +3,7 @@ import { AlignLeft, ChevronDown, ChevronUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { MOBILE_BREAKPOINT_QUERY, useMediaQuery } from '../hooks/useMediaQuery'
 import { useSelectionPitchDescription } from '../hooks/useSelectionPitchDescription'
-import type { StreamablePart } from '../jianpuWasm'
+import type { StreamablePart } from '../poentaroWasm'
 import type { EditorSelection } from '../types'
 import { staffClefFor } from '../worker/staffClef'
 import type { AppWorkspaceProps } from './AppWorkspace.types'
@@ -12,6 +12,7 @@ import { Editor } from './Editor'
 import { EditorToolbarButton } from './EditorToolbarButton'
 import { EditPartsModal } from './EditPartsModal'
 import { NotationToggle } from './NotationToggle'
+import { PageViewToggle } from './PageViewToggle'
 import { PitchDrawer } from './PitchDrawer'
 import { Preview } from './Preview'
 import { PartFocusEditor } from './partFocus/PartFocusEditor'
@@ -24,6 +25,7 @@ export function AppWorkspace({
   setEditorCollapsed,
   hideEditor,
   editorRef,
+  partFocusHandleRef,
   fileId,
   source,
   handleSourceChange,
@@ -58,6 +60,7 @@ export function AppWorkspace({
   previewAudioPlaying,
   editMetadataOpen,
   parsedMetadata,
+  metadataPresetName,
   handleMetadataFieldChange,
   documents,
   highlightedDocuments,
@@ -85,6 +88,7 @@ export function AppWorkspace({
   measureAudioElement,
   noPartsSelected,
   staffNotation,
+  previewLayout,
   partToggles,
   onPartFocusDraftChange,
 }: AppWorkspaceProps) {
@@ -118,6 +122,29 @@ export function AppWorkspace({
     describeSelection,
   )
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT_QUERY)
+  // Shared by the main editor and the part focus editor, which reports in
+  // draft source terms.
+  const handleSelectionLinesChange = (
+    firstLine: number,
+    lastLine: number,
+    isEmpty: boolean,
+  ) => {
+    setSelectedLineRange(null)
+    notifySelection(firstLine, lastLine, isEmpty)
+  }
+  const handleSelectionOffsetChange = (
+    ranges: EditorSelection[],
+    isEmpty: boolean,
+  ) => {
+    // Every disjoint range is passed through, not just the primary one — a
+    // multicursor selection (e.g. a clicked part label's per-measure ranges,
+    // or the "shift selection octave" toolbar action's remapped ranges) must
+    // keep every range's notes/lyrics highlighted, not just whichever one
+    // Monaco calls the anchor.
+    handleEditorSelectionChange(ranges)
+    handleLyricEditorSelectionChange(ranges)
+    setSelectionByteRanges(isEmpty ? null : ranges)
+  }
   // Below the mobile breakpoint only one pane is visible at a time, so
   // showing the editor must collapse the preview instead of sitting beside it.
   const previewCollapsed = isMobile && !hideEditor && !editorCollapsed
@@ -226,21 +253,8 @@ export function AppWorkspace({
                   diagnostics={diagnostics}
                   diagnosticViewZones={diagnosticViewZones}
                   measureSpans={measureSpans}
-                  onSelectionChange={(firstLine, lastLine, isEmpty) => {
-                    setSelectedLineRange(null)
-                    notifySelection(firstLine, lastLine, isEmpty)
-                  }}
-                  onSelectionOffsetChange={(ranges, isEmpty) => {
-                    // Every disjoint range is passed through, not just the
-                    // primary one — a multicursor selection (e.g. a clicked
-                    // part label's per-measure ranges, or the "shift
-                    // selection octave" toolbar action's remapped ranges)
-                    // must keep every range's notes/lyrics highlighted, not
-                    // just whichever one Monaco calls the anchor.
-                    handleEditorSelectionChange(ranges)
-                    handleLyricEditorSelectionChange(ranges)
-                    setSelectionByteRanges(isEmpty ? null : ranges)
-                  }}
+                  onSelectionChange={handleSelectionLinesChange}
+                  onSelectionOffsetChange={handleSelectionOffsetChange}
                   onEditPartsClick={() => setEditPartsOpen(true)}
                   onEditMetadataClick={() => setEditMetadataOpen(true)}
                   onForceSave={forceSave}
@@ -283,12 +297,16 @@ export function AppWorkspace({
                   setFocusedPart(null)
                 }}
                 onCancel={() => setFocusedPart(null)}
+                handleRef={partFocusHandleRef}
+                onSelectionChange={handleSelectionLinesChange}
+                onSelectionOffsetChange={handleSelectionOffsetChange}
               />
             )}
             <EditMetadataModal
               open={editMetadataOpen}
               onOpenChange={setEditMetadataOpen}
               metadata={parsedMetadata}
+              presetName={metadataPresetName}
               onFieldChange={handleMetadataFieldChange}
               container={editorPaneEl}
             />
@@ -331,30 +349,30 @@ export function AppWorkspace({
         <Preview
           documents={documents}
           floatingControls={
-            <NotationToggle
-              notation={staffNotation.notation}
-              onChange={staffNotation.setNotation}
-            />
+            <>
+              <PageViewToggle
+                view={previewLayout.view}
+                onChange={previewLayout.setView}
+              />
+              <NotationToggle
+                notation={staffNotation.notation}
+                onChange={staffNotation.setNotation}
+              />
+            </>
           }
+          maxView={previewLayout.view === 'max'}
+          onPagesWidthChange={previewLayout.setContainerWidth}
           staffScore={staffView ? staffNotation.score : null}
           highlightedDocuments={highlightedDocuments}
           rendering={staffView ? staffNotation.loading : rendering}
-          onSectionLabelClick={
-            focusedPart === null ? handleSectionJump : undefined
-          }
-          onNoteRangeSelect={
-            focusedPart === null ? handleNoteRangeSelect : undefined
-          }
+          onSectionLabelClick={handleSectionJump}
+          onNoteRangeSelect={handleNoteRangeSelect}
           selectedNoteCells={selectedNoteCells}
           noteSpans={noteSpans}
-          onLyricRangeSelect={
-            focusedPart === null ? handleLyricRangeSelect : undefined
-          }
+          onLyricRangeSelect={handleLyricRangeSelect}
           selectedLyricCells={selectedLyricCells}
           lyricSpans={lyricSpans}
-          onMeasureRangeSelect={
-            focusedPart === null ? handleMeasureRangeSelect : undefined
-          }
+          onMeasureRangeSelect={handleMeasureRangeSelect}
           selectedMeasureRange={selectedMeasureRange}
           audioGenerating={audioGenerating}
           wavUrl={wavUrl}

@@ -1,4 +1,4 @@
-/** A diatonic harmonica seen from the front: a long rounded body with a row
+/** A harmonica seen from the front: a long rounded body with a row
  * of hole slots. Drawn in lucide-react's style (24×24 viewBox,
  * `currentColor` 2px round strokes) since lucide has no harmonica icon —
  * used by the notation switcher's "Harmonica" option. */

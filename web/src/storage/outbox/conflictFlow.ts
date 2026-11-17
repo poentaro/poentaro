@@ -1,4 +1,4 @@
-import { jianpuWasm } from '../../jianpuWasm'
+import { poentaroWasm } from '../../poentaroWasm'
 import type { BaseSnapshots } from './baseSnapshots'
 import type { OutboxLooper, OutboxSnapshot } from './outboxLooper'
 
@@ -79,7 +79,7 @@ export function createConflictFlow(deps: ConflictFlowDeps): ConflictFlow {
     const outcome =
       base === undefined
         ? undefined
-        : jianpuWasm().mergeThreeWay(base, mine, theirs)
+        : poentaroWasm().mergeThreeWay(base, mine, theirs)
     if (outcome?.tag === 'clean') {
       // The user kept typing while the server copy was fetched: merge again.
       if (headSaveContent(looper.snapshot(), fileId) !== mine) {

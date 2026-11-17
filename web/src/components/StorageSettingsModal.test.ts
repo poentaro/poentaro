@@ -16,7 +16,7 @@ describe('resolveCloudConflict', () => {
   it('overwrite-mine realigns the revision and re-pushes the current in-memory content, keeping the store unchanged', async () => {
     const forceOverwrite = vi.fn().mockResolvedValue(undefined)
     const backend = { forceOverwrite } as unknown as CloudBackend
-    const store = makeStore('a.jianpu', 'mine')
+    const store = makeStore('a.poentaro', 'mine')
 
     const result = await resolveCloudConflict('overwrite-mine', backend, store)
 
@@ -26,8 +26,8 @@ describe('resolveCloudConflict', () => {
 
   it('discard-mine reloads and replaces the active file content with the remote version', async () => {
     const load = vi.fn().mockResolvedValue({
-      active: 'a.jianpu',
-      userFiles: { 'a.jianpu': 'theirs' },
+      active: 'a.poentaro',
+      userFiles: { 'a.poentaro': 'theirs' },
       bin: {},
       fileIds: {},
     })
@@ -38,12 +38,12 @@ describe('resolveCloudConflict', () => {
       }),
     )
     const backend = { load, updateActiveContent } as unknown as CloudBackend
-    const store = makeStore('a.jianpu', 'mine')
+    const store = makeStore('a.poentaro', 'mine')
 
     const result = await resolveCloudConflict('discard-mine', backend, store)
 
     expect(load).toHaveBeenCalled()
     expect(updateActiveContent).toHaveBeenCalledWith(store, 'theirs')
-    expect(result.userFiles['a.jianpu']).toBe('theirs')
+    expect(result.userFiles['a.poentaro']).toBe('theirs')
   })
 })

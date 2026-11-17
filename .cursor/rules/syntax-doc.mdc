@@ -1,12 +1,12 @@
 ---
-description: Keep syntax.md in sync when .jianpu syntax changes
+description: Keep syntax.md in sync when .poentaro syntax changes
 globs: src/parser/**,src/desugar.rs
 alwaysApply: false
 ---
 
 # Syntax documentation
 
-The `.jianpu` input syntax is documented in `syntax.md`.
+The `.poentaro` input syntax is documented in `syntax.md`.
 
 When you change user-facing syntax behavior in `src/parser/` or `src/desugar.rs`:
 

@@ -1,11 +1,11 @@
 use crate::ast::grouped::{NoteEvent, Score};
-use crate::ast::parsed::{Accidental, JianPuPitch};
+use crate::ast::parsed::{Accidental, NumberedPitch};
 use crate::error::{Diagnostic, RecoverableError, Span};
 
 struct NoteInfo {
     measure_idx: usize,
     event_idx: usize,
-    pitch: JianPuPitch,
+    pitch: NumberedPitch,
     accidental: Accidental,
     octave: i8,
     tie_span: Option<Span>,
@@ -18,19 +18,19 @@ struct TieCorrection {
     error: RecoverableError,
 }
 
-fn pitch_to_char(pitch: &JianPuPitch) -> char {
+fn pitch_to_char(pitch: &NumberedPitch) -> char {
     match pitch {
-        JianPuPitch::One => '1',
-        JianPuPitch::Two => '2',
-        JianPuPitch::Three => '3',
-        JianPuPitch::Four => '4',
-        JianPuPitch::Five => '5',
-        JianPuPitch::Six => '6',
-        JianPuPitch::Seven => '7',
+        NumberedPitch::One => '1',
+        NumberedPitch::Two => '2',
+        NumberedPitch::Three => '3',
+        NumberedPitch::Four => '4',
+        NumberedPitch::Five => '5',
+        NumberedPitch::Six => '6',
+        NumberedPitch::Seven => '7',
     }
 }
 
-fn format_pitch_octave(pitch: &JianPuPitch, octave: i8) -> String {
+fn format_pitch_octave(pitch: &NumberedPitch, octave: i8) -> String {
     let ch = pitch_to_char(pitch);
     let octave_suffix = match octave.cmp(&0) {
         std::cmp::Ordering::Greater => "'".repeat(octave as usize),
@@ -41,7 +41,7 @@ fn format_pitch_octave(pitch: &JianPuPitch, octave: i8) -> String {
 }
 
 fn format_pitch_octave_accidental(
-    pitch: &JianPuPitch,
+    pitch: &NumberedPitch,
     accidental: &Accidental,
     octave: i8,
 ) -> String {

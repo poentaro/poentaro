@@ -1,6 +1,13 @@
-import { type ClickableElementId, jianpuWasm } from '../jianpuWasm'
+import {
+  type ClickableElementId,
+  poentaroWasm,
+  type ResolveSelectionRangeResponse,
+} from '../poentaroWasm'
 import type { LyricSpan, NoteSpan } from '../types'
-import type { PreviewAnchorState } from './previewAnchorState'
+import type {
+  ElementAnchorState,
+  PreviewAnchorState,
+} from './previewAnchorState'
 import {
   anyClickableElementIdAtPoint,
   measureClickableElementId,
@@ -10,25 +17,15 @@ import {
   applyPersistedNoteHighlights,
 } from './previewRangeHighlights'
 import {
-  applyLyricRangeSelection,
-  applyNoteRangeSelection,
-} from './previewRangeSelection'
-import {
   getMeasureAtPoint,
-  type LyricCell,
-  lyricCellsInMeasureRange,
-  type NoteCell,
-  noteCellsInMeasureRange,
-  systemRangeContainingMeasure,
+  type MeasureRange,
+  renderedSystems,
 } from './previewSelection'
 import type { ResolvedSelection } from './previewSelectionResolver'
 
-/** Everything a mode's own resolver needs beyond `anchorState`/`point`/
- * `currentIdHint` themselves — shared by `resolveMeasureSelection`,
- * `resolveNoteSelection`, and `resolveLyricSelection` below (and their
- * label-mode siblings in `previewSelectionResolveLabelModes.ts`), split out
- * of `resolveSelection`'s own body once its per-mode branches grew too long
- * for one function. */
+/** Everything a mode's own resolver needs beyond `anchorState` itself —
+ * shared by the resolvers below and their label-mode siblings in
+ * `previewSelectionResolveLabelModes.ts`. */
 export interface ResolveModeArgs {
   container: HTMLDivElement | null
   point: { x: number; y: number } | undefined
@@ -39,260 +36,146 @@ export interface ResolveModeArgs {
 
 type MeasureAnchorState = Extract<
   NonNullable<PreviewAnchorState>,
-  { mode: 'measure' }
+  { mode: 'measure' | 'bar-number-system' }
 >
-type BarNumberSystemAnchorState = Extract<
-  NonNullable<PreviewAnchorState>,
-  { mode: 'bar-number-system' }
->
-type NoteAnchorState = Extract<
-  NonNullable<PreviewAnchorState>,
-  { mode: 'note' }
->
-type LyricAnchorState = Extract<
-  NonNullable<PreviewAnchorState>,
-  { mode: 'lyric' }
->
+type NoteAnchorState = Extract<ElementAnchorState, { mode: 'note' }>
+type LyricAnchorState = Extract<ElementAnchorState, { mode: 'lyric' }>
 
-export function resolveMeasureSelection(
-  anchorState: MeasureAnchorState,
-  { container, point, currentIdHint, noteSpans, lyricSpans }: ResolveModeArgs,
-): ResolvedSelection {
-  const finalRange = point
-    ? (getMeasureAtPoint(point.x, point.y) ?? anchorState.current)
-    : anchorState.anchor
-  const response = jianpuWasm().resolveSelectionRange(
-    noteSpans,
-    lyricSpans,
-    anchorState.anchorId,
-    currentIdHint ?? measureClickableElementId(finalRange),
+const EMPTY_SELECTION: ResolvedSelection = { noteCells: [], lyricCells: [] }
+
+/** The click target the gesture's current end resolves to: the anchor
+ * itself when there's no `point` (the first click's self-commit and a
+ * cancelled gesture's revert), otherwise whatever is at `point`, or the last
+ * resolved end when `point` misses every click target. */
+export function resolveCurrentId(
+  anchorState: ElementAnchorState,
+  point: { x: number; y: number } | undefined,
+  currentIdHint: ClickableElementId | undefined,
+): ClickableElementId {
+  if (point === undefined) return anchorState.anchorId
+  return (
+    currentIdHint ??
+    anyClickableElementIdAtPoint(point.x, point.y) ??
+    anchorState.currentId
   )
-  // `Measure ↔ Measure` is fully ID-based now (see
-  // `resolve_selection_range_response` in `selection_range.rs`), so this
-  // never actually returns 'err' for 'measure' mode — the pixel-based
-  // fallback below is dead code kept only as a safety net until the wasm
-  // side is proven out further.
-  let noteCells: NoteCell[]
-  let lyricCells: LyricCell[]
-  if (response.tag === 'ok') {
-    noteCells = response.val.noteCells.map((cell) => ({
-      sourcePartIndex: cell.sourcePartIndex,
-      noteId: cell.noteId,
-    }))
-    lyricCells = response.val.lyricCells.map((cell) => ({
-      sourcePartIndex: cell.sourcePartIndex,
-      noteId: cell.noteId,
-    }))
-  } else {
-    const min = Math.min(anchorState.anchor.start, finalRange.start)
-    const max = Math.max(anchorState.anchor.end, finalRange.end)
-    const measureRange = { start: min, end: max }
-    noteCells = noteCellsInMeasureRange(noteSpans, measureRange)
-    lyricCells = lyricCellsInMeasureRange(lyricSpans, measureRange)
-  }
-  if (container) {
-    applyPersistedNoteHighlights(container, noteCells)
-    applyPersistedLyricHighlights(container, lyricCells)
-  }
-  return { noteCells, lyricCells }
 }
 
-/**
- * The bar-number-anchored sibling of `resolveMeasureSelection` above: instead
- * of selecting the exact measure-index range between the anchor and the
- * second click, expands *both* ends out to their own whole system first (via
- * `systemRangeContainingMeasure`), then selects the union of every measure in
- * between — every part, in every system from the anchor's system through the
- * resolved second click's system, regardless of what the second click landed
- * on (a note, a lyric syllable, another bar number, plain measure space —
- * `getMeasureAtPoint` already resolves any of those to a measure index, see
- * its own doc comment on scanning the full `elementsFromPoint` stack).
- *
- * Deliberately bypasses `resolve_selection_range`'s wasm path (unlike
- * `resolveMeasureSelection`): that path only knows about the exact measure
- * pair, not the system geometry doing the expansion here needs, and this
- * mode's whole point is to escalate past it — mirroring
- * `resolvePartLabelSystemSelection`'s own pure-TS, no-wasm resolution for the
- * same reason.
- */
-export function resolveBarNumberSystemSelection(
-  anchorState: BarNumberSystemAnchorState,
-  { container, point, noteSpans, lyricSpans }: ResolveModeArgs,
+/** The measure range the gesture's current end resolves to — the measure
+ * modes' counterpart of `resolveCurrentId`. */
+function resolveCurrentMeasures(
+  anchorState: MeasureAnchorState,
+  point: { x: number; y: number } | undefined,
+): MeasureRange {
+  if (point === undefined) return anchorState.anchor
+  return getMeasureAtPoint(point.x, point.y) ?? anchorState.current
+}
+
+/** The cells a wasm range response names, or `undefined` for `Err` (an
+ * endpoint wasn't in the spans). */
+export function selectionFromResponse(
+  response: ResolveSelectionRangeResponse,
+): ResolvedSelection | undefined {
+  return response.tag === 'ok'
+    ? { noteCells: response.val.noteCells, lyricCells: response.val.lyricCells }
+    : undefined
+}
+
+/** Paints `selection`'s notes and syllables as selected. */
+export function paintSelection(
+  container: HTMLDivElement | null,
+  selection: ResolvedSelection,
+): void {
+  if (!container) return
+  applyPersistedNoteHighlights(container, selection.noteCells)
+  applyPersistedLyricHighlights(container, selection.lyricCells)
+}
+
+export function resolveMeasureSelection(
+  anchorState: Extract<MeasureAnchorState, { mode: 'measure' }>,
+  { container, point, currentIdHint, noteSpans, lyricSpans }: ResolveModeArgs,
 ): ResolvedSelection {
-  const finalRange = point
-    ? (getMeasureAtPoint(point.x, point.y) ?? anchorState.current)
-    : anchorState.anchor
+  const selection =
+    selectionFromResponse(
+      poentaroWasm().resolveSelectionRange(
+        noteSpans,
+        lyricSpans,
+        anchorState.anchorId,
+        currentIdHint ??
+          measureClickableElementId(resolveCurrentMeasures(anchorState, point)),
+      ),
+    ) ?? EMPTY_SELECTION
+  paintSelection(container, selection)
+  return selection
+}
 
-  const anchorSystem =
-    (container &&
-      systemRangeContainingMeasure(container, anchorState.anchor.start)) ||
-    anchorState.anchor
-  const finalSystem =
-    (container && systemRangeContainingMeasure(container, finalRange.start)) ||
-    finalRange
+/** Every part of every system from the anchor's through the current end's
+ * (see `resolve_system_selection_range_response`): a bar number's
+ * click-and-click and a Cmd/Ctrl-click on a part label. */
+export function resolveSystemSelection(
+  anchorId: ClickableElementId,
+  currentId: ClickableElementId,
+  { container, noteSpans, lyricSpans }: ResolveModeArgs,
+): ResolvedSelection {
+  const selection =
+    selectionFromResponse(
+      poentaroWasm().resolveSystemSelectionRange(
+        noteSpans,
+        lyricSpans,
+        container ? renderedSystems(container) : [],
+        anchorId,
+        currentId,
+      ),
+    ) ?? EMPTY_SELECTION
+  paintSelection(container, selection)
+  return selection
+}
 
-  const measureRange = {
-    start: Math.min(anchorSystem.start, finalSystem.start),
-    end: Math.max(anchorSystem.end, finalSystem.end),
-  }
-  const noteCells = noteCellsInMeasureRange(noteSpans, measureRange)
-  const lyricCells = lyricCellsInMeasureRange(lyricSpans, measureRange)
-  if (container) {
-    applyPersistedNoteHighlights(container, noteCells)
-    applyPersistedLyricHighlights(container, lyricCells)
-  }
-  return { noteCells, lyricCells }
+export function resolveBarNumberSystemSelection(
+  anchorState: Extract<MeasureAnchorState, { mode: 'bar-number-system' }>,
+  args: ResolveModeArgs,
+): ResolvedSelection {
+  return resolveSystemSelection(
+    anchorState.anchorId,
+    measureClickableElementId(resolveCurrentMeasures(anchorState, args.point)),
+    args,
+  )
 }
 
 export function resolveNoteSelection(
   anchorState: NoteAnchorState,
   { container, point, currentIdHint, noteSpans, lyricSpans }: ResolveModeArgs,
 ): ResolvedSelection {
-  const current = point ?? anchorState.anchor
-  const anchorCell: NoteCell = anchorState.anchorId.val
-  // Resolves every `Note ↔ Note` combination (same-part and cross-part)
-  // and, when `current` lands on a lyric syllable, part label, or lyric
-  // label instead, every one of `Note ↔ Lyric` (cross-row, either
-  // ordering), `Note ↔ PartLabel`, and `Note ↔ LyricLabel` (see
-  // `resolve_selection_range_response` in `selection_range.rs`) without
-  // touching pixels at all, so it's immune to the scroll-invalidated-anchor
-  // bug class. This covers every pair wasm can actually be asked to
-  // resolve — it does NOT cover `current` missing every recognized click
-  // target of any type (a bar-line/gutter or empty-space point), which
-  // isn't any resolvable pair at all and has no ID to hand wasm. That case
-  // keeps the pixel marquee (`applyNoteRangeSelection`'s fallback branch)
-  // exactly as before this mode's wasm migration; collapsing straight to
-  // the anchor here (as an earlier revision of this branch did) silently
-  // regressed the cross-row case instead of falling back to it (see
-  // `note-lyric-cross-range-select.feature`).
-  const currentId =
-    currentIdHint ?? anyClickableElementIdAtPoint(current.x, current.y)
-  if (currentId === undefined) {
-    let { noteCells, lyricCells } = container
-      ? applyNoteRangeSelection(
-          container,
-          noteSpans,
-          anchorCell,
-          anchorState.anchor,
-          current,
-        )
-      : { noteCells: [], lyricCells: [] }
-    if (noteCells.length === 0) {
-      noteCells = [anchorCell]
-      lyricCells = []
-      if (container) {
-        applyPersistedNoteHighlights(container, noteCells)
-        applyPersistedLyricHighlights(container, [])
-      }
-    }
-    return { noteCells, lyricCells }
-  }
-
-  const response = jianpuWasm().resolveSelectionRange(
-    noteSpans,
-    lyricSpans,
-    anchorState.anchorId,
-    currentId,
-  )
-  if (response.tag !== 'ok') {
-    // Should be unreachable — every type `current` can resolve to now has
-    // an arm in `resolve_selection_range_response` paired with `Note`.
-    // Logged rather than thrown so a real click-and-click gesture never
-    // hard-fails on it; the empty-selection fallback below still collapses
-    // to the anchor.
-    console.error(
-      'resolveSelectionRange returned Err for a Note-anchored pair',
+  const selection = selectionFromResponse(
+    poentaroWasm().resolveSelectionRange(
+      noteSpans,
+      lyricSpans,
       anchorState.anchorId,
-      currentId,
-    )
-  }
-
-  let noteCells: NoteCell[] =
-    response.tag === 'ok'
-      ? response.val.noteCells.map((cell) => ({
-          sourcePartIndex: cell.sourcePartIndex,
-          noteId: cell.noteId,
-        }))
-      : []
-  let lyricCells: LyricCell[] =
-    response.tag === 'ok'
-      ? response.val.lyricCells.map((cell) => ({
-          sourcePartIndex: cell.sourcePartIndex,
-          noteId: cell.noteId,
-        }))
-      : []
-  if (container) {
-    applyPersistedNoteHighlights(container, noteCells)
-    applyPersistedLyricHighlights(container, lyricCells)
-  }
-  if (noteCells.length === 0) {
-    // The resolved point missed every note's click target (e.g. it landed
-    // back on the anchor note, or on a bar-line/gutter pixel) — fall back
-    // to the cell the anchoring click resolved, so the gesture still
-    // collapses to a single selection instead of an empty one.
-    noteCells = [anchorCell]
-    lyricCells = []
-    if (container) {
-      applyPersistedNoteHighlights(container, noteCells)
-      applyPersistedLyricHighlights(container, [])
-    }
-  }
-  return { noteCells, lyricCells }
+      resolveCurrentId(anchorState, point, currentIdHint),
+    ),
+  )
+  // A range with no notes collapses to the anchoring note, so the gesture
+  // always selects at least what the first click landed on.
+  const resolved =
+    selection && selection.noteCells.length > 0
+      ? selection
+      : { noteCells: [anchorState.anchorId.val], lyricCells: [] }
+  paintSelection(container, resolved)
+  return resolved
 }
 
 export function resolveLyricSelection(
   anchorState: LyricAnchorState,
   { container, point, currentIdHint, noteSpans, lyricSpans }: ResolveModeArgs,
 ): ResolvedSelection {
-  const current = point ?? anchorState.anchor
-  const anchorCell: LyricCell = anchorState.anchorId.val
-  // Try wasm's ID-based range resolution first — resolves every
-  // `Lyric ↔ Lyric` scope (same part-and-verse, same-part cross-verse, and
-  // cross-part) and, when `current` lands on a note, part label, or lyric
-  // label instead, every one of `Lyric ↔ Note` (cross-row),
-  // `Lyric ↔ PartLabel`, and `Lyric ↔ LyricLabel` (see
-  // `resolve_selection_range_response` in `selection_range.rs`) without
-  // touching pixels at all. `Err` now only covers `current` missing every
-  // recognized click target of any type — falls back to
-  // `applyLyricRangeSelection`'s existing marquee path unchanged (the
-  // same-mode mirror of 'note' mode's cross-row fallback above — see its
-  // comment for why collapsing
-  // straight through instead would silently regress the cross-row case).
-  const currentId =
-    currentIdHint ?? anyClickableElementIdAtPoint(current.x, current.y)
-  const response = currentId
-    ? jianpuWasm().resolveSelectionRange(
+  const selection =
+    selectionFromResponse(
+      poentaroWasm().resolveSelectionRange(
         noteSpans,
         lyricSpans,
         anchorState.anchorId,
-        currentId,
-      )
-    : undefined
-
-  if (response?.tag === 'ok') {
-    const noteCells = response.val.noteCells.map((cell) => ({
-      sourcePartIndex: cell.sourcePartIndex,
-      noteId: cell.noteId,
-    }))
-    const lyricCells = response.val.lyricCells.map((cell) => ({
-      sourcePartIndex: cell.sourcePartIndex,
-      noteId: cell.noteId,
-    }))
-    if (container) {
-      applyPersistedNoteHighlights(container, noteCells)
-      applyPersistedLyricHighlights(container, lyricCells)
-    }
-    return { noteCells, lyricCells }
-  }
-
-  const { noteCells, lyricCells } = container
-    ? applyLyricRangeSelection(
-        container,
-        lyricSpans,
-        anchorCell,
-        anchorState.anchor,
-        current,
-      )
-    : { noteCells: [], lyricCells: [] }
-  return { noteCells, lyricCells }
+        resolveCurrentId(anchorState, point, currentIdHint),
+      ),
+    ) ?? EMPTY_SELECTION
+  paintSelection(container, selection)
+  return selection
 }

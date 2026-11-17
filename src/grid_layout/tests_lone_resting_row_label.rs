@@ -36,7 +36,16 @@ fn row_labels(source: &str) -> Vec<String> {
     let score = group(document).unwrap();
     let config = RenderConfig::from_metadata(&score.metadata);
     let compile_result = consolidate(compile(&score));
-    let output = layout(&compile_result, &config, &header(), 2000.0, 4000.0, None);
+    let output = layout(
+        &compile_result,
+        &config,
+        &header(),
+        crate::grid_layout::PageLayout::Paged(crate::grid_layout::PageSize {
+            width_pt: 2000.0,
+            height_pt: 4000.0,
+        }),
+        None,
+    );
     output
         .pages
         .iter()
@@ -55,13 +64,12 @@ fn lone_part_single_resting_measure_has_no_label() {
     // single measure doesn't meet `MIN_REST_RUN_LENGTH`, so it stays a plain
     // `Rest`, not a collapsed `MultiMeasureRest` — but the rule still applies:
     // one row, entirely rest, nothing to distinguish it from.
-    let source = concat!(
-        "# parts\n",
-        "Soprano 1 [S1] = notes\n",
-        "\n",
-        "# score\n",
-        "[S1] 0 0 0 0\n",
-    );
+    let source = r#"parts ["Soprano 1" [S1]: notes],
+
+score """
+    [S1] 0 0 0 0
+    """,
+"#;
     assert_eq!(row_labels(source), Vec::<String>::new());
 }
 
@@ -71,16 +79,15 @@ fn lone_part_collapsed_multi_measure_rest_has_no_label() {
     // directive in between, so those measures collapse into a single
     // `MultiMeasureRest` block. Still just one row in the system, still
     // entirely rest, so the label is cleared.
-    let source = concat!(
-        "# parts\n",
-        "Soprano 1 [S1] = notes\n",
-        "\n",
-        "# score\n",
-        "[S1] 0 0 0 0\n",
-        "[S1] 0 0 0 0\n",
-        "[S1] 0 0 0 0\n",
-        "[S1] 0 0 0 0\n",
-    );
+    let source = r#"parts ["Soprano 1" [S1]: notes],
+
+score """
+    [S1] 0 0 0 0
+    [S1] 0 0 0 0
+    [S1] 0 0 0 0
+    [S1] 0 0 0 0
+    """,
+"#;
     assert_eq!(row_labels(source), Vec::<String>::new());
 }
 
@@ -92,26 +99,23 @@ fn second_part_with_real_content_keeps_the_resting_part_labeled() {
     // being hidden entirely by the (default-on) resting-part hiding. Now two
     // rows share the system, so S1's label is still needed to tell the rows
     // apart, even though S1's own row is entirely rest.
-    let source = concat!(
-        "# metadata\n",
-        "hide_resting_parts=no\n",
-        "\n",
-        "# parts\n",
-        "Soprano 1 [S1] = notes\n",
-        "Alto 1 [A1] = notes\n",
-        "\n",
-        "# score\n",
-        "[S1] 0 0 0 0\n",
-        "[A1] 1 2 3 4\n",
-        "\n",
-        "[S1] 0 0 0 0\n",
-        "[A1] 1 2 3 4\n",
-        "\n",
-        "[S1] 0 0 0 0\n",
-        "[A1] 1 2 3 4\n",
-        "\n",
-        "[S1] 0 0 0 0\n",
-        "[A1] 1 2 3 4\n",
-    );
+    let source = r#"metadata { hide resting parts: no },
+
+parts ["Soprano 1" [S1]: notes, "Alto 1" [A1]: notes],
+
+score """
+    [S1] 0 0 0 0
+    [A1] 1 2 3 4
+
+    [S1] 0 0 0 0
+    [A1] 1 2 3 4
+
+    [S1] 0 0 0 0
+    [A1] 1 2 3 4
+
+    [S1] 0 0 0 0
+    [A1] 1 2 3 4
+    """,
+"#;
     assert_eq!(row_labels(source), vec!["S1".to_string(), "A1".to_string()]);
 }

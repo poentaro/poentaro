@@ -1,6 +1,6 @@
 import type { Monaco } from '@monaco-editor/react'
 import type * as monacoEditor from 'monaco-editor'
-import type { NoteCellIn, NoteSelectionRun } from '../jianpuWasm'
+import type { NoteCellIn, NoteSelectionRun } from '../poentaroWasm'
 import { byteOffsetToStringIndex } from './byteSpan'
 
 /** One rendered note/rest hit-tested off the SVG during a range-select, keyed

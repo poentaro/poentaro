@@ -1,6 +1,6 @@
 Feature: Part focus editor
 
-  # Edits one part of the `# score` as a single stream, one measure per line,
+  # Edits one part of the `score` as a single stream, one measure per line,
   # in place of the main editor. Every other part shows as read-only ghost
   # lines around each measure, and the stream is re-barred as you type.
 
@@ -64,6 +64,19 @@ Feature: Part focus editor
       4 5 6
       """
 
+  Scenario: Deleting a note pulls a held note back across the barline
+    Given the held note melody fixture is loaded instead
+    When I choose part "M" from the Edit part as stream menu
+    And I place the cursor at the start of part focus line 1
+    And I press Delete in the part focus editor
+    Then the part focus stream is:
+      """
+      2 3 4 5 -
+      6 7 1 2
+      3 4
+      """
+    And the part focus editor has an error marker
+
   Scenario: The reformat undoes together with the keystroke
     When I choose part "M" from the Edit part as stream menu
     And I place the cursor at the start of part focus line 1
@@ -106,12 +119,32 @@ Feature: Part focus editor
       j k l
       """
 
-  Scenario: Typing past the last lyric slot is an error and is not re-cut
+  Scenario: Typing past the last lyric slot adds a measure on its own line
     When I choose part "W" from the Edit part as stream menu
     And I place the cursor at the end of the part focus stream
     And I type " extra" in the part focus editor
-    Then the part focus editor has an error marker
-    And the part focus Apply button is disabled
+    Then the part focus stream is:
+      """
+      a b c d
+      e f g h
+      i j k l
+      extra
+      """
+    And the part focus status says "1 measure changed"
+
+  Scenario: Typing lyrics before the no-lyrics placeholders drops the ones pushed past the end
+    Given the unwritten lyrics fixture is loaded instead
+    When I choose part "W" from the Edit part as stream menu
+    And I place the cursor at the start of part focus line 1
+    And I type "a b c d " in the part focus editor
+    Then the part focus stream is:
+      """
+      a b c d
+      _
+      _
+      """
+    When I apply the part focus editor
+    Then the main editor source is the first measure lyrics source
 
   Scenario: The preview follows the draft as I type
     When I choose part "W" from the Edit part as stream menu
@@ -124,7 +157,7 @@ Feature: Part focus editor
     And I place the cursor at the start of part focus line 1
     And I type "x" in the part focus editor
     And I place the cursor at the end of the part focus stream
-    And I type " extra" in the part focus editor
+    And I type " @" in the part focus editor
     Then the part focus editor has an error marker
     And the preview shows the text "xa"
 
@@ -193,6 +226,15 @@ Feature: Part focus editor
       """
     And the part focus status says "0 measures changed"
 
+  Scenario: A lyric stream bound to a chords part adds measures past the end of the score
+    Given the chord-bound lyrics fixture is loaded instead
+    When I choose part "C" from the Edit part as stream menu
+    And I place the cursor at the end of the part focus stream
+    And I type " | g h" in the part focus editor
+    Then the part focus status says "1 measure changed"
+    When I apply the part focus editor
+    Then the main editor source is the appended chord lyrics source
+
   Scenario: Applying the untouched stream re-bars an overflowing measure
     Given the overflowing melody fixture is loaded instead
     When I choose part "M" from the Edit part as stream menu
@@ -205,3 +247,31 @@ Feature: Part focus editor
     And the part focus status says "3 measures changed"
     When I apply the part focus editor
     Then the main editor source is the re-barred melody source
+
+  Scenario: Selecting stream text highlights the matching notes in the preview
+    When I choose part "M" from the Edit part as stream menu
+    And I select "2 3" on part focus line 1
+    Then the preview range-selects 2 notes of part "M"
+
+  Scenario: Selecting a lyric stream highlights the matching syllables in the preview
+    When I choose part "W" from the Edit part as stream menu
+    And I select "f g" on part focus line 2
+    Then the preview range-selects 2 lyrics
+
+  Scenario: Clicking a note of the focused part selects it in the stream
+    When I choose part "M" from the Edit part as stream menu
+    And I click note 6 of part "M" in the preview
+    Then the part focus editor selects "6" on line 2
+
+  Scenario: Clicking another part's note jumps the stream to that measure
+    When I choose part "M" from the Edit part as stream menu
+    And I click note 3 of part "B" in the preview
+    Then the part focus caret is at the start of line 2
+
+  Scenario: Selection keeps working while the stream has errors
+    When I choose part "M" from the Edit part as stream menu
+    And I place the cursor at the start of part focus line 3
+    And I type "(" in the part focus editor
+    Then the part focus editor has an error marker
+    When I select "2 3" on part focus line 1
+    Then the preview range-selects 2 notes of part "M"

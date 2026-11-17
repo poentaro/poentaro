@@ -2,17 +2,15 @@ import { expect, type Page } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Staff View Test"',
+  'metadata { title "Staff View Test" },',
   '',
-  '# parts',
-  'Soprano [S] = notes',
-  'Alto [A] = notes',
+  'parts ["Soprano" [S]: notes, "Alto" [A]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[S] 1 2 3 4',
-  '[A] 5, 6, 7, 1',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [S] 1 2 3 4',
+  '    [A] 5, 6, 7, 1',
+  '    """,',
 ].join('\n')
 
 const SOURCE_NOTE_COUNT = 8
@@ -29,12 +27,12 @@ Given(
   async ({ page }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'staff.jianpu',
-          userFiles: { 'staff.jianpu': src },
+          active: 'staff.poentaro',
+          userFiles: { 'staff.poentaro': src },
           bin: {},
-          fileIds: { 'staff.jianpu': crypto.randomUUID() },
+          fileIds: { 'staff.poentaro': crypto.randomUUID() },
         }),
       )
     }, SOURCE)
@@ -51,7 +49,7 @@ When(
   },
 )
 
-Then('the preview shows jianpu pages', async ({ page }) => {
+Then('the preview shows numbered pages', async ({ page }) => {
   await expect(page.locator('.preview-page').first()).toBeVisible()
   await expect(staffPage(page)).toHaveCount(0)
 })
@@ -154,13 +152,13 @@ Then('the staff PDF is named {string}', async ({}, name: string) => {
 })
 
 Then(
-  'the {word} PDF differs from the jianpu PDF',
+  'the {word} PDF differs from the numbered PDF',
   async ({}, notation: string) => {
     const exported = exportedFiles.get(notation)?.bytes
-    const jianpu = exportedFiles.get('jianpu')?.bytes
+    const numbered = exportedFiles.get('numbered')?.bytes
     expect(exported?.subarray(0, 4).toString()).toBe('%PDF')
-    expect(jianpu?.subarray(0, 4).toString()).toBe('%PDF')
-    expect(exported?.equals(jianpu as Buffer)).toBe(false)
+    expect(numbered?.subarray(0, 4).toString()).toBe('%PDF')
+    expect(exported?.equals(numbered as Buffer)).toBe(false)
   },
 )
 

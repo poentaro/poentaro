@@ -1,27 +1,23 @@
 #![allow(clippy::disallowed_macros)]
-use jianpu_generator::grid_layout::types::{GridContent, Header};
-use jianpu_generator::render_config::RenderConfig;
+use poentaro::grid_layout::types::{GridContent, Header};
+use poentaro::render_config::RenderConfig;
 
-const SOURCE: &str = concat!(
-    "# parts\n",
-    "Soprano [s1] = notes\n",
-    "Soprano [s2] = follow[s1]\n",
-    "Alto 1[a1] = follow[s1]\n",
-    "Alto 2 [a2] = follow[s1]\n",
-    "Tenor [t] = follow[s1]\n",
-    "\n",
-    "# groups\n",
-    "Alto [a] = a1 a2\n",
-    "Soprano [s] = s1 s2\n",
-    "Vocal [v] = a s\n",
-    "\n",
-    "# score\n",
-    "[t] 6,\n",
-    "[a2] 6,\n",
-    "[a1] 3\n",
-    "[s2] 6\n",
-    "[s1] 0\n",
-);
+const SOURCE: &str = r#"parts [
+    "Soprano" [s1] : notes,
+    "Soprano" [s2] : follow [s1],
+    "Alto 1" [a1] : follow [s1],
+    "Alto 2" [a2] : follow [s1],
+    "Tenor" [t] : follow [s1],
+],
+
+score """
+    [t] 6,
+    [a2] 6,
+    [a1] 3
+    [s2] 6
+    [s1] 0
+    """,
+"#;
 
 /// Reported bug: the rendered score shows an unexplained vertical gap between
 /// the `s2` row and the `a1` row that isn't present between any other pair of
@@ -36,9 +32,9 @@ const SOURCE: &str = concat!(
 /// content.
 #[test]
 fn no_orphan_empty_lyric_row_when_no_part_has_lyric_text() {
-    let score = jianpu_generator::compile(SOURCE, "test.jianpu", &[]).unwrap();
-    let compile_result = jianpu_generator::compiler::compile(&score);
-    let compile_result = jianpu_generator::consolidator::consolidate(compile_result);
+    let score = poentaro::compile(SOURCE, "test.poentaro", &[]).unwrap();
+    let compile_result = poentaro::compiler::compile(&score);
+    let compile_result = poentaro::consolidator::consolidate(compile_result);
     let config = RenderConfig::from_metadata(&score.metadata);
     let header = Header {
         title: None,
@@ -54,12 +50,11 @@ fn no_orphan_empty_lyric_row_when_no_part_has_lyric_text() {
         part_legend_font_size: score.metadata.part_legend.font_size as f32,
         ..Default::default()
     };
-    let pages = jianpu_generator::grid_layout::layout(
+    let pages = poentaro::grid_layout::layout(
         &compile_result,
         &config,
         &header,
-        595.0,
-        842.0,
+        poentaro::grid_layout::PageLayout::A4,
         None,
     )
     .pages;

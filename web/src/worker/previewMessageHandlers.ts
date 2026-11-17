@@ -1,6 +1,6 @@
-import { type GenerateWavResponse, jianpuWasm } from '../jianpuWasm'
+import { type GenerateWavResponse, poentaroWasm } from '../poentaroWasm'
 import { binaryBufferFromResult } from './exportMessageHandlers'
-import type { WorkerRequest, WorkerResponse } from './jianpu.worker'
+import type { WorkerRequest, WorkerResponse } from './poentaro.worker'
 
 function postPreview(
   type: 'instrumentPreview' | 'percussionPreview',
@@ -37,7 +37,7 @@ export function handlePreviewInstrument(
   postPreview(
     'instrumentPreview',
     msg.id,
-    jianpuWasm().generateInstrumentPreviewWav(
+    poentaroWasm().generateInstrumentPreviewWav(
       msg.programNumber,
       loadedSoundfont,
     ),
@@ -58,6 +58,6 @@ export function handlePreviewPercussion(
   postPreview(
     'percussionPreview',
     msg.id,
-    jianpuWasm().generatePercussionPreviewWav(msg.key, loadedSoundfont),
+    poentaroWasm().generatePercussionPreviewWav(msg.key, loadedSoundfont),
   )
 }

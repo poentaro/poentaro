@@ -2,20 +2,19 @@ import { expect } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Autosave Test"',
+  'metadata { title "Autosave Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 async function getStoredSource(page: import('@playwright/test').Page) {
   return page.evaluate(() => {
-    const raw = localStorage.getItem('jianpu:files:v1')
+    const raw = localStorage.getItem('poentaro:files:v1')
     if (!raw) return ''
     const store = JSON.parse(raw) as {
       active: string
@@ -31,7 +30,7 @@ Given(
     await page.addInitScript(
       ({ src, fileName }) => {
         localStorage.setItem(
-          'jianpu:files:v1',
+          'poentaro:files:v1',
           JSON.stringify({
             active: fileName,
             userFiles: { [fileName]: src },

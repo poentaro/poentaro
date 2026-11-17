@@ -1,0 +1,43 @@
+.shared-preview-banner {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  /* Sorts after `.app-header-actions` (default order: 0), which absorbs the
+     header's free space via its own margin-left: auto — placing the banner
+     at the true rightmost edge instead of merely right of the title. */
+  order: 1;
+}
+
+.shared-preview-banner p {
+  /* Override the <p>'s default block margin, which otherwise inflates the
+     flex row's height beyond the header's other items. */
+  margin: 0;
+}
+
+.shared-preview-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.shared-preview-import-btn,
+.shared-preview-discard-btn {
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.shared-preview-import-btn {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.shared-preview-import-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}

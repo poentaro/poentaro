@@ -82,7 +82,7 @@ and the only thing preventing collapse is `MIN_MEASURE_WIDTH_PT` (a
   `usable_music_width`, capped by `max_measures_per_system` as an upper
   bound rather than the sole criterion. This is the architecturally correct
   fix but is a real behavior change — it would reflow every existing
-  `.jianpu` file's line breaks, so it needs deliberate scoping (e.g. does
+  `.poentaro` file's line breaks, so it needs deliberate scoping (e.g. does
   `max_measures_per_system` become a soft cap or stay a hard cap that can
   still force overflow/squeeze when content is unusually dense?).
 - **Reserve minimum padding per column**, mirroring

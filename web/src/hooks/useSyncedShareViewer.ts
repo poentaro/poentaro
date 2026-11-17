@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FileStoreState } from '../fileStore'
-import type { FolderSnapshot } from '../jianpuWasm'
+import type { FolderSnapshot } from '../poentaroWasm'
 import type { SharePayload } from '../shareUrl'
 import type { StorageBackend } from '../storage/types'
 import {
   callWorker,
   createWorkerClient,
+  traceIdOf,
   WorkerRequestError,
 } from '../syncedShare/workerClient'
 import { clearSyncedShare, parseSyncedShare } from '../syncedShareUrl'
@@ -61,13 +62,31 @@ export function useSyncedShareViewer(
         ? 'loading'
         : 'none',
     )
+  /** The failed load's trace ID, shown with the `unreachable`/`too-large`
+   * notice. */
+  const [syncedShareViewerTraceId, setSyncedShareViewerTraceId] = useState<
+    string | null
+  >(null)
   const [syncedFolder, setSyncedFolder] = useState<FolderSnapshot | null>(null)
+  /** Set once the viewer leaves, so a load still in flight is dropped. */
+  const leftRef = useRef(false)
   const { importFile: importToStorage } = useImportToStorage(
     store,
     backend,
     setStore,
     setFileOpError,
   )
+  /** Leaves viewer mode: drops the link from the URL and everything it
+   * loaded, whatever state the load reached. */
+  const leaveSyncedShare = useCallback(() => {
+    leftRef.current = true
+    clearSyncedShare()
+    setSyncedShareViewerPreview(null)
+    setSyncedFolder(null)
+    setSyncedShareViewerStatus('none')
+    setSyncedShareViewerTraceId(null)
+  }, [])
+
   const handleImportSyncedShare = useCallback(async () => {
     if (!syncedShareViewerPreview) return
     try {
@@ -75,13 +94,11 @@ export function useSyncedShareViewer(
         syncedShareViewerPreview.filename,
         syncedShareViewerPreview.content,
       )
-      clearSyncedShare()
-      setSyncedShareViewerPreview(null)
-      setSyncedShareViewerStatus('none')
+      leaveSyncedShare()
     } catch {
       // handled by importToStorage via setFileOpError
     }
-  }, [syncedShareViewerPreview, importToStorage])
+  }, [syncedShareViewerPreview, importToStorage, leaveSyncedShare])
 
   useEffect(() => {
     const parsed = parseSyncedShare()
@@ -99,7 +116,7 @@ export function useSyncedShareViewer(
       }),
     )
       .then((doc) => {
-        if (cancelled) return
+        if (cancelled || leftRef.current) return
         if (doc.ended) {
           setSyncedShareViewerPreview(null)
           setSyncedShareViewerStatus('ended')
@@ -123,8 +140,9 @@ export function useSyncedShareViewer(
         setSyncedShareViewerStatus('synced')
       })
       .catch((error: unknown) => {
-        if (cancelled) return
+        if (cancelled || leftRef.current) return
         setSyncedShareViewerStatus(failureStatus(error))
+        setSyncedShareViewerTraceId(traceIdOf(error))
       })
 
     return () => {
@@ -132,17 +150,12 @@ export function useSyncedShareViewer(
     }
   }, [setEditorCollapsed])
 
-  const clearSyncedFolder = useCallback(() => {
-    clearSyncedShare()
-    setSyncedFolder(null)
-    setSyncedShareViewerStatus('none')
-  }, [])
-
   return {
     syncedFolder,
-    clearSyncedFolder,
+    leaveSyncedShare,
     syncedShareViewerPreview,
     syncedShareViewerStatus,
+    syncedShareViewerTraceId,
     handleImportSyncedShare,
   }
 }

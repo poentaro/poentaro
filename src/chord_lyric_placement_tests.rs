@@ -6,6 +6,7 @@ fn syllable(text: &str, bracketed: bool) -> Syllable {
         text: text.to_string(),
         held: false,
         bracketed,
+        pinyin: None,
         span: Span::new(0, 0),
     }
 }

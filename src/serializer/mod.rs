@@ -21,7 +21,7 @@ fn serialize_doc(doc: &SvgDocument, source: Option<&str>) -> String {
     let mut body = String::new();
     if let Some(source) = source {
         body.push_str(&format!(
-            r#"<metadata id="jianpu-source">{}</metadata>"#,
+            r#"<metadata id="poentaro-source">{}</metadata>"#,
             base64::engine::general_purpose::STANDARD.encode(source)
         ));
     }

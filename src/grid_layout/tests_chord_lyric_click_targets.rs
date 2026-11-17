@@ -18,6 +18,7 @@ fn chord_row_and_chord_lyric_row() -> Vec<MeasureRow> {
             column,
             ElementContent::Lyric {
                 text: text.to_string(),
+                ruby: None,
                 note_id,
             },
             None,
@@ -73,9 +74,10 @@ fn chord_row_and_chord_lyric_row() -> Vec<MeasureRow> {
 
 /// Under a chord part the lyric line carries its own timing: a bracketed
 /// syllable must not be widened to its chord's full span, or it would
-/// overlap the unbracketed syllables spread inside that span.
+/// overlap the unbracketed syllables spread inside that span. Each box
+/// instead ends at the next syllable or the trailing bar line.
 #[test]
-fn chord_lyric_click_targets_stay_one_column_wide() {
+fn chord_lyric_click_targets_cover_their_own_intervals() {
     let block = MeasureBlock {
         rows: chord_row_and_chord_lyric_row(),
         decorations: vec![],
@@ -98,8 +100,7 @@ fn chord_lyric_click_targets_stay_one_column_wide() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -111,8 +112,12 @@ fn chord_lyric_click_targets_stay_one_column_wide() {
         .iter()
         .find(|t| t.note_id == 1 << 28)
         .expect("floating");
-    // Widened to its chord's span it would end at column 6.0; instead it is
-    // one column past its (bar-line-snapped) start.
-    assert_eq!(bracketed.column_end - bracketed.column_start, 1.0);
+    // The first box includes both the leading bar-line column and its
+    // syllable's own column, stopping at the next syllable rather than
+    // widening to the chord's full duration.
+    assert_eq!(bracketed.column_start, 1.0);
+    assert_eq!(bracketed.column_end, floating.column_start);
+    assert_eq!(bracketed.column_end - bracketed.column_start, 2.0);
     assert_eq!(floating.column_end - floating.column_start, 1.0);
+    assert_eq!(targets.last().unwrap().column_end, 8.0);
 }

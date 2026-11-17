@@ -1,5 +1,5 @@
 import { type ReactElement, useState } from 'react'
-import type { HistoryRow } from '../../jianpuWasm'
+import type { HistoryRow } from '../../poentaroWasm'
 import { copyDiagnostics } from '../syncPanel/copyDiagnostics'
 import { Highlighted } from './Highlighted'
 import {

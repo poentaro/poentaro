@@ -1,3 +1,4 @@
+use super::extension::strip_file_extension;
 use super::folder_share::{ShareOverview, SharedVia};
 use super::path::TreePath;
 use super::selection::{file_check, folder_check, CheckState};
@@ -68,7 +69,7 @@ pub struct TreeViewRow {
 }
 
 /// A half-open range of UTF-16 code units in a row's displayed name (without
-/// the `.jianpu` extension), the unit JavaScript string indices use.
+/// the `.poentaro` extension), the unit JavaScript string indices use.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NameMatch {
     pub start: usize,
@@ -264,19 +265,16 @@ fn hint_row(depth: usize, ancestor_keys: Vec<String>) -> TreeViewRow {
 }
 
 /// Whether a file or folder name contains the (already lowercased) query.
-/// The `.jianpu` extension is not part of the name the user sees.
+/// The extension is not part of the name the user sees.
 fn name_matches(name: &str, query: &str) -> bool {
-    name.strip_suffix(".jianpu")
-        .unwrap_or(name)
-        .to_lowercase()
-        .contains(query)
+    strip_file_extension(name).to_lowercase().contains(query)
 }
 
 /// Where the (already lowercased) query occurs in the name as the user sees
 /// it, so the list can highlight it. `None` when it does not occur, or when
 /// lowercasing changes the name's length (offsets could not be mapped back).
 fn name_match(name: &str, query: &str) -> Option<NameMatch> {
-    let shown = name.strip_suffix(".jianpu").unwrap_or(name);
+    let shown = strip_file_extension(name);
     let lowered = shown.to_lowercase();
     if lowered.chars().count() != shown.chars().count() {
         return None;

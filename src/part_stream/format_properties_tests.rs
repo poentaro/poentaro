@@ -7,7 +7,7 @@ use quickcheck::{QuickCheck, TestResult};
 use crate::part_stream::{apply_part_stream, extract_part_stream};
 
 use super::super::stream_generator::GeneratedStream;
-use super::{format_part_stream, FormattedPartStream};
+use super::{format_part_stream, split_part_stream, FormattedPartStream};
 
 fn apply_edits(stream: &str, formatted: &FormattedPartStream) -> String {
     formatted
@@ -26,6 +26,15 @@ fn without_whitespace(text: &str) -> String {
         .collect()
 }
 
+/// Whether `formatted` is `text` without whitespace, less any trailing `_`
+/// placeholders the formatter deleted.
+fn keeps_non_whitespace(text: &str, formatted: &str) -> bool {
+    let kept = without_whitespace(formatted);
+    without_whitespace(text)
+        .strip_prefix(&kept)
+        .is_some_and(|deleted| deleted.chars().all(|character| character == '_'))
+}
+
 fn check(property: fn(GeneratedStream) -> TestResult) {
     QuickCheck::new()
         .tests(3000)
@@ -42,7 +51,7 @@ fn failure(stream: &GeneratedStream, message: &str) -> TestResult {
 }
 
 #[test]
-fn edits_are_sorted_non_overlapping_whitespace_on_char_boundaries() {
+fn edits_are_sorted_non_overlapping_on_char_boundaries_and_only_touch_whitespace_or_placeholders() {
     check(|stream| {
         let text = stream.text();
         let formatted = stream.formatted();
@@ -52,13 +61,17 @@ fn edits_are_sorted_non_overlapping_whitespace_on_char_boundaries() {
             .tuple_windows()
             .all(|(before, after)| before.span.end <= after.span.start);
         let well_formed = formatted.edits.iter().all(|edit| {
+            let replaced = &text[edit.span.start..edit.span.end];
+            let deletes_placeholders = edit.replacement.is_empty()
+                && replaced
+                    .chars()
+                    .all(|character| character.is_whitespace() || character == '_');
             edit.span.start <= edit.span.end
                 && text.is_char_boundary(edit.span.start)
                 && text.is_char_boundary(edit.span.end)
-                && text[edit.span.start..edit.span.end]
-                    .chars()
-                    .all(char::is_whitespace)
-                && edit.replacement.chars().all(char::is_whitespace)
+                && (deletes_placeholders
+                    || (replaced.chars().all(char::is_whitespace)
+                        && edit.replacement.chars().all(char::is_whitespace)))
         });
         if in_order && well_formed {
             TestResult::passed()
@@ -69,11 +82,11 @@ fn edits_are_sorted_non_overlapping_whitespace_on_char_boundaries() {
 }
 
 #[test]
-fn formatting_changes_whitespace_only() {
+fn formatting_changes_only_whitespace_and_trailing_placeholders() {
     check(|stream| {
         let text = stream.text();
         let formatted_text = apply_edits(&text, &stream.formatted());
-        if without_whitespace(&formatted_text) == without_whitespace(&text) {
+        if keeps_non_whitespace(&text, &formatted_text) {
             TestResult::passed()
         } else {
             failure(&stream, &format!("formatted to {formatted_text:?}"))
@@ -130,11 +143,12 @@ fn formatting_does_not_change_what_applies() {
 }
 
 #[test]
-fn a_stream_with_an_error_is_left_as_typed() {
+fn a_stream_with_an_error_re_barring_cant_cause_is_left_as_typed() {
     check(|stream| {
         let fixture = stream.fixture();
-        let applied = apply_part_stream(fixture.source, fixture.abbreviation, &stream.text());
-        if applied.source.is_some() {
+        let blocked = split_part_stream(fixture.source, fixture.abbreviation, &stream.text())
+            .is_none_or(|split| split.blocks_rebarring);
+        if !blocked {
             return TestResult::discard();
         }
         let formatted = stream.formatted();
@@ -196,8 +210,11 @@ fn a_cursor_keeps_its_place_among_the_non_whitespace() {
         let formatted = stream.formatted();
         let formatted_text = apply_edits(&text, &formatted);
         let cursors = stream.cursors();
+        // Deleted placeholders are the stream's last non-whitespace, so a
+        // cursor among them counts only what's kept.
+        let kept_count = without_whitespace(&formatted_text).len();
         let non_whitespace_before =
-            |text: &str, offset: usize| without_whitespace(&text[..offset]).len();
+            |text: &str, offset: usize| without_whitespace(&text[..offset]).len().min(kept_count);
         let all_kept = cursors
             .iter()
             .zip(&formatted.cursors)

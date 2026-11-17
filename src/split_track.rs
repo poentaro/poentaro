@@ -13,7 +13,7 @@ pub fn sanitize_track_name(name: &str) -> String {
     name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "-")
 }
 
-/// Abbreviation → display name from `# parts` declarations.
+/// Abbreviation → display name from `parts` declarations.
 pub fn part_display_name_map(
     source: &str,
     filename: &str,
@@ -45,8 +45,8 @@ pub fn split_track_filename(base_name: &str, label: &str, extension: &str) -> St
     )
 }
 
-/// `track` followed by the lyric parts that sing along to it, so a split
-/// export of one track keeps its lyrics.
+/// `track` followed by the lyric parts sung on it, so a split export of one
+/// track keeps its lyrics.
 pub fn track_with_its_lyric_parts(score: &Score, track: &str) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     let lyric_names = score
@@ -57,7 +57,7 @@ pub fn track_with_its_lyric_parts(score: &Score, track: &str) -> Vec<String> {
             part.slice()
                 .lyrics
                 .as_ref()
-                .is_some_and(|lyrics| lyrics.target_name == track)
+                .is_some_and(|lyrics| lyrics.sung_on.iter().any(|name| name == track))
         })
         .filter_map(|part| part.name().cloned())
         .filter(|name| seen.insert(name.clone()));
@@ -91,25 +91,32 @@ pub fn split_pdf_filename(base_name: &str, label: &str) -> String {
     split_track_filename(base_name, label, "pdf")
 }
 
-/// Track list for split export. Empty `tracks_filter` → all score tracks;
-/// falls back to `# parts` declaration abbreviations when score has no named parts.
+/// Track list for split export: `selection.tracks` when given, else every
+/// score track (falling back to the `parts` declarations when the score has
+/// no named parts), narrowed to the preset's `visible_parts`.
 pub fn split_track_names(
     source: &str,
     filename: &str,
     score: &Score,
-    tracks_filter: &[String],
+    selection: SplitSelection,
 ) -> Result<Vec<String>, IrrecoverableError> {
-    let mut names = if tracks_filter.is_empty() {
-        collect_track_names(score)
-    } else {
-        tracks_filter.to_vec()
-    };
+    if !selection.tracks.is_empty() {
+        return Ok(selection.tracks.to_vec());
+    }
+    let mut names = collect_track_names(score);
     if names.is_empty() {
         names = list_parts_from_source(source, filename, &[])?
             .into_iter()
             .filter(|part| part.sounds)
             .map(|part| part.abbreviation)
             .collect();
+    }
+    let preset = match selection.preset_name {
+        Some(name) => crate::chosen_preset_from_source(source, filename, name)?,
+        None => None,
+    };
+    if let Some(visible) = preset.and_then(|preset| preset.visible_parts) {
+        names.retain(|name| visible.contains(name));
     }
     Ok(names)
 }
@@ -122,21 +129,42 @@ pub struct SplitPdfEntry {
     pub pdf: Vec<u8>,
 }
 
+/// Which tracks a split export writes, and the `preset` it exports under.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SplitSelection<'a> {
+    /// Empty → all tracks; non-empty → only these abbreviations.
+    pub tracks: &'a [String],
+    /// Overlays that `preset`'s metadata on every file, keeps only its
+    /// `visible_parts` (unless `tracks` is given), and names the files after it.
+    pub preset_name: Option<&'a str>,
+}
+
+impl SplitSelection<'_> {
+    /// `base_name`, followed by ` (<preset>)` when exporting under a preset, the way a
+    /// single export is labelled.
+    pub fn file_base_name(&self, base_name: &str) -> String {
+        match self.preset_name {
+            Some(preset) => format!("{base_name} ({})", sanitize_track_name(preset)),
+            None => base_name.to_string(),
+        }
+    }
+}
+
 /// Parse once, render one PDF per track (CLI `--split-tracks` semantics).
 ///
-/// `tracks_filter`: empty → all tracks; non-empty → only listed abbreviations.
 /// A track exports together with the lyric parts that sing along to it.
 #[cfg(feature = "pdf")]
 pub fn write_split_pdfs_from_source(
     source: &str,
     filename: &str,
     base_name: &str,
-    tracks_filter: &[String],
+    selection: SplitSelection,
     fonts: &crate::fonts::FontBytesByFamily,
     note_labels: crate::compiler::NoteLabels,
 ) -> Result<Vec<SplitPdfEntry>, IrrecoverableError> {
-    let score = crate::compile(source, filename, &[])?;
-    let track_names = split_track_names(source, filename, &score, tracks_filter)?;
+    let score = crate::compile_with_preset(source, filename, &[], selection.preset_name)?;
+    let track_names = split_track_names(source, filename, &score, selection)?;
+    let base_name = selection.file_base_name(base_name);
     let display_names = part_display_name_map(source, filename)?;
     let all_parts = list_parts_from_source(source, filename, &[])?;
     let mut entries = Vec::with_capacity(track_names.len());
@@ -150,7 +178,7 @@ pub fn write_split_pdfs_from_source(
         let label = split_track_label(&display_names, &track);
         entries.push(SplitPdfEntry {
             track_name: track.clone(),
-            filename: split_pdf_filename(base_name, &label),
+            filename: split_pdf_filename(&base_name, &label),
             pdf,
         });
     }
@@ -236,17 +264,16 @@ pub fn zip_split_entries(entries: &[SplitFileEntry]) -> Result<Vec<u8>, Irrecove
 }
 
 /// Parse once, write one MIDI file per track.
-///
-/// `tracks_filter`: empty → all tracks; non-empty → only listed abbreviations.
 #[cfg(feature = "midi")]
 pub fn write_split_midis_from_source(
     source: &str,
     filename: &str,
     base_name: &str,
-    tracks_filter: &[String],
+    selection: SplitSelection,
 ) -> Result<Vec<SplitFileEntry>, IrrecoverableError> {
-    let score = crate::compile(source, filename, &[])?;
-    let track_names = split_track_names(source, filename, &score, tracks_filter)?;
+    let score = crate::compile_with_preset(source, filename, &[], selection.preset_name)?;
+    let track_names = split_track_names(source, filename, &score, selection)?;
+    let base_name = selection.file_base_name(base_name);
     let display_names = part_display_name_map(source, filename)?;
     let mut entries = Vec::with_capacity(track_names.len());
     for track in track_names {
@@ -256,68 +283,8 @@ pub fn write_split_midis_from_source(
         let label = split_track_label(&display_names, &track);
         entries.push(SplitFileEntry {
             track_name: track.clone(),
-            filename: split_track_filename(base_name, &label, "mid"),
+            filename: split_track_filename(&base_name, &label, "mid"),
             bytes: midi,
-        });
-    }
-    Ok(entries)
-}
-
-/// Parse once, synthesize one WAV file per track.
-///
-/// `tracks_filter`: empty → all tracks; non-empty → only listed abbreviations.
-#[cfg(feature = "wav")]
-pub fn write_split_wavs_from_source(
-    source: &str,
-    filename: &str,
-    base_name: &str,
-    tracks_filter: &[String],
-    sf2_bytes: &[u8],
-) -> Result<Vec<SplitFileEntry>, IrrecoverableError> {
-    let score = crate::compile(source, filename, &[])?;
-    let track_names = split_track_names(source, filename, &score, tracks_filter)?;
-    let display_names = part_display_name_map(source, filename)?;
-    let mut entries = Vec::with_capacity(track_names.len());
-    for track in track_names {
-        let mut score_clone = score.clone();
-        filter_tracks(&mut score_clone, std::slice::from_ref(&track));
-        let midi_bytes = crate::midi::write_midi(&score_clone)?;
-        let wav = crate::wav::write_wav(&midi_bytes, sf2_bytes, None)?;
-        let label = split_track_label(&display_names, &track);
-        entries.push(SplitFileEntry {
-            track_name: track.clone(),
-            filename: split_track_filename(base_name, &label, "wav"),
-            bytes: wav,
-        });
-    }
-    Ok(entries)
-}
-
-/// Parse once, synthesize one MP3 file per track.
-///
-/// `tracks_filter`: empty → all tracks; non-empty → only listed abbreviations.
-#[cfg(feature = "mp3")]
-pub fn write_split_mp3s_from_source(
-    source: &str,
-    filename: &str,
-    base_name: &str,
-    tracks_filter: &[String],
-    sf2_bytes: &[u8],
-) -> Result<Vec<SplitFileEntry>, IrrecoverableError> {
-    let score = crate::compile(source, filename, &[])?;
-    let track_names = split_track_names(source, filename, &score, tracks_filter)?;
-    let display_names = part_display_name_map(source, filename)?;
-    let mut entries = Vec::with_capacity(track_names.len());
-    for track in track_names {
-        let mut score_clone = score.clone();
-        filter_tracks(&mut score_clone, std::slice::from_ref(&track));
-        let midi_bytes = crate::midi::write_midi(&score_clone)?;
-        let mp3 = crate::wav::write_mp3(&midi_bytes, sf2_bytes, None)?;
-        let label = split_track_label(&display_names, &track);
-        entries.push(SplitFileEntry {
-            track_name: track.clone(),
-            filename: split_track_filename(base_name, &label, "mp3"),
-            bytes: mp3,
         });
     }
     Ok(entries)

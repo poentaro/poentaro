@@ -1,4 +1,4 @@
-//! Part stream editing: edit **one part** of the `# score` as a single
+//! Part stream editing: edit **one part** of the `score` as a single
 //! continuous stream of musical elements (no measure groups, no barlines, no
 //! directives), then apply it back into the measure-grouped source.
 //!
@@ -24,6 +24,7 @@ mod extract;
 mod focus;
 mod format;
 mod lyrics;
+mod selection;
 mod split;
 #[cfg(test)]
 mod stream_generator;
@@ -35,6 +36,7 @@ use document::ScoreDocument;
 use editable::editable_part;
 pub use focus::{part_focus_measures, FocusMeasure};
 pub use format::{format_part_stream, FormattedPartStream, StreamCursor, StreamTextEdit};
+pub use selection::{part_stream_ranges_to_source, source_ranges_to_part_stream};
 
 /// A follow part's measure that it doesn't write, so it copies its target.
 const FOLLOW_PLACEHOLDER: &str = "@";
@@ -71,7 +73,7 @@ pub struct PartStream {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PartStreamError {
-    /// `# parts` / `# score` could not be resolved.
+    /// `parts` / `score` could not be resolved.
     SourceDoesNotParse { message: String },
     /// No part with this abbreviation is declared.
     UnknownPart { abbreviation: String },

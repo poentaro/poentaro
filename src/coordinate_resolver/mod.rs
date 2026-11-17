@@ -4,6 +4,7 @@ mod directive_line_conversion;
 mod flush_left;
 mod highlight_click_targets;
 mod highlights;
+mod page_geometry;
 mod post_arc_conversion;
 pub mod resolve;
 mod rest_run;

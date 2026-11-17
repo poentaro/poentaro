@@ -3,15 +3,15 @@ import {
   type FileName,
   type HistoryFilter,
   type HistoryRow,
-  jianpuWasm,
   type Message,
+  poentaroWasm,
   type Queue,
   type QueueSummary,
   type Resolution,
   type SendRequest,
   type SendResult,
   type StoredRecord,
-} from '../../jianpuWasm'
+} from '../../poentaroWasm'
 import type { Scheduler } from './outboxScheduler'
 import type { OutboxStore } from './outboxStore'
 
@@ -112,7 +112,7 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
   const snapshot = (): OutboxSnapshot => ({
     queue,
     summary: loaded
-      ? jianpuWasm().outboxSummarize(queue, nowMs())
+      ? poentaroWasm().outboxSummarize(queue, nowMs())
       : {
           lanes: [],
           totalPending: 0,
@@ -130,7 +130,7 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
 
   const persistNow = async (): Promise<void> => {
     if (halted) return
-    const records = jianpuWasm().outboxEncodeQueue(queue)
+    const records = poentaroWasm().outboxEncodeQueue(queue)
     const next = new Map(records.map((record) => [record.key, record.value]))
     const puts = records.filter(
       (record) => persisted.get(record.key) !== record.value,
@@ -155,7 +155,7 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
     )
     const owned = records.filter((record) => isCodecKey(record.key))
     try {
-      queue = jianpuWasm().outboxDecodeQueue(owned)
+      queue = poentaroWasm().outboxDecodeQueue(owned)
       halted = null
       persisted = new Map(owned.map((record) => [record.key, record.value]))
     } catch (error) {
@@ -173,7 +173,7 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
     request: SendRequest,
     revision: bigint,
   ): Promise<void> => {
-    const write = jianpuWasm().outboxRecordSent(
+    const write = poentaroWasm().outboxRecordSent(
       queueBefore,
       sentRecords,
       request.fileId,
@@ -192,7 +192,7 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
   }
 
   const wakeAtNextDue = () => {
-    const next = jianpuWasm().outboxNextWakeMs(queue)
+    const next = poentaroWasm().outboxNextWakeMs(queue)
     scheduler?.wakeAt(next === undefined ? null : Number(next))
   }
 
@@ -206,7 +206,7 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
 
   const drainOnce = async (signal: AbortSignal): Promise<void> => {
     while (!signal.aborted && !halted) {
-      const begun = jianpuWasm().outboxBeginSend(queue, nowMs())
+      const begun = poentaroWasm().outboxBeginSend(queue, nowMs())
       queue = begun.queue
       await persist()
       notify()
@@ -216,7 +216,7 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
       if (result.tag === 'ok') {
         await runHook(() => recordSent(queue, request, result.val.revision))
       }
-      queue = jianpuWasm().outboxOnResult(
+      queue = poentaroWasm().outboxOnResult(
         queue,
         request.fileId,
         request.messageId,
@@ -258,22 +258,33 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
   /** Exists only while started: stopping disposes it, starting rebuilds it. */
   let scheduler: Scheduler | null = null
 
-  const mutate = async (change: () => Queue): Promise<void> => {
-    if (halted) {
-      throw new Error(
-        'The outbox could not be read, so it will not accept new messages',
-      )
-    }
-    // Another tab may have queued messages since this one last read the
-    // store; build on what is stored so neither tab's messages are lost.
-    if (!isLeader && loaded) await load()
-    if (halted) throw new Error('The outbox could not be read')
-    queue = change()
-    await persist()
-    notify()
-    deps.changes?.announce()
-    void requestDrain().catch(() => undefined)
+  /** Mutations and the new leader's re-read of the store run one at a
+   * time: a re-read that started before a mutation and answered after it
+   * would otherwise put back the queue from before the mutation. */
+  let exclusive: Promise<void> = Promise.resolve()
+  const oneAtATime = (task: () => Promise<void>): Promise<void> => {
+    const run = exclusive.then(task)
+    exclusive = run.catch(() => undefined)
+    return run
   }
+
+  const mutate = (change: () => Queue): Promise<void> =>
+    oneAtATime(async () => {
+      if (halted) {
+        throw new Error(
+          'The outbox could not be read, so it will not accept new messages',
+        )
+      }
+      // Another tab may have queued messages since this one last read the
+      // store; build on what is stored so neither tab's messages are lost.
+      if (!isLeader && loaded) await load()
+      if (halted) throw new Error('The outbox could not be read')
+      queue = change()
+      await persist()
+      notify()
+      deps.changes?.announce()
+      void requestDrain().catch(() => undefined)
+    })
 
   const refreshSent = async (): Promise<void> => {
     sentRecords = (await store.loadAll()).filter((record) =>
@@ -312,8 +323,10 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
         }) ?? null
       stopLeading = runAsLeader(async (signal) => {
         // The previous leader may have changed the stored queue since we loaded.
-        await load()
-        notify()
+        await oneAtATime(async () => {
+          await load()
+          notify()
+        })
         isLeader = true
         leaderSignal = signal
         void requestDrain().catch(() => undefined)
@@ -337,7 +350,7 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
     },
     enqueue: (fileId, message) =>
       mutate(() =>
-        jianpuWasm().outboxEnqueue(
+        poentaroWasm().outboxEnqueue(
           queue,
           fileId,
           message,
@@ -346,15 +359,19 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
         ),
       ),
     resolve: async (fileId, resolution) => {
-      await mutate(() => jianpuWasm().outboxResolve(queue, fileId, resolution))
+      await mutate(() =>
+        poentaroWasm().outboxResolve(queue, fileId, resolution),
+      )
       if (resolution.tag === 'discard') {
         await runHook(() => deps.onDiscarded?.(fileId))
       }
     },
     resolveSignedIn: () =>
-      mutate(() => jianpuWasm().outboxResolveSignedIn(queue)),
+      mutate(() => poentaroWasm().outboxResolveSignedIn(queue)),
     recordRevision: (fileId, revision) =>
-      mutate(() => jianpuWasm().outboxRecordRevision(queue, fileId, revision)),
+      mutate(() =>
+        poentaroWasm().outboxRecordRevision(queue, fileId, revision),
+      ),
     subscribe(listener) {
       listeners.add(listener)
       if (started) listener(snapshot())
@@ -363,7 +380,7 @@ export function createOutboxLooper(deps: OutboxLooperDeps): OutboxLooper {
     snapshot,
     historyRows: (fileNames, filter) =>
       loaded
-        ? jianpuWasm().outboxHistoryRows(
+        ? poentaroWasm().outboxHistoryRows(
             queue,
             sentRecords,
             fileNames,

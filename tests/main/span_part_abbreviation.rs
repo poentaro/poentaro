@@ -1,25 +1,21 @@
 #![allow(clippy::disallowed_macros)]
-use jianpu_generator::lyric_spans::{
+use poentaro::lyric_spans::{
     group_selected_lyrics_into_contiguous_runs, list_lyric_spans_from_source, LyricCell,
 };
-use jianpu_generator::note_spans::{
+use poentaro::note_spans::{
     group_selected_notes_into_contiguous_runs, list_note_spans_from_source, NoteCell,
 };
 
-const THREE_PART_SOURCE: &str = r#"# metadata
-title = "t"
+const THREE_PART_SOURCE: &str = r#"metadata { title "t" },
 
-# parts
-Soprano [S] = notes
-Alto [A] = notes
-Bass [B] = notes
-Bass lyrics [Bv1] = lyrics[B]
+parts ["Soprano" [S]: notes, "Alto" [A]: notes, "Bass" [B]: notes, "Bass lyrics" [Bv1]: lyrics [B]],
 
-# score
-[S] 1 2 3 4
-[A] 5 6 7 1'
-[B] 1 1 5 5
-[Bv1] do re mi fa
+score """
+    [S] 1 2 3 4
+    [A] 5 6 7 1'
+    [B] 1 1 5 5
+    [Bv1] do re mi fa
+    """,
 "#;
 
 fn enabled_tracks_without_alto() -> Vec<String> {
@@ -30,7 +26,7 @@ fn enabled_tracks_without_alto() -> Vec<String> {
 fn note_spans_carry_the_abbreviation_of_the_part_after_hidden_parts_are_compacted_out() {
     let enabled_tracks = enabled_tracks_without_alto();
     let spans =
-        list_note_spans_from_source(THREE_PART_SOURCE, "test.jianpu", Some(&enabled_tracks))
+        list_note_spans_from_source(THREE_PART_SOURCE, "test.poentaro", Some(&enabled_tracks))
             .unwrap()
             .spans;
 
@@ -65,7 +61,7 @@ fn note_spans_carry_the_abbreviation_of_the_part_after_hidden_parts_are_compacte
 fn lyric_spans_carry_the_abbreviation_of_the_part_after_hidden_parts_are_compacted_out() {
     let enabled_tracks = enabled_tracks_without_alto();
     let spans =
-        list_lyric_spans_from_source(THREE_PART_SOURCE, "test.jianpu", Some(&enabled_tracks))
+        list_lyric_spans_from_source(THREE_PART_SOURCE, "test.poentaro", Some(&enabled_tracks))
             .unwrap()
             .spans;
 

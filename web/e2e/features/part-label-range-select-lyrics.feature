@@ -3,8 +3,7 @@ Feature: Click-and-click across part labels selects lyrics too
   # Regression test: a click-and-click range across a part label is supposed
   # to select every note/rest *and* every lyric syllable that part sounds
   # across the whole system the label sits in — mirroring how 'measure' mode's
-  # click-and-click resolves both `noteCellsInMeasureRange` and
-  # `lyricCellsInMeasureRange` together (see
+  # click-and-click resolves both notes and lyrics together (see
   # `measure-click-selects-lyrics.spec.ts`). A *plain click* (a single click,
   # not a click-and-click range) is deliberately narrower and selects only
   # the notes row, not the lyric row — see

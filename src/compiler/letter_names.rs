@@ -1,13 +1,12 @@
-//! The letter-name and harmonica-tab views: every note head's jianpu degree
-//! replaced by its pitch's letter name (`F♯`) or its harmonica tab (`-4`),
+//! The letter-name and harmonica-tab views: every note head's numbered degree
+//! replaced by its pitch's letter name (`F♯`) or its harmonica tab (`(4)`),
 //! resolved against the key in effect at its measure. The letter-name view
 //! also respells chord symbols (`F♯m⁷/C♯`). Everything else about the layout
-//! stays as in the jianpu view. The guitar chord view spells the same letter
+//! stays as in the numbered view. The guitar chord view spells the same letter
 //! names after the degrees instead (`3 (F♯)`, `6m (Bm)`). Also home to
 //! `label_note_heads`, which
-//! dispatches to every view that keeps the jianpu layout — see `NoteLabels`.
+//! dispatches to every view that keeps the numbered layout — see `NoteLabels`.
 
-use super::harmonica_tabs::HarmonicaTabs;
 use super::types::{
     ColumnElement, CompileResult, ElementContent, HeadLabelPlacement, MeasureBlock, MeasureRow,
     NoteHeadLabel,
@@ -16,9 +15,9 @@ use crate::ast::grouped::Score;
 use crate::ast::parsed::{Accidental, KeyChange, Note, NoteName};
 use crate::pitch_description::spelling::SpelledPitch;
 
-/// Which view of the jianpu layout to draw: what a note head reads as — its
-/// jianpu degree (`1`–`7`), its letter name (`C`–`B`, with any sharps/flats
-/// the key implies), or its tab on a 10-hole diatonic harmonica (see
+/// Which view of the numbered layout to draw: what a note head reads as — its
+/// numbered degree (`1`–`7`), its letter name (`C`–`B`, with any sharps/flats
+/// the key implies), or its tab on a chromatic harmonica in C (see
 /// `harmonica_tabs`) — and whether chord symbols carry guitar chord diagrams.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum NoteLabels {
@@ -45,12 +44,7 @@ pub fn label_note_heads(result: CompileResult, score: &Score, labels: NoteLabels
                 HeadLabelPlacement::InPlaceOfDegree,
             )
         }),
-        NoteLabels::HarmonicaTabs => {
-            let harmonica = HarmonicaTabs::tuned_to(opening_key(score));
-            relabel_blocks(result, score, |content, key| {
-                harmonica.tab_content(content, key)
-            })
-        }
+        NoteLabels::HarmonicaTabs => super::harmonica_tabs::place_harmonica_tabs(result, score),
         NoteLabels::GuitarChords => relabel_blocks(
             super::guitar_chords::place_guitar_voicings(result, score),
             score,
@@ -102,23 +96,14 @@ fn c_major() -> KeyChange {
     }
 }
 
-/// The key the score opens in, which the grouper always sets on the first
-/// measure.
-fn opening_key(score: &Score) -> KeyChange {
-    score
-        .measures
-        .first()
-        .and_then(|measure| measure.key.clone())
-        .unwrap_or_else(c_major)
-}
-
 /// The key in effect at each block. A merged rest run's block stands in for
 /// `represents_measures` source measures, so the walk advances by that many
 /// and keeps the last key change among them.
-fn block_keys(blocks: &[MeasureBlock], score: &Score) -> Vec<KeyChange> {
+pub(super) fn block_keys(blocks: &[MeasureBlock], score: &Score) -> Vec<KeyChange> {
     blocks
         .iter()
-        // Overwritten by the first measure's key, as `opening_key`.
+        // Overwritten by the first measure's key, which the grouper always
+        // sets.
         .scan((0, c_major()), |(next_measure, key), block| {
             if let Some(change) = score
                 .measures

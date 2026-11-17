@@ -1,7 +1,7 @@
 //! The placeholder file that keeps an explicit empty folder alive in the
 //! cloud. The cloud store only knows files (slash-separated names), so an
 //! empty folder is persisted as the file `<folder>/.keep` with empty content.
-//! The leaf name has no `.jianpu` extension, so a user file (which always gets
+//! The leaf name has no `.poentaro` extension, so a user file (which always gets
 //! one) can never collide with it. Placeholders never reach
 //! [`FileStoreState`](super::FileStoreState): the cloud listing is split by
 //! [`classify_cloud_listing`] into real files, folders and hidden rows.

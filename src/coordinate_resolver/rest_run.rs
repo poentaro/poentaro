@@ -6,7 +6,6 @@
 
 use crate::compositor::types::{AbsoluteContent, AbsoluteElement};
 use crate::grid_layout::types::ColumnGeometry;
-use crate::grid_layout::PAGE_MARGIN;
 
 /// The collapsed multi-measure-rest bar spans its custom column_span width
 /// starting at the column's left edge, rather than the generic per-column
@@ -61,7 +60,7 @@ pub(super) fn resolve_implicit_fill_rest(
     let left = geometry.x_start(column as f32 - 0.5);
     let right = geometry.x_start(column as f32 + column_span as f32 + 0.5);
     AbsoluteElement {
-        x: PAGE_MARGIN + (left + right) * 0.5,
+        x: (left + right) * 0.5,
         y,
         content: AbsoluteContent::Rest {
             dotted,

@@ -1,6 +1,6 @@
 // ── Augmentation-dot column-width reservation ─────────────────────────────
 
-use crate::ast::parsed::{Accidental, JianPuPitch, Offset};
+use crate::ast::parsed::{Accidental, NumberedPitch, Offset};
 use crate::compiler::types::{ColumnElement, ElementContent, MeasureBlock, MeasureRow, RowId};
 use crate::font_metrics;
 use crate::grid_layout::layout::measure_column_weights;
@@ -92,7 +92,7 @@ fn make_block(row_id: &str, content: ElementContent, bar_col: u32) -> MeasureBlo
 
 fn note_head(dotted: bool, double_dotted: bool) -> ElementContent {
     ElementContent::NoteHead {
-        pitch: JianPuPitch::One,
+        pitch: NumberedPitch::One,
         accidental: Accidental::Natural,
         octave: 0,
         dotted,

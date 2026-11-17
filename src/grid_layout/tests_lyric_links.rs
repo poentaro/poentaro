@@ -1,7 +1,7 @@
 //! Grouping a note row with the lyric rows under it reads the score's
 //! `lyric_links`, never anything stored on the rows themselves.
 
-use crate::ast::parsed::{Accidental, JianPuPitch, PartKind};
+use crate::ast::parsed::{Accidental, NumberedPitch, PartKind};
 use crate::compiler::types::{
     ColumnElement, ElementContent, LyricLink, MeasureBlock, MeasureRow, RowId,
 };
@@ -16,7 +16,7 @@ fn note_row(id: &str, source_part_index: usize) -> MeasureRow {
         elements: vec![ColumnElement {
             column: 0,
             content: ElementContent::NoteHead {
-                pitch: JianPuPitch::One,
+                pitch: NumberedPitch::One,
                 accidental: Accidental::Natural,
                 octave: 0,
                 dotted: false,

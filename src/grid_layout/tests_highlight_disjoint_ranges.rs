@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use super::{no_header, simple_block};
 
-/// A `# sequence` chain selection (e.g. range-selecting from "C" to a later
+/// A `sequence` chain selection (e.g. range-selecting from "C" to a later
 /// repeat of "A" across "A, B, C, A") highlights several disjoint measures
 /// at once — `compute_measure_highlights_for_range` must highlight every measure
 /// covered by any of the given ranges, and none of the measures in between.

@@ -4,6 +4,9 @@
 //! `code` exhaustively instead of re-matching raw HTTP statuses or
 //! hand-typed `{code: "..."}` literals. The HTTP status is derived from the
 //! variant (`status_code`), never chosen separately at a call site.
+//!
+//! On the wire every failure is an `ApiErrorBody`: the `ApiError` plus the
+//! request's trace ID, which the web app shows and `app_log` is keyed by.
 
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -28,13 +31,17 @@ pub enum ApiError {
     /// file, or lies inside a live file. Nothing was applied.
     FileFolderConflict { path: String },
     /// A create/rename/restore asked for a file name that is not a valid
-    /// path (`jianpu_generator::file_tree::TreePath` rules); `message` says why.
+    /// path (`poentaro::file_tree::TreePath` rules); `message` says why.
     InvalidName { message: String },
     /// A folder share would cover more files or content than
     /// `folder_share::MAX_SHARED_FOLDER_FILES`/`MAX_SHARED_FOLDER_BYTES`
     /// allow: refused when starting the share, and answered to a viewer
     /// whose folder has grown past the limits since.
     SharedFolderTooLarge { message: String },
+    /// An origin-migration upload (`POST /origin-migrations`) larger than
+    /// `origin_migration::MAX_ORIGIN_MIGRATION_PAYLOAD_BYTES`; `message`
+    /// says by how much.
+    OriginMigrationTooLarge { message: String },
     /// A content save's `expectedRevision` lost the race -- feeds the
     /// "Overwrite mine"/"Discard mine" UI with the row's actual revision.
     RevisionConflict {
@@ -85,11 +92,44 @@ impl ApiError {
             | ApiError::NamesTaken { .. }
             | ApiError::FileFolderConflict { .. }
             | ApiError::RevisionConflict { .. } => 409,
-            ApiError::SharedFolderTooLarge { .. } => 413,
+            ApiError::SharedFolderTooLarge { .. } | ApiError::OriginMigrationTooLarge { .. } => 413,
             ApiError::SignInLocked { .. } | ApiError::RateLimited => 429,
             ApiError::Internal { .. } => 500,
         }
     }
+}
+
+impl ApiError {
+    /// The `code` tag it serializes with, e.g. `"revision_conflict"`.
+    pub fn code(&self) -> String {
+        serde_json::to_value(self)
+            .ok()
+            .and_then(|value| value.get("code")?.as_str().map(str::to_owned))
+            .unwrap_or_default()
+    }
+
+    /// The variant's free-text `message`, for the variants that carry one.
+    pub fn message(&self) -> Option<&str> {
+        match self {
+            ApiError::InvalidName { message }
+            | ApiError::SharedFolderTooLarge { message }
+            | ApiError::WeakPassword { message }
+            | ApiError::Internal { message } => Some(message),
+            _ => None,
+        }
+    }
+}
+
+/// What a failed request answers with: the `ApiError`, with the request's
+/// trace ID next to its `code` (and in the `X-Trace-Id` header). The ID is
+/// also the `trace_id` of the request's `app_log` row, so a user can send it
+/// and the failure can be looked up directly.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub struct ApiErrorBody {
+    #[serde(flatten)]
+    pub error: ApiError,
+    #[serde(rename = "traceId")]
+    pub trace_id: String,
 }
 
 impl From<worker::Error> for ApiError {

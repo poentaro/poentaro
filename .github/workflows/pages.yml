@@ -1,4 +1,4 @@
-name: Deploy web to GitHub Pages
+name: Deploy web (Poentaro, plus the bridge on the old origins)
 
 on:
   push:
@@ -7,80 +7,17 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: jdx/mise-action@v2
-        with:
-          install_args: rust node pnpm cargo-binstall cargo:cargo-component
-
-      - uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
-          restore-keys: pnpm-store-${{ runner.os }}-
-
-      - name: Install dependencies
-        working-directory: web
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        working-directory: web
-        env:
-          VITE_BASE_PATH: /jianpu-generator/
-          # The Synced Share worker's host comes from its
-          # `cloudflare.config.ts` (see `web/vite.config.ts`), not from here.
-        run: pnpm build
-
-      - name: Add SPA-fallback 404.html
-        # GitHub Pages is a static file host with no server-side routing: a
-        # real top-level navigation to a path with no file on disk gets
-        # GitHub Pages' generic 404, and
-        # the app's JS (and thus its client-side router) never loads at all.
-        # Copying the *built* index.html (with its real, hashed asset
-        # references) to 404.html is GitHub Pages' standard SPA workaround:
-        # it serves this file (HTTP 404 status, content unaffected) for any
-        # unmatched path, so the app's JS loads and can render the right
-        # route client-side. Must be the built file, not a static
-        # `public/404.html` -- only the built one has the correct hashed
-        # `<script>`/`<link>` tags. Cloudflare Pages (`deploy-cloudflare`
-        # below) does NOT need this: it already falls back to `index.html`
-        # with a `200` for any unmatched path as long as no top-level
-        # `404.html` exists.
-        run: cp web/dist/index.html web/dist/404.html
-
-      - name: Add .nojekyll
-        run: touch web/dist/.nojekyll
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: web/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/deploy-pages@v4
-        id: deployment
-
   deploy-cloudflare:
     runs-on: ubuntu-latest
     environment:
       name: cloudflare-pages
-      url: https://jianpu-generator.pages.dev
+      url: https://poentaro.pages.dev
     steps:
       - uses: actions/checkout@v4
 
@@ -98,9 +35,6 @@ jobs:
         working-directory: web
         run: pnpm install --frozen-lockfile
 
-      # Rebuilt separately from the GitHub Pages `build` job above because
-      # Cloudflare Pages serves from the domain root, so this needs
-      # VITE_BASE_PATH=/ baked in rather than /jianpu-generator/.
       - name: Build
         working-directory: web
         env:
@@ -113,4 +47,46 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: web
-          command: pages deploy dist --project-name=jianpu-generator --branch=master
+          command: pages deploy dist --project-name=poentaro --branch=master
+
+  # The app's old Cloudflare Pages project (`jianpu-generator.pages.dev`)
+  # now serves only the bridge page. Cloudflare Pages falls back to
+  # `index.html` for every path, so no `404.html` is needed. Deployed from
+  # `web/` like the app, so `web/functions/` goes along and old `?s=` links
+  # keep their share's link-preview title. Waits for the app's deploy, like `build`.
+  deploy-cloudflare-bridge:
+    needs: deploy-cloudflare
+    runs-on: ubuntu-latest
+    environment:
+      name: cloudflare-pages-bridge
+      url: https://jianpu-generator.pages.dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: rust node pnpm
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the bridge page
+        working-directory: web
+        env:
+          VITE_BASE_PATH: /
+        run: pnpm build:bridge
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: web
+          command: pages deploy dist-bridge --project-name=jianpu-generator --branch=master

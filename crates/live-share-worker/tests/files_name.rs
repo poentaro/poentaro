@@ -11,12 +11,12 @@ fn is_invalid(name: &str) -> bool {
 
 #[test]
 fn accepts_a_flat_name() {
-    assert!(validate_file_name("song.jianpu").is_ok());
+    assert!(validate_file_name("song.poentaro").is_ok());
 }
 
 #[test]
 fn accepts_a_nested_path_with_spaces() {
-    assert!(validate_file_name("Hymns/Advent/O Come.jianpu").is_ok());
+    assert!(validate_file_name("Hymns/Advent/O Come.poentaro").is_ok());
 }
 
 #[test]
@@ -26,16 +26,16 @@ fn rejects_an_empty_name() {
 
 #[test]
 fn rejects_empty_segments() {
-    assert!(is_invalid("/song.jianpu"));
+    assert!(is_invalid("/song.poentaro"));
     assert!(is_invalid("Hymns/"));
-    assert!(is_invalid("Hymns//song.jianpu"));
-    assert!(is_invalid("Hymns/ /song.jianpu"));
+    assert!(is_invalid("Hymns//song.poentaro"));
+    assert!(is_invalid("Hymns/ /song.poentaro"));
 }
 
 #[test]
 fn rejects_relative_segments() {
-    assert!(is_invalid("./song.jianpu"));
-    assert!(is_invalid("Hymns/../song.jianpu"));
+    assert!(is_invalid("./song.poentaro"));
+    assert!(is_invalid("Hymns/../song.poentaro"));
 }
 
 #[test]

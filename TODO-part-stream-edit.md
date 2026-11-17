@@ -260,16 +260,16 @@ measure markers and the changed-measure count, then uses `source` on Apply.
 
 ## Wasm (Phase 3)
 
-- WIT: `crates/jianpu-wasm/wit/world.wit` — add records/variants mirroring the
+- WIT: `crates/poentaro-wasm/wit/world.wit` — add records/variants mirroring the
   Rust API and exports `list-streamable-parts`, `extract-part-stream`,
   `apply-part-stream`. Spans as UTF-8 byte offsets, like the existing `span` record.
-- Guest impl: `crates/jianpu-wasm/src/component/guest_impl.rs` delegating to a
+- Guest impl: `crates/poentaro-wasm/src/component/guest_impl.rs` delegating to a
   helper next to `shift_part_octave` in `guest_metadata_and_misc.rs`.
-- Tests next to the existing wasm tests (`crates/jianpu-wasm/src/tests_*.rs`).
+- Tests next to the existing wasm tests (`crates/poentaro-wasm/src/tests_*.rs`).
 
 ## Web (Phase 4)
 
-- Call wasm **on the main thread** (`await ensureWasmInit(); jianpuWasm().…`,
+- Call wasm **on the main thread** (`await ensureWasmInit(); poentaroWasm().…`,
   see `web/src/renameSymbol.ts`) — no worker messages needed; the calls are
   pure string transforms.
 - The web stays dumb: no splitting, diffing of measures or validation in TS.
@@ -278,7 +278,7 @@ measure markers and the changed-measure count, then uses `source` on Apply.
 - Selecting a part shows the stream editor in the same modal:
   - `DiffEditor` from `@monaco-editor/react` (pattern:
     `web/src/components/mergeEditor/MergeEditor.tsx`), `original` = extracted
-    stream (read-only), `modified` = editable copy, word wrap on, jianpu
+    stream (read-only), `modified` = editable copy, word wrap on, numbered
     language for highlighting if it applies cleanly to a bare stream.
   - On every change: `apply_part_stream` → Monaco markers on the modified
     editor from `diagnostics` (byte → UTF-16 offset conversion like the main
@@ -308,7 +308,7 @@ measure markers and the changed-measure count, then uses `source` on Apply.
 ## Test checklist (Rust, Phases 1–2)
 
 Round-trip property: for every eligible part of every file in `fixtures/`,
-`scores/` and the repo-root `.jianpu` files, `apply_part_stream(source, p,
+`scores/` and the repo-root `.poentaro` files, `apply_part_stream(source, p,
 extract_part_stream(source, p).text)` returns `source` **unchanged**,
 `changed_measure_count == 0`, and no errors.
 
@@ -335,7 +335,7 @@ Plus focused cases:
 ## Project rules to follow (from CLAUDE.md / memory)
 
 - Commit titles `<type>(<scope>): <description>`; scope = where the change
-  lives (e.g. `part-stream`, `jianpu-wasm`, `web`). Pass a 480000 ms timeout
+  lives (e.g. `part-stream`, `poentaro-wasm`, `web`). Pass a 480000 ms timeout
   to `git commit` (the pre-commit hook runs cargo checks + web typecheck).
   Don't re-run the full test suite right before committing.
 - In this worktree, run git as `/usr/bin/git`.

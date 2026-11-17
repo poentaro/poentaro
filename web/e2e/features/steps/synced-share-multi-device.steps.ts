@@ -40,7 +40,7 @@ function deviceNamed(name: string): Device {
 Given(
   'the file store is seeded with the synced score for {string}',
   async ({}, email: string) => {
-    const name = `${SYNCED_FILE_BASE_NAME}-${crypto.randomUUID().slice(0, 8)}.jianpu`
+    const name = `${SYNCED_FILE_BASE_NAME}-${crypto.randomUUID().slice(0, 8)}.poentaro`
     const file = await seedCloudFile(email, name, SYNCED_SOURCE)
     syncedShareButtonState.ownerFileName = name
     syncedShareButtonState.ownerFileId = file.id
@@ -54,7 +54,7 @@ Given(
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await context.addInitScript(() => {
       localStorage.setItem(
-        'jianpu:storage-backend:v1',
+        'poentaro:storage-backend:v1',
         JSON.stringify({ backend: 'cloud' }),
       )
     })

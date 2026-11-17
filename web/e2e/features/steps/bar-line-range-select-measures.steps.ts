@@ -26,30 +26,30 @@ import { Given, Then, When } from './fixtures'
  * Measure 2 : [M] 7 1'      — 2 notes
  */
 const barLineTestSource = [
-  '# metadata',
-  'title = "bar line range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "bar line range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 2 3 4', // measure 0
+  'score """',
+  '[M] 1 2 3 4',
   '',
-  '[M] 5 6', // measure 1
+  '[M] 5 6',
   '',
-  "[M] 7 1'", // measure 2
+  "[M] 7 1'",
+  '""",',
 ].join('\n')
 
 async function loadBarLineTestFixture(page: import('@playwright/test').Page) {
   await page.addInitScript((source) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'bar-line-range-test.jianpu',
-        userFiles: { 'bar-line-range-test.jianpu': source },
+        active: 'bar-line-range-test.poentaro',
+        userFiles: { 'bar-line-range-test.poentaro': source },
         bin: {},
-        fileIds: { 'bar-line-range-test.jianpu': 'bar-line-range-test-id-001' },
+        fileIds: {
+          'bar-line-range-test.poentaro': 'bar-line-range-test-id-001',
+        },
       }),
     )
   }, barLineTestSource)
@@ -61,7 +61,7 @@ async function loadBarLineTestFixture(page: import('@playwright/test').Page) {
 async function primeMeasureSpans(page: import('@playwright/test').Page) {
   await focusEditor(page)
   await page.keyboard.press('Control+g')
-  await page.keyboard.type('9')
+  await page.keyboard.type('6')
   await page.keyboard.press('Enter')
   await expect(page.locator('button.play-measure-btn')).toHaveText(/Measure/, {
     timeout: 5_000,

@@ -1,3 +1,4 @@
+import { ResetIcon } from '@radix-ui/react-icons'
 import { FieldLabel } from './FieldHelpModal'
 
 export const tdStyle: React.CSSProperties = {
@@ -128,12 +129,60 @@ export interface FieldRowProps {
   label: string
   help: string
   onShowHelp: (label: string, help: string) => void
+  /** Set while a preset overrides this field: clears the override, so the
+   * field falls back to the song's `metadata`. */
+  onReset?: () => void
+}
+
+const valueCellStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+}
+
+const resetButtonStyle: React.CSSProperties = {
+  flexShrink: 0,
+  width: '20px',
+  height: '20px',
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  color: '#666',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}
+
+/** Inherited from `metadata` rather than set by the preset. */
+export const inheritedStyle: React.CSSProperties = { opacity: 0.45 }
+
+export function ResetOverrideButton({
+  label,
+  onReset,
+}: {
+  label: string
+  onReset?: () => void
+}) {
+  if (!onReset) return null
+  return (
+    <button
+      type="button"
+      aria-label={`Reset ${label}`}
+      title={`Reset ${label}`}
+      style={resetButtonStyle}
+      onClick={onReset}
+    >
+      <ResetIcon />
+    </button>
+  )
 }
 
 export function TextFieldRow({
   label,
   help,
   onShowHelp,
+  onReset,
   value,
   placeholder,
   onChange,
@@ -148,13 +197,17 @@ export function TextFieldRow({
         <FieldLabel label={label} help={help} onShowHelp={onShowHelp} />
       </td>
       <td style={tdStyle}>
-        <input
-          type="text"
-          placeholder={placeholder}
-          style={inputStyle}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <div style={valueCellStyle}>
+          <input
+            type="text"
+            aria-label={label}
+            placeholder={placeholder}
+            style={inputStyle}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          <ResetOverrideButton label={label} onReset={onReset} />
+        </div>
       </td>
     </tr>
   )
@@ -164,6 +217,7 @@ export function NumberFieldRow({
   label,
   help,
   onShowHelp,
+  onReset,
   value,
   placeholder,
   onChange,
@@ -178,14 +232,17 @@ export function NumberFieldRow({
         <FieldLabel label={label} help={help} onShowHelp={onShowHelp} />
       </td>
       <td style={tdStyle}>
-        <NumberStepper
-          value={value}
-          defaultValue={placeholder != null ? Number(placeholder) : null}
-          min={1}
-          aria-label={label}
-          placeholder={placeholder}
-          onChange={onChange}
-        />
+        <div style={valueCellStyle}>
+          <NumberStepper
+            value={value}
+            defaultValue={placeholder != null ? Number(placeholder) : null}
+            min={1}
+            aria-label={label}
+            placeholder={placeholder}
+            onChange={onChange}
+          />
+          <ResetOverrideButton label={label} onReset={onReset} />
+        </div>
       </td>
     </tr>
   )
@@ -195,10 +252,13 @@ export function CheckboxFieldRow({
   label,
   help,
   onShowHelp,
+  onReset,
   checked,
+  inherited = false,
   onChange,
 }: FieldRowProps & {
   checked: boolean
+  inherited?: boolean
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
 }) {
   return (
@@ -207,7 +267,16 @@ export function CheckboxFieldRow({
         <FieldLabel label={label} help={help} onShowHelp={onShowHelp} />
       </td>
       <td style={tdStyle}>
-        <input type="checkbox" checked={checked} onChange={onChange} />
+        <div style={valueCellStyle}>
+          <input
+            type="checkbox"
+            aria-label={label}
+            checked={checked}
+            style={inherited ? inheritedStyle : undefined}
+            onChange={onChange}
+          />
+          <ResetOverrideButton label={label} onReset={onReset} />
+        </div>
       </td>
     </tr>
   )

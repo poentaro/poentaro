@@ -5,7 +5,7 @@
 // PLAN-directive-width-column-spacing.md, distinct from that file's plain
 // rod/padding invariants.
 
-use crate::ast::parsed::{JianPuPitch, Offset};
+use crate::ast::parsed::{NumberedPitch, Offset};
 use crate::compiler::types::{
     ColumnElement, Decoration, ElementContent, MeasureBlock, MeasureRow, RowId,
 };
@@ -50,7 +50,7 @@ fn make_block_with_notes(row_id: &str, note_count: u32, bar_col: u32) -> Measure
         .map(|col| ColumnElement {
             column: col,
             content: ElementContent::NoteHead {
-                pitch: JianPuPitch::One,
+                pitch: NumberedPitch::One,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
                 dotted: false,

@@ -1,3 +1,4 @@
+use crate::compositor::types::FontFamily;
 use crate::coordinate_resolver::LyricFontSizes;
 
 /// A lyric row's font sizes plus its click-target padding, bundled together
@@ -22,7 +23,7 @@ pub(crate) struct LyricSizing {
 /// Returns the 7 sub-row_heights for a Note/Chord part, in order:
 /// [tuplet_bracket, arc, above_dot, note_head, half_ul, quarter_ul, below_dot]
 /// The underline bands sit directly under the note head so that below-octave
-/// dots of an underlined note hang beneath its underlines, per jianpu
+/// dots of an underlined note hang beneath its underlines, per numbered-notation
 /// engraving convention (see `GridContent::LowOctaveDots`).
 /// `vertical_padding_pt` (see `Metadata::notes.vertical_padding_pt`) is added
 /// on top of the note-head band only, additively — so a score with no
@@ -76,7 +77,7 @@ pub(crate) fn chord_part_sub_row_heights(base: f32) -> [f32; 4] {
 /// renders at exactly the height it always has. The other side of the
 /// `max` is a floor sized to actually contain the glyph: the pinned lyric
 /// font's real ascender+descender span at `font_size`, measured at runtime
-/// via `ttf_parser` (`font_metrics::lyric_vertical_extent`) rather than a
+/// via `ttf_parser` (`font_metrics::text_vertical_extent`) rather than a
 /// hardcoded ratio, plus `click_target_padding` (points, additive rather
 /// than multiplicative so it doesn't overstate padding at large font sizes
 /// the way a ratio would — see `Metadata::lyric_click_target_padding_pt`)
@@ -86,8 +87,10 @@ pub(crate) fn chord_part_sub_row_heights(base: f32) -> [f32; 4] {
 /// among the row's own syllables) grows large enough, relative to
 /// `row_height`, to actually risk overflowing the row's normal height.
 pub(crate) fn lyric_row_height(row_height: f32, font_size: f32, click_target_padding: f32) -> f32 {
-    (row_height * 1.5)
-        .max(crate::font_metrics::lyric_vertical_extent(font_size) + click_target_padding)
+    (row_height * 1.5).max(
+        crate::font_metrics::text_vertical_extent(FontFamily::Serif, font_size)
+            + click_target_padding,
+    )
 }
 
 pub(crate) fn decoration_row_height(base: f32) -> f32 {
@@ -98,19 +101,17 @@ pub(crate) fn separator_row_height() -> f32 {
     4.0
 }
 
-/// One row of blank vertical space, used above the sequence line.
+/// One row of blank vertical space: between the title/subtitle/author block
+/// and what follows it, and above the sequence line.
 pub(crate) fn header_gap_row_height(base: f32) -> f32 {
     base
 }
 
-pub(crate) fn header_title_row_height(base: f32) -> f32 {
-    base * 0.80
-}
-
-pub(crate) fn header_subtitle_author_row_height(base: f32) -> f32 {
-    base * 2.625
-}
-
-pub(crate) fn header_part_list_row_height(base: f32) -> f32 {
-    base * 0.9
+/// Height of a header row holding one line of text: one em (the text's own
+/// `font_size`) plus `vertical_padding_pt` above and below, so `0` padding
+/// means a row exactly one font size tall, whatever the font's own ascender,
+/// descender and line gap. The row grows and shrinks with `font_size` and
+/// never lets the text spill into the rows around it.
+pub(crate) fn text_row_height(font_size: f32, vertical_padding_pt: f32) -> f32 {
+    font_size + 2.0 * vertical_padding_pt
 }

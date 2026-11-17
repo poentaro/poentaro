@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import type { CSSProperties } from 'react'
 import { useEffect, useState } from 'react'
 import { displayFileName } from '../fileStore'
-import type { MoveTarget } from '../jianpuWasm'
+import type { MoveTarget } from '../poentaroWasm'
 import './FileDialogs.css'
 
 export interface MoveToDialogProps {

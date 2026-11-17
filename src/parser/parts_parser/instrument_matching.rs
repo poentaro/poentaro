@@ -53,13 +53,13 @@ fn instrument_fuzzy_score(query: &str, instrument: &InstrumentInfo) -> u32 {
     .unwrap_or(0)
 }
 
-pub(super) fn validate_soundfont(
+pub(crate) fn validate_soundfont(
     inner: &str,
     span: Span,
     errors: &mut Vec<RecoverableError>,
     instruments: &[InstrumentInfo],
     is_percussion: bool,
-) -> Soundfont {
+) -> Option<Soundfont> {
     if !is_percussion
         && !instruments.is_empty()
         && !instruments.iter().any(|i| instrument_label(i) == inner)
@@ -88,10 +88,9 @@ pub(super) fn validate_soundfont(
         ));
     }
 
-    parse_label_program(inner)
-        .map(Soundfont)
-        .unwrap_or_else(|| {
-            errors.push(RecoverableError::parts_invalid_columns(span, inner));
-            Soundfont::default()
-        })
+    let soundfont = parse_label_program(inner).map(Soundfont);
+    if soundfont.is_none() {
+        errors.push(RecoverableError::parts_invalid_columns(span, inner));
+    }
+    soundfont
 }

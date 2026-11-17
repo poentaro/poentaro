@@ -15,19 +15,17 @@ Given(
   'the file store is seeded with a multi-measure synced range-select score',
   async ({ page }) => {
     const rangeSource = [
-      '# metadata',
-      'title = "Synced Range-Select Score"',
-      'max_measures_per_system = 48',
+      'metadata { title "Synced Range-Select Score", max measures per system 48 },',
       '',
-      '# parts',
-      'Melody [M] = notes',
+      'parts ["Melody" [M]: notes],',
       '',
-      '# score',
-      '[M] 1_ 1_ 1= 1= 1= 1= 1 -',
+      'score """',
+      '    [M] 1_ 1_ 1= 1= 1= 1= 1 -',
       '',
-      '[M] 1. 2_ 1_. 2= 0',
+      '    [M] 1. 2_ 1_. 2= 0',
       '',
-      '[M] 1 - - -',
+      '    [M] 1 - - -',
+      '    """,',
     ].join('\n')
     await seedSyncedCloudFile(page, 'synced-range-test', rangeSource)
   },
@@ -70,7 +68,7 @@ Then("the viewer's file switcher shows the synced filename", async () => {
   if (!state.viewerPage) throw new Error('viewerPage was not opened yet')
   if (!state.ownerFileName) throw new Error('ownerFileName was not seeded yet')
   await expect(fileSwitcherTrigger(state.viewerPage)).toContainText(
-    state.ownerFileName.replace(/\.jianpu$/, ''),
+    state.ownerFileName.replace(/\.poentaro$/, ''),
   )
 })
 
@@ -134,8 +132,7 @@ When(
 
     // Click-and-click from measure 0 to measure 2 in the read-only viewer —
     // a shortcut for selecting every note/rest cell across those measures,
-    // same as it is in the editable app (see `previewSelection.ts`'s
-    // `noteCellsInMeasureRange`).
+    // same as it is in the editable app (see `resolveMeasureSelection`).
     await clickAndClickSelect(
       state.viewerPage,
       boxFrom.x + boxFrom.width / 2,
@@ -236,7 +233,7 @@ Then("the viewer's note highlight still shows after settling", async () => {
   if (!state.viewerPage) throw new Error('viewerPage was not opened yet')
   // Regression coverage: a no-mounted-editor measure/bar-line selection
   // used to paint its blue note highlight instantly, then lose it entirely
-  // once `notifySelection`'s debounce (`useJianpuWorkerRenderRequests.ts`,
+  // once `notifySelection`'s debounce (`usePoentaroWorkerRenderRequests.ts`,
   // 300ms default) fired and re-ran `Preview.tsx`'s persisted-highlight
   // effect from `selectedNoteCells`/`selectedLyricCells` — which this
   // no-mounted-editor gesture never updated (see

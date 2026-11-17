@@ -13,7 +13,8 @@ const PRUNE_APP_LOG: &str = include_str!("../../queries/prune_app_log.sql");
 /// `WORKER_VERSION`. Best-effort: a failure is reported with
 /// `console_error!` and never fails (or changes) the request the event
 /// belongs to. Awaited rather than deferred (handlers have no `Context` for
-/// `wait_until`), which is fine because every logged path is rare.
+/// `wait_until`), which is fine because every logged path is rare (a
+/// failed request, or an auth event).
 pub(crate) async fn record_app_log(
     db: &D1Database,
     event: &LogEvent,
@@ -48,6 +49,7 @@ async fn insert_app_log(
             optional_str(request_meta.origin.as_deref()),
             optional_str(request_meta.user_agent.as_deref()),
             JsValue::from_str(&row.detail_json),
+            optional_str(request_meta.trace_id.as_deref()),
         ])?
         .run()
         .await?;

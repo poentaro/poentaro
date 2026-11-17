@@ -1,6 +1,6 @@
 use crate::error::Span;
 
-use super::{Accidental, JianPuPitch, KeyChange};
+use super::{Accidental, KeyChange, NumberedPitch};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TriadQuality {
@@ -20,7 +20,7 @@ pub enum Extension {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BassDegree {
-    pub degree: JianPuPitch,
+    pub degree: NumberedPitch,
     pub accidental: Accidental,
 }
 
@@ -73,7 +73,7 @@ pub struct TupletInfo {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedNote {
-    pub pitch: JianPuPitch,
+    pub pitch: NumberedPitch,
     pub accidental: Accidental,
     /// Octave offset from the default octave. 0 = default, positive = up, negative = down.
     pub octave: i8,
@@ -102,7 +102,7 @@ pub struct ParsedNote {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedChordNote {
-    pub degree: JianPuPitch,
+    pub degree: NumberedPitch,
     pub accidental: Accidental,
     pub triad: TriadQuality,
     pub extension: Option<Extension>,
@@ -186,6 +186,10 @@ pub struct Syllable {
     /// line under a chord part; `text` is then the bracket's inner token
     /// (e.g. `陪` or the rest `0_`) without the brackets.
     pub bracketed: bool,
+    /// The reading written after a Chinese character, `行(háng)`: `text` is
+    /// then the character alone. Printed above it and sung instead of the
+    /// character's dictionary reading.
+    pub pinyin: Option<crate::pinyin::PinyinSyllable>,
     /// Source byte range of this syllable's own token, absolute within the
     /// whole document — lets the SVG preview map a clicked lyric
     /// syllable back to its source text, mirroring how `ParsedNote::event_span`

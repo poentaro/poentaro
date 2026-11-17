@@ -6,10 +6,10 @@ fn parse(raw: &str) -> Result<TreePath, PathError> {
 
 #[test]
 fn accepts_simple_and_nested_paths() {
-    assert_eq!(parse("a.jianpu").unwrap().as_str(), "a.jianpu");
+    assert_eq!(parse("a.poentaro").unwrap().as_str(), "a.poentaro");
     assert_eq!(
-        parse("Hymns/Advent/O Come.jianpu").unwrap().as_str(),
-        "Hymns/Advent/O Come.jianpu"
+        parse("Hymns/Advent/O Come.poentaro").unwrap().as_str(),
+        "Hymns/Advent/O Come.poentaro"
     );
 }
 
@@ -84,19 +84,19 @@ fn limit_counts_separators() {
 
 #[test]
 fn name_parent_and_ancestors() {
-    let path = parse("a/b/c.jianpu").unwrap();
-    assert_eq!(path.name(), "c.jianpu");
+    let path = parse("a/b/c.poentaro").unwrap();
+    assert_eq!(path.name(), "c.poentaro");
     assert_eq!(path.parent(), Some(parse("a/b").unwrap()));
     assert_eq!(
         path.ancestors(),
         vec![parse("a").unwrap(), parse("a/b").unwrap()]
     );
-    let top = parse("c.jianpu").unwrap();
+    let top = parse("c.poentaro").unwrap();
     assert_eq!(top.parent(), None);
     assert!(top.ancestors().is_empty());
     assert_eq!(
         path.segments().collect::<Vec<_>>(),
-        vec!["a", "b", "c.jianpu"]
+        vec!["a", "b", "c.poentaro"]
     );
 }
 
@@ -104,8 +104,10 @@ fn name_parent_and_ancestors() {
 fn child_joins_and_validates() {
     let folder = parse("a").unwrap();
     assert_eq!(
-        TreePath::child(Some(&folder), "b.jianpu").unwrap().as_str(),
-        "a/b.jianpu"
+        TreePath::child(Some(&folder), "b.poentaro")
+            .unwrap()
+            .as_str(),
+        "a/b.poentaro"
     );
     assert_eq!(TreePath::child(None, "b").unwrap().as_str(), "b");
     assert!(TreePath::child(Some(&folder), "x/y").is_err());

@@ -69,7 +69,7 @@ fn bar_number_click_target_resolves_to_a_small_rect_sized_to_its_digits() {
     let abs_pages = resolve(
         &[page],
         8.0,
-        40.0,
+        super::tests::TEST_PAGE_FRAME,
         ResolveFontSizes {
             lyric: LyricFontSizes {
                 base: 14.4,

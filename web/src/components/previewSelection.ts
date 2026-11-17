@@ -1,6 +1,5 @@
 import { tagFromElement, tagSelector } from '../dataAttributes'
-import type { LyricCellIn, NoteCellIn, Tag } from '../jianpuWasm'
-import type { LyricSpan, NoteSpan } from '../types'
+import type { LyricCellIn, NoteCellIn, Tag } from '../poentaroWasm'
 import { clickableElementIdFromElement } from './clickableElementId'
 
 /** One rendered note/rest, keyed the same way as the `note` `Tag`'s
@@ -112,31 +111,22 @@ const MEASURE_RANGE_SELECTOR = [
 ].join(', ')
 
 /**
- * The `MeasureRange` of the whole *system* that `measureIndex` belongs to —
- * used to expand a 'bar-number-system' gesture's endpoints out to their
- * full system before selecting (see `resolveBarNumberSystemSelection`).
- *
- * Reads it off `[data-tag="part-label"]`'s own `measureIndexStart`/
- * `measureIndexEnd` dataset pair rather than any dedicated "which system is
- * this measure in" lookup — every part label in a given system shares that
- * pair (one `PartLabelClickTarget` per part *per system*, see
- * `previewLabelRangeHighlights.ts`'s own doc comments), so scanning for the
- * one whose range contains `measureIndex` reliably identifies its system.
- * Returns `undefined` if no part label's range covers it (e.g. no parts are
- * rendered at all) — callers fall back to the bare measure range instead.
+ * The inclusive measure range of every rendered system, read off the part
+ * labels: every part label in a system carries that system's
+ * `measureIndexStart`/`measureIndexEnd` (one label per part per system).
+ * Feeds `resolveSystemSelectionRange`.
  */
-export function systemRangeContainingMeasure(
-  container: HTMLElement,
-  measureIndex: number,
-): MeasureRange | undefined {
-  return Array.from(container.querySelectorAll(tagSelector('part-label')))
-    .map((label) => tagFromElement(label))
-    .filter((tag) => tag?.tag === 'part-label')
-    .map((tag) => ({
-      start: tag.val.measureIndexStart,
-      end: tag.val.measureIndexEnd,
-    }))
-    .find(({ start, end }) => measureIndex >= start && measureIndex <= end)
+export function renderedSystems(container: HTMLElement): MeasureRange[] {
+  const systems = new Map<string, MeasureRange>()
+  for (const label of Array.from(
+    container.querySelectorAll(tagSelector('part-label')),
+  )) {
+    const tag = tagFromElement(label)
+    if (tag?.tag !== 'part-label') continue
+    const { measureIndexStart: start, measureIndexEnd: end } = tag.val
+    systems.set(`${start}:${end}`, { start, end })
+  }
+  return [...systems.values()]
 }
 
 export function getMeasureAtPoint(
@@ -161,36 +151,6 @@ export function getMeasureAtPoint(
     }
   }
   return undefined
-}
-
-/**
- * Every note/rest cell belonging to the given measure range, resolved from
- * `noteSpans`' `(source_part_index, note_id) → measure_index` mapping
- * (the same source-of-truth `groupSelectedNotesIntoContiguousRuns` groups
- * by) rather than a pixel-geometry intersection test. A geometric approach
- * (unioning the range's measure rects' bounding boxes and marquee-testing
- * note rects against it) previously seemed safe since a measure's
- * click-target rect and its boundary notes' rects are built off identical
- * column math and so should only ever touch, never overlap — but two
- * different SVG elements reporting bit-identical `getBoundingClientRect`
- * values for logically-identical coordinates isn't guaranteed (sub-pixel
- * rounding down independent transform chains), so a boundary note could
- * intermittently be pulled into the wrong neighboring measure's selection.
- * Resolving by index instead sidesteps that class of bug entirely.
- */
-export function noteCellsInMeasureRange(
-  noteSpans: NoteSpan[],
-  range: MeasureRange,
-): NoteCell[] {
-  return noteSpans
-    .filter(
-      (span) =>
-        span.measureIndex >= range.start && span.measureIndex <= range.end,
-    )
-    .map((span) => ({
-      sourcePartIndex: span.sourcePartIndex,
-      noteId: span.noteId,
-    }))
 }
 
 /** The note/rest under the given point, if any — reads the invisible
@@ -219,23 +179,4 @@ export type LyricCell = LyricCellIn
 export function getLyricAtPoint(x: number, y: number): LyricCell | undefined {
   const id = getClickableElementIdAtPoint(x, y, 'lyric')
   return id?.tag === 'lyric' ? id.val : undefined
-}
-
-/** Every lyric syllable cell belonging to the given measure range, resolved
- * from `lyricSpans`' `(source_part_index, note_id, verse) → measure_index`
- * mapping — the lyric-side mirror of `noteCellsInMeasureRange`, so a measure
- * click can select the verse lyrics under it alongside its notes. */
-export function lyricCellsInMeasureRange(
-  lyricSpans: LyricSpan[],
-  range: MeasureRange,
-): LyricCell[] {
-  return lyricSpans
-    .filter(
-      (span) =>
-        span.measureIndex >= range.start && span.measureIndex <= range.end,
-    )
-    .map((span) => ({
-      sourcePartIndex: span.sourcePartIndex,
-      noteId: span.noteId,
-    }))
 }

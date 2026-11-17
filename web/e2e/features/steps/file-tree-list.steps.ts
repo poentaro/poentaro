@@ -3,15 +3,14 @@ import { fileSwitcherTrigger, openFileList } from '../../fileSwitcherHelpers'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Tree Test"',
+  'metadata { title "Tree Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '1 2 3 4',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 interface TreeSeed {
@@ -28,9 +27,9 @@ async function applySeed(page: Page, seed: TreeSeed) {
   await page.addInitScript(
     ({ src, files, folders, active, bin }) => {
       // Only seed on the first load so a reload keeps what the app saved.
-      if (localStorage.getItem('jianpu:files:v1')) return
+      if (localStorage.getItem('poentaro:files:v1')) return
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
           active,
           userFiles: Object.fromEntries(files.map((name) => [name, src])),

@@ -4,8 +4,8 @@ use crate::ast::grouped::{
     DEFAULT_HIDE_RESTING_PARTS, DEFAULT_HIDE_SYSTEM_DIVIDERS, DEFAULT_LYRICS_HORIZONTAL_PADDING_PT,
     DEFAULT_LYRIC_CLICK_TARGET_PADDING_PT, DEFAULT_MAX_MEASURES_PER_SYSTEM,
     DEFAULT_MERGE_DUPLICATE_MEASURES_ACROSS_PARTS, DEFAULT_NOTES_HORIZONTAL_PADDING_PT,
-    DEFAULT_NOTE_DASH_HORIZONTAL_PADDING_PT, DEFAULT_NOTE_NUMBER_WIDTH, DEFAULT_PARTS_LIST_COLUMNS,
-    DEFAULT_PART_LABEL_WIDTH_PT, DEFAULT_ROW_HEIGHT,
+    DEFAULT_NOTE_DASH_HORIZONTAL_PADDING_PT, DEFAULT_NOTE_NUMBER_WIDTH, DEFAULT_PAGE_MARGIN_PT,
+    DEFAULT_PARTS_LIST_COLUMNS, DEFAULT_PART_LABEL_WIDTH_PT, DEFAULT_ROW_HEIGHT,
 };
 use crate::ast::parsed::{ParsedDocument, ParsedMeasureSlot, ParsedMetadata, ParsedTrack};
 use crate::ast::parsed::{PartKind, TextStyleKind};
@@ -19,13 +19,19 @@ mod directive_grouper;
 mod lyrics_pairing;
 mod metadata_defaults;
 mod part_grouper;
+mod range_validation;
 mod sequence_resolution;
+mod simple_text_styles;
+mod text_style_helpers;
 mod tie_validation;
 
 use directive_grouper::DirectiveGrouper;
 pub use metadata_defaults::metadata_defaults;
 use part_grouper::{group_lyrics_track, group_timed_track};
+use range_validation::validate_ranges;
 use sequence_resolution::resolve_sequence;
+use simple_text_styles::resolve_simple_text_styles;
+use text_style_helpers::resolve_running_title;
 use tie_validation::validate_ties;
 
 pub fn group(doc: ParsedDocument) -> Result<Score, IrrecoverableError> {
@@ -39,20 +45,16 @@ pub fn group(doc: ParsedDocument) -> Result<Score, IrrecoverableError> {
         .chain(doc.metadata_parse_errors)
         .chain(doc.parts_parse_errors)
         .map(Diagnostic::Error)
+        .chain(doc.preset_diagnostics)
         .collect();
     let global_resolution_multipliers = compute_global_resolution_multipliers(&doc.tracks);
     let mut grouped_tracks: Vec<GroupedTrack> = Vec::new();
     for track in doc.tracks {
         let ParsedTrack::Timed(part) = track;
         let grouped = match part.kind {
-            // A lyric part's target is declared (and so already grouped) before it.
+            // A lyric part's targets are declared (and so already grouped) before it.
             PartKind::Lyrics { target_part_index } => {
-                let target = grouped_tracks
-                    .get(target_part_index)
-                    .map(|track| match track {
-                        GroupedTrack::Timed(target) => target,
-                    });
-                target.map(|target| group_lyrics_track(part, target))
+                group_lyrics_track(part, &grouped_tracks, target_part_index)
             }
             _ => Some(group_timed_track(part, &global_resolution_multipliers)?),
         };
@@ -87,6 +89,7 @@ pub fn group(doc: ParsedDocument) -> Result<Score, IrrecoverableError> {
         sequence: None,
     };
     validate_ties(&mut score);
+    validate_ranges(&mut score, &declarations);
     resolve_sequence(&mut score, sequence, sequence_parse_errors, &declarations);
     Ok(score)
 }
@@ -149,7 +152,7 @@ fn chord_lyrics_multiplier(tracks: &[ParsedTrack], slot_index: usize) -> Option<
         .reduce(crate::tuplet::lcm)
 }
 
-/// The thirteen `TextStyle` fields of `Metadata`, resolved separately from
+/// The fourteen `TextStyle` fields of `Metadata`, resolved separately from
 /// `resolve_metadata`'s other (non-text-style) fields to keep each function
 /// under clippy's line-count limit.
 struct ResolvedTextStyles {
@@ -162,99 +165,16 @@ struct ResolvedTextStyles {
     section_label: TextStyle,
     part_label: TextStyle,
     page_number: TextStyle,
+    running_title: TextStyle,
     lyrics: TextStyle,
     notes: TextStyle,
     chords: TextStyle,
     note_dash: TextStyle,
 }
 
-/// `resolve_text_style` for the common case of a kind with no non-zero
-/// horizontal/vertical padding default (every kind except `lyrics`, `notes`,
-/// `chords`, `note_dash` — see `resolve_text_styles`).
-fn simple_text_style(
-    parsed: crate::ast::parsed::TextStyle,
-    default_font_size: u32,
-    defaults: TextStyleDefaults,
-) -> TextStyle {
-    resolve_text_style(parsed, default_font_size, 0, 0, defaults)
-}
-
-/// Resolves the `TextStyle` fields whose only non-zero default is `font_size`
-/// (see `simple_text_style`). Split out from `resolve_text_styles` to stay
-/// under clippy's line-count limit.
-fn resolve_simple_text_styles(
-    metadata: &ParsedMetadata,
-    row_height: u32,
-) -> (
-    TextStyle,
-    TextStyle,
-    TextStyle,
-    TextStyle,
-    TextStyle,
-    TextStyle,
-    TextStyle,
-    TextStyle,
-    TextStyle,
-) {
-    use crate::compositor::types::FontFamily;
-    let font_size = |kind| default_font_size(metadata, kind, row_height);
-    let defaults = |bold: bool, italic: bool, font_family: FontFamily| TextStyleDefaults {
-        bold,
-        italic,
-        font_family,
-    };
-    (
-        simple_text_style(
-            metadata.title_style,
-            font_size(TextStyleKind::Title),
-            defaults(false, false, FontFamily::Serif),
-        ),
-        simple_text_style(
-            metadata.subtitle_style,
-            font_size(TextStyleKind::Subtitle),
-            defaults(false, true, FontFamily::Serif),
-        ),
-        simple_text_style(
-            metadata.author_style,
-            font_size(TextStyleKind::Author),
-            defaults(false, false, FontFamily::Serif),
-        ),
-        simple_text_style(
-            metadata.sequence_style,
-            font_size(TextStyleKind::Sequence),
-            defaults(false, false, FontFamily::SansSerif),
-        ),
-        simple_text_style(
-            metadata.part_legend_style,
-            font_size(TextStyleKind::PartLegend),
-            defaults(false, false, FontFamily::SansSerif),
-        ),
-        simple_text_style(
-            metadata.measure_number_style,
-            font_size(TextStyleKind::MeasureNumber),
-            defaults(false, false, FontFamily::SansSerif),
-        ),
-        simple_text_style(
-            metadata.section_label_style,
-            font_size(TextStyleKind::SectionLabel),
-            defaults(true, true, FontFamily::SansSerif),
-        ),
-        simple_text_style(
-            metadata.page_number_style,
-            font_size(TextStyleKind::PageNumber),
-            defaults(false, false, FontFamily::SansSerif),
-        ),
-        simple_text_style(
-            metadata.part_label_style,
-            font_size(TextStyleKind::PartLabel),
-            defaults(false, false, FontFamily::SansSerif),
-        ),
-    )
-}
-
 /// Resolves every text kind's `TextStyle`, applying each documented default
 /// (see `Metadata`'s per-kind field docs) to whichever components the
-/// `# metadata` section left unset.
+/// `metadata` section left unset.
 fn resolve_text_styles(metadata: &ParsedMetadata, row_height: u32) -> ResolvedTextStyles {
     let (
         title_style,
@@ -278,6 +198,7 @@ fn resolve_text_styles(metadata: &ParsedMetadata, row_height: u32) -> ResolvedTe
         section_label,
         part_label,
         page_number,
+        running_title: resolve_running_title(metadata, row_height),
         lyrics: resolve_text_style(
             metadata.lyrics_style,
             font_size(TextStyleKind::Lyrics),
@@ -346,6 +267,7 @@ fn resolve_metadata(metadata: ParsedMetadata) -> Metadata {
         part_label_width_pt: metadata
             .part_label_width_pt
             .unwrap_or(DEFAULT_PART_LABEL_WIDTH_PT),
+        page_margin_pt: metadata.page_margin_pt.unwrap_or(DEFAULT_PAGE_MARGIN_PT),
         title_style: styles.title_style,
         subtitle_style: styles.subtitle_style,
         author_style: styles.author_style,
@@ -355,6 +277,7 @@ fn resolve_metadata(metadata: ParsedMetadata) -> Metadata {
         section_label: styles.section_label,
         part_label: styles.part_label,
         page_number: styles.page_number,
+        running_title: styles.running_title,
         lyrics: styles.lyrics,
         notes: styles.notes,
         chords: styles.chords,

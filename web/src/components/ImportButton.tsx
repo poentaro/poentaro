@@ -13,7 +13,7 @@ interface ImportButtonProps {
 }
 
 /** Lets the user pick a previously exported `.svg`/`.pdf` file and recover
- * its embedded `.jianpu` source (see `extract_embedded_source`). Rendered as
+ * its embedded `.poentaro` source (see `extract_embedded_source`). Rendered as
  * a menu item inside the file-actions ("⋯") dropdown. The dropdown must stay
  * open (not close-on-click like the other menu items) until a file is
  * actually chosen — closing it eagerly unmounts the file `<input>` before

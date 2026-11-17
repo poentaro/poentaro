@@ -2,9 +2,9 @@
 
 ## Goal
 
-Embed the original `.jianpu` source text as a hidden, non-visual payload inside
+Embed the original `.poentaro` source text as a hidden, non-visual payload inside
 generated SVG output, and provide a way to extract it back out — so that if a
-`.jianpu` source file is lost, it can be recovered from a previously exported
+`.poentaro` source file is lost, it can be recovered from a previously exported
 SVG (or, eventually, PDF — see `PLAN-embed-source-in-pdf-and-web-import.md` for
 PR 2).
 
@@ -43,7 +43,7 @@ the size of the web-side change.
 Add a `<metadata>` element as the first child of `<svg>` in `serialize_doc`:
 
 ```xml
-<metadata id="jianpu-source">BASE64_ENCODED_SOURCE</metadata>
+<metadata id="poentaro-source">BASE64_ENCODED_SOURCE</metadata>
 ```
 
 - Use `<metadata>` (not `<desc>`/`<title>`) — it's the SVG-spec-correct place
@@ -97,7 +97,7 @@ nothing to do with serialization per se):
 pub fn extract_embedded_source(svg: &str) -> Option<String>
 ```
 
-- Find the `<metadata id="jianpu-source">...</metadata>` substring (simple
+- Find the `<metadata id="poentaro-source">...</metadata>` substring (simple
   string search for the opening/closing tags is fine — we control the exact
   format we emit, no need for a general XML parser), base64-decode the
   contents, and return as `String`. Return `None` if the tag isn't present or
@@ -108,11 +108,11 @@ pub fn extract_embedded_source(svg: &str) -> Option<String>
 ### Testing
 
 - Per project convention, test cases live in separate files, not inlined.
-  Add a round-trip test: render a known `.jianpu` fixture to SVG via
+  Add a round-trip test: render a known `.poentaro` fixture to SVG via
   `render_svgs_from_source`, assert `extract_embedded_source` on the output
   recovers the exact original source string byte-for-byte.
 - Add a test that `render_svgs` (the `Score`-only path, `None` source) does
-  NOT emit a `<metadata id="jianpu-source">` tag at all.
+  NOT emit a `<metadata id="poentaro-source">` tag at all.
 - Add a test that `extract_embedded_source` returns `None` gracefully on an
   SVG string with no embedded metadata (e.g. a plain `<svg></svg>`).
 - Check whether an existing fixture/golden-SVG test snapshots full SVG output
@@ -133,15 +133,15 @@ pub fn extract_embedded_source(svg: &str) -> Option<String>
 
 ## Acceptance criteria
 
-- [ ] `cargo run -- generate svg simple.jianpu` produces an SVG with a hidden
-      `<metadata id="jianpu-source">` tag containing the base64-encoded
+- [ ] `cargo run -- generate svg simple.poentaro` produces an SVG with a hidden
+      `<metadata id="poentaro-source">` tag containing the base64-encoded
       original source.
 - [ ] A round-trip Rust test proves `extract_embedded_source(svg) == original_source`.
 - [ ] `render_svgs(&Score)` (no source available) emits no metadata tag, and
       `extract_embedded_source` returns `None` for such output.
 - [ ] No visual change to rendered SVG output (metadata tag is non-rendering).
 - [ ] `syntax.md`/`ARCHITECTURE.md` updated only if this changes user-facing
-      `.jianpu` syntax or a documented layer/type signature — likely not
+      `.poentaro` syntax or a documented layer/type signature — likely not
       needed since this is purely an internal serializer change, but check
       `ARCHITECTURE.md`'s description of the serializer layer and update if
       the `serialize` signature change is documented there.

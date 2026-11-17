@@ -63,7 +63,7 @@ pub struct ChordDescription {
 /// (caret-only) selection, more than one note, a rest, a percussion hit, or
 /// a source that fails to compile.
 pub fn describe_selection(source: &str, ranges: &[ByteRange]) -> Option<PitchDescription> {
-    let score = crate::compile(source, "input.jianpu", &[]).ok()?;
+    let score = crate::compile(source, "input.poentaro", &[]).ok()?;
     let selected = selected_tie_chains(&score, ranges);
     match selected.as_slice() {
         [only] => describe_event(only.event, &only.key),

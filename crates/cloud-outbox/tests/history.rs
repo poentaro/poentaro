@@ -59,11 +59,11 @@ fn names() -> Vec<FileName> {
     vec![
         FileName {
             file_id: "f1".into(),
-            name: "Ode to Joy.jianpu".into(),
+            name: "Ode to Joy.poentaro".into(),
         },
         FileName {
             file_id: "f2".into(),
-            name: "Canon in D.jianpu".into(),
+            name: "Canon in D.poentaro".into(),
         },
     ]
 }
@@ -114,7 +114,7 @@ fn a_delivery_is_recorded_with_its_payload_and_failed_tries() -> TestResult {
         Some(AttemptOutcome::Succeeded)
     )?;
     expect!(row.at_ms, 500)?;
-    expect!(row.file_name.as_str(), "Ode to Joy.jianpu")
+    expect!(row.file_name.as_str(), "Ode to Joy.poentaro")
 }
 
 #[test]
@@ -261,7 +261,7 @@ fn mixed() -> (Queue, Vec<StoredRecord>) {
                 "rename",
                 950,
                 Message::RenameFile {
-                    to: "Canon.jianpu".into(),
+                    to: "Canon.poentaro".into(),
                 },
                 0,
             )],
@@ -377,6 +377,6 @@ fn the_payload_is_the_full_message_with_ids() -> TestResult {
         .ok_or("no row")?;
     let value: serde_json::Value = serde_json::from_str(&row.payload_json)?;
     expect!(value["kind"].as_str(), Some("renameFile"))?;
-    expect!(value["to"].as_str(), Some("Canon.jianpu"))?;
+    expect!(value["to"].as_str(), Some("Canon.poentaro"))?;
     expect!(value["fileId"].as_str(), Some("f2"))
 }

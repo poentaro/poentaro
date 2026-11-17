@@ -40,7 +40,7 @@ function makeProps(
   overrides: Partial<MergeEditorProps> = {},
 ): MergeEditorProps {
   return {
-    fileName: 'song.jianpu',
+    fileName: 'song.poentaro',
     theirs: 'theirs',
     initialResult: 'mine',
     hasConflictMarkers: false,
@@ -79,7 +79,7 @@ describe('MergeEditor', () => {
     const html = renderToStaticMarkup(
       <MergeEditor {...makeProps({ hasConflictMarkers: true })} />,
     )
-    expect(html).toContain('song.jianpu')
+    expect(html).toContain('song.poentaro')
     expect(html).toContain('merge-editor__hint')
     expect(html).toMatch(/<button[^>]*disabled[^>]*>Save<\/button>/)
   })

@@ -3,17 +3,15 @@ import { tagFieldAttribute, tagSelector } from '../../../src/dataAttributes'
 import { Given, Then } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Guitar View Test"',
+  'metadata { title "Guitar View Test" },',
   '',
-  '# parts',
-  'Soprano [S] = notes',
-  'Chords [C] = chords',
+  'parts ["Soprano" [S]: notes, "Chords" [C]: chords],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[S] 1 2 3 4',
-  '[C] 1 6m 4 5',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [S] 1 2 3 4',
+  '    [C] 1 6m 4 5',
+  '    """,',
 ].join('\n')
 
 const diagrams = '.preview-page'
@@ -23,12 +21,12 @@ Given(
   async ({ page }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'guitar.jianpu',
-          userFiles: { 'guitar.jianpu': src },
+          active: 'guitar.poentaro',
+          userFiles: { 'guitar.poentaro': src },
           bin: {},
-          fileIds: { 'guitar.jianpu': crypto.randomUUID() },
+          fileIds: { 'guitar.poentaro': crypto.randomUUID() },
         }),
       )
     }, SOURCE)

@@ -1,4 +1,9 @@
-import type { StaffMeasure } from '../jianpuWasm'
+import {
+  type BoundingBox,
+  poentaroWasm,
+  type StaffMeasure,
+  type StaffMeasureGeometry,
+} from '../poentaroWasm'
 import type { MeasureRange } from './previewSelection'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -28,20 +33,49 @@ function staffMeasureElements(
   })
 }
 
-/** The staff measure whose box contains `(x, y)`. Tested against each
- * measure's whole box rather than the element under the pointer, since the
- * blank space between a measure's notes isn't painted and so never hit. */
+/** Copied out of the `DOMRect`, whose fields are getters. */
+function clientBox(element: SVGGraphicsElement): BoundingBox {
+  const { left, right, top, bottom } = element.getBoundingClientRect()
+  return { left, right, top, bottom }
+}
+
+function userSpaceBox(element: SVGGraphicsElement): BoundingBox {
+  const { x, y, width, height } = element.getBBox()
+  return { left: x, right: x + width, top: y, bottom: y + height }
+}
+
+/** The measure group's box and its staff lines' (the `path`s directly under
+ * each `g.staff`), measured with `boxOf`, for Rust's `staff_measures`. */
+function staffMeasureGeometry(
+  { element, measureIndex }: StaffMeasureElement,
+  boxOf: (element: SVGGraphicsElement) => BoundingBox,
+): StaffMeasureGeometry {
+  return {
+    measureIndex,
+    measureBox: boxOf(element),
+    staffLineBoxes: Array.from(
+      element.querySelectorAll<SVGGraphicsElement>(':scope > g.staff > path'),
+    ).map(boxOf),
+  }
+}
+
+/** The staff measure whose area contains `(x, y)`. Tested against that area
+ * rather than the element under the pointer, since the blank space between a
+ * measure's notes isn't painted and so never hit. */
 export function staffMeasureRangeAtPoint(
   container: HTMLElement,
   measures: StaffMeasure[],
   x: number,
   y: number,
 ): MeasureRange | undefined {
-  const hit = staffMeasureElements(container, measures).find(({ element }) => {
-    const box = element.getBoundingClientRect()
-    return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
-  })
-  return hit && { start: hit.measureIndex, end: hit.measureIndex }
+  const index = poentaroWasm().staffMeasureAtPoint(
+    staffMeasureElements(container, measures).map((measure) =>
+      staffMeasureGeometry(measure, clientBox),
+    ),
+    x,
+    y,
+  )
+  return index === undefined ? undefined : { start: index, end: index }
 }
 
 /** The group of the staff measure `measureIndex`, to scroll into view. */
@@ -55,53 +89,56 @@ export function staffMeasureElement(
   )?.element
 }
 
-/** A rect covering `element`'s whole box, inserted behind its contents. */
+/** A rect covering `measure`'s area (Rust's `staff_measure_area`),
+ * inserted behind its contents. */
 function insertMeasureRect(
-  element: SVGGraphicsElement,
+  measure: StaffMeasureElement,
   className: string,
   testId: string,
 ): void {
-  const box = element.getBBox()
+  const box = poentaroWasm().staffMeasureArea(
+    staffMeasureGeometry(measure, userSpaceBox),
+  )
   const rect = document.createElementNS(SVG_NS, 'rect')
-  rect.setAttribute('x', String(box.x))
-  rect.setAttribute('y', String(box.y))
-  rect.setAttribute('width', String(box.width))
-  rect.setAttribute('height', String(box.height))
+  rect.setAttribute('x', String(box.left))
+  rect.setAttribute('y', String(box.top))
+  rect.setAttribute('width', String(box.right - box.left))
+  rect.setAttribute('height', String(box.bottom - box.top))
   rect.setAttribute('class', className)
   rect.dataset.testid = testId
-  element.insertBefore(rect, element.firstChild)
+  measure.element.insertBefore(rect, measure.element.firstChild)
 }
 
-/** Gives every staff measure a transparent rect over its whole box, so the
+/** Gives every staff measure a transparent rect over its area, so the
  * blank space between its notes (which Verovio leaves unpainted) is hovered
- * too — `preview.css` tints it and shows a pointer, like the jianpu view's
+ * too — `preview.css` tints it and shows a pointer, like the numbered view's
  * click targets. Run once per set of pages. */
 export function applyStaffMeasureHitTargets(
   container: HTMLElement,
   measures: StaffMeasure[],
 ): void {
-  for (const { element } of staffMeasureElements(container, measures)) {
+  for (const measure of staffMeasureElements(container, measures)) {
     if (
-      element.querySelector(
+      measure.element.querySelector(
         `:scope > [data-testid="${STAFF_MEASURE_HIT_TARGET_TEST_ID}"]`,
       )
     )
       continue
     insertMeasureRect(
-      element,
+      measure,
       'staff-measure-hit-target',
       STAFF_MEASURE_HIT_TARGET_TEST_ID,
     )
   }
 }
 
-/** Paints a rect behind every staff measure inside `ranges`, clearing the
- * previous ones. Idempotent, so it's re-run whenever Verovio's pages are
+/** Paints a rect behind every staff measure in `measureIndices`, clearing
+ * the previous ones. Idempotent, so it's re-run whenever Verovio's pages are
  * swapped in. */
-export function applyStaffMeasureHighlights(
+function paintStaffMeasures(
   container: HTMLElement,
-  measures: StaffMeasure[],
-  ranges: MeasureRange[],
+  measures: StaffMeasureElement[],
+  measureIndices: Uint32Array,
 ): void {
   for (const rect of Array.from(
     container.querySelectorAll(
@@ -110,18 +147,51 @@ export function applyStaffMeasureHighlights(
   )) {
     rect.remove()
   }
-  for (const { element, measureIndex } of staffMeasureElements(
-    container,
-    measures,
-  )) {
-    const selected = ranges.some(
-      ({ start, end }) => start <= measureIndex && measureIndex <= end,
-    )
-    if (!selected) continue
+  const painted = new Set(measureIndices)
+  for (const measure of measures) {
+    if (!painted.has(measure.measureIndex)) continue
     insertMeasureRect(
-      element,
+      measure,
       'staff-measure-highlight',
       STAFF_MEASURE_HIGHLIGHT_TEST_ID,
     )
   }
+}
+
+/** Paints the staff measures the editor's selection `ranges` cover. */
+export function applyStaffMeasureHighlights(
+  container: HTMLElement,
+  measures: StaffMeasure[],
+  ranges: MeasureRange[],
+): void {
+  const elements = staffMeasureElements(container, measures)
+  paintStaffMeasures(
+    container,
+    elements,
+    poentaroWasm().highlightedStaffMeasures(measureIndicesOf(elements), ranges),
+  )
+}
+
+/** Paints the staff measures a click-and-click gesture spans, from its
+ * `anchor` to its `current` end. */
+export function applyPendingStaffMeasures(
+  container: HTMLElement,
+  measures: StaffMeasure[],
+  anchor: MeasureRange,
+  current: MeasureRange,
+): void {
+  const elements = staffMeasureElements(container, measures)
+  paintStaffMeasures(
+    container,
+    elements,
+    poentaroWasm().pendingStaffMeasures(
+      measureIndicesOf(elements),
+      anchor,
+      current,
+    ),
+  )
+}
+
+function measureIndicesOf(measures: StaffMeasureElement[]): Uint32Array {
+  return Uint32Array.from(measures, ({ measureIndex }) => measureIndex)
 }

@@ -1,11 +1,14 @@
 import type { RefObject } from 'react'
 import { useMemo } from 'react'
-import { jianpuWasm } from '../jianpuWasm'
+import { poentaroWasm } from '../poentaroWasm'
 import type { EditorHandle, NoteSpan } from '../types'
 import type { NoteCell, NoteSelectionRun } from '../utils/noteSpanSelection'
 import { distinctPartAbbreviations } from '../utils/partAbbreviations'
 import { ensureWasmInit } from '../wasmInit'
-import { useByteRangeSelectionCore } from './useByteRangeSelectionCore'
+import {
+  type ByteRange,
+  useByteRangeSelectionCore,
+} from './useByteRangeSelectionCore'
 
 /** Calls the wasm `groupNoteSelection` export directly on the main
  * thread (bypassing the debounced render worker) — this is pure grouping
@@ -20,12 +23,22 @@ export async function groupSelectedNotesIntoContiguousRuns(
   noteSpans: NoteSpan[],
 ): Promise<NoteSelectionRun[]> {
   await ensureWasmInit()
-  const response = jianpuWasm().groupNoteSelection(noteSpans, selectedCells)
+  const response = poentaroWasm().groupNoteSelection(noteSpans, selectedCells)
   return response.tag === 'ok' ? response.val.runs : []
 }
 
-function cellFromNoteSpan(span: NoteSpan): NoteCell {
-  return { sourcePartIndex: span.sourcePartIndex, noteId: span.noteId }
+/** The notes whose source text `ranges` overlap, and their runs — so a
+ * selection can be re-derived from its text after parts are hidden or shown
+ * (see `useByteRangeSelectionCore`). */
+async function selectNotesInByteRanges(
+  ranges: ByteRange[],
+  noteSpans: NoteSpan[],
+): Promise<{ cells: NoteCell[]; runs: NoteSelectionRun[] }> {
+  await ensureWasmInit()
+  return poentaroWasm().selectNotesInByteRanges(
+    noteSpans,
+    ranges.map((range) => ({ startByte: range.start, endByte: range.end })),
+  )
 }
 
 /** Exported alongside `groupSelectedNotesIntoContiguousRuns` for
@@ -78,7 +91,7 @@ export function useNoteSelection(
     noteSpans,
     editorRef,
     groupSelectedNotesIntoContiguousRuns,
-    cellFromNoteSpan,
+    selectNotesInByteRanges,
     noteRunByteRange,
   )
 

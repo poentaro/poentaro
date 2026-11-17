@@ -1,6 +1,6 @@
+use super::page_geometry::PageGeometry;
 use crate::compositor::types::{AbsoluteContent, AbsoluteElement};
 use crate::grid_layout::types::GridRow;
-use crate::grid_layout::PAGE_MARGIN;
 
 /// The per-page layout data every row-range resolver below needs, bundled
 /// into one value so `resolve_row_range_geometry` stays under the repo's
@@ -11,8 +11,7 @@ use crate::grid_layout::PAGE_MARGIN;
 pub(super) struct RowLayoutContext<'a> {
     pub(super) rows: &'a [GridRow],
     pub(super) row_tops: &'a [f32],
-    pub(super) usable_width: f32,
-    pub(super) part_label_width_pt: f32,
+    pub(super) page_geometry: PageGeometry,
 }
 
 /// Pixel geometry of one row range (`row_start..=row_end`) restricted to one
@@ -37,16 +36,15 @@ pub(super) fn resolve_row_range_geometry(
     let RowLayoutContext {
         rows,
         row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
     } = ctx;
     let start_row = rows.get(row_start)?;
     let y = row_tops.get(row_start)?;
     if row_end >= rows.len() {
         return None;
     }
-    let geometry = start_row.column_geometry(usable_width, part_label_width_pt);
-    let x = PAGE_MARGIN + geometry.x_start(column_start);
+    let geometry = page_geometry.row_geometry(start_row);
+    let x = geometry.x_start(column_start);
     let width = geometry.x_start(column_end) - geometry.x_start(column_start);
     let height = rows
         .get(row_start..=row_end)
@@ -64,14 +62,12 @@ pub(super) fn resolve_measure_highlights(
     highlights: &[crate::grid_layout::types::MeasureHighlight],
     rows: &[GridRow],
     row_tops: &[f32],
-    usable_width: f32,
-    part_label_width_pt: f32,
+    page_geometry: PageGeometry,
 ) -> Vec<AbsoluteElement> {
     let ctx = RowLayoutContext {
         rows,
         row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
     };
     highlights
         .iter()
@@ -99,14 +95,12 @@ pub(super) fn resolve_error_highlights(
     highlights: &[crate::grid_layout::types::MeasureHighlight],
     rows: &[GridRow],
     row_tops: &[f32],
-    usable_width: f32,
-    part_label_width_pt: f32,
+    page_geometry: PageGeometry,
 ) -> Vec<AbsoluteElement> {
     let ctx = RowLayoutContext {
         rows,
         row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
     };
     highlights
         .iter()
@@ -134,14 +128,12 @@ pub(super) fn resolve_playback_cursor_target(
     target: &crate::grid_layout::types::PlaybackCursorTarget,
     rows: &[GridRow],
     row_tops: &[f32],
-    usable_width: f32,
-    part_label_width_pt: f32,
+    page_geometry: PageGeometry,
 ) -> Option<AbsoluteElement> {
     let ctx = RowLayoutContext {
         rows,
         row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
     };
     let geometry = resolve_row_range_geometry(
         target.row_start,

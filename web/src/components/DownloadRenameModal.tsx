@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useEffect, useRef, useState } from 'react'
-import type { PendingDownload } from '../hooks/useJianpuWorkerTypes'
+import type { PendingDownload } from '../hooks/usePoentaroWorkerTypes'
 
 export interface DownloadRenameModalProps {
   pending: PendingDownload | null
@@ -117,7 +117,7 @@ function baseNameLength(filename: string): number {
 
 /** Modal interposed before every export download fires (PDF, MIDI, the ZIP
  * bundles, and the WAV/MP3 preview player's download button) — see
- * `PendingDownload` in `useJianpuWorkerTypes.ts`. Pre-fills the computed
+ * `PendingDownload` in `usePoentaroWorkerTypes.ts`. Pre-fills the computed
  * filename with just its base name selected; Enter or the "Download"
  * button confirms, Escape/overlay/Cancel aborts with no download. */
 export function DownloadRenameModal({

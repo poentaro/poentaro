@@ -1,7 +1,7 @@
 //! Raw D1 queries against the `shares` / `users` / `password_credentials` /
-//! `sessions` / `sign_in_lockouts` / `files` / `file_versions` / `app_log`
-//! tables, split by table into `shares`, `accounts`, `sessions`, `files`,
-//! `file_versions` and `app_log`
+//! `sessions` / `sign_in_lockouts` / `files` / `file_versions` / `app_log` /
+//! `origin_migrations` tables, split by table into `shares`, `accounts`,
+//! `sessions`, `files`, `file_versions`, `app_log` and `origin_migrations`
 //! submodules (re-exported here so every call site keeps using the flat
 //! `db::function_name` form regardless of which table it hits).
 //! Each query lives in its own file under `queries/`, loaded via
@@ -24,17 +24,21 @@
 //! given the constraint above, not a silent downgrade.
 
 mod accounts;
+mod api_keys;
 mod app_log;
 mod e2e_reset;
 mod file_versions;
 mod files;
+mod origin_migrations;
 mod sessions;
 mod shares;
 
 pub(crate) use accounts::*;
+pub(crate) use api_keys::*;
 pub(crate) use app_log::*;
 pub(crate) use e2e_reset::*;
 pub(crate) use file_versions::*;
 pub(crate) use files::*;
+pub(crate) use origin_migrations::*;
 pub(crate) use sessions::*;
 pub(crate) use shares::*;

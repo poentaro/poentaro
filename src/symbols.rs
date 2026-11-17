@@ -1,16 +1,17 @@
 //! Symbol collection and rename-edit computation for user-renamable identifiers:
-//! part abbreviations and `# sequence` section labels. Built on top of
+//! part abbreviations and `sequence` section labels. Built on top of
 //! [`crate::ast::parsed::ParsedDocument`]'s already-tracked declaration and
 //! reference spans, for use by editor tooling (e.g. a Monaco rename provider).
 
 use crate::ast::parsed::ParsedDocument;
 use crate::error::Span;
+use crate::parser::anyx;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SymbolKind {
     /// A part abbreviation.
     Abbreviation,
-    /// A `label="..."` section label, referenced from `# sequence` entries.
+    /// A `label="..."` section label, referenced from `sequence` entries.
     SectionLabel,
 }
 
@@ -186,6 +187,43 @@ pub fn rename_edits(
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// [`rename_edits`] for `text`, the document's own text: outside its score an
+/// anyx document spells a name by where it sits, quoted or bare.
+pub fn rename_edits_in_text(
+    text: &str,
+    document: &ParsedDocument,
+    kind: SymbolKind,
+    old_name: &str,
+    new_name: &str,
+) -> Vec<TextEdit> {
+    let edits = rename_edits(document, kind, old_name, new_name);
+    let score = crate::parser::read_document(text, &[]).score;
+    let score_span = score.offset..score.offset + score.text.len();
+    edits
+        .into_iter()
+        .map(|edit| {
+            if score_span.contains(&edit.span.start) {
+                return edit;
+            }
+            let is_in_quotes = text
+                .get(..edit.span.start)
+                .is_some_and(|before| before.ends_with('"'));
+            let replacement = match (is_in_quotes, kind) {
+                (true, _) => {
+                    let quoted = anyx::quoted(new_name);
+                    quoted.trim_matches('"').to_string()
+                }
+                (false, SymbolKind::Abbreviation) => anyx::abbreviation(new_name),
+                (false, SymbolKind::SectionLabel) => anyx::label(new_name),
+            };
+            TextEdit {
+                span: edit.span,
+                replacement,
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]

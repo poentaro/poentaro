@@ -9,7 +9,7 @@ import { Given, Then } from './fixtures'
 /**
  * Regression fixture for a bug introduced by the `note_position_in_measure`
  * axis added to the cross-part `Note ↔ Note` arm (see `cross_part` in
- * `crates/jianpu-wasm/src/selection_range/note_note.rs`): that axis's
+ * `crates/poentaro-wasm/src/selection_range/note_note.rs`): that axis's
  * `[position_start, position_end]` bound was applied to *every* measure in
  * the swept range uniformly, not just the boundary measures. So when the
  * anchor and current land in *different* measures, a rest ahead of the
@@ -33,19 +33,17 @@ import { Given, Then } from './fixtures'
  * leaving measure 1's positions 2-3 (indices 10, 11, 14, 15) unselected.
  */
 const crossMeasureRestSource = [
-  '# metadata',
-  'title = "cross measure rest range test"',
+  'metadata { title "cross measure rest range test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 0 0 0', // measure 0 — notes 0-3 (note at position 0)
-  '[H] 2 0 0 0', // measure 0 — notes 4-7 (note at position 0)
+  'score """',
+  '[M] 1 0 0 0',
+  '[H] 2 0 0 0',
   '',
-  '[M] 0 3 0 0', // measure 1 — notes 8-11 (note at position 1)
-  '[H] 0 4 0 0', // measure 1 — notes 12-15 (note at position 1)
+  '[M] 0 3 0 0',
+  '[H] 0 4 0 0',
+  '""",',
 ].join('\n')
 
 function noteRects(page: import('@playwright/test').Page) {
@@ -66,15 +64,15 @@ Given(
   async ({ page }) => {
     await page.addInitScript((source) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'cross-measure-rest-range-test.jianpu',
+          active: 'cross-measure-rest-range-test.poentaro',
           userFiles: {
-            'cross-measure-rest-range-test.jianpu': source,
+            'cross-measure-rest-range-test.poentaro': source,
           },
           bin: {},
           fileIds: {
-            'cross-measure-rest-range-test.jianpu':
+            'cross-measure-rest-range-test.poentaro':
               'cross-measure-rest-range-test-id-001',
           },
         }),

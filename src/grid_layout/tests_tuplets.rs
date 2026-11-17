@@ -1,4 +1,4 @@
-use crate::ast::parsed::JianPuPitch;
+use crate::ast::parsed::NumberedPitch;
 use crate::grid_layout::types::GridContent;
 
 use super::cfg;
@@ -10,19 +10,17 @@ fn tuplet_notes_align_with_plain_beat_notes_in_sibling_part() {
     // The plain "2 3 4" in each part falls on the same beats, so they must
     // land on the same grid columns — regardless of the triplet squeezed
     // into the other part's beat 1.
-    let source = r#"# metadata
-title = "Test"
+    let source = r#"metadata { title "Test" },
 
-# parts
-Melody [M] = notes
-Beat [B] = notes
+parts ["Melody" [M]: notes, "Beat" [B]: notes],
 
-# score
-time=4/4
-[B] 1 2 3 4
-[M] 3:{1_1_1_} 2 3 4
+score """
+    time=4/4
+    [B] 1 2 3 4
+    [M] 3:{1_1_1_} 2 3 4
+    """,
 "#;
-    let score = crate::compile(source, "test.jianpu", &[]).expect("should compile");
+    let score = crate::compile(source, "test.poentaro", &[]).expect("should compile");
     let compile_result = crate::compiler::compile(&score);
     let compile_result = crate::consolidator::consolidate(compile_result);
     let header = crate::grid_layout::types::Header {
@@ -40,10 +38,16 @@ time=4/4
         ..Default::default()
     };
     let config = cfg();
-    let pages =
-        crate::grid_layout::layout(&compile_result, &config, &header, 595.0, 842.0, None).pages;
+    let pages = crate::grid_layout::layout(
+        &compile_result,
+        &config,
+        &header,
+        crate::grid_layout::PageLayout::A4,
+        None,
+    )
+    .pages;
 
-    let note_heads: Vec<(JianPuPitch, u32)> = pages
+    let note_heads: Vec<(NumberedPitch, u32)> = pages
         .iter()
         .flat_map(|page| page.rows.iter())
         .flat_map(|row| row.elements.iter())
@@ -53,7 +57,11 @@ time=4/4
         })
         .collect();
 
-    for pitch in [JianPuPitch::Two, JianPuPitch::Three, JianPuPitch::Four] {
+    for pitch in [
+        NumberedPitch::Two,
+        NumberedPitch::Three,
+        NumberedPitch::Four,
+    ] {
         let columns: Vec<u32> = note_heads
             .iter()
             .filter(|(p, _)| *p == pitch)

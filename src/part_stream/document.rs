@@ -2,8 +2,7 @@
 
 use crate::ast::parsed::PartDecl;
 use crate::desugar::{desugar_groups, parse_key_prefix};
-use crate::parser::load_document_sections;
-use crate::parser::parts_parser::parse_parts;
+use crate::parser::read_document;
 use crate::parser::score::interleaved_parser::{directive_line_label, measure_capacities};
 use crate::parser::score::measure_group::{collect_groups, directive_line_count};
 
@@ -49,6 +48,8 @@ pub(super) struct ScoreMeasure {
     pub(super) lines: Vec<GroupLine>,
     /// The `label="..."` on the group's directive line.
     pub(super) section_label: Option<String>,
+    /// Start of the group's first line.
+    pub(super) start: usize,
     /// End of the group's last physical line.
     pub(super) end: usize,
 }
@@ -72,13 +73,12 @@ impl ScoreDocument {
     /// Locates every measure group of `source`. Fails when the score has any
     /// structural problem a stream edit could not safely work around.
     pub(super) fn load(source: &str) -> Result<Self, PartStreamError> {
-        let (sections, section_errors) = load_document_sections(source);
-        if let Some(error) = section_errors.first() {
+        let read = read_document(source, &[]);
+        if let Some(error) = read.section_structure_errors.first() {
             return Err(does_not_parse(error.message()));
         }
-        let (parts_content, parts_offset) = sections.parts;
-        let (score_content, score_offset) = sections.score;
-        let (declarations, _) = parse_parts(&parts_content, parts_offset, &[]);
+        let declarations = read.declarations;
+        let (score_content, score_offset) = (read.score.text, read.score.offset);
         if declarations.is_empty() {
             return Err(does_not_parse("no parts are declared"));
         }
@@ -128,6 +128,7 @@ impl ScoreDocument {
                         .get(..directive_line_count(group))
                         .and_then(<[_]>::first)
                         .and_then(|(line, _)| directive_line_label(line)),
+                    start: score_offset + group_start(group),
                     end,
                 },
             )
@@ -153,9 +154,7 @@ impl ScoreDocument {
 
 /// The declared parts of `source`, even when its score can't be loaded.
 pub(super) fn declarations_of(source: &str) -> Vec<PartDecl> {
-    let (sections, _) = load_document_sections(source);
-    let (parts_content, parts_offset) = sections.parts;
-    parse_parts(&parts_content, parts_offset, &[]).0
+    read_document(source, &[]).declarations
 }
 
 fn group_start(group: &[(String, usize)]) -> usize {

@@ -1,0 +1,58 @@
+# A file in the account's tree.
+RECORD file summary {
+    # A slash path, such as `Hymns/hymn.poentaro`.
+    path: TEXT,
+    revision: INTEGER,
+},
+
+RECORD file { path: TEXT, revision: INTEGER, content: TEXT },
+
+# One problem in a score.
+PUBLIC RECORD diagnostic {
+    # Counted from 1, in the content you sent.
+    line: INTEGER,
+    # Counted from 1, in characters.
+    column: INTEGER,
+    message: TEXT,
+},
+
+# A score that was saved, and what may still be wrong with it. Warnings
+# never stop a save, but each is worth a look.
+RECORD saved { revision: INTEGER, warnings: LIST diagnostic },
+
+PUBLIC ERRORS file errors [
+    # The owner moved this file to the trash. Ask them to restore it.
+    trashed,
+    # No file has this path. It may have been renamed: run `files/list` to
+    # see the exact paths.
+    missing,
+],
+
+ERRORS score errors [
+    # The score has errors, so nothing was saved. Fix them and send it again.
+    rejected (diagnostics: LIST diagnostic),
+],
+
+# Every file this account owns.
+METHOD list RETURNS files: LIST file summary,
+
+METHOD read (path: TEXT) RETURNS (file: file) ERRORS file errors,
+
+# Saves the score, if the file is still at `revision`.
+METHOD write (path: TEXT) at revision (revision: INTEGER) content (content: TEXT)
+    RETURNS (saved: saved)
+    ERRORS [
+        # Someone saved first. Apply your change to `content`, then write at
+        # `revision`.
+        conflict at revision (revision: INTEGER) content (content: TEXT),
+    ] + score errors + file errors,
+
+# Makes a new file, and its folders if they don't exist.
+METHOD create (path: TEXT) content (content: TEXT)
+    RETURNS (saved: saved)
+    ERRORS [
+        # A file already has this path. Read it, or create under another path.
+        already exists at revision (revision: INTEGER),
+        # The path isn't valid, such as an empty folder name or a `..`.
+        invalid path (message: TEXT),
+    ] + score errors,

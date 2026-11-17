@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { LaneReason } from '../jianpuWasm'
+import type { LaneReason } from '../poentaroWasm'
 import type { OutboxSnapshot } from '../storage/outbox/outboxLooper'
 import { hasUnsyncedWork, outboxSaveBadge } from './outboxSaveBadge'
 

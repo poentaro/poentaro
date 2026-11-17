@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { rectVariantSelector, tagSelector } from '../dataAttributes'
-import type { NoteTiming } from '../jianpuWasm'
+import type { NoteTiming } from '../poentaroWasm'
 import {
   groupNoteTimingsByPart,
   resolveActiveNotes,

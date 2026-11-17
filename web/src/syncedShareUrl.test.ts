@@ -15,7 +15,7 @@ describe('parseSyncedShare (?s= query)', () => {
 
   it('returns null when there is neither ?s= nor a legacy hash', () => {
     expect(parseSyncedShare('', '')).toBeNull()
-    expect(parseSyncedShare('?file=a.jianpu', '#share=abc123')).toBeNull()
+    expect(parseSyncedShare('?file=a.poentaro', '#share=abc123')).toBeNull()
   })
 
   it('rejects a malformed share id', () => {
@@ -26,10 +26,10 @@ describe('parseSyncedShare (?s= query)', () => {
     ).toBeNull()
   })
 
-  it('parses a --filename suffix after the fixed-length share id, appending .jianpu', () => {
+  it('parses a --filename suffix after the fixed-length share id, appending .poentaro', () => {
     expect(parseSyncedShare(`?s=${SAMPLE_SHARE_ID}--My-Song`, '')).toEqual({
       shareId: SAMPLE_SHARE_ID,
-      filename: 'My-Song.jianpu',
+      filename: 'My-Song.poentaro',
     })
   })
 
@@ -37,7 +37,7 @@ describe('parseSyncedShare (?s= query)', () => {
     const search = `?s=${SAMPLE_SHARE_ID}--${encodeURIComponent('彌勒淨土鄉--2')}`
     expect(parseSyncedShare(search, '')).toEqual({
       shareId: SAMPLE_SHARE_ID,
-      filename: '彌勒淨土鄉--2.jianpu',
+      filename: '彌勒淨土鄉--2.poentaro',
     })
   })
 
@@ -50,9 +50,9 @@ describe('parseSyncedShare (?s= query)', () => {
   })
 
   it('works alongside other query params', () => {
-    expect(parseSyncedShare(`?file=a.jianpu&s=${SAMPLE_SHARE_ID}`, '')).toEqual(
-      { shareId: SAMPLE_SHARE_ID },
-    )
+    expect(
+      parseSyncedShare(`?file=a.poentaro&s=${SAMPLE_SHARE_ID}`, ''),
+    ).toEqual({ shareId: SAMPLE_SHARE_ID })
   })
 })
 
@@ -67,7 +67,7 @@ describe('parseSyncedShare (legacy #synced= hash)', () => {
     const hash = `#synced=${SAMPLE_SHARE_ID}--快樂天堂 100% A & B -- more`
     expect(parseSyncedShare('', hash)).toEqual({
       shareId: SAMPLE_SHARE_ID,
-      filename: '快樂天堂 100% A & B -- more.jianpu',
+      filename: '快樂天堂 100% A & B -- more.poentaro',
     })
   })
 
@@ -102,34 +102,34 @@ describe('buildSyncedShareUrl', () => {
     expect(parsed).toEqual({ shareId: SAMPLE_SHARE_ID })
   })
 
-  it('replaces whitespace in the filename with dashes and drops .jianpu', () => {
-    const { url, parsed } = buildAndParse('My   Great\tSong.jianpu')
+  it('replaces whitespace in the filename with dashes and drops .poentaro', () => {
+    const { url, parsed } = buildAndParse('My   Great\tSong.poentaro')
     expect(url.searchParams.get('s')).toBe(`${SAMPLE_SHARE_ID}--My-Great-Song`)
     expect(parsed).toEqual({
       shareId: SAMPLE_SHARE_ID,
-      filename: 'My-Great-Song.jianpu',
+      filename: 'My-Great-Song.poentaro',
     })
   })
 
   it('round-trips a CJK filename', () => {
-    const { parsed } = buildAndParse('彌勒淨土鄉.jianpu')
+    const { parsed } = buildAndParse('彌勒淨土鄉.poentaro')
     expect(parsed).toEqual({
       shareId: SAMPLE_SHARE_ID,
-      filename: '彌勒淨土鄉.jianpu',
+      filename: '彌勒淨土鄉.poentaro',
     })
   })
 
   it('keeps non-ASCII characters readable instead of percent-encoding them', () => {
-    expect(buildSyncedShareUrl(SAMPLE_SHARE_ID, '彌勒淨土鄉.jianpu')).toBe(
+    expect(buildSyncedShareUrl(SAMPLE_SHARE_ID, '彌勒淨土鄉.poentaro')).toBe(
       `https://example.test/?s=${SAMPLE_SHARE_ID}--彌勒淨土鄉`,
     )
   })
 
   it('still escapes characters that would break the query string', () => {
-    const { parsed } = buildAndParse('a&b#c+d%e.jianpu')
+    const { parsed } = buildAndParse('a&b#c+d%e.poentaro')
     expect(parsed).toEqual({
       shareId: SAMPLE_SHARE_ID,
-      filename: 'a&b#c+d%e.jianpu',
+      filename: 'a&b#c+d%e.poentaro',
     })
   })
 })

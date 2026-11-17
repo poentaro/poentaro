@@ -13,6 +13,15 @@ impl RecoverableError {
         self.kind.message()
     }
 
+    pub fn anyx_invalid(span: Span, message: impl Into<String>) -> Self {
+        Self {
+            span,
+            kind: RecoverableErrorKind::AnyxInvalid {
+                message: message.into(),
+            },
+        }
+    }
+
     pub fn general(span: Span, message: impl Into<String>) -> Self {
         Self {
             span,
@@ -128,75 +137,10 @@ impl RecoverableError {
             },
         }
     }
-
-    pub fn metadata_malformed_line(span: Span, line: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::MetadataMalformedLine {
-                line: line.to_string(),
-            },
-        }
-    }
-
-    pub fn metadata_unknown_field(span: Span, field: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::MetadataUnknownField {
-                field: field.to_string(),
-            },
-        }
-    }
-
-    pub fn metadata_invalid_integer(span: Span, field: &str, value: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::MetadataInvalidInteger {
-                field: field.to_string(),
-                value: value.to_string(),
-            },
-        }
-    }
-
-    pub fn metadata_must_be_positive(span: Span, field: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::MetadataMustBePositive {
-                field: field.to_string(),
-            },
-        }
-    }
-
-    pub fn metadata_invalid_boolean(span: Span, field: &str, value: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::MetadataInvalidBoolean {
-                field: field.to_string(),
-                value: value.to_string(),
-            },
-        }
-    }
-
-    pub fn metadata_invalid_integer_pair(span: Span, field: &str, value: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::MetadataInvalidIntegerPair {
-                field: field.to_string(),
-                value: value.to_string(),
-            },
-        }
-    }
-
-    pub fn metadata_invalid_enum(span: Span, field: &str, value: &str, allowed: &str) -> Self {
-        Self {
-            span,
-            kind: RecoverableErrorKind::MetadataInvalidEnum {
-                field: field.to_string(),
-                value: value.to_string(),
-                allowed: allowed.to_string(),
-            },
-        }
-    }
 }
 
 #[path = "recoverable_error_parts.rs"]
 mod recoverable_error_parts;
+
+#[path = "recoverable_error_presets.rs"]
+mod recoverable_error_presets;

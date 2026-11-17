@@ -1,7 +1,7 @@
-import wasmComponentCoreUrl from '../../crates/jianpu-wasm/pkg-component/jianpu_wasm.core.wasm?url'
-import type { Root as WasmComponentExports } from '../../crates/jianpu-wasm/pkg-component/jianpu_wasm.js'
-import { instantiate as instantiateWasmComponent } from '../../crates/jianpu-wasm/pkg-component/jianpu_wasm.js'
-import { setWasmRoot } from './jianpuWasm'
+import wasmComponentCoreUrl from '../../crates/poentaro-wasm/pkg-component/poentaro_wasm.core.wasm?url'
+import type { Root as WasmComponentExports } from '../../crates/poentaro-wasm/pkg-component/poentaro_wasm.js'
+import { instantiate as instantiateWasmComponent } from '../../crates/poentaro-wasm/pkg-component/poentaro_wasm.js'
+import { setWasmRoot } from './poentaroWasm'
 
 type WasmProgressListener = (loadedBytes: number, totalBytes: number) => void
 
@@ -74,10 +74,10 @@ export function instantiateWasmComponentFromModule(
 
 let wasmReady: Promise<void> | null = null
 
-/** Initializes the `jianpu-wasm` component on the main thread, sharing a
+/** Initializes the `poentaro-wasm` component on the main thread, sharing a
  * single in-flight promise across every caller so concurrent first uses
  * (e.g. share-link parsing racing a rename-symbol lookup on startup) don't
- * each trigger their own fetch of the wasm binary. Every `jianpuWasm.ts`
+ * each trigger their own fetch of the wasm binary. Every `poentaroWasm.ts`
  * function becomes callable once this resolves. */
 export function ensureWasmInit(): Promise<void> {
   if (!wasmReady) {

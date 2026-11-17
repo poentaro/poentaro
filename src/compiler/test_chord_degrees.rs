@@ -2,12 +2,12 @@
 //! formatted text matters.
 
 use super::ChordDegrees;
-use crate::ast::parsed::{Accidental, JianPuPitch, TriadQuality};
+use crate::ast::parsed::{Accidental, NumberedPitch, TriadQuality};
 
 /// The tonic major chord, `1`.
 pub(crate) fn tonic_major() -> ChordDegrees {
     ChordDegrees {
-        degree: JianPuPitch::One,
+        degree: NumberedPitch::One,
         accidental: Accidental::Natural,
         triad: TriadQuality::Major,
         extension: None,

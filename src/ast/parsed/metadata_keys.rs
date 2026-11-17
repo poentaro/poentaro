@@ -1,4 +1,4 @@
-//! The `# metadata` section's key vocabulary (see `syntax.md`). Each keyword
+//! The `metadata` section's key vocabulary (see `syntax.md`). Each keyword
 //! is spelled exactly once, in a `keyword_enum!` table, and everything else
 //! (the parser, `source_edit::metadata_edit`'s writer, the wasm boundary)
 //! dispatches on these enums.
@@ -19,6 +19,7 @@ keyword_enum! {
         SectionLabel => "section_label",
         PartLabel => "part_label",
         PageNumber => "page_number",
+        RunningTitle => "running_title",
         Lyrics => "lyrics",
         Notes => "notes",
         Chords => "chords",
@@ -40,18 +41,19 @@ keyword_enum! {
 }
 
 keyword_enum! {
-    /// Positive-integer `# metadata` keys.
+    /// Positive-integer `metadata` keys.
     pub enum MetadataNumberKey {
         RowHeight => "row_height",
         MaxMeasuresPerSystem => "max_measures_per_system",
         NoteNumberWidth => "note_number_width",
         PartsListColumns => "parts_list_columns",
         PartLabelWidthPt => "part_label_width_pt",
+        PageMarginPt => "page_margin_pt",
     }
 }
 
 keyword_enum! {
-    /// `yes`/`no` `# metadata` keys.
+    /// `yes`/`no` `metadata` keys.
     pub enum MetadataFlagKey {
         MergeDuplicateMeasuresAcrossParts => "merge_duplicate_measures_across_parts",
         HideRestingParts => "hide_resting_parts",
@@ -74,10 +76,6 @@ impl YesNo {
         } else {
             Self::No
         }
-    }
-
-    pub fn to_bool(self) -> bool {
-        self == Self::Yes
     }
 }
 
@@ -114,6 +112,7 @@ impl MetadataTextKey {
             | TextStyleKind::SectionLabel
             | TextStyleKind::PartLabel
             | TextStyleKind::PageNumber
+            | TextStyleKind::RunningTitle
             | TextStyleKind::Lyrics
             | TextStyleKind::Notes
             | TextStyleKind::Chords
@@ -151,7 +150,7 @@ impl TextStyleComponentValue {
         }
     }
 
-    /// The value as `.jianpu` source spells it, or `None` when unset.
+    /// The value as `.poentaro` source spells it, or `None` when unset.
     pub fn source_text(self) -> Option<String> {
         let yes_no = |flag: bool| YesNo::from_bool(flag).keyword().to_owned();
         match self {

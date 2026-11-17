@@ -5,10 +5,10 @@ use itertools::Itertools;
 
 use crate::error::Span;
 
-use super::diagnostics::has_error;
 use super::document::ScoreDocument;
 use super::editable::editable_part;
 use super::find_part;
+use super::split::SplitStream;
 
 /// A byte offset in the stream, such as the editor's caret.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,7 +26,8 @@ pub struct StreamTextEdit {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormattedPartStream {
     /// Sorted, non-overlapping. Empty when the stream is already formatted,
-    /// or when it has errors (it's then left as typed).
+    /// or when it has errors other than a note or tuplet crossing a barline
+    /// (it's then left as typed).
     pub edits: Vec<StreamTextEdit>,
     /// Each input cursor, mapped into the formatted stream.
     pub cursors: Vec<StreamCursor>,
@@ -36,7 +37,8 @@ pub struct FormattedPartStream {
 /// line. Whitespace right before a measure becomes one `\n`, any other
 /// whitespace holding a line break becomes one space, and leading
 /// whitespace is dropped; everything else (spaces inside a measure, the
-/// stream's trailing whitespace) stays as typed.
+/// stream's trailing whitespace) stays as typed. The only non-whitespace
+/// edit deletes a lyric stream's `_` placeholders pushed past its last slot.
 pub fn format_part_stream(
     source: &str,
     abbreviation: &str,
@@ -55,17 +57,20 @@ pub fn format_part_stream(
     }
 }
 
+/// `stream` split into measures, or `None` when its part can't be loaded.
+fn split_part_stream(source: &str, abbreviation: &str, stream: &str) -> Option<SplitStream> {
+    let document = ScoreDocument::load(source).ok()?;
+    let part = find_part(&document, abbreviation)
+        .and_then(|index| editable_part(&document, index))
+        .ok()?;
+    Some(part.grammar.split(stream, &document))
+}
+
 fn formatting_edits(source: &str, abbreviation: &str, stream: &str) -> Vec<StreamTextEdit> {
-    let Ok(document) = ScoreDocument::load(source) else {
+    let Some(split) = split_part_stream(source, abbreviation, stream) else {
         return Vec::new();
     };
-    let Ok(part) =
-        find_part(&document, abbreviation).and_then(|index| editable_part(&document, index))
-    else {
-        return Vec::new();
-    };
-    let split = part.grammar.split(stream, &document);
-    if has_error(&split.diagnostics) {
+    if split.blocks_rebarring {
         return Vec::new();
     }
     // An empty lyric chunk (a measure without slots) has nothing to put on a line.
@@ -80,8 +85,12 @@ fn formatting_edits(source: &str, abbreviation: &str, stream: &str) -> Vec<Strea
     if measure_starts.is_empty() {
         return Vec::new();
     }
+    let dropped_placeholders = split.dropped_placeholders;
+    let outside_dropped_placeholders =
+        |run: &Span| dropped_placeholders.is_none_or(|dropped| run.end <= dropped.start);
     let whitespace_edits = whitespace_runs(stream)
         .filter(|run| run.end < stream.len())
+        .filter(outside_dropped_placeholders)
         .filter_map(|run| {
             let text = stream.get(run.start..run.end).unwrap_or_default();
             let replacement = if run.start == 0 {
@@ -111,8 +120,13 @@ fn formatting_edits(source: &str, abbreviation: &str, stream: &str) -> Vec<Strea
             span: Span::new(start, start),
             replacement: "\n".to_string(),
         });
+    let deleted_placeholders = dropped_placeholders.map(|span| StreamTextEdit {
+        span,
+        replacement: String::new(),
+    });
     whitespace_edits
         .chain(inserted_breaks)
+        .chain(deleted_placeholders)
         .sorted_by_key(|edit| edit.span.start)
         .collect()
 }

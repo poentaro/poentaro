@@ -7,7 +7,7 @@ import type {
   FontFamilyChoice,
   TextStyleComponentValue,
   TextStyleFields,
-} from '../jianpuWasm'
+} from '../poentaroWasm'
 
 /** `TextStyleFields`' keys whose value is a number. */
 type NumericField = {

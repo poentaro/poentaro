@@ -1,15 +1,15 @@
 import {
-  jianpuWasm,
+  poentaroWasm,
   type SymbolKind,
   type Symbol as WasmSymbol,
-} from './jianpuWasm'
+} from './poentaroWasm'
 import { GM_INSTRUMENTS } from './utils/gmInstruments'
 import { ensureWasmInit } from './wasmInit'
 
 /** Every renamable symbol (part/group abbreviation, section label) in `source`. */
 export async function listRenameSymbols(source: string): Promise<WasmSymbol[]> {
   await ensureWasmInit()
-  const result = jianpuWasm().listSymbols(source, GM_INSTRUMENTS)
+  const result = poentaroWasm().listSymbols(source, GM_INSTRUMENTS)
   return result.tag === 'ok' ? result.val.symbols : []
 }
 
@@ -62,7 +62,7 @@ export async function renameSymbolEdits(
   newName: string,
 ): Promise<RenameTextEdit[]> {
   await ensureWasmInit()
-  const result = jianpuWasm().renameSymbol(
+  const result = poentaroWasm().renameSymbol(
     source,
     kind,
     oldName,

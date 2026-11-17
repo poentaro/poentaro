@@ -11,7 +11,7 @@ import { Given, Then, When } from './fixtures'
  * abbreviation drawn at the label region's left edge on each verse's own
  * row, e.g. "M:v1" for Melody's first verse — is a shortcut for selecting
  * every syllable that verse sings across the whole system the label sits
- * in (see `Preview.tsx`'s `getLyricLabelAtPoint`/`lyricCellsForLyricLabels`).
+ * in (resolved in wasm by `resolve_selection_range_response`).
  * The lyric-side mirror of `part-label-click-selects-notes.spec.ts`.
  *
  * Self-contained source (not a demo file) with a generous "max measures per
@@ -22,23 +22,19 @@ import { Given, Then, When } from './fixtures'
  * Measure 1: Melody "3 4", verse 1 "la ti", verse 2 "da di"
  */
 const source = [
-  '# metadata',
-  'title = "lyric label click test"',
-  'max_measures_per_system = 48',
+  'metadata { title "lyric label click test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody verse 1 [Mv1] = lyrics[M]',
-  'Melody verse 2 [Mv2] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody verse 1" [Mv1]: lyrics [M], "Melody verse 2" [Mv2]: lyrics [M]],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0
-  '[Mv1] do re', // verse 0
-  '[Mv2] fa sol', // verse 1
+  'score """',
+  '[M] 1 2',
+  '[Mv1] do re',
+  '[Mv2] fa sol',
   '',
-  '[M] 3 4', // measure 1
-  '[Mv1] la ti', // verse 0
-  '[Mv2] da di', // verse 1
+  '[M] 3 4',
+  '[Mv1] la ti',
+  '[Mv2] da di',
+  '""",',
 ].join('\n')
 
 function verseLabel(page: import('@playwright/test').Page, verse: number) {
@@ -58,13 +54,13 @@ Given(
   async ({ page, focusEditor }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'lyric-label-click-test.jianpu',
-          userFiles: { 'lyric-label-click-test.jianpu': src },
+          active: 'lyric-label-click-test.poentaro',
+          userFiles: { 'lyric-label-click-test.poentaro': src },
           bin: {},
           fileIds: {
-            'lyric-label-click-test.jianpu': 'lyric-label-click-test-id-001',
+            'lyric-label-click-test.poentaro': 'lyric-label-click-test-id-001',
           },
         }),
       )
@@ -85,7 +81,7 @@ Given(
 
     await focusEditor()
     await page.keyboard.press('Control+g')
-    await page.keyboard.type('11')
+    await page.keyboard.type('6')
     await page.keyboard.press('Enter')
     await expect(page.locator('button.play-measure-btn')).toHaveText(
       /Measure/,

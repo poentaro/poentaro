@@ -9,7 +9,7 @@ Feature: Copying a part label's notes and pasting them into another part label's
   # notes with the copied part's notes — with no dedicated copy/paste code
   # for part labels at all.
   #
-  # `max_measures_per_system = 1` forces each measure onto its own system,
+  # `max measures per system 1` forces each measure onto its own system,
   # and each measure mentions only one of the two declared parts (the other
   # is implicitly rests, suppressed by the default `hide_resting_parts`), so
   # there's exactly one part label per system to click:

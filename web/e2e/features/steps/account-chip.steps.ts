@@ -140,7 +140,7 @@ Given(
   async ({ page }, backend: string) => {
     await page.addInitScript((backend: string) => {
       localStorage.setItem(
-        'jianpu:storage-backend:v1',
+        'poentaro:storage-backend:v1',
         JSON.stringify({ backend }),
       )
     }, backend)
@@ -151,7 +151,7 @@ Then(
   'the stored storage-backend preference is set to local',
   async ({ page }) => {
     const preference = await page.evaluate(() =>
-      localStorage.getItem('jianpu:storage-backend:v1'),
+      localStorage.getItem('poentaro:storage-backend:v1'),
     )
     expect(JSON.parse(preference ?? '{}')).toEqual({ backend: 'local' })
   },

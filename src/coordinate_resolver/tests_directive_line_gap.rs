@@ -44,7 +44,7 @@ fn resolve_directive_line(bar_number: Option<u32>, key: Option<&str>) -> Absolut
         },
         ..Default::default()
     };
-    resolve(&[page], 12.0, 40.0, font_sizes).unwrap()[0].elements[0]
+    resolve(&[page], 12.0, super::tests::TEST_PAGE_FRAME, font_sizes).unwrap()[0].elements[0]
         .content
         .clone()
 }

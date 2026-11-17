@@ -9,7 +9,7 @@ import { Given, Then } from './fixtures'
 /**
  * Regression fixture for the click-and-click note-range gesture's new
  * cross-part row (see `resolve_selection_range_response`'s cross-part
- * `Note` arm in `crates/jianpu-wasm/src/selection_range.rs`, added per
+ * `Note` arm in `crates/poentaro-wasm/src/selection_range.rs`, added per
  * `PLAN-clickable-element-id-selection.md`'s Phase 2): an anchor in one
  * part and a second click in another part now resolves via wasm — every
  * note whose part falls between the two `source_part_index`es AND whose
@@ -22,19 +22,17 @@ import { Given, Then } from './fixtures'
  * own measures, not "everything from here on."
  */
 const crossPartSource = [
-  '# metadata',
-  'title = "cross part range test"',
+  'metadata { title "cross part range test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Harmony [H] = notes',
+  'parts ["Melody" [M]: notes, "Harmony" [H]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0 — notes 0-1
-  '[H] 5 6', // measure 0 — notes 2-3
+  'score """',
+  '[M] 1 2',
+  '[H] 5 6',
   '',
-  '[M] 3 4', // measure 1 — notes 4-5
-  '[H] 7 1', // measure 1 — notes 6-7
+  '[M] 3 4',
+  '[H] 7 1',
+  '""",',
 ].join('\n')
 
 function noteRects(page: import('@playwright/test').Page) {
@@ -55,13 +53,13 @@ Given(
   async ({ page }) => {
     await page.addInitScript((source) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'cross-part-range-test.jianpu',
-          userFiles: { 'cross-part-range-test.jianpu': source },
+          active: 'cross-part-range-test.poentaro',
+          userFiles: { 'cross-part-range-test.poentaro': source },
           bin: {},
           fileIds: {
-            'cross-part-range-test.jianpu': 'cross-part-range-test-id-001',
+            'cross-part-range-test.poentaro': 'cross-part-range-test-id-001',
           },
         }),
       )

@@ -18,13 +18,13 @@ import type {
   SelectionMovePlan,
   SelectionUnit,
   ShareOverview,
-} from './jianpuWasm'
-import { jianpuWasm } from './jianpuWasm'
+} from './poentaroWasm'
+import { poentaroWasm } from './poentaroWasm'
 
 /** The user's files and folders as display rows, depth-first, folders
  * before files, sorted (computed in Rust). Empty if the paths conflict. */
 export function fileTreeRows(state: FileStoreState): FileTreeRow[] {
-  const response = jianpuWasm().fileStoreTree(toWasmState(state))
+  const response = poentaroWasm().fileStoreTree(toWasmState(state))
   return response.tag === 'ok' ? response.val : []
 }
 
@@ -40,7 +40,7 @@ export function fileTreeView(
   query: string,
   selected: string[],
 ): FileTreeViewRow[] {
-  const response = jianpuWasm().fileStoreTreeView(
+  const response = poentaroWasm().fileStoreTreeView(
     toWasmState(state),
     expanded,
     DEMO_FILE_NAMES,
@@ -58,7 +58,7 @@ export function fileMoveTargets(
   state: FileStoreState,
   excludedFolder?: string,
 ): MoveTarget[] {
-  return jianpuWasm().fileStoreMoveTargets(toWasmState(state), excludedFolder)
+  return poentaroWasm().fileStoreMoveTargets(toWasmState(state), excludedFolder)
 }
 
 /** Where `source` lands when moved into `folder` (top level when omitted). */
@@ -66,7 +66,7 @@ export function moveDestination(
   source: string,
   folder?: string,
 ): string | undefined {
-  return jianpuWasm().fileStoreMoveDestination(source, folder)
+  return poentaroWasm().fileStoreMoveDestination(source, folder)
 }
 
 /** Why renaming/moving `from` to `to` would be rejected, as a message from
@@ -76,7 +76,7 @@ export function renameError(
   from: string,
   to: string,
 ): string | undefined {
-  return jianpuWasm().fileStoreRenameError(
+  return poentaroWasm().fileStoreRenameError(
     toWasmState(state),
     from,
     to,
@@ -86,7 +86,7 @@ export function renameError(
 
 /** The active file split into its folder names and own name (computed in Rust). */
 export function activeFileLabel(active: string): FileActiveLabel {
-  return jianpuWasm().fileStoreActiveLabel(active, DEMO_FILE_NAMES)
+  return poentaroWasm().fileStoreActiveLabel(active, DEMO_FILE_NAMES)
 }
 
 /** The folder holding `path` (a file or a folder), `undefined` at the top
@@ -102,7 +102,7 @@ export function createFileError(
   folder: string | undefined,
   name: string,
 ): string | undefined {
-  return jianpuWasm().fileStoreCreateFileError(
+  return poentaroWasm().fileStoreCreateFileError(
     toWasmState(state),
     folder,
     name,
@@ -117,7 +117,7 @@ export function createFolderError(
   parent: string | undefined,
   name: string,
 ): string | undefined {
-  return jianpuWasm().fileStoreCreateFolderError(
+  return poentaroWasm().fileStoreCreateFolderError(
     toWasmState(state),
     parent,
     name,
@@ -132,7 +132,7 @@ export function folderMoveError(
   from: string,
   to: string,
 ): string | undefined {
-  return jianpuWasm().fileStoreFolderMoveError(
+  return poentaroWasm().fileStoreFolderMoveError(
     toWasmState(state),
     from,
     to,
@@ -148,7 +148,7 @@ export function folderDeleteSummary(
   folder: string,
   shares: ShareOverview,
 ): FolderDeleteSummary | undefined {
-  return jianpuWasm().fileStoreFolderDeleteSummary(
+  return poentaroWasm().fileStoreFolderDeleteSummary(
     toWasmState(state),
     folder,
     shares,
@@ -162,7 +162,7 @@ export function folderShareInfo(
   shares: ShareOverview,
   folder: string,
 ): FolderShareInfo | undefined {
-  return jianpuWasm().fileStoreFolderShareInfo(
+  return poentaroWasm().fileStoreFolderShareInfo(
     toWasmState(state),
     shares,
     folder,
@@ -175,23 +175,23 @@ export function folderStaticShare(
   state: FileStoreState,
   folder: string,
 ): FolderStaticShare | undefined {
-  return jianpuWasm().fileStoreFolderStaticShare(toWasmState(state), folder)
+  return poentaroWasm().fileStoreFolderStaticShare(toWasmState(state), folder)
 }
 
 /** The bin as sorted entries: leaf name plus the folder it was deleted from. */
 export function binEntries(state: FileStoreState): BinEntry[] {
-  return jianpuWasm().fileStoreBinEntries(toWasmState(state))
+  return poentaroWasm().fileStoreBinEntries(toWasmState(state))
 }
 
 /** `folder` and every folder above it, outermost first: what the file list
  * must expand to show a folder that was just created or moved. */
 export function foldersToReveal(folder: string): string[] {
-  return jianpuWasm().fileStoreFoldersToReveal(folder)
+  return poentaroWasm().fileStoreFoldersToReveal(folder)
 }
 
 /** Every file path, for "Select all". */
 export function selectionAll(state: FileStoreState): string[] {
-  return jianpuWasm().fileStoreSelectionAll(toWasmState(state))
+  return poentaroWasm().fileStoreSelectionAll(toWasmState(state))
 }
 
 /** `selected` after clicking the checkbox of `key` (a file, or a folder
@@ -201,7 +201,7 @@ export function selectionToggle(
   selected: string[],
   key: string,
 ): string[] {
-  return jianpuWasm().fileStoreSelectionToggle(
+  return poentaroWasm().fileStoreSelectionToggle(
     toWasmState(state),
     selected,
     key,
@@ -214,7 +214,7 @@ export function selectionUnits(
   state: FileStoreState,
   selected: string[],
 ): SelectionUnit[] {
-  return jianpuWasm().fileStoreSelectionUnits(toWasmState(state), selected)
+  return poentaroWasm().fileStoreSelectionUnits(toWasmState(state), selected)
 }
 
 /** The moves that put the selection into `folder` (top level when omitted),
@@ -224,7 +224,7 @@ export function selectionMovePlan(
   selected: string[],
   folder?: string,
 ): SelectionMovePlan {
-  return jianpuWasm().fileStoreSelectionMovePlan(
+  return poentaroWasm().fileStoreSelectionMovePlan(
     toWasmState(state),
     selected,
     folder,
@@ -238,7 +238,7 @@ export function selectionDeleteSummary(
   selected: string[],
   shares: ShareOverview,
 ): SelectionDeleteSummary {
-  return jianpuWasm().fileStoreSelectionDeleteSummary(
+  return poentaroWasm().fileStoreSelectionDeleteSummary(
     toWasmState(state),
     selected,
     shares,

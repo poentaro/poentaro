@@ -18,7 +18,7 @@ import { Given, Then, When } from './fixtures'
  * Cmd/Ctrl modifier required. Before this fix `PartLabel ↔ PartLabel` was
  * only ID-resolved for a same-system pair (guarded on matching
  * `measure_index_start`/`measure_index_end`); a cross-system pair fell
- * through to the pixel-marquee fallback (`partLabelsInMarquee`), which
+ * through to a pixel-marquee fallback (since removed), which
  * restricts to the *anchor's own system* — so a plain click-and-click only
  * selected the first system's notes, dropping the second system's entirely.
  *
@@ -27,18 +27,16 @@ import { Given, Then, When } from './fixtures'
  * reproduce the boundary.
  */
 const source = [
-  '# metadata',
-  'title = "cross system part label range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "cross system part label range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
+  'parts ["Melody" [M]: notes],',
   '',
-  '# score',
-  '[M] 1 2', // measure 0 — system 0
+  'score """',
+  '[M] 1 2',
   '',
   'break',
-  '[M] 3 4', // measure 1 — system 1
+  '[M] 3 4',
+  '""",',
 ].join('\n')
 
 function partLabelInSystem(
@@ -55,13 +53,13 @@ Given(
   async ({ page }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'cross-system-part-label-range-test.jianpu',
-          userFiles: { 'cross-system-part-label-range-test.jianpu': src },
+          active: 'cross-system-part-label-range-test.poentaro',
+          userFiles: { 'cross-system-part-label-range-test.poentaro': src },
           bin: {},
           fileIds: {
-            'cross-system-part-label-range-test.jianpu':
+            'cross-system-part-label-range-test.poentaro':
               'cross-system-part-label-range-test-id-001',
           },
         }),

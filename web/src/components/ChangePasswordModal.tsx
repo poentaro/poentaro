@@ -34,6 +34,7 @@ export function ChangePasswordModal({
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [traceId, setTraceId] = useState<string | null>(null)
   const lockout = useLockoutCountdown()
 
   useEffect(() => {
@@ -42,12 +43,14 @@ export function ChangePasswordModal({
     setNext('')
     setConfirm('')
     setError(null)
+    setTraceId(null)
   }, [open])
 
   async function submit() {
     if (!accountAuth || busy || lockout.seconds !== null) return
     if (next !== confirm) {
       setError("The new passwords don't match.")
+      setTraceId(null)
       return
     }
     setBusy(true)
@@ -58,6 +61,7 @@ export function ChangePasswordModal({
       return
     }
     const { failure } = result
+    setTraceId(result.traceId)
     switch (failure.kind) {
       case 'session-ended':
         setAccountAuth(null)
@@ -92,7 +96,7 @@ export function ChangePasswordModal({
         {lockout.seconds !== null ? (
           <LockoutBanner seconds={lockout.seconds} />
         ) : error ? (
-          <ErrorBanner>{error}</ErrorBanner>
+          <ErrorBanner traceId={traceId}>{error}</ErrorBanner>
         ) : null}
         <Field
           id="change-password-current"

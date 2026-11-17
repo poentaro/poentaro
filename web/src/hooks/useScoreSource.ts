@@ -74,9 +74,10 @@ export function useScoreSource(
   )
   const {
     syncedFolder,
-    clearSyncedFolder,
+    leaveSyncedShare,
     syncedShareViewerPreview,
     syncedShareViewerStatus,
+    syncedShareViewerTraceId,
     handleImportSyncedShare,
   } = useSyncedShareViewer(
     setEditorCollapsed,
@@ -88,7 +89,7 @@ export function useScoreSource(
 
   const sharedFolder = useSharedFolderViewer(
     syncedFolder,
-    clearSyncedFolder,
+    leaveSyncedShare,
     store,
     backend,
     setStore,
@@ -127,8 +128,10 @@ export function useScoreSource(
       viewerActive: syncedShareViewerActive,
       sharedFolder,
       viewerStatus: syncedShareViewerStatus,
+      viewerTraceId: syncedShareViewerTraceId,
       viewerFilename: syncedShareViewerPreview?.filename ?? null,
       onImportSyncedShare: handleImportSyncedShare,
+      onDiscardSyncedShare: sharedFolder?.onDiscard ?? leaveSyncedShare,
       canSync: syncedShareOwner.canSync,
       isSynced: syncedShareOwner.isSynced,
       syncedShareLink: syncedShareOwner.syncedShareLink,
@@ -138,6 +141,7 @@ export function useScoreSource(
       onStopSync: syncedShareOwner.stopSync,
       onSignIn: syncedShareOwner.openSignIn,
       onChangePassword: syncedShareOwner.openChangePassword,
+      onOpenApiKeys: syncedShareOwner.openApiKeys,
       onSignOut: syncedShareOwner.signOut,
       syncFailure: syncedShareOwner.syncFailure,
       onDismissSyncFailure: syncedShareOwner.dismissSyncFailure,

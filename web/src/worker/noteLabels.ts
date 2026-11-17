@@ -1,8 +1,8 @@
-import type { NoteLabels } from '../jianpuWasm'
+import type { NoteLabels } from '../poentaroWasm'
 import type { Notation } from './messages'
 
 const NOTE_LABELS: Record<Notation, NoteLabels> = {
-  jianpu: 'degrees',
+  numbered: 'degrees',
   violin: 'degrees',
   cello: 'degrees',
   abc: 'letter-names',
@@ -10,7 +10,7 @@ const NOTE_LABELS: Record<Notation, NoteLabels> = {
   harmonica: 'harmonica-tabs',
 }
 
-/** What the jianpu layout's note heads read as for the preview's notation:
+/** What the numbered layout's note heads read as for the preview's notation:
  * the ABC view swaps each degree for its letter name, the guitar view
  * follows each degree with its letter name (`1 (C)`) and draws a chord
  * diagram at each chord symbol, and the harmonica

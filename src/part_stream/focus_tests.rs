@@ -1,25 +1,22 @@
 use crate::filters::PartToggleState;
 use crate::part_stream::{part_focus_measures, FocusMeasure};
 
-const FOUR_PARTS: &str = r#"# parts
-Soprano [S] = notes
-Melody [M] = notes
-Words [W] = lyrics[M]
-Bass [B] = notes
+const FOUR_PARTS: &str = r#"parts ["Soprano" [S]: notes, "Melody" [M]: notes, "Words" [W]: lyrics [M], "Bass" [B]: notes],
 
-# score
-label="Verse"
-[S] 5 5 5 5
-[M] 1 2 3 4
-[W] a b c d
-[B] 1. - 5. -
+score """
+    label="Verse"
+    [S] 5 5 5 5
+    [M] 1 2 3 4
+    [W] a b c d
+    [B] 1. - 5. -
 
-[M] 5 6 7 1 // second
-[B] 1. - 5. -
+    [M] 5 6 7 1 // second
+    [B] 1. - 5. -
 
-// a comment
-[B] 1. - - -
-[M] 3 4 5 6
+    // a comment
+    [B] 1. - - -
+    [M] 3 4 5 6
+    """,
 "#;
 
 fn toggles(hidden: &[&str], soloed: &[&str]) -> PartToggleState {

@@ -1,49 +1,40 @@
 #![allow(clippy::disallowed_macros)]
-use jianpu_generator::list_measure_spans_from_source;
+use poentaro::list_measure_spans_from_source;
 
-const TWO_MEASURE_SOURCE: &str = concat!(
-    "# metadata\n",
-    "title = \"t\"\n",
-    "author = \"a\"\n",
-    "\n",
-    "# parts\n",
-    "Melody = notes\n",
-    "\n",
-    "# score\n",
-    "[Melody] 1 2 3 4\n",
-    "\n",
-    "[Melody] 5 6 7 1\n",
-);
+const TWO_MEASURE_SOURCE: &str = r#"metadata { title "t", author "a" },
 
-const DIRECTIVE_MEASURE_SOURCE: &str = concat!(
-    "# metadata\n",
-    "title = \"t\"\n",
-    "author = \"a\"\n",
-    "\n",
-    "# parts\n",
-    "Melody = notes\n",
-    "\n",
-    "# score\n",
-    "bpm=60\n",
-    "[Melody] 1 2 3 4\n",
-);
+parts ["Melody": notes],
 
-const LABEL_DIRECTIVE_SOURCE: &str = concat!(
-    "# metadata\n",
-    "title = \"t\"\n",
-    "author = \"a\"\n",
-    "\n",
-    "# parts\n",
-    "Melody = notes\n",
-    "\n",
-    "# score\n",
-    "label=\"something \"\n",
-    "[Melody] 1 2 3 4\n",
-);
+score """
+    [Melody] 1 2 3 4
+
+    [Melody] 5 6 7 1
+    """,
+"#;
+
+const DIRECTIVE_MEASURE_SOURCE: &str = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    bpm=60
+    [Melody] 1 2 3 4
+    """,
+"#;
+
+const LABEL_DIRECTIVE_SOURCE: &str = r#"metadata { title "t", author "a" },
+
+parts ["Melody": notes],
+
+score """
+    label="something "
+    [Melody] 1 2 3 4
+    """,
+"#;
 
 #[test]
 fn returns_one_span_per_measure() {
-    let spans = list_measure_spans_from_source(TWO_MEASURE_SOURCE, "test.jianpu")
+    let spans = list_measure_spans_from_source(TWO_MEASURE_SOURCE, "test.poentaro")
         .unwrap()
         .spans;
     assert_eq!(spans.len(), 2);
@@ -51,7 +42,7 @@ fn returns_one_span_per_measure() {
 
 #[test]
 fn spans_are_ordered_by_source_position() {
-    let spans = list_measure_spans_from_source(TWO_MEASURE_SOURCE, "test.jianpu")
+    let spans = list_measure_spans_from_source(TWO_MEASURE_SOURCE, "test.poentaro")
         .unwrap()
         .spans;
     assert!(spans[0].start < spans[1].start);
@@ -62,7 +53,7 @@ fn view_zone_start_is_at_or_before_content_start_without_directive() {
     // When there is no leading directive line, the view zone starts at the beginning
     // of the first data line (the [Abbrev] prefix), which is at or before the
     // note content start.
-    let spans = list_measure_spans_from_source(TWO_MEASURE_SOURCE, "test.jianpu")
+    let spans = list_measure_spans_from_source(TWO_MEASURE_SOURCE, "test.poentaro")
         .unwrap()
         .spans;
     assert!(spans[0].view_zone_start <= spans[0].start);
@@ -76,7 +67,7 @@ fn view_zone_start_is_at_or_before_content_start_without_directive() {
 
 #[test]
 fn view_zone_start_includes_leading_directive_line() {
-    let spans = list_measure_spans_from_source(DIRECTIVE_MEASURE_SOURCE, "test.jianpu")
+    let spans = list_measure_spans_from_source(DIRECTIVE_MEASURE_SOURCE, "test.poentaro")
         .unwrap()
         .spans;
     assert_eq!(spans.len(), 1);
@@ -93,7 +84,7 @@ fn view_zone_start_includes_leading_directive_line() {
 fn returns_empty_spans_on_source_with_no_sections() {
     // Section-structure errors are recoverable; a source with no section headers
     // produces an empty score (no measures), not an Err.
-    let result = list_measure_spans_from_source("not valid jianpu", "test.jianpu").unwrap();
+    let result = list_measure_spans_from_source("not valid poentaro", "test.poentaro").unwrap();
     assert!(result.spans.is_empty());
 }
 
@@ -102,7 +93,7 @@ fn returns_empty_spans_on_source_with_no_sections() {
 /// only to the first note line.
 #[test]
 fn start_line_includes_label_directive_line() {
-    let spans = list_measure_spans_from_source(LABEL_DIRECTIVE_SOURCE, "test.jianpu")
+    let spans = list_measure_spans_from_source(LABEL_DIRECTIVE_SOURCE, "test.poentaro")
         .unwrap()
         .spans;
     assert_eq!(spans.len(), 1);
@@ -110,7 +101,7 @@ fn start_line_includes_label_directive_line() {
     let directive_line: usize = LABEL_DIRECTIVE_SOURCE
         .lines()
         .enumerate()
-        .find(|(_, line)| line.starts_with("label="))
+        .find(|(_, line)| line.trim_start().starts_with("label="))
         .map(|(i, _)| i + 1) // convert 0-indexed to 1-indexed
         .expect("label= line not found in LABEL_DIRECTIVE_SOURCE");
 
@@ -129,34 +120,35 @@ fn start_line_includes_label_directive_line() {
 /// must end before that line.
 #[test]
 fn multipart_measure_spans_do_not_overlap_across_groups() {
-    let source = r#"# metadata
-title = ""
-author = ""
+    let source = r#"metadata { title "", author "" },
 
-# parts
-Chord = chords
-Alto 1 & Tenor (A1,T) = notes
-Alto 2 (A2) = notes
-Soprano 1 (S1) = notes
-Soprano 2 (S2) = notes
+parts [
+    "Chord": chords,
+    "Alto 1 & Tenor (A1,T)": notes,
+    "Alto 2 (A2)": notes,
+    "Soprano 1 (S1)": notes,
+    "Soprano 2 (S2)": notes,
+],
 
-# score
-bpm=80 key=C4 time=4/4 label="Verse 1"
-[Chord] 1 - - -
-[A1,T] 5_ 5_ 5_ 5= 5= 5_ 3_ 2_ (3_
-白陽旗旛在大道盛宏
+score """
+    bpm=80 key=C4 time=4/4 label="Verse 1"
+    [Chord] 1 - - -
+    [A1,T] 5_ 5_ 5_ 5= 5= 5_ 3_ 2_ (3_
+    白陽旗旛在大道盛宏
 
-[Chord] 6m/3
-[A1,T] 3_) (1_1-) 0_ 1= 1=
-昌花花
+    [Chord] 6m/3
+    [A1,T] 3_) (1_1-) 0_ 1= 1=
+    昌花花
 
-[Chord] 4
-[A1,T] 2. 3_ 4_ 3= 3= (2_1_)
-草擺動道音歌-"#;
+    [Chord] 4
+    [A1,T] 2. 3_ 4_ 3= 3= (2_1_)
+    草擺動道音歌-
+    """,
+"#;
 
     // Line 23 (1-based) contains "2. 3_ 4_ 3= 3= (2_1_)" — the notes line of group 3.
     let caret_line: usize = 23;
-    let spans = list_measure_spans_from_source(source, "test.jianpu")
+    let spans = list_measure_spans_from_source(source, "test.poentaro")
         .unwrap()
         .spans;
 
@@ -181,31 +173,27 @@ bpm=80 key=C4 time=4/4 label="Verse 1"
     );
 }
 
-const SEQUENCE_SOURCE: &str = concat!(
-    "# metadata\n",
-    "title = \"t\"\n",
-    "author = \"a\"\n",
-    "\n",
-    "# parts\n",
-    "Melody = notes\n",
-    "\n",
-    "# sequence\n",
-    "Verse, Chorus, Chorus\n",
-    "\n",
-    "# score\n",
-    "time=4/4 key=C4 bpm=120 label=\"Verse\"\n",
-    "[Melody] 1 2 3 4\n",
-    "\n",
-    "label=\"Chorus\"\n",
-    "[Melody] 5 6 7 1\n",
-);
+const SEQUENCE_SOURCE: &str = r#"metadata { title "t", author "a" },
 
-/// `# sequence` resolution must be exposed alongside the source spans, in
+parts ["Melody": notes],
+
+sequence [Verse, Chorus, Chorus],
+
+score """
+    time=4/4 key=C4 bpm=120 label="Verse"
+    [Melody] 1 2 3 4
+
+    label="Chorus"
+    [Melody] 5 6 7 1
+    """,
+"#;
+
+/// `sequence` resolution must be exposed alongside the source spans, in
 /// playback order (repeats included), so callers can bound playback to a
 /// single occurrence without re-deriving it from written order.
 #[test]
 fn sequence_field_reflects_playback_order_with_repeats() {
-    let result = list_measure_spans_from_source(SEQUENCE_SOURCE, "test.jianpu").unwrap();
+    let result = list_measure_spans_from_source(SEQUENCE_SOURCE, "test.poentaro").unwrap();
     let sequence = result.sequence.expect("expected a resolved sequence");
 
     let labels: Vec<&str> = sequence.iter().map(|s| s.label.as_str()).collect();
@@ -217,6 +205,6 @@ fn sequence_field_reflects_playback_order_with_repeats() {
 
 #[test]
 fn sequence_field_is_none_without_sequence_section() {
-    let result = list_measure_spans_from_source(TWO_MEASURE_SOURCE, "test.jianpu").unwrap();
+    let result = list_measure_spans_from_source(TWO_MEASURE_SOURCE, "test.poentaro").unwrap();
     assert!(result.sequence.is_none());
 }

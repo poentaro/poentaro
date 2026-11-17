@@ -34,7 +34,7 @@ async fn ensure_no_file_folder_conflict(
     }
 }
 
-fn proposed_name(id: &str, name: &str) -> Vec<files::FileNameRow> {
+pub(super) fn proposed_name(id: &str, name: &str) -> Vec<files::FileNameRow> {
     vec![files::FileNameRow {
         id: id.to_string(),
         name: name.to_string(),
@@ -157,7 +157,7 @@ pub(super) async fn update_file_content(
 /// failure here never fails the save: the caller only logs it, and the gap
 /// it leaves hides older versions rather than corrupting them (see
 /// `crate::file_history`).
-async fn record_version(
+pub(super) async fn record_version(
     d1: &worker::D1Database,
     previous: &files::StoredFile,
     content: &str,

@@ -3,15 +3,14 @@ import { gotoShareUrl } from '../../shareUrlHelper'
 import { Given, Then, When } from './fixtures'
 
 const SHARED_SOURCE = [
-  '# metadata',
-  'title = "Shared Score"',
+  'metadata { title "Shared Score" },',
   '',
-  '# parts',
-  'Melody = notes',
+  'parts ["Melody": notes],',
   '',
-  '# score',
-  '(time=4/4 key=C4 bpm=120)',
-  '1 2 3 4',
+  'score """',
+  '    (time=4/4 key=C4 bpm=120)',
+  '    1 2 3 4',
+  '    """,',
 ].join('\n')
 
 /** Seeds only the `'cloud'` storage-backend preference, without navigating
@@ -20,7 +19,7 @@ const SHARED_SOURCE = [
 Given('the cloud storage backend preference is set', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
-      'jianpu:storage-backend:v1',
+      'poentaro:storage-backend:v1',
       JSON.stringify({ backend: 'cloud' }),
     )
   })

@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import type { SelectionDeleteSummary } from '../jianpuWasm'
+import type { SelectionDeleteSummary } from '../poentaroWasm'
 import './FileDialogs.css'
 
 export interface DeleteSelectionDialogProps {

@@ -1,0 +1,57 @@
+name: Back up production D1
+
+# Daily SQL dump of the production D1 database into the private Backblaze B2
+# bucket named by `backupBucket` in `crates/live-share-worker/deploy.json`.
+# The bucket's lifecycle rules (`backup-lifecycle.json`, applied by
+# `just setup-backup-bucket`) keep `daily/` for 30 days and `monthly/` (the
+# 1st of each month's dump) for 365. `just restore-backup` loads one locally.
+#
+# B2_KEY_ID / B2_APPLICATION_KEY is a write-only key scoped to that bucket,
+# so a leaked secret can neither read nor delete the backups.
+
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: d1-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: node pnpm
+
+      - name: Install wrangler and b2
+        working-directory: crates/live-share-worker
+        run: |
+          pnpm install --frozen-lockfile
+          pipx install b2==5.0.0
+
+      - name: Export production
+        working-directory: crates/live-share-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pnpm exec wrangler d1 export jianpu-live-share --remote --output backup.sql
+          gzip backup.sql
+
+      - name: Upload to B2
+        working-directory: crates/live-share-worker
+        env:
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        run: |
+          bucket=$(jq -r .backupBucket deploy.json)
+          day=$(date -u +%F)
+          b2 file upload --no-progress --content-type application/gzip "$bucket" backup.sql.gz "daily/$day.sql.gz"
+          if [[ $(date -u +%d) == 01 ]]; then
+            b2 file upload --no-progress --content-type application/gzip "$bucket" backup.sql.gz "monthly/$day.sql.gz"
+          fi

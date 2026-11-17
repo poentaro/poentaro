@@ -2,7 +2,7 @@
 
 ## Goal
 
-Building on PR 1 (`PLAN-embed-source-in-svg.md`, which embeds `.jianpu`
+Building on PR 1 (`PLAN-embed-source-in-svg.md`, which embeds `.poentaro`
 source into SVG output and adds `extract_embedded_source` in Rust), this PR:
 
 1. Extends source embedding to PDF export.
@@ -26,7 +26,7 @@ SVG as an XObject (`src/pdf.rs:36-93`).
 
 `usvg` is a rendering-focused SVG subset parser — before writing any code,
 write a throwaway test/script that renders an SVG containing the PR 1
-`<metadata id="jianpu-source">` tag through `usvg::Tree::from_str`, then
+`<metadata id="poentaro-source">` tag through `usvg::Tree::from_str`, then
 through `svg2pdf::to_chunk`, and check whether the resulting PDF bytes still
 contain the base64 payload somewhere recoverable (e.g. inside the embedded
 XObject's SVG content stream). This determines which of the two approaches
@@ -46,7 +46,7 @@ below to take. Don't build both — pick one based on this check.
 - Embed source directly as PDF-native metadata instead — XMP metadata via
   `pdf_writer`'s metadata/XMP support (check `pdf_writer` crate docs/API for
   an XMP stream or `/Metadata` catalog entry), or a custom key in the PDF
-  `/Info` dictionary as a simpler fallback (e.g. a custom `/JianpuSource` key
+  `/Info` dictionary as a simpler fallback (e.g. a custom `/PoentaroSource` key
   — technically non-standard but PDFs tolerate unknown `/Info` keys fine, and
   the extractor only ever needs to talk to itself).
 - Extraction from PDF: read the `/Info` dictionary or XMP stream instead of
@@ -76,13 +76,13 @@ can accept the source string directly and write XMP/`/Info` metadata (in the
 
 ## Part B — wasm-bindgen extraction function
 
-- `crates/jianpu-wasm/` is the wasm-bindgen crate (built to `web/pkg/`,
-  imported in the frontend as `jianpu-wasm`). Existing export-relevant
+- `crates/poentaro-wasm/` is the wasm-bindgen crate (built to `web/pkg/`,
+  imported in the frontend as `poentaro-wasm`). Existing export-relevant
   bindings: `generate_pdf`/`generate_split_pdfs`
-  (`crates/jianpu-wasm/src/lib_pdf.rs:18,45`), `generate_midi`/`generate_wav`
+  (`crates/poentaro-wasm/src/lib_pdf.rs:18,45`), `generate_midi`/`generate_wav`
   in sibling files, `render`/`list_parts`/`compress_share_payload`/
   `decompress_share_payload` in `lib.rs`.
-- Add a new file `crates/jianpu-wasm/src/lib_import.rs` (matches the existing
+- Add a new file `crates/poentaro-wasm/src/lib_import.rs` (matches the existing
   `lib_pdf.rs`/`lib_midi.rs`/`lib_wav.rs` per-concern split) exposing:
   ```rust
   #[wasm_bindgen]
@@ -106,10 +106,10 @@ can accept the source string directly and write XMP/`/Info` metadata (in the
   (`src/components/Editor.tsx`), orchestrated by `src/App.tsx` /
   `src/components/AppWorkspace.tsx`.
 - Compute-heavy work (render/PDF/MIDI/WAV) runs in a Web Worker
-  (`src/worker/jianpu.worker.ts`) that calls into the WASM module.
+  (`src/worker/poentaro.worker.ts`) that calls into the WASM module.
 - Export UI: `src/components/ExportControls.tsx` (builds PDF/MIDI/WAV/"Export
   Parts" menu items) rendered via `src/components/ExportMenuButton.tsx`.
-  Worker request plumbing: `src/hooks/useJianpuWorkerExports.ts` (builds
+  Worker request plumbing: `src/hooks/usePoentaroWorkerExports.ts` (builds
   `postMessage` requests) and `src/worker/exportMessageHandlers.ts`
   (worker-side handlers like `handleGeneratePdf`, each calling the
   wasm-bound `generatePdf(...)`).
@@ -138,8 +138,8 @@ can accept the source string directly and write XMP/`/Info` metadata (in the
 - New `src/worker/importMessageHandlers.ts` (sibling to
   `exportMessageHandlers.ts`) calling `extract_source_from_svg`/
   `extract_source_from_pdf`.
-- New `src/hooks/useJianpuWorkerImport.ts` (mirrors
-  `useJianpuWorkerExports.ts`) exposing an `importFromFile(file: File)`
+- New `src/hooks/usePoentaroWorkerImport.ts` (mirrors
+  `usePoentaroWorkerExports.ts`) exposing an `importFromFile(file: File)`
   function to components.
 - New "Import" button placed next to `ExportControls` in the toolbar
   (wherever `<ExportControls .../>` is mounted in `AppWorkspace.tsx`/
@@ -148,7 +148,7 @@ can accept the source string directly and write XMP/`/Info` metadata (in the
   `useFileOperations.ts` create flow, pre-filled with the recovered source
   text, and open it in the editor. Decide on a sensible default filename
   (e.g. derived from the imported file's name, stripped of `.svg`/`.pdf` and
-  given a `.jianpu` extension) — surface a rename prompt or just create with
+  given a `.poentaro` extension) — surface a rename prompt or just create with
   a default and let the user rename via existing rename UI, whichever is
   simpler given `useFileOperations.ts`'s existing API.
 - On failure (no embedded source found — e.g. hand-edited or third-party
@@ -175,11 +175,11 @@ can accept the source string directly and write XMP/`/Info` metadata (in the
 
 ## Acceptance criteria
 
-- [ ] `cargo run -- generate pdf simple.jianpu` produces a PDF from which the
+- [ ] `cargo run -- generate pdf simple.poentaro` produces a PDF from which the
       original source is recoverable via `extract_embedded_source`-equivalent
       logic (SVG-passthrough or XMP, per the Part A investigation).
 - [ ] wasm-bindgen exposes extraction functions matching existing binding
-      conventions in `crates/jianpu-wasm/src/`.
+      conventions in `crates/poentaro-wasm/src/`.
 - [ ] Web editor has an Import button that round-trips: export SVG or PDF →
       import that file → editor shows the original source, verified by a
       Playwright e2e test.

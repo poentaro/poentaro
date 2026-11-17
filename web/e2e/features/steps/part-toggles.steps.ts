@@ -2,37 +2,35 @@ import { expect, type Locator, type Page } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Chords [C] = chords',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M], "Chords" [C]: chords],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 2 3 4',
-  '[Mv1] twin- kle twin- kle',
-  '[C] 1 - - -',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 2 3 4',
+  '    [Mv1] twin- kle twin- kle',
+  '    [C] 1 - - -',
+  '    """,',
 ].join('\n')
 
 const THREE_PART_SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Harmony [H] = notes',
-  'Chords [C] = chords',
+  'parts [',
+  '    "Melody" [M]: notes,',
+  '    "Melody lyrics" [Mv1]: lyrics [M],',
+  '    "Harmony" [H]: notes,',
+  '    "Chords" [C]: chords,',
+  '],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 2 3 4',
-  '[Mv1] twin- kle twin- kle',
-  '[H] 5 6 7 1',
-  '[C] 1 - - -',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 2 3 4',
+  '    [Mv1] twin- kle twin- kle',
+  '    [H] 5 6 7 1',
+  '    [C] 1 - - -',
+  '    """,',
 ].join('\n')
 
 // Unique substrings identifying each part's rendered score content.
@@ -51,14 +49,14 @@ const CHORDS_LEGEND = 'C — Chords'
 async function loadSource(page: Page, source: string = SOURCE) {
   await page.addInitScript((src) => {
     // Seed once: a reload must keep the same file id so its toggles survive.
-    if (localStorage.getItem('jianpu:files:v1')) return
+    if (localStorage.getItem('poentaro:files:v1')) return
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'test.jianpu',
-        userFiles: { 'test.jianpu': src },
+        active: 'test.poentaro',
+        userFiles: { 'test.poentaro': src },
         bin: {},
-        fileIds: { 'test.jianpu': crypto.randomUUID() },
+        fileIds: { 'test.poentaro': crypto.randomUUID() },
       }),
     )
   }, source)

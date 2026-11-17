@@ -2,28 +2,26 @@ import { expect, test } from '@playwright/test'
 import { Given, Then, When } from './fixtures'
 
 const SOURCE = [
-  '# metadata',
-  'title = "Test"',
+  'metadata { title "Test" },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
+  'parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],',
   '',
-  '# score',
-  '(bpm=120 key=C4 time=4/4)',
-  '[M] 1 1 5 5',
-  '[Mv1] twin- kle twin- kle',
+  'score """',
+  '    (bpm=120 key=C4 time=4/4)',
+  '    [M] 1 1 5 5',
+  '    [Mv1] twin- kle twin- kle',
+  '    """,',
 ].join('\n')
 
 async function loadSource(page: import('@playwright/test').Page) {
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'test.jianpu',
-        userFiles: { 'test.jianpu': src },
+        active: 'test.poentaro',
+        userFiles: { 'test.poentaro': src },
         bin: {},
-        fileIds: { 'test.jianpu': crypto.randomUUID() },
+        fileIds: { 'test.poentaro': crypto.randomUUID() },
       }),
     )
   }, SOURCE)

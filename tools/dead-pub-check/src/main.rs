@@ -38,7 +38,7 @@ fn main() {
     let def_scan_root = root.join("src");
     let usage_scan_roots = [
         root.join("src"),
-        root.join("crates/jianpu-wasm/src"),
+        root.join("crates/poentaro-wasm/src"),
         root.join("tests"),
     ];
 
@@ -65,7 +65,7 @@ fn main() {
     let mut test_only_files: HashSet<PathBuf> = HashSet::new();
     for crate_root in [
         root.join("src/lib.rs"),
-        root.join("crates/jianpu-wasm/src/lib.rs"),
+        root.join("crates/poentaro-wasm/src/lib.rs"),
     ] {
         let mut visited = HashSet::new();
         walk_mod_tree(

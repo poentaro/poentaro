@@ -21,9 +21,9 @@ fn store(files: &[(&str, &str)], folders: &[&str]) -> FileStoreState {
 fn a_snapshot_has_relative_paths_contents_and_explicit_empty_folders() {
     let state = store(
         &[
-            ("Hymns/Advent/b.jianpu", "B"),
-            ("Hymns/a.jianpu", "A"),
-            ("Other/c.jianpu", "C"),
+            ("Hymns/Advent/b.poentaro", "B"),
+            ("Hymns/a.poentaro", "A"),
+            ("Other/c.poentaro", "C"),
         ],
         &["Hymns/Empty", "Hymns/Advent", "Hymns"],
     );
@@ -33,11 +33,11 @@ fn a_snapshot_has_relative_paths_contents_and_explicit_empty_folders() {
         snapshot.files,
         vec![
             SnapshotFile {
-                path: "Advent/b.jianpu".into(),
+                path: "Advent/b.poentaro".into(),
                 content: "B".into()
             },
             SnapshotFile {
-                path: "a.jianpu".into(),
+                path: "a.poentaro".into(),
                 content: "A".into()
             },
         ]
@@ -48,23 +48,23 @@ fn a_snapshot_has_relative_paths_contents_and_explicit_empty_folders() {
 
 #[test]
 fn a_nested_folder_is_named_by_its_own_name_only() {
-    let state = store(&[("A/B/x.jianpu", "X")], &[]);
+    let state = store(&[("A/B/x.poentaro", "X")], &[]);
     let snapshot = folder_snapshot(&state, &path("A/B")).unwrap();
     assert_eq!(snapshot.folder, "B");
-    assert_eq!(snapshot.files[0].path, "x.jianpu");
+    assert_eq!(snapshot.files[0].path, "x.poentaro");
 }
 
 #[test]
 fn a_missing_folder_has_no_snapshot() {
     assert_eq!(
-        folder_snapshot(&store(&[("a.jianpu", "")], &[]), &path("Nope")),
+        folder_snapshot(&store(&[("a.poentaro", "")], &[]), &path("Nope")),
         None
     );
 }
 
 #[test]
 fn json_round_trips_including_unicode() {
-    let state = store(&[("詩歌/一.jianpu", "# 你好\n\"q\"")], &["詩歌/空"]);
+    let state = store(&[("詩歌/一.poentaro", "## 你好\n\"q\"")], &["詩歌/空"]);
     let snapshot = folder_snapshot(&state, &path("詩歌")).unwrap();
     assert_eq!(FolderSnapshot::from_json(&snapshot.to_json()), Ok(snapshot));
 }
@@ -74,21 +74,21 @@ fn json_uses_the_documented_field_names() {
     let snapshot = FolderSnapshot {
         folder: "F".into(),
         files: vec![SnapshotFile {
-            path: "a.jianpu".into(),
+            path: "a.poentaro".into(),
             content: "x".into(),
         }],
         empty_folders: vec!["E".into()],
     };
     assert_eq!(
         snapshot.to_json(),
-        r#"{"folder":"F","files":[{"path":"a.jianpu","content":"x"}],"emptyFolders":["E"]}"#
+        r#"{"folder":"F","files":[{"path":"a.poentaro","content":"x"}],"emptyFolders":["E"]}"#
     );
 }
 
 #[test]
 fn a_single_file_share_payload_is_not_a_folder_snapshot() {
     assert_eq!(
-        FolderSnapshot::from_json(r#"{"filename":"a.jianpu","content":"x"}"#),
+        FolderSnapshot::from_json(r#"{"filename":"a.poentaro","content":"x"}"#),
         Err(SnapshotError::NotJson)
     );
 }

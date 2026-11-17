@@ -21,6 +21,53 @@ pub struct GenerateInput {
     pub output: Option<PathBuf>,
     pub tracks: Vec<String>,
     pub split_tracks: bool,
+    /// The `preset` whose metadata and visible (or soloed) parts to export.
+    pub preset: Option<String>,
+}
+
+/// The parts to export: `--tracks` when given, otherwise the `--preset`'s
+/// soloed parts, or else its visible parts. Empty means every part.
+fn selected_tracks(opts: &GenerateInput) -> Result<Vec<String>, jg::error::IrrecoverableError> {
+    let preset_parts = match opts.preset.as_deref() {
+        Some(name) => chosen_preset(&opts.input, name)?.exported_parts(),
+        None => Vec::new(),
+    };
+    Ok(if opts.tracks.is_empty() {
+        preset_parts
+    } else {
+        opts.tracks.clone()
+    })
+}
+
+fn chosen_preset(
+    input: &Path,
+    name: &str,
+) -> Result<jg::ChosenPreset, jg::error::IrrecoverableError> {
+    let source = super::read_document_source(input)?;
+    jg::chosen_preset_from_source(&source, &input.to_string_lossy(), name)?.ok_or_else(|| {
+        jg::error::IrrecoverableError::new(jg::error::IrrecoverableErrorKind::UnknownPreset {
+            span: jg::error::Span::new(0, 0),
+            name: name.to_string(),
+        })
+        .with_path(input)
+    })
+}
+
+/// Names the output file after `--tracks`, or else after `--preset`.
+fn output_label(opts: &GenerateInput) -> Vec<String> {
+    if opts.tracks.is_empty() {
+        opts.preset.iter().cloned().collect()
+    } else {
+        opts.tracks.clone()
+    }
+}
+
+fn visibility(opts: &GenerateInput, tracks: &[String]) -> jg::ResolvedPartVisibility {
+    jg::ResolvedPartVisibility {
+        rendered_tracks: (!tracks.is_empty()).then(|| tracks.to_vec()),
+        preset_name: opts.preset.clone(),
+        ..Default::default()
+    }
 }
 
 fn effective_tracks(tracks: &[String], score: &jg::ast::grouped::Score) -> Vec<String> {
@@ -102,6 +149,7 @@ fn write_svgs_to_path(
 
 #[cfg(feature = "pdf")]
 pub fn generate_pdf(opts: &GenerateInput) -> Result<(), jg::error::IrrecoverableError> {
+    let tracks = selected_tracks(opts)?;
     if opts.split_tracks {
         let content = std::fs::read_to_string(&opts.input).map_err(|e| {
             jg::error::IrrecoverableError::new(jg::error::IrrecoverableErrorKind::IoReadFailed {
@@ -116,7 +164,10 @@ pub fn generate_pdf(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
             &content,
             &filename,
             &base_name,
-            &opts.tracks,
+            jg::SplitSelection {
+                tracks: &opts.tracks,
+                preset_name: opts.preset.as_deref(),
+            },
             &crate::fonts::FontBytesByFamily::embedded(),
             jg::NoteLabels::Degrees,
         )?;
@@ -135,22 +186,18 @@ pub fn generate_pdf(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
         }
     }
 
-    let content = super::read_source(&opts.input)?;
+    let text = super::read_document_source(&opts.input)?;
     let filename = opts.input.to_string_lossy();
-    let enabled_tracks = if opts.tracks.is_empty() {
-        None
-    } else {
-        Some(opts.tracks.as_slice())
-    };
-    let pdf_bytes = jg::write_pdf_from_source_filtered(
-        &content,
+    let pdf_bytes = jg::write_pdf_from_source_with_visibility(
+        &text,
         &filename,
-        enabled_tracks,
+        &visibility(opts, &tracks),
         &crate::fonts::FontBytesByFamily::embedded(),
         &[],
+        jg::NoteLabels::Degrees,
     )?;
     let output_path =
-        output_stem(&opts.input, &opts.tracks, opts.output.as_deref()).with_extension("pdf");
+        output_stem(&opts.input, &output_label(opts), opts.output.as_deref()).with_extension("pdf");
     super::write_file(&output_path, &pdf_bytes)?;
     println!("written to {output_path:?}");
     Ok(())
@@ -171,14 +218,15 @@ fn read_display_names(
 }
 
 pub fn generate_svg(opts: &GenerateInput) -> Result<(), jg::error::IrrecoverableError> {
-    let score = super::parse_and_group(&opts.input)?;
+    let tracks = selected_tracks(opts)?;
+    let score = super::parse_and_group(&opts.input, opts.preset.as_deref())?;
     if opts.split_tracks {
         let display_names = read_display_names(&opts.input)?;
         let split = try_split_tracks(
             &score,
             &opts.input,
             opts.output.as_deref(),
-            &opts.tracks,
+            &tracks,
             &display_names,
             |score_clone, _, label, base, base_name| {
                 let svgs = jg::render_svgs(score_clone)?;
@@ -204,30 +252,31 @@ pub fn generate_svg(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
         }
     }
 
-    let content = super::read_source(&opts.input)?;
+    let content = super::read_document_source(&opts.input)?;
     let filename = opts.input.to_string_lossy();
-    let enabled_tracks = if opts.tracks.is_empty() {
-        None
-    } else {
-        Some(opts.tracks.as_slice())
-    };
-    let render_output =
-        jg::render_svgs_from_source_filtered(&content, &filename, enabled_tracks, &[])?;
+    let render_output = jg::render_svgs_from_source_with_visibility(
+        &content,
+        &filename,
+        &visibility(opts, &tracks),
+        &[],
+        jg::NoteLabels::Degrees,
+    )?;
     let output_path =
-        output_stem(&opts.input, &opts.tracks, opts.output.as_deref()).with_extension("svg");
+        output_stem(&opts.input, &output_label(opts), opts.output.as_deref()).with_extension("svg");
     write_svgs_to_path(&render_output.svgs, &output_path)
 }
 
 #[cfg(feature = "midi")]
 pub fn generate_midi(opts: &GenerateInput) -> Result<(), jg::error::IrrecoverableError> {
-    let score = super::parse_and_group(&opts.input)?;
+    let tracks = selected_tracks(opts)?;
+    let score = super::parse_and_group(&opts.input, opts.preset.as_deref())?;
     if opts.split_tracks {
         let display_names = read_display_names(&opts.input)?;
         let split = try_split_tracks(
             &score,
             &opts.input,
             opts.output.as_deref(),
-            &opts.tracks,
+            &tracks,
             &display_names,
             |score_clone, _, label, base, base_name| {
                 let midi_bytes = jg::midi::write_midi(score_clone)?;
@@ -243,10 +292,10 @@ pub fn generate_midi(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverabl
     }
 
     let mut score = score;
-    jg::filter_tracks(&mut score, &opts.tracks);
+    jg::filter_tracks(&mut score, &tracks);
     let midi_bytes = jg::midi::write_midi(&score)?;
     let output_path =
-        output_stem(&opts.input, &opts.tracks, opts.output.as_deref()).with_extension("mid");
+        output_stem(&opts.input, &output_label(opts), opts.output.as_deref()).with_extension("mid");
     super::write_file(&output_path, &midi_bytes)?;
     println!("written to {output_path:?}");
     Ok(())
@@ -254,18 +303,20 @@ pub fn generate_midi(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverabl
 
 #[cfg(feature = "wav")]
 pub fn generate_wav(opts: &GenerateInput) -> Result<(), jg::error::IrrecoverableError> {
-    let score = super::parse_and_group(&opts.input)?;
+    let tracks = selected_tracks(opts)?;
+    let score = super::parse_and_group(&opts.input, opts.preset.as_deref())?;
     if opts.split_tracks {
         let display_names = read_display_names(&opts.input)?;
         let split = try_split_tracks(
             &score,
             &opts.input,
             opts.output.as_deref(),
-            &opts.tracks,
+            &tracks,
             &display_names,
             |score_clone, _, label, base, base_name| {
-                let midi_bytes = jg::midi::write_midi(score_clone)?;
-                let wav_bytes = jg::wav::write_wav(&midi_bytes, super::SF2_BYTES, None)?;
+                let audio = super::sung_vocals::sung_audio(score_clone)?;
+                let wav_bytes =
+                    jg::wav::write_wav(&audio.midi_bytes, super::SF2_BYTES, None, &audio.vocals)?;
                 let track_path = track_output_path(base, base_name, label, "wav");
                 super::write_file(&track_path, &wav_bytes)?;
                 println!("written to {track_path:?}");
@@ -278,11 +329,11 @@ pub fn generate_wav(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
     }
 
     let mut score = score;
-    jg::filter_tracks(&mut score, &opts.tracks);
-    let midi_bytes = jg::midi::write_midi(&score)?;
-    let wav_bytes = jg::wav::write_wav(&midi_bytes, super::SF2_BYTES, None)?;
+    jg::filter_tracks(&mut score, &tracks);
+    let audio = super::sung_vocals::sung_audio(&score)?;
+    let wav_bytes = jg::wav::write_wav(&audio.midi_bytes, super::SF2_BYTES, None, &audio.vocals)?;
     let output_path =
-        output_stem(&opts.input, &opts.tracks, opts.output.as_deref()).with_extension("wav");
+        output_stem(&opts.input, &output_label(opts), opts.output.as_deref()).with_extension("wav");
     super::write_file(&output_path, &wav_bytes)?;
     println!("written to {output_path:?}");
     Ok(())
@@ -290,18 +341,20 @@ pub fn generate_wav(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
 
 #[cfg(feature = "mp3")]
 pub fn generate_mp3(opts: &GenerateInput) -> Result<(), jg::error::IrrecoverableError> {
-    let score = super::parse_and_group(&opts.input)?;
+    let tracks = selected_tracks(opts)?;
+    let score = super::parse_and_group(&opts.input, opts.preset.as_deref())?;
     if opts.split_tracks {
         let display_names = read_display_names(&opts.input)?;
         let split = try_split_tracks(
             &score,
             &opts.input,
             opts.output.as_deref(),
-            &opts.tracks,
+            &tracks,
             &display_names,
             |score_clone, _, label, base, base_name| {
-                let midi_bytes = jg::midi::write_midi(score_clone)?;
-                let mp3_bytes = jg::wav::write_mp3(&midi_bytes, super::SF2_BYTES, None)?;
+                let audio = super::sung_vocals::sung_audio(score_clone)?;
+                let mp3_bytes =
+                    jg::wav::write_mp3(&audio.midi_bytes, super::SF2_BYTES, None, &audio.vocals)?;
                 let track_path = track_output_path(base, base_name, label, "mp3");
                 super::write_file(&track_path, &mp3_bytes)?;
                 println!("written to {track_path:?}");
@@ -314,11 +367,11 @@ pub fn generate_mp3(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
     }
 
     let mut score = score;
-    jg::filter_tracks(&mut score, &opts.tracks);
-    let midi_bytes = jg::midi::write_midi(&score)?;
-    let mp3_bytes = jg::wav::write_mp3(&midi_bytes, super::SF2_BYTES, None)?;
+    jg::filter_tracks(&mut score, &tracks);
+    let audio = super::sung_vocals::sung_audio(&score)?;
+    let mp3_bytes = jg::wav::write_mp3(&audio.midi_bytes, super::SF2_BYTES, None, &audio.vocals)?;
     let output_path =
-        output_stem(&opts.input, &opts.tracks, opts.output.as_deref()).with_extension("mp3");
+        output_stem(&opts.input, &output_label(opts), opts.output.as_deref()).with_extension("mp3");
     super::write_file(&output_path, &mp3_bytes)?;
     println!("written to {output_path:?}");
     Ok(())
@@ -326,8 +379,9 @@ pub fn generate_mp3(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
 
 /// Experimental: write the score as MEI for Verovio to engrave as staff notation.
 pub fn generate_mei(opts: &GenerateInput) -> Result<(), jg::error::IrrecoverableError> {
-    let mut score = super::parse_and_group(&opts.input)?;
-    jg::filter_tracks(&mut score, &opts.tracks);
+    let tracks = selected_tracks(opts)?;
+    let mut score = super::parse_and_group(&opts.input, opts.preset.as_deref())?;
+    jg::filter_tracks(&mut score, &tracks);
     let display_names = read_display_names(&opts.input)?;
     let mei = jg::mei_export::score_to_mei(
         &score,
@@ -336,7 +390,7 @@ pub fn generate_mei(opts: &GenerateInput) -> Result<(), jg::error::Irrecoverable
     )
     .mei;
     let output_path =
-        output_stem(&opts.input, &opts.tracks, opts.output.as_deref()).with_extension("mei");
+        output_stem(&opts.input, &output_label(opts), opts.output.as_deref()).with_extension("mei");
     super::write_file(&output_path, mei.as_bytes())?;
     println!("written to {output_path:?}");
     Ok(())

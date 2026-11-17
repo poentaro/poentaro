@@ -39,7 +39,7 @@ pub fn part_focus_measures(
             sounds: declaration.kind.sounds(),
         })
         .collect();
-    let rendered = resolve_part_visibility(&parts, toggles).rendered_tracks;
+    let rendered = resolve_part_visibility(&parts, toggles, None).rendered_tracks;
     let is_drawn = |part_index: usize| {
         rendered.as_ref().is_none_or(|tracks| {
             parts

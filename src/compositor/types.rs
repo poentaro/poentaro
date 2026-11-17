@@ -1,4 +1,4 @@
-use crate::ast::parsed::{Accidental, JianPuPitch};
+use crate::ast::parsed::{Accidental, NumberedPitch};
 use crate::compiler::types::{ArcKind, BarLineKind};
 use crate::pitch_description::GuitarVoicing;
 
@@ -19,7 +19,7 @@ pub struct AbsoluteElement {
 #[derive(Debug, Clone)]
 pub enum AbsoluteContent {
     NoteHead {
-        pitch: JianPuPitch,
+        pitch: NumberedPitch,
         accidental: Accidental,
         octave: i8,
         dotted: bool,
@@ -83,6 +83,8 @@ pub enum AbsoluteContent {
     /// itself (which only needs `text`).
     Lyric {
         text: String,
+        /// Pinyin drawn above `text`, centred on it in a smaller font.
+        ruby: Option<String>,
         source_part_index: usize,
         note_id: usize,
     },
@@ -230,7 +232,7 @@ pub enum AbsoluteContent {
         spans: Vec<TextSpan>,
         /// Font family for `spans`. `SansSerif` for an ordinary directive
         /// line's key/bpm/time-signature text (not a configurable text-style
-        /// kind); `Metadata::sequence.font_family` for the `# sequence`
+        /// kind); `Metadata::sequence.font_family` for the `sequence`
         /// summary line's spans (see `PostArcGridContent::SequenceLine`).
         spans_font_family: FontFamily,
         /// X offset (in points, from the line's start) where `spans`
@@ -243,7 +245,7 @@ pub enum AbsoluteContent {
         /// measured width when one is present, zero otherwise.
         label_x_offset: f32,
         /// Whether `directive_row_offset` should be applied to this line.
-        /// `true` for ordinary directive lines; `false` for the `# sequence`
+        /// `true` for ordinary directive lines; `false` for the `sequence`
         /// summary header, which must not move.
         apply_row_offset: bool,
     },
@@ -276,7 +278,7 @@ pub enum DominantBaseline {
 pub enum FontFamily {
     Monospace,
     /// Everything not on `Serif`: the directive line (bar number, section
-    /// label, key/bpm/time signature), part legend, and footer. Pinned to
+    /// label, key/bpm/time signature) and footer. Pinned to
     /// whichever font backs the `sansSerif` role in `fonts/fonts.json`
     /// (currently Source Han Sans SC — see that file's comment on why the
     /// two roles differ). See `DIRECTIVE_LINE_FONT_FAMILY` in
@@ -286,10 +288,11 @@ pub enum FontFamily {
     SansSerif,
     /// The song title, subtitle, and author (`Header::title`/`subtitle`/
     /// `author`, via `make_title_row`/`make_subtitle_author_row`) and lyric
-    /// syllables/lines (`render_lyric`/`render_lyric_line`) — pinned to
+    /// syllables/lines (`render_lyric`/`render_lyric_line`) and the part
+    /// legend — pinned to
     /// whichever font backs the `serif` role in `fonts/fonts.json`
-    /// (currently Zhuque Fangsong, a calligraphic font kept off the part
-    /// legend and footer's Latin glyphs — see `SansSerif` above). Despite the
+    /// (currently Zhuque Fangsong, a calligraphic font kept off the
+    /// footer's Latin glyphs — see `SansSerif` above). Despite the
     /// name, this variant isn't title-exclusive; it's named for its original
     /// single use before the other three joined it. See `SERIF_FONT_FAMILY`
     /// in `src/serializer/mod.rs`.

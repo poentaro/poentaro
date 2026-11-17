@@ -1,10 +1,5 @@
-import type { LyricLabelElementId, PartLabelElementId } from '../jianpuWasm'
-import type { LyricSpan, NoteSpan } from '../types'
-import {
-  getClickableElementIdAtPoint,
-  type LyricCell,
-  type NoteCell,
-} from './previewSelection'
+import type { LyricLabelElementId, PartLabelElementId } from '../poentaroWasm'
+import { getClickableElementIdAtPoint } from './previewSelection'
 
 /** One rendered part-label click target, keyed the same way as
  * `Tag` `part-label`'s `data-part-index`/`data-measure-index-start`/
@@ -20,51 +15,6 @@ export function getPartLabelAtPoint(
 ): PartLabelHit | undefined {
   const id = getClickableElementIdAtPoint(x, y, 'part-label')
   return id?.tag === 'part-label' ? id.val : undefined
-}
-
-/** Every note/rest cell belonging to the given part-label hits — each hit
- * selects its own part's notes across its own `measureIndexStart..=measureIndexEnd`
- * (the whole system the label sits in), mirroring `noteCellsInMeasureRange`. */
-export function noteCellsForPartLabels(
-  noteSpans: NoteSpan[],
-  hits: PartLabelHit[],
-): NoteCell[] {
-  return hits.flatMap((hit) =>
-    noteSpans
-      .filter(
-        (span) =>
-          span.sourcePartIndex === hit.sourcePartIndex &&
-          span.measureIndex >= hit.measureIndexStart &&
-          span.measureIndex <= hit.measureIndexEnd,
-      )
-      .map((span) => ({
-        sourcePartIndex: span.sourcePartIndex,
-        noteId: span.noteId,
-      })),
-  )
-}
-
-/** Every lyric syllable cell belonging to the given part-label hits —
- * the lyric-side mirror of `noteCellsForPartLabels`, so a part-label
- * range-select selects the verse lyrics under its swept part rows alongside
- * their notes. */
-export function lyricCellsForPartLabels(
-  lyricSpans: LyricSpan[],
-  hits: PartLabelHit[],
-): LyricCell[] {
-  return hits.flatMap((hit) =>
-    lyricSpans
-      .filter(
-        (span) =>
-          span.sourcePartIndex === hit.sourcePartIndex &&
-          span.measureIndex >= hit.measureIndexStart &&
-          span.measureIndex <= hit.measureIndexEnd,
-      )
-      .map((span) => ({
-        sourcePartIndex: span.sourcePartIndex,
-        noteId: span.noteId,
-      })),
-  )
 }
 
 /** One rendered lyric-label click target, keyed the same way as
@@ -83,27 +33,4 @@ export function getLyricLabelAtPoint(
 ): LyricLabelHit | undefined {
   const id = getClickableElementIdAtPoint(x, y, 'lyric-label')
   return id?.tag === 'lyric-label' ? id.val : undefined
-}
-
-/** Every lyric syllable cell belonging to the given lyric-label hits — each
- * hit selects its own verse's syllables across its own
- * `measureIndexStart..=measureIndexEnd` (the whole system the label sits
- * in), the lyric-side mirror of `noteCellsForPartLabels`. */
-export function lyricCellsForLyricLabels(
-  lyricSpans: LyricSpan[],
-  hits: LyricLabelHit[],
-): LyricCell[] {
-  return hits.flatMap((hit) =>
-    lyricSpans
-      .filter(
-        (span) =>
-          span.sourcePartIndex === hit.sourcePartIndex &&
-          span.measureIndex >= hit.measureIndexStart &&
-          span.measureIndex <= hit.measureIndexEnd,
-      )
-      .map((span) => ({
-        sourcePartIndex: span.sourcePartIndex,
-        noteId: span.noteId,
-      })),
-  )
 }

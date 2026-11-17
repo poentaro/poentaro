@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn render_output_contains_message() {
-        let path = write_temp_file("test_render.jianpu", "1 2 3 4\n");
+        let path = write_temp_file("test_render.poentaro", "1 2 3 4\n");
         let e = IrrecoverableError::new(IrrecoverableErrorKind::InternalInvariant {
             span: Span::new(0, 1),
             detail: "something went wrong".to_string(),
@@ -92,7 +92,7 @@ mod tests {
         // Without the byte→char conversion ariadne would look past end-of-source
         // and silently omit the code block.
         let source = "你好世界 x 4\n";
-        let path = write_temp_file("test_unicode_render.jianpu", source);
+        let path = write_temp_file("test_unicode_render.poentaro", source);
         let token_byte_start = "你好世界 ".len(); // 3*4 + 1 = 13
         let e = IrrecoverableError::new(IrrecoverableErrorKind::InternalInvariant {
             span: Span::new(token_byte_start, token_byte_start + 1),
@@ -129,7 +129,7 @@ mod tests {
             span: Span::new(0, 1),
             detail: "some error".to_string(),
         })
-        .with_path("/nonexistent/path.jianpu");
+        .with_path("/nonexistent/path.poentaro");
         let mut buf = Vec::new();
         render_to_writer(&e, &mut buf, None, Config::default());
         let output = String::from_utf8_lossy(&buf);

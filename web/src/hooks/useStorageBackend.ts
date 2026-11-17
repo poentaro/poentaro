@@ -23,6 +23,7 @@ import {
 } from './outboxSaveBadge'
 import { useCloudOutbox } from './useCloudOutbox'
 import { useCloudStoreLoader } from './useCloudStoreLoader'
+import type { UseStorageBackendResult } from './useStorageBackendResult'
 import { useSwitchToCloudOnSignIn } from './useSwitchToCloudOnSignIn'
 
 /**
@@ -36,7 +37,7 @@ import { useSwitchToCloudOnSignIn } from './useSwitchToCloudOnSignIn'
  */
 export const AUTOSAVE_DEBOUNCE_MS = 20_000
 
-const STORAGE_BACKEND_PREFERENCE_KEY = 'jianpu:storage-backend:v1'
+const STORAGE_BACKEND_PREFERENCE_KEY = 'poentaro:storage-backend:v1'
 
 /**
  * Persisted choice of backend. Unlike the old GitHub backend, `'cloud'`
@@ -71,77 +72,6 @@ export type StorageBackendTarget = { kind: 'local' } | { kind: 'cloud' }
  * `AUTOSAVE_DEBOUNCE_MS`) rather than backend/network state.
  */
 export type DisplaySaveStatus = SaveStatus | 'unsaved' | 'waiting' | 'attention'
-
-export interface UseStorageBackendResult {
-  store: FileStoreState
-  setStore: (
-    value: FileStoreState | ((prev: FileStoreState) => FileStoreState),
-  ) => void
-  backend: StorageBackend
-  /** True from the moment the `cloud` backend becomes active until its
-   * `load()` resolves and populates `cloudStore` — the window during which
-   * `store` is the `EMPTY_STORE` placeholder rather than the real listing.
-   * Lets `StorageSettingsModal` show a loading spinner instead of briefly
-   * flashing an empty file list. */
-  isLoadingCloud: boolean
-  saveStatus: DisplaySaveStatus
-  /** Badge text derived from the cloud outbox queue, or `null` for the local
-   * backend (whose text comes from `saveStatus` alone). */
-  saveLabel: string | null
-  /** `Date.now()`-comparable timestamp at which the pending debounced
-   * autosave will fire, or `null` when no save is pending. Lets the UI show
-   * a countdown alongside the `'unsaved'` status. Cleared the moment the
-   * save actually starts (debounce firing, `forceSave`, or
-   * `flushPendingSave`), not when it completes. */
-  autosaveDeadline: number | null
-  /** Currently persisted backend choice, exposed so `StorageSettingsModal`
-   * can reflect the active selection without re-deriving it from
-   * `backend.kind` alone. */
-  preference: StorageBackendPreference
-  /**
-   * Switches the active backend. If leaving the cloud backend with a
-   * pending debounced save, forces it to flush (and awaits it) before
-   * switching. Always lands on the demo file — there is no per-backend
-   * "last active file" memory.
-   */
-  switchBackend: (target: StorageBackendTarget) => Promise<void>
-  /**
-   * Immediately persists the active file, bypassing the autosave debounce
-   * interval. Wired to Ctrl/Cmd+S so users aren't stuck waiting out
-   * `AUTOSAVE_DEBOUNCE_MS` when they explicitly ask to save. A no-op for
-   * `localBackend` (already persisted synchronously by `useLocalStorage`),
-   * but harmless to call unconditionally.
-   */
-  forceSave: () => void
-  /**
-   * Flushes a pending debounced save without cancelling the debounce timer
-   * itself (unlike `forceSave`, which also bypasses scheduling a new one).
-   * Wired to file-tab switches so an edit made just before switching away
-   * from a file is persisted immediately instead of waiting out
-   * `AUTOSAVE_DEBOUNCE_MS` — `shouldScheduleAutosave` deliberately does not
-   * schedule a new save on such switches, so this is the only flush path
-   * for that case. A no-op for `localBackend` or when nothing is pending.
-   */
-  flushPendingSave: () => void
-  /**
-   * Re-reads `backend.status()` into `saveStatus`. Needed after callers that
-   * mutate a `CloudBackend`'s status by calling `saveContent`/`load`
-   * directly rather than through `runSave` — namely
-   * `StorageSettingsModal`'s conflict-resolution flow — so the "Saved"
-   * badge in `FileTabBar` doesn't keep showing a stale status (e.g. the
-   * conflict's `'error'`) after the conflict has actually been resolved.
-   *
-   * Pass `syncedStore` when the caller also just replaced the active file's
-   * content with content it fetched from the backend (`discard-mine`'s
-   * `updateActiveContent`, for instance): it's already in sync with what's
-   * persisted, so this marks it as the new baseline the autosave-scheduling
-   * effect diffs against. Omitting it would make that effect see the
-   * content "change" on the next render and immediately schedule a
-   * redundant autosave, flipping the badge back to "Unsaved" right after
-   * this call set it to "Saved".
-   */
-  refreshSaveStatus: (syncedStore?: FileStoreState) => void
-}
 
 /**
  * Decides whether an autosave should be scheduled for a `store` transition.
@@ -221,24 +151,30 @@ export function useStorageBackend(): UseStorageBackendResult {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [autosaveDeadline, setAutosaveDeadline] = useState<number | null>(null)
 
+  const clearAccountAuth = useCallback(
+    () => setAccountAuth(null),
+    [setAccountAuth],
+  )
+
   const backend = useMemo<StorageBackend | CloudBackend>(() => {
     if (preference.backend === 'cloud' && accountAuth) {
       return createCloudBackend({
         token: accountAuth.token,
         account: accountAuth.email,
         workerHost: import.meta.env.VITE_SYNCED_SHARE_HOST ?? '',
+        onSessionEnded: clearAccountAuth,
       })
     }
     return localBackend
-  }, [preference, accountAuth])
+  }, [preference, accountAuth, clearAccountAuth])
 
   // `localBackend`'s state instead lives in `localStore` above, seeded
   // synchronously, so no loader is needed for it.
-  const clearAccountAuth = useCallback(
-    () => setAccountAuth(null),
-    [setAccountAuth],
+  const cloudLoadFailure = useCloudStoreLoader(
+    backend,
+    setCloudStore,
+    clearAccountAuth,
   )
-  useCloudStoreLoader(backend, setCloudStore, clearAccountAuth)
 
   useEffect(() => {
     setSaveStatus(backend.status())
@@ -386,6 +322,7 @@ export function useStorageBackend(): UseStorageBackendResult {
     setStore,
     backend,
     isLoadingCloud,
+    cloudLoadFailure,
     saveStatus: autosaveDeadline !== null ? 'unsaved' : baseStatus,
     saveLabel: autosaveDeadline !== null ? null : (outboxBadge?.label ?? null),
     autosaveDeadline,

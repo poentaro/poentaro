@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import type { Message, SendRequest } from '../../jianpuWasm'
+import type { Message, SendRequest } from '../../poentaroWasm'
 import { installRealWasm } from '../cloudBackendTestHelpers'
 import { type SendMessageDeps, sendMessage } from './sendMessage'
 
@@ -16,7 +16,11 @@ type Post = (
 ) => Promise<unknown>
 
 function replyWith({ status, body }: FakeReply) {
-  const response = { ok: status >= 200 && status < 300, status } as Response
+  const response = {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers(),
+  } as Response
   return status >= 200 && status < 300
     ? { data: body, response }
     : { error: body, response }
@@ -30,7 +34,7 @@ function makeDeps(
     client: { POST: post } as unknown as SendMessageDeps['client'],
     identityToken: 'token',
     fetchServerContent: async () => 'server text',
-    restoreName: () => 'restored.jianpu',
+    restoreName: () => 'restored.poentaro',
     ...overrides,
   }
 }
@@ -83,7 +87,7 @@ describe('sendMessage success', () => {
     const result = await sendMessage(
       requestFor({
         tag: 'create-file',
-        val: { name: 'a.jianpu', content: 'x' },
+        val: { name: 'a.poentaro', content: 'x' },
       }),
       makeDeps(post),
     )
@@ -94,7 +98,7 @@ describe('sendMessage success', () => {
         body: {
           identityToken: 'token',
           id: 'file-1',
-          name: 'a.jianpu',
+          name: 'a.poentaro',
           content: 'x',
         },
       }),
@@ -103,7 +107,7 @@ describe('sendMessage success', () => {
 
   it.each([
     [
-      { tag: 'rename-file', val: { to: 'b.jianpu' } } as Message,
+      { tag: 'rename-file', val: { to: 'b.poentaro' } } as Message,
       '/files/{id}/rename',
     ],
     [{ tag: 'trash-file' } as Message, '/files/{id}/delete'],
@@ -121,7 +125,7 @@ describe('sendMessage success', () => {
     expect(post).toHaveBeenCalledWith(
       '/files/{id}/restore',
       expect.objectContaining({
-        body: { identityToken: 'token', name: 'restored.jianpu' },
+        body: { identityToken: 'token', name: 'restored.poentaro' },
       }),
     )
   })
@@ -200,6 +204,22 @@ describe('sendMessage failures', () => {
       val: { status: 400, reason: 'bad_request' },
     })
   })
+
+  it("names the failed request's trace ID in the reason", async () => {
+    const result = await sendMessage(
+      requestFor(saveContent('x')),
+      makeDeps(
+        respond({
+          status: 400,
+          body: { code: 'bad_request', traceId: '0123456789abcdef' },
+        }),
+      ),
+    )
+    expect(result).toEqual({
+      tag: 'permanent',
+      val: { status: 400, reason: 'bad_request, trace ID 0123456789abcdef' },
+    })
+  })
 })
 
 describe('sendMessage revision conflict', () => {
@@ -249,8 +269,8 @@ describe('sendMessage batch rename', () => {
     const result = await sendMessage(
       requestFor(
         batch(
-          { fileId: 'a', to: 'New/a.jianpu' },
-          { fileId: 'b', to: 'New/b.jianpu' },
+          { fileId: 'a', to: 'New/a.poentaro' },
+          { fileId: 'b', to: 'New/b.poentaro' },
         ),
       ),
       makeDeps(post),
@@ -263,8 +283,8 @@ describe('sendMessage batch rename', () => {
         body: {
           identityToken: 'token',
           moves: [
-            { id: 'a', name: 'New/a.jianpu' },
-            { id: 'b', name: 'New/b.jianpu' },
+            { id: 'a', name: 'New/a.poentaro' },
+            { id: 'b', name: 'New/b.poentaro' },
           ],
         },
       }),
@@ -273,11 +293,11 @@ describe('sendMessage batch rename', () => {
 
   it('adjusts each destination the worker reports as taken', async () => {
     const result = await sendMessage(
-      requestFor(batch({ fileId: 'a', to: 'New/a.jianpu' })),
+      requestFor(batch({ fileId: 'a', to: 'New/a.poentaro' })),
       makeDeps(
         respond({
           status: 409,
-          body: { code: 'names_taken', names: ['New/a.jianpu'] },
+          body: { code: 'names_taken', names: ['New/a.poentaro'] },
         }),
       ),
     )
@@ -286,7 +306,7 @@ describe('sendMessage batch rename', () => {
       tag: 'names-taken',
       val: {
         adjustments: [
-          { rejected: 'New/a.jianpu', replacement: 'New/a 2.jianpu' },
+          { rejected: 'New/a.poentaro', replacement: 'New/a 2.poentaro' },
         ],
       },
     })
@@ -313,7 +333,7 @@ describe('sendMessage batch rename', () => {
 
   it('is permanent when a file of the batch no longer exists', async () => {
     const result = await sendMessage(
-      requestFor(batch({ fileId: 'a', to: 'New/a.jianpu' })),
+      requestFor(batch({ fileId: 'a', to: 'New/a.poentaro' })),
       makeDeps(respond({ status: 404, body: { code: 'not_found' } })),
     )
 
@@ -331,24 +351,24 @@ describe('sendMessage name_taken', () => {
     const result = await sendMessage(
       requestFor({
         tag: 'create-file',
-        val: { name: 'a.jianpu', content: '' },
+        val: { name: 'a.poentaro', content: '' },
       }),
       makeDeps(taken),
     )
     expect(result).toEqual({
       tag: 'name-taken',
-      val: { suggestedName: 'a 2.jianpu' },
+      val: { suggestedName: 'a 2.poentaro' },
     })
   })
 
   it('suggests a new name for a rename', async () => {
     const result = await sendMessage(
-      requestFor({ tag: 'rename-file', val: { to: 'b.jianpu' } }),
+      requestFor({ tag: 'rename-file', val: { to: 'b.poentaro' } }),
       makeDeps(taken),
     )
     expect(result).toEqual({
       tag: 'name-taken',
-      val: { suggestedName: 'b 2.jianpu' },
+      val: { suggestedName: 'b 2.poentaro' },
     })
   })
 
@@ -356,13 +376,13 @@ describe('sendMessage name_taken', () => {
     const result = await sendMessage(
       requestFor({
         tag: 'rename-file',
-        val: { to: 'Hymns/Advent/O Come.jianpu' },
+        val: { to: 'Hymns/Advent/O Come.poentaro' },
       }),
       makeDeps(taken),
     )
     expect(result).toEqual({
       tag: 'name-taken',
-      val: { suggestedName: 'Hymns/Advent/O Come 2.jianpu' },
+      val: { suggestedName: 'Hymns/Advent/O Come 2.poentaro' },
     })
   })
 

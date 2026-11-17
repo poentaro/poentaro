@@ -1,7 +1,7 @@
 Feature: Rename file via the "⋯" file actions menu dialog
 
   Background:
-    Given a local-storage-backed file "original.jianpu" is seeded for the rename menu test
+    Given a local-storage-backed file "original.poentaro" is seeded for the rename menu test
     And the app loads the seeded rename-menu test file
 
   Scenario: Renaming via the "⋯" menu dialog updates the active tab and trigger

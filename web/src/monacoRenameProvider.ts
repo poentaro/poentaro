@@ -1,6 +1,6 @@
 import type { Monaco } from '@monaco-editor/react'
 import type * as monacoEditor from 'monaco-editor'
-import { JIANPU_LANGUAGE_ID } from './monacoJianpuLanguage'
+import { POENTARO_LANGUAGE_ID } from './monacoPoentaroLanguage'
 import {
   listRenameSymbols,
   occurrenceAtByteOffset,
@@ -34,11 +34,11 @@ function toRange(
 }
 
 /** Registers rename support for part/group abbreviations and section labels. */
-export function registerJianpuRenameProvider(monacoApi: Monaco) {
+export function registerPoentaroRenameProvider(monacoApi: Monaco) {
   if (registered) return
   registered = true
 
-  monacoApi.languages.registerRenameProvider(JIANPU_LANGUAGE_ID, {
+  monacoApi.languages.registerRenameProvider(POENTARO_LANGUAGE_ID, {
     async resolveRenameLocation(
       model: monacoEditor.editor.ITextModel,
       position: monacoEditor.Position,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Symbol as WasmSymbol } from './jianpuWasm'
+import type { Symbol as WasmSymbol } from './poentaroWasm'
 import { symbolAtByteOffset } from './renameSymbol'
 
 function makeSymbol(name: string, spans: Array<[number, number]>): WasmSymbol {

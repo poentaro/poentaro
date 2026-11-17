@@ -9,9 +9,9 @@ import { Given, Then, When } from './fixtures'
 /**
  * Regression fixture for the click-and-click *lyric* (syllable row) range
  * gesture crossing a part boundary — the cross-part counterpart to
- * `lyric-range-select-crosses-verse.feature`'s same-part case. Today
- * `Lyric ↔ Lyric` is only ID-resolved for a same-part pair; a different-part
- * pair falls through to `Err` and the caller falls back to 'lyric' mode's
+ * `lyric-range-select-crosses-verse.feature`'s same-part case. Before this fix
+ * `Lyric ↔ Lyric` was only ID-resolved for a same-part pair; a different-part
+ * pair fell through to `Err` and the caller fell back to 'lyric' mode's
  * pixel-marquee path — see `resolve_selection_range_response` in
  * `selection_range.rs` and `PLAN-clickable-element-id-selection.md`'s
  * "cross-part (any verse pairing)" writeup.
@@ -25,31 +25,31 @@ import { Given, Then, When } from './fixtures'
  * unioning every measure both parts appear in.
  */
 const source = [
-  '# metadata',
-  'title = "cross part lyric range test"',
-  'max_measures_per_system = 48',
+  'metadata { title "cross part lyric range test", max measures per system 48 },',
   '',
-  '# parts',
-  'Melody [M] = notes',
-  'Melody lyrics [Mv1] = lyrics[M]',
-  'Harmony [H] = notes',
-  'Harmony lyrics [Hv1] = lyrics[H]',
+  'parts [',
+  '    "Melody" [M]: notes,',
+  '    "Melody lyrics" [Mv1]: lyrics [M],',
+  '    "Harmony" [H]: notes,',
+  '    "Harmony lyrics" [Hv1]: lyrics [H],',
+  '],',
   '',
-  '# score',
-  '[M] 1', // measure 0
-  '[Mv1] do', // Melody verse 0
+  'score """',
+  '[M] 1',
+  '[Mv1] do',
   '[H] 5',
-  '[Hv1] la', // Harmony verse 0
+  '[Hv1] la',
   '',
-  '[M] 2', // measure 1
+  '[M] 2',
   '[Mv1] re',
   '[H] 6',
   '[Hv1] ti',
   '',
-  '[M] 3', // measure 2 — distractor, outside the swept measure range
+  '[M] 3',
   '[Mv1] mi',
   '[H] 7',
   '[Hv1] sol',
+  '""",',
 ].join('\n')
 
 function lyricInPart(page: import('@playwright/test').Page, partIndex: number) {
@@ -61,13 +61,13 @@ Given(
   async ({ page }) => {
     await page.addInitScript((src) => {
       localStorage.setItem(
-        'jianpu:files:v1',
+        'poentaro:files:v1',
         JSON.stringify({
-          active: 'cross-part-lyric-range-test.jianpu',
-          userFiles: { 'cross-part-lyric-range-test.jianpu': src },
+          active: 'cross-part-lyric-range-test.poentaro',
+          userFiles: { 'cross-part-lyric-range-test.poentaro': src },
           bin: {},
           fileIds: {
-            'cross-part-lyric-range-test.jianpu':
+            'cross-part-lyric-range-test.poentaro':
               'cross-part-lyric-range-test-id-001',
           },
         }),

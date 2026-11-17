@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import type { ClickableElementId } from '../jianpuWasm'
+import type { ClickableElementId } from '../poentaroWasm'
 import type { LyricSpan, NoteSpan } from '../types'
 import type { StaffScore } from '../worker/messages'
 import { clickableElementIdFromElement } from './clickableElementId'
@@ -11,6 +11,7 @@ import {
   type LyricCell,
   type NoteCell,
 } from './previewSelection'
+import { resolveCurrentId } from './previewSelectionResolveModes'
 import {
   type HandlePreviewClickArgs,
   resolveSelection,
@@ -49,7 +50,7 @@ function hoveredElementId(
  *
  * Delegates through `resolveSelection` (`previewSelectionResolver.ts`) on
  * every tick, the same resolver the commit path already uses, rather than a
- * separate hand-rolled per-mode marquee/index computation: `mouseover`'s
+ * separate hand-rolled per-mode index computation: `mouseover`'s
  * `event.target.closest('[data-tag]')` identifies the hovered element
  * directly off its own `data-*` attributes (`clickableElementIdFromElement`),
  * with no `elementFromPoint`/`elementsFromPoint` pixel scan — except for
@@ -193,11 +194,17 @@ export function usePreviewClickSelection(
         return
       }
 
-      anchorState.current = point
-      resolveSelection(
+      // Remembers the hovered end, so a later hover or click that misses
+      // every click target keeps the range where the pointer last pointed.
+      anchorState.currentId = resolveCurrentId(
         anchorState,
         point,
         hoveredElementId(e.target),
+      )
+      resolveSelection(
+        anchorState,
+        point,
+        anchorState.currentId,
         argsForHover(),
       )
     }

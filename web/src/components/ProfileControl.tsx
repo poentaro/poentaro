@@ -1,4 +1,9 @@
-import { ExitIcon, LockClosedIcon, PersonIcon } from '@radix-ui/react-icons'
+import {
+  ExitIcon,
+  LockClosedIcon,
+  MagicWandIcon,
+  PersonIcon,
+} from '@radix-ui/react-icons'
 import * as Popover from '@radix-ui/react-popover'
 import { useCallback, useState } from 'react'
 import './ProfileControl.css'
@@ -28,6 +33,8 @@ export interface ProfileControlProps {
   onSignIn: () => void
   /** Opens the change password dialog. */
   onChangePassword: () => void
+  /** Opens the dialog that connects an AI agent with an API key. */
+  onOpenApiKeys: () => void
   /** The only sign-out action in the app -- stops any active sync, ends
    * this browser's session, and falls back to local storage if cloud
    * storage was active (see `App.tsx`'s `handleAccountSignOut`). */
@@ -40,6 +47,7 @@ export function ProfileControl({
   isSynced,
   onSignIn,
   onChangePassword,
+  onOpenApiKeys,
   onSignOut,
 }: ProfileControlProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
@@ -48,6 +56,11 @@ export function ProfileControl({
     setPopoverOpen(false)
     onChangePassword()
   }, [onChangePassword])
+
+  const handleOpenApiKeys = useCallback(() => {
+    setPopoverOpen(false)
+    onOpenApiKeys()
+  }, [onOpenApiKeys])
 
   const handleSignOut = useCallback(() => {
     setPopoverOpen(false)
@@ -107,6 +120,14 @@ export function ProfileControl({
           >
             <LockClosedIcon aria-hidden="true" />
             Change password
+          </button>
+          <button
+            type="button"
+            className="account-popover-link"
+            onClick={handleOpenApiKeys}
+          >
+            <MagicWandIcon aria-hidden="true" />
+            AI agents
           </button>
           <button
             type="button"

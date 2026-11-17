@@ -8,10 +8,11 @@ mod grouped_text_style;
 pub(crate) use grouped_text_style::{default_font_size, resolve_text_style, TextStyleDefaults};
 pub use grouped_text_style::{
     FontSizeDefault, TextStyle, DEFAULT_CHORDS_HORIZONTAL_PADDING_PT, DEFAULT_DIRECTIVE_ROW_OFFSET,
-    DEFAULT_HIDE_RESTING_PARTS, DEFAULT_HIDE_SYSTEM_DIVIDERS, DEFAULT_LYRICS_HORIZONTAL_PADDING_PT,
-    DEFAULT_LYRIC_CLICK_TARGET_PADDING_PT, DEFAULT_MAX_MEASURES_PER_SYSTEM,
-    DEFAULT_MERGE_DUPLICATE_MEASURES_ACROSS_PARTS, DEFAULT_NOTES_HORIZONTAL_PADDING_PT,
-    DEFAULT_NOTE_DASH_HORIZONTAL_PADDING_PT, DEFAULT_NOTE_NUMBER_WIDTH, DEFAULT_PARTS_LIST_COLUMNS,
+    DEFAULT_HEADER_VERTICAL_PADDING_PT, DEFAULT_HIDE_RESTING_PARTS, DEFAULT_HIDE_SYSTEM_DIVIDERS,
+    DEFAULT_LYRICS_HORIZONTAL_PADDING_PT, DEFAULT_LYRIC_CLICK_TARGET_PADDING_PT,
+    DEFAULT_MAX_MEASURES_PER_SYSTEM, DEFAULT_MERGE_DUPLICATE_MEASURES_ACROSS_PARTS,
+    DEFAULT_NOTES_HORIZONTAL_PADDING_PT, DEFAULT_NOTE_DASH_HORIZONTAL_PADDING_PT,
+    DEFAULT_NOTE_NUMBER_WIDTH, DEFAULT_PAGE_MARGIN_PT, DEFAULT_PARTS_LIST_COLUMNS,
     DEFAULT_PART_LABEL_WIDTH_PT, DEFAULT_ROW_HEIGHT,
 };
 
@@ -34,13 +35,16 @@ pub struct Metadata {
     /// A flat scalar field, not part of `part_label`'s `TextStyle`, since
     /// it's a layout constant rather than a text style component. Default: 40.
     pub part_label_width_pt: u32,
+    /// Blank margin in points on every side of the page: the space between
+    /// the paper's edge and the header, music and page number. Default: 25.
+    pub page_margin_pt: u32,
     /// Title text style. `font_size` default: 150% of `row_height`.
     pub title_style: TextStyle,
     /// Subtitle text style. `font_size` default: 80% of `row_height`.
     pub subtitle_style: TextStyle,
     /// Author text style. `font_size` default: 60% of `row_height`.
     pub author_style: TextStyle,
-    /// `# sequence` summary line text style. `font_size` default: 12.
+    /// `sequence` summary line text style. `font_size` default: 12.
     pub sequence: TextStyle,
     /// Part-name legend entry text style (e.g. `V — Vocal (S1,S2,A1,A2)`).
     /// `font_size` default: 60% of `row_height`.
@@ -56,6 +60,10 @@ pub struct Metadata {
     pub part_label: TextStyle,
     /// Page-number footer text style. `font_size` default: 60% of `row_height`.
     pub page_number: TextStyle,
+    /// Running-title text style: the small title (no subtitle/author) shown on
+    /// pages after the first. `font_size` default: 60% of `row_height`; italic,
+    /// serif.
+    pub running_title: TextStyle,
     /// Lyric syllable text style. `font_size` default: 60% of `row_height`.
     /// `horizontal_padding_pt` default: 4. `vertical_padding_pt` (formerly
     /// `lyric_click_target_padding_pt`) is extra padding added around a lyric
@@ -94,7 +102,7 @@ pub struct Metadata {
     pub hide_system_dividers: bool,
     /// Translation in points applied to every rendered directive row (bar number, section
     /// label, key, bpm, time signature, nav markers), after layout (see
-    /// `renderer::new_renderer::render_directive_line`). Not applied to the `# sequence`
+    /// `renderer::new_renderer::render_directive_line`). Not applied to the `sequence`
     /// summary header. Default: `(0, 0)`.
     pub directive_row_offset: Offset,
 }
@@ -112,10 +120,15 @@ pub struct Notes {
 /// columns even when the target itself is filtered out.
 #[derive(Clone)]
 pub struct LyricsSlice {
-    /// Abbreviation of the part whose notes these lyrics sing along to.
+    /// Abbreviation of the part whose notes these lyrics sing along to this
+    /// measure: of the parts they are sung on, the bottommost with a note
+    /// here (see `lyric_paired_target`).
     pub target_name: String,
     /// The target's events this measure, which fix where syllables sit.
     pub target_events: Vec<NoteEvent>,
+    /// The target's last note before this measure is tied into it, so its
+    /// first note takes no syllable.
+    pub entering_tied: bool,
     /// The target is a `chords` part: syllables are then placed by
     /// `chord_lyric_placement` instead of one per note slot.
     pub targets_chords: bool,
@@ -125,6 +138,12 @@ pub struct LyricsSlice {
     /// whole, in order, bracketed ones (`Syllable::bracketed`) tallied 1:1 with
     /// the target's `lyric_slots::chord_attacks` by the grouper.
     pub syllables: Vec<Syllable>,
+    /// Abbreviations of every part these syllables are sung on
+    /// (`lyrics [S, A, T, B]`), in written order; `target_name` is one of them.
+    pub sung_on: Vec<String>,
+    /// Abbreviation of the bottommost of `sung_on`, whose row the lyric row
+    /// is drawn under.
+    pub drawn_under: String,
 }
 
 #[derive(Clone)]
@@ -134,6 +153,12 @@ pub struct PartSlice {
     pub soundfont: crate::ast::parsed::Soundfont,
     pub volume: u8,
     pub octave_offset: i8,
+    /// The instrument the part's `parts` line names, if any (see
+    /// `RangeInstrument`).
+    pub range_instrument: Option<crate::ast::parsed::RangeInstrument>,
+    /// The voice this part sings its lyric part's syllables in, in place of
+    /// playing `soundfont` (see `PartDecl::singing_voice`).
+    pub singing_voice: Option<crate::ast::parsed::SingingVoice>,
     pub notes: Notes,
     /// Set exactly for a lyric part (`kind` is `PartKind::Lyrics`), whose own
     /// `notes` are empty.
@@ -164,11 +189,11 @@ pub struct MultiPartMeasure {
     pub label: Option<String>,
     /// Resolved value of `merge_duplicate_measures_across_parts=` in effect on this
     /// measure — either an override starting here or carried forward from an earlier
-    /// measure or the `#metadata` default (see `consolidator::consolidate`).
+    /// measure or the `metadata` default (see `consolidator::consolidate`).
     pub merge_duplicate_measures_across_parts: bool,
     /// Resolved value of `hide_resting_parts=` in effect on this measure — either an
     /// override starting here or carried forward from an earlier measure or the
-    /// `#metadata` default (see `compiler::compile_measure`).
+    /// `metadata` default (see `compiler::compile_measure`).
     pub hide_resting_parts: bool,
     /// `break` directive on this measure's directive line: forces a new system
     /// to start at this measure (see `grid_layout::layout_systems::pack_into_systems`).
@@ -189,6 +214,14 @@ pub enum PartRow {
 }
 
 impl PartSlice {
+    /// See [`PartRow::is_alternative_line`].
+    pub fn is_alternative_line(&self) -> bool {
+        self.name
+            .as_deref()
+            .and_then(crate::ast::parsed::AlternativeLine::of)
+            .is_some()
+    }
+
     /// The events that fix this slice's timing: its own notes, or for a lyric
     /// part (which has none) its target's.
     pub fn timing_events(&self) -> &[NoteEvent] {
@@ -203,6 +236,12 @@ impl PartSlice {
 impl PartRow {
     pub fn name(&self) -> Option<&String> {
         self.slice().name.as_ref()
+    }
+
+    /// Whether this row is a part's alternative line (`S.2`), which plays
+    /// only where a `sequence` entry swaps it in (see `ChosenLine`).
+    pub fn is_alternative_line(&self) -> bool {
+        self.slice().is_alternative_line()
     }
 
     pub fn slice(&self) -> &PartSlice {
@@ -242,38 +281,10 @@ pub struct Score {
     pub measures: Vec<MultiPartMeasure>,
     /// Document-level diagnostics (e.g. metadata parse errors), not tied to any measure.
     pub document_diagnostics: Vec<Diagnostic>,
-    /// Resolved playback order from a `# sequence` section, if present and
+    /// Resolved playback order from a `sequence` section, if present and
     /// valid: each span is a labeled section's inclusive measure-index range
     /// in `measures`, in the order they should play.
     pub sequence: Option<Vec<SequenceSpan>>,
-}
-
-/// A labeled section's resolved measure range, in written-score order: from
-/// the labeled measure up to (but not including) the next labeled measure,
-/// or the end of the score.
-#[derive(Clone)]
-pub struct SequenceSpan {
-    pub label: String,
-    /// Inclusive index into `Score.measures`.
-    pub start: usize,
-    /// Inclusive index into `Score.measures`.
-    pub end: usize,
-    /// Individual part abbreviations to omit from this occurrence's MIDI/WAV
-    /// playback (from a `# sequence` entry's `(-abbrev ...)` omit suffix, or
-    /// the complement of an `(abbrev ...)` only suffix against `# parts`).
-    pub omit_parts: Vec<String>,
-    /// The entry's `(-abbrev ...)` / `(abbrev ...)` suffix's abbreviations as
-    /// written, plus whether it's an omit or only suffix, for display on the
-    /// SVG/PDF "Sequence: ..." summary line. `None` when the entry has no
-    /// suffix.
-    pub part_filter_display: Option<PartFilterDisplay>,
-}
-
-/// A `# sequence` entry's `(...)` suffix, as written, for display purposes.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PartFilterDisplay {
-    pub kind: crate::parser::sequence_parser::PartFilterKind,
-    pub parts: Vec<String>,
 }
 
 // ── Intermediate grouper types (not part of the public API) ─────────────────
@@ -332,10 +343,19 @@ pub(crate) struct GroupedPart {
     pub(crate) soundfont: crate::ast::parsed::Soundfont,
     pub(crate) volume: u8,
     pub(crate) octave_offset: i8,
+    pub(crate) range_instrument: Option<crate::ast::parsed::RangeInstrument>,
+    pub(crate) singing_voice: Option<crate::ast::parsed::SingingVoice>,
+    pub(crate) lyric_targets: Vec<usize>,
     pub(crate) measures: Vec<GroupedMeasure>,
 }
 
 // ── Shared note types ─────────────────────────────────────────────────────────
+
+#[path = "grouped_sequence.rs"]
+mod grouped_sequence;
+pub use grouped_sequence::{
+    part_filter_items, sequence_entry_suffix, ChosenLine, PartFilterDisplay, SequenceSpan,
+};
 
 #[path = "grouped_notes.rs"]
 mod grouped_notes;

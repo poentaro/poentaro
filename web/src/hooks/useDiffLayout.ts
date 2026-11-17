@@ -5,7 +5,7 @@ export type DiffLayout = 'side-by-side' | 'inline'
 
 // Named for the part stream editor, the first diff view; kept so the
 // choice people already made carries over to every diff view.
-const STORAGE_KEY = 'jianpu:part-stream-diff-layout:v1'
+const STORAGE_KEY = 'poentaro:part-stream-diff-layout:v1'
 
 function load(): DiffLayout | null {
   try {
@@ -25,7 +25,7 @@ function save(layout: DiffLayout) {
 }
 
 /** Whether diffs are shown side by side or inline (one choice for every
- * `JianpuDiffEditor`). Until the
+ * `PoentaroDiffEditor`). Until the
  * user picks one (remembered in this browser only), it follows the viewport:
  * inline on mobile, side by side otherwise. */
 export function useDiffLayout() {

@@ -59,7 +59,7 @@ Given(
 )
 
 function trackSeededFileDisplayName(name: string): void {
-  lastSeededFileDisplayName = name.replace(/\.jianpu$/, '')
+  lastSeededFileDisplayName = name.replace(/\.poentaro$/, '')
 }
 
 Given(

@@ -1,4 +1,4 @@
-export const PART_TOGGLES_KEY = 'jianpu:part-toggles:v1'
+export const PART_TOGGLES_KEY = 'poentaro:part-toggles:v1'
 
 export interface PartToggleState {
   disabledParts: string[]

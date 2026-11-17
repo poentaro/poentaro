@@ -1,4 +1,4 @@
-use crate::ast::parsed::{Accidental, JianPuPitch, Offset};
+use crate::ast::parsed::{Accidental, NumberedPitch, Offset};
 use crate::compiler::types::{
     ColumnElement, CompileResult, ElementContent, MeasureBlock, MeasureRow, RowId,
 };
@@ -64,7 +64,7 @@ fn notes_row_with_a_two_beat_note() -> MeasureRow {
             ColumnElement {
                 column: 0,
                 content: ElementContent::NoteHead {
-                    pitch: JianPuPitch::One,
+                    pitch: NumberedPitch::One,
                     accidental: Accidental::Natural,
                     octave: 0,
                     dotted: false,
@@ -84,7 +84,7 @@ fn notes_row_with_a_two_beat_note() -> MeasureRow {
             ColumnElement {
                 column: 2,
                 content: ElementContent::NoteHead {
-                    pitch: JianPuPitch::Two,
+                    pitch: NumberedPitch::Two,
                     accidental: Accidental::Natural,
                     octave: 0,
                     dotted: false,
@@ -120,6 +120,7 @@ fn lyric_verse_row() -> MeasureRow {
                 column: 0,
                 content: ElementContent::Lyric {
                     text: "Hoo".to_string(),
+                    ruby: None,
                     note_id: 0,
                 },
                 note_id: None,
@@ -128,6 +129,7 @@ fn lyric_verse_row() -> MeasureRow {
                 column: 2,
                 content: ElementContent::Lyric {
                     text: "ray".to_string(),
+                    ruby: None,
                     note_id: 1,
                 },
                 note_id: None,
@@ -168,8 +170,7 @@ fn lyric_click_target_spans_its_note_full_column_width() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -241,8 +242,7 @@ fn lyric_click_target_of_first_syllable_snaps_to_leading_bar_line() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;
@@ -324,8 +324,7 @@ fn lyric_click_target_of_last_syllable_snaps_to_trailing_bar_line() {
         },
         &test_render_config(),
         &no_header(),
-        595.0,
-        842.0,
+        crate::grid_layout::PageLayout::A4,
         None,
     )
     .pages;

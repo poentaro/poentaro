@@ -46,35 +46,31 @@ Given(
 
 function buildSource(): string {
   const lines = [
-    '# metadata',
-    'title = "lyric row rest run test"',
-    `max_measures_per_system = ${state.measureCount}`,
+    `metadata { title "lyric row rest run test", max measures per system ${state.measureCount} },`,
     '',
-    '# parts',
-    'Melody [M] = notes',
-    'Verse [V] = lyrics[M]',
+    'parts ["Melody" [M]: notes, "Verse" [V]: lyrics [M]],',
     '',
-    '# score',
+    'score """',
   ]
   for (let i = 0; i < state.measureCount; i++) {
     lines.push(`[M] ${state.melodyNotes}`)
     if (state.singingMeasures.includes(i)) lines.push(`[V] ${state.singing}`)
     lines.push('')
   }
-  return lines.join('\n')
+  return [...lines, '""",'].join('\n')
 }
 
 When('the lyric-row-rest-run score is laid out', async ({ page }) => {
   const source = buildSource()
   await page.addInitScript((src) => {
     localStorage.setItem(
-      'jianpu:files:v1',
+      'poentaro:files:v1',
       JSON.stringify({
-        active: 'lyric-row-rest-run-test.jianpu',
-        userFiles: { 'lyric-row-rest-run-test.jianpu': src },
+        active: 'lyric-row-rest-run-test.poentaro',
+        userFiles: { 'lyric-row-rest-run-test.poentaro': src },
         bin: {},
         fileIds: {
-          'lyric-row-rest-run-test.jianpu': 'lyric-row-rest-run-test-id-001',
+          'lyric-row-rest-run-test.poentaro': 'lyric-row-rest-run-test-id-001',
         },
       }),
     )

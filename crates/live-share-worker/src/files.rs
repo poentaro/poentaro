@@ -15,7 +15,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use jianpu_generator::file_tree::TreePath;
+use poentaro::file_tree::TreePath;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -122,7 +122,7 @@ pub fn classify_content_write(
 
 /// Checks that `name` is a valid file path: slash-separated, no empty
 /// segments, no `.`/`..`, at most 1024 UTF-8 bytes in total. The rules are
-/// `jianpu_generator::file_tree::TreePath`'s, shared with the web app. The
+/// `poentaro::file_tree::TreePath`'s, shared with the web app. The
 /// unique index `idx_files_owner_name` is on the whole string, so two
 /// files in different folders may share a last segment.
 pub fn validate_file_name(name: &str) -> Result<(), ApiError> {

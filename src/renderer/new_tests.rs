@@ -1,4 +1,4 @@
-use crate::ast::parsed::{JianPuPitch, Offset};
+use crate::ast::parsed::{NumberedPitch, Offset};
 use crate::compiler::types::{ArcKind, BarLineKind};
 use crate::compositor::types::{
     AbsoluteContent, AbsoluteElement, AbsolutePage, TextAnchor, TextSpan,
@@ -67,7 +67,7 @@ pub(super) fn make_page(content: AbsoluteContent) -> AbsolutePage {
 #[test]
 fn note_head_produces_text_element() {
     let page = make_page(AbsoluteContent::NoteHead {
-        pitch: JianPuPitch::One,
+        pitch: NumberedPitch::One,
         accidental: crate::ast::parsed::Accidental::Natural,
         octave: 0,
         dotted: false,
@@ -152,7 +152,7 @@ fn sharp_accidental_renders_left_of_the_digit_in_the_note_s_own_text_run() {
     // separately-positioned glyph, and the run starts one accidental-width
     // before `elem.x`, so the digit itself still lands on the note's anchor.
     let page = make_page(AbsoluteContent::NoteHead {
-        pitch: JianPuPitch::One,
+        pitch: NumberedPitch::One,
         accidental: crate::ast::parsed::Accidental::Sharp,
         octave: 0,
         dotted: false,
@@ -253,7 +253,7 @@ fn note_dash_renders_at_its_own_font_size_not_notes_font_size() {
 #[test]
 fn upper_octave_note_produces_dot_glyph() {
     let page = make_page(AbsoluteContent::NoteHead {
-        pitch: JianPuPitch::One,
+        pitch: NumberedPitch::One,
         accidental: crate::ast::parsed::Accidental::Natural,
         octave: 1,
         dotted: false,
@@ -274,7 +274,7 @@ fn upper_octave_note_produces_dot_glyph() {
 #[test]
 fn dotted_note_produces_dot_circles_not_appended_text() {
     let page = make_page(AbsoluteContent::NoteHead {
-        pitch: JianPuPitch::One,
+        pitch: NumberedPitch::One,
         accidental: crate::ast::parsed::Accidental::Natural,
         octave: 0,
         dotted: true,

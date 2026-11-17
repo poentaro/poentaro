@@ -1,7 +1,7 @@
 import { ChevronDownIcon } from '@radix-ui/react-icons'
 import { forwardRef } from 'react'
 import { displayFileName } from '../fileStore'
-import type { FileActiveLabel } from '../jianpuWasm'
+import type { FileActiveLabel } from '../poentaroWasm'
 
 interface FileSwitcherTriggerProps {
   activeLabel: FileActiveLabel

@@ -28,6 +28,8 @@ const rateLimitOverride = process.env.RATE_LIMIT_PER_MINUTE_OVERRIDE
 
 export default defineConfig({
   worker: {
+    // Still `jianpu`: renaming a Worker or a D1 database means recreating
+    // it (see "Naming" in AGENTS.md). Name anything new `poentaro-…`.
     name: 'jianpu-live-share-worker-rs',
     compatibilityDate: '2024-09-23',
     // `worker-build`'s default output layout: a `build/` dir here containing
@@ -57,6 +59,23 @@ export default defineConfig({
       SIGN_UP_RATE_LIMITER: bindings.rateLimit({
         namespace: '1002',
         simple: { limit: rateLimitOverride ?? 3, period: 60 },
+      }),
+      // Per-IP limit on `POST /origin-migrations` (the one-time handoff of
+      // a browser's saved data from the old origin, see
+      // `src/origin_migration.rs`): a browser uploads once, so a low limit
+      // only stops someone using it as free storage. The name must match
+      // `ORIGIN_MIGRATION_RATE_LIMITER` in `src/handlers/origin_migrations.rs`.
+      ORIGIN_MIGRATION_RATE_LIMITER: bindings.rateLimit({
+        namespace: '1003',
+        simple: { limit: rateLimitOverride ?? 5, period: 60 },
+      }),
+      // Per-API-key limit on `POST /agent` (an AI agent editing its owner's
+      // scores, see `src/handlers/agent.rs`), keyed by the key's id, not the
+      // IP. Each request can hold many calls, so this bounds requests, not
+      // edits. The name must match `AGENT_RATE_LIMITER` there.
+      AGENT_RATE_LIMITER: bindings.rateLimit({
+        namespace: '1004',
+        simple: { limit: rateLimitOverride ?? 60, period: 60 },
       }),
       // The worker never reads it; it is declared so this crate is the
       // single source of deployment config -- `tests/export_openapi.rs`

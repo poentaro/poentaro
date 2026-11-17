@@ -1,9 +1,9 @@
 import {
   type Diagnostic,
   type FontBytesByFamily,
-  jianpuWasm,
+  poentaroWasm,
   type StaffClef,
-} from '../jianpuWasm'
+} from '../poentaroWasm'
 import { GM_INSTRUMENTS } from '../utils/gmInstruments'
 import {
   binaryBufferFromResult,
@@ -18,7 +18,7 @@ const FONTS_NOT_LOADED = 'Fonts are not yet loaded.'
 
 /** PDF export while the preview shows staff notation: Rust writes the MEI,
  * Verovio engraves it, and Rust writes Verovio's pages as the PDF. Replies
- * with the same `pdf`/`pdfErr` messages as the jianpu export. */
+ * with the same `pdf`/`pdfErr` messages as the numbered export. */
 export async function handleGenerateStaffPdf(
   msg: Extract<WorkerRequest, { type: 'generatePdf' }>,
   clef: StaffClef,
@@ -31,18 +31,18 @@ export async function handleGenerateStaffPdf(
       diagnostics,
     } satisfies WorkerResponse)
   if (!loadedFonts) return fail(singleErrorDiagnostic(FONTS_NOT_LOADED))
-  const mei = jianpuWasm().renderMei(
+  const mei = poentaroWasm().renderMei(
     msg.source,
     msg.visibility,
     GM_INSTRUMENTS,
     clef,
   )
   if (mei.tag === 'err') return fail(mei.val.diagnostics)
-  const engraved = await engraveMei(mei.val.mei)
+  const engraved = await engraveMei(mei.val.mei, { tag: 'a4' })
   if (engraved.status === 'err') {
     return fail(singleErrorDiagnostic(engraved.message))
   }
-  const result = jianpuWasm().generateStaffPdf(
+  const result = poentaroWasm().generateStaffPdf(
     engraved.pages,
     msg.source,
     loadedFonts,
@@ -67,16 +67,17 @@ export async function handleGenerateSplitStaffPdf(
       diagnostics,
     } satisfies WorkerResponse)
   if (!loadedFonts) return fail(singleErrorDiagnostic(FONTS_NOT_LOADED))
-  const meis = jianpuWasm().renderSplitMeis(
+  const meis = poentaroWasm().renderSplitMeis(
     msg.source,
     msg.baseName,
+    msg.presetName,
     GM_INSTRUMENTS,
     clef,
   )
   if (meis.tag === 'err') return fail(meis.val.diagnostics)
   const parts = []
   for (const part of meis.val) {
-    const engraved = await engraveMei(part.mei)
+    const engraved = await engraveMei(part.mei, { tag: 'a4' })
     if (engraved.status === 'err') {
       return fail(singleErrorDiagnostic(engraved.message))
     }
@@ -86,7 +87,7 @@ export async function handleGenerateSplitStaffPdf(
       pages: engraved.pages,
     })
   }
-  const result = jianpuWasm().generateSplitStaffPdfs(parts, loadedFonts)
+  const result = poentaroWasm().generateSplitStaffPdfs(parts, loadedFonts)
   if (result.tag === 'err') return fail(result.val.diagnostics)
   const zip = binaryBufferFromResult(result.val.zip)
   postMessage({ type: 'splitPdf', id: msg.id, zip } satisfies WorkerResponse, {

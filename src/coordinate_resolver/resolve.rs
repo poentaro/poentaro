@@ -1,9 +1,10 @@
+use super::page_geometry::PageGeometry;
 use crate::compositor::types::{AbsoluteElement, AbsolutePage, FontFamily, GlyphFontFamilies};
 use crate::error::IrrecoverableError;
 use crate::grid_layout::types::{
     ColumnGeometry, GridContent, GridElement, GridPage, GridRow, HAlign, VAlign,
 };
-use crate::grid_layout::PAGE_MARGIN;
+use crate::grid_layout::PageFrame;
 
 use super::click_targets::resolve_click_target_elements;
 use super::content_conversion::grid_to_absolute;
@@ -134,12 +135,12 @@ pub struct ResolveFontSizes {
 pub fn resolve(
     pages: &[GridPage],
     note_number_width: f32,
-    part_label_width_pt: f32,
+    page_frame: PageFrame,
     font_sizes: ResolveFontSizes,
 ) -> Result<Vec<AbsolutePage>, IrrecoverableError> {
     pages
         .iter()
-        .map(|page| resolve_page(page, note_number_width, part_label_width_pt, font_sizes))
+        .map(|page| resolve_page(page, note_number_width, page_frame, font_sizes))
         .collect()
 }
 
@@ -162,6 +163,15 @@ pub(super) struct RowResolveConfig {
     pub(super) glyph_font_families: GlyphFontFamilies,
 }
 
+/// A lyric syllable in a row grown for pinyin sits in the row's lower part,
+/// below the band the pinyin is drawn in.
+fn lyric_ruby_shift(content: &GridContent) -> f32 {
+    match content {
+        GridContent::LyricSyllable { ruby_band_pt, .. } => ruby_band_pt * 0.5,
+        _ => 0.0,
+    }
+}
+
 fn resolve_row_element(
     el: &GridElement,
     row: &GridRow,
@@ -170,7 +180,7 @@ fn resolve_row_element(
     config: RowResolveConfig,
 ) -> Result<Option<AbsoluteElement>, IrrecoverableError> {
     let raw_x_start = geometry.x_start(el.column as f32);
-    let x_start = PAGE_MARGIN + raw_x_start;
+    let x_start = raw_x_start;
     // Computed from the actual start/end columns (not `col_width * span`) so
     // a span crossing measures of differing proportional width still gets
     // its true pixel extent.
@@ -179,11 +189,8 @@ fn resolve_row_element(
         HAlign::Start => x_start,
         HAlign::Center => {
             if is_flush_left_glyph(&el.content) {
-                PAGE_MARGIN
-                    + geometry.glyph_left_anchor_x(
-                        el.column as f32,
-                        flush_left_padding(&el.content, config),
-                    )
+                geometry
+                    .glyph_left_anchor_x(el.column as f32, flush_left_padding(&el.content, config))
             } else {
                 x_start + span_width * 0.5
             }
@@ -207,7 +214,7 @@ fn resolve_row_element(
         VAlign::Top => row_y,
         VAlign::Center => row_y + row.height_pt * 0.5,
         VAlign::Bottom => row_y + row.height_pt - bottom_padding,
-    };
+    } + lyric_ruby_shift(&el.content);
 
     if let Some(el) = resolve_span_marking(el, y, geometry, config) {
         return Ok(Some(el));
@@ -251,12 +258,15 @@ fn resolve_row_element(
 fn resolve_page(
     page: &GridPage,
     note_number_width: f32,
-    part_label_width_pt: f32,
+    page_frame: PageFrame,
     font_sizes: ResolveFontSizes,
 ) -> Result<AbsolutePage, IrrecoverableError> {
-    let usable_width = page.width_pt - 2.0 * PAGE_MARGIN;
+    let page_geometry = PageGeometry {
+        frame: page_frame,
+        page_width_pt: page.width_pt,
+    };
     let mut elements: Vec<AbsoluteElement> = Vec::new();
-    let mut row_y = PAGE_MARGIN;
+    let mut row_y = page_frame.margin_pt;
     let mut row_tops: Vec<f32> = Vec::with_capacity(page.rows.len());
 
     let row_config = RowResolveConfig {
@@ -271,7 +281,7 @@ fn resolve_page(
     };
     for row in &page.rows {
         row_tops.push(row_y);
-        let geometry = row.column_geometry(usable_width, part_label_width_pt);
+        let geometry = page_geometry.row_geometry(row);
         for el in &row.elements {
             if let Some(element) = resolve_row_element(el, row, row_y, &geometry, row_config)? {
                 elements.push(element);
@@ -284,23 +294,16 @@ fn resolve_page(
         &page.measure_highlights,
         &page.rows,
         &row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
     );
-    let error_elements = resolve_error_highlights(
-        &page.error_highlights,
-        &page.rows,
-        &row_tops,
-        usable_width,
-        part_label_width_pt,
-    );
+    let error_elements =
+        resolve_error_highlights(&page.error_highlights, &page.rows, &row_tops, page_geometry);
     highlight_elements.extend(error_elements);
     highlight_elements.extend(elements);
     highlight_elements.extend(resolve_click_target_elements(
         page,
         &row_tops,
-        usable_width,
-        part_label_width_pt,
+        page_geometry,
         font_sizes.labels.measure_number,
         crate::grid_layout::types::TextStyleFlags {
             bold: font_sizes.labels.measure_number_bold,

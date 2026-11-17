@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { type FileStoreState, mergeBackendResult } from '../fileStore'
-import type { FolderSnapshot } from '../jianpuWasm'
+import type { FolderSnapshot } from '../poentaroWasm'
 import type { StorageBackend } from '../storage/types'
 
 interface FileOpError {

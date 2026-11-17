@@ -1,7 +1,8 @@
 import type { FileStoreState } from '../fileStore'
+import type { CloudLoadFailure } from '../hooks/useCloudStoreLoader'
 import type { FolderShares } from '../hooks/useFolderShares'
 import type { DisplaySaveStatus } from '../hooks/useStorageBackend'
-import type { SelectionMove, SelectionUnit } from '../jianpuWasm'
+import type { SelectionMove, SelectionUnit } from '../poentaroWasm'
 
 export interface FileSwitcherProps {
   store: FileStoreState
@@ -49,6 +50,8 @@ export interface FileSwitcherProps {
   /** Whether the cloud backend is still fetching its file list — shows a
    * spinner on the trigger and a loading hint instead of the demo hint. */
   isLoadingCloud?: boolean
+  /** Set while a failed cloud load waits to be retried. */
+  cloudLoadFailure?: CloudLoadFailure | null
   importing?: boolean
   /** `folder` is the folder to import into (the top level when omitted). */
   onImportFile?: (file: File, folder?: string) => void

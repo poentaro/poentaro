@@ -2,9 +2,6 @@ import { defineConfig, devices } from '@playwright/test'
 import { defineBddConfig } from 'playwright-bdd'
 import { CHROMIUM_CACHE_DIR_PREFIX } from './e2e/chromiumCachePrefix'
 import { E2E_EMAILS } from './e2e/e2eAccounts.ts'
-import deployConfig from './src/generated/live-share-worker/deployConfig.json' with {
-  type: 'json',
-}
 import e2eWorkerConfig from './src/generated/live-share-worker/e2eWorkerConfig.json' with {
   type: 'json',
 }
@@ -78,6 +75,20 @@ export default defineConfig({
       },
     },
     {
+      // The bridge page the app's old origins serve (see "Origin migration"
+      // in ARCHITECTURE.md), standing in for the old origin on its own port
+      // and pointed at the app above.
+      command:
+        'pnpm exec vite --config vite.bridge.config.ts --port 5184 --strictPort',
+      url: 'http://localhost:5184',
+      reuseExistingServer: true,
+      timeout: 60_000,
+      env: {
+        VITE_SYNCED_SHARE_HOST: 'localhost:8797',
+        VITE_ORIGIN_MIGRATION_TARGET: 'http://localhost:5183',
+      },
+    },
+    {
       // Plain HTTP (no `--local-protocol https`): `syncedShareWorkerOrigin`
       // (`web/src/syncedShare/workerUrl.ts`) only uses `https://` for the
       // real `*.workers.dev` host, plain `http://` for localhost -- avoids
@@ -88,34 +99,21 @@ export default defineConfig({
       // free to hit as often as the suite wants and needs no `cf
       // auth login`. Runs the new Rust worker (`crates/live-share-worker`, task
       // 11 retired the old TypeScript/KV one) -- migrations are applied
-      // first since Miniflare's local D1 starts empty (idempotent: a no-op
-      // once already applied, so this is cheap on every subsequent run).
+      // first since Miniflare's local D1 starts empty
+      // (`scripts/apply-local-migrations.sh`: a no-op once applied, and
+      // bounded where `cf d1 migrations apply` would hang).
       // `WORKER_VAR_OVERRIDES` (top of file) enables the test-only
       // `POST /e2e/reset` route `e2e/global-setup.ts` calls, and
       // `RATE_LIMIT_PER_MINUTE_OVERRIDE` raises the sign-in/sign-up rate
       // limits.
       //
-      // Deliberately NOT port 8787 (`just dev`'s port, see `dekit.yaml`) and
-      // deliberately NOT the default `--persist-to` D1 state dir: both are
-      // isolated from `just dev`'s own `cf dev` instance so that
+      // Deliberately NOT port 8787 (`just dev`'s port, see `dekit.yaml`), so
       // running e2e while `just dev` is active never attaches to dev's
-      // worker (which lacks the overrides above) or shares/pollutes dev's
-      // local D1 data. Both `.wrangler/*` paths are already covered by the
-      // repo-root `.gitignore`'s `/crates/live-share-worker/.wrangler`
-      // entry.
-      //
-      // `< /dev/null`: with nothing left to apply, `cf d1 migrations apply`
-      // prints `[]` and then never exits while stdin is an open pipe, which
-      // would hang the `&&` chain until the timeout.
-      // CI applies the migrations in its own step instead (this command can
-      // fail to exit after applying there, which would hang the `&&` chain),
-      // and there `cf dev` ignores `--persist-to` and uses the default
-      // `.wrangler/state`, so CI uses that dir for both.
+      // worker (which lacks the overrides above). Both share the
+      // checkout's local D1 (`cf dev` ignores `--persist-to`); the reset
+      // route only ever touches the synthetic e2e accounts.
       command:
-        (process.env.CI
-          ? ''
-          : `pnpm exec cf d1 migrations apply ${deployConfig.d1DatabaseId} --local --dir ../../live-share-worker/migrations --persist-to .wrangler/e2e-state < /dev/null && `) +
-        `pnpm exec cf dev --port 8797${process.env.CI ? '' : ' --persist-to .wrangler/e2e-state'}`,
+        'scripts/apply-local-migrations.sh && pnpm exec cf dev --port 8797',
       stdout: 'pipe',
       stderr: 'pipe',
       env: {
@@ -125,7 +123,9 @@ export default defineConfig({
       cwd: '../crates/live-share-worker',
       port: 8797,
       reuseExistingServer: true,
-      timeout: process.env.CI ? 300_000 : 60_000,
+      // A fresh checkout compiles the worker first (`just worktree-setup`
+      // does it ahead of time).
+      timeout: 300_000,
     },
   ],
   projects: [

@@ -1,12 +1,11 @@
+use super::extension::FILE_EXTENSION;
 use super::path::{PathError, TreePath};
 use std::collections::HashSet;
-
-const DEFAULT_EXTENSION: &str = ".jianpu";
 
 /// `desired` if free, else the first of `stem 2.ext`, `stem 3.ext`, ... that
 /// is free in the same folder. `taken` may hold paths from anywhere (files,
 /// folders, binned files); only siblings of `desired` matter. A name with no
-/// extension (or only a leading dot) gets `.jianpu`, like the TS it replaces.
+/// extension (or only a leading dot) gets `.poentaro`, like the TS it replaces.
 /// Fails only when the suffixed path would exceed the length limit.
 pub fn unique_path(desired: &TreePath, taken: &HashSet<TreePath>) -> Result<TreePath, PathError> {
     let parent = desired.parent();
@@ -29,7 +28,7 @@ pub fn unique_path(desired: &TreePath, taken: &HashSet<TreePath>) -> Result<Tree
 fn split_extension(name: &str) -> (&str, &str) {
     match name.rfind('.') {
         Some(dot) if dot > 0 => name.split_at(dot),
-        _ => (name, DEFAULT_EXTENSION),
+        _ => (name, FILE_EXTENSION),
     }
 }
 
@@ -40,8 +39,8 @@ const MAX_COLLISION_SUFFIX: u32 = 10_000;
 /// The path to try after the server reported `rejected` as taken, when only
 /// the rejected path is known (the cloud outbox delivers long after the
 /// edit): the next free numbered sibling in the same folder, keeping the
-/// folder prefix. A trailing ` N` on the stem is incremented, so `a.jianpu`
-/// becomes `a 2.jianpu` and `a 2.jianpu` becomes `a 3.jianpu`, not `a 2 2`.
+/// folder prefix. A trailing ` N` on the stem is incremented, so `a.poentaro`
+/// becomes `a 2.poentaro` and `a 2.poentaro` becomes `a 3.poentaro`, not `a 2 2`.
 /// Computed through [`unique_path`] with `a` and `a 2` ... `a N` marked taken.
 pub fn path_after_collision(rejected: &TreePath) -> Result<TreePath, PathError> {
     let parent = rejected.parent();

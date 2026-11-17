@@ -1,13 +1,12 @@
+use super::running_title::make_running_title_rows;
 use crate::compiler::types::{Decoration, MeasureBlock};
 use crate::compositor::types::TextSpan;
 use crate::grid_layout::layout::{
-    block_column_width, decoration_row_height, header_gap_row_height, header_part_list_row_height,
-    header_subtitle_author_row_height, header_title_row_height, separator_row_height, LABEL_COLS,
-    MUSIC_START_COL,
+    block_column_width, decoration_row_height, header_gap_row_height, separator_row_height,
+    text_row_height, LABEL_COLS, MUSIC_START_COL,
 };
 use crate::grid_layout::types::{
-    GridContent, GridElement, GridRow, HAlign, Header, MeasureColumnLayout, PartListEntry,
-    TextStyleFlags, VAlign,
+    GridContent, GridElement, GridRow, HAlign, Header, MeasureColumnLayout, PartListEntry, VAlign,
 };
 
 /// Whether `block`'s (index `index` within its system) `DirectiveLine`
@@ -172,11 +171,10 @@ pub(super) fn make_separator_row() -> GridRow {
     }
 }
 
-fn make_sequence_rows(header: &Header, base: f32, include_part_list: bool) -> Vec<GridRow> {
+fn make_sequence_rows(header: &Header, base: f32) -> Vec<GridRow> {
     header
         .sequence
         .as_ref()
-        .filter(|_| include_part_list)
         .map(|entries| {
             vec![
                 GridRow {
@@ -187,7 +185,8 @@ fn make_sequence_rows(header: &Header, base: f32, include_part_list: bool) -> Ve
                     elements: vec![],
                 },
                 GridRow {
-                    height_pt: decoration_row_height(base),
+                    height_pt: decoration_row_height(base)
+                        + 2.0 * header.sequence_vertical_padding_pt,
                     column_count: 1,
                     has_label_region: false,
                     measure_layout: vec![],
@@ -207,9 +206,9 @@ fn make_sequence_rows(header: &Header, base: f32, include_part_list: bool) -> Ve
         .unwrap_or_default()
 }
 
-fn make_title_row(header: &Header, base: f32) -> Option<GridRow> {
+fn make_title_row(header: &Header) -> Option<GridRow> {
     header.title.as_ref().map(|title| GridRow {
-        height_pt: header_title_row_height(base),
+        height_pt: text_row_height(header.title_font_size, header.title_vertical_padding_pt),
         column_count: 1,
         has_label_region: false,
         measure_layout: vec![],
@@ -230,7 +229,9 @@ fn make_title_row(header: &Header, base: f32) -> Option<GridRow> {
     })
 }
 
-fn make_subtitle_author_row(header: &Header, base: f32) -> GridRow {
+/// The subtitle (centred) and author (right-aligned) share one row, sized to
+/// the taller of the two; `None` when the score sets neither.
+fn make_subtitle_author_row(header: &Header) -> Option<GridRow> {
     let mut elements: Vec<GridElement> = Vec::new();
     if let Some(subtitle) = &header.subtitle {
         elements.push(GridElement {
@@ -264,63 +265,76 @@ fn make_subtitle_author_row(header: &Header, base: f32) -> GridRow {
             },
         });
     }
-    GridRow {
-        height_pt: header_subtitle_author_row_height(base),
+    let padding = header
+        .subtitle_vertical_padding_pt
+        .max(header.author_vertical_padding_pt);
+    let subtitle_height = header
+        .subtitle
+        .as_ref()
+        .map(|_| text_row_height(header.subtitle_font_size, padding));
+    let author_height = header
+        .author
+        .as_ref()
+        .map(|_| text_row_height(header.author_font_size, padding));
+    let height_pt = subtitle_height
+        .into_iter()
+        .chain(author_height)
+        .reduce(f32::max)?;
+    Some(GridRow {
+        height_pt,
         column_count: 1,
         has_label_region: false,
         measure_layout: vec![],
         elements,
-    }
+    })
 }
 
-pub(crate) fn make_header_rows(
-    header: &Header,
-    base: f32,
-    include_part_list: bool,
-) -> Vec<GridRow> {
-    let part_list_rows: Vec<GridRow> = if include_part_list {
-        let entries: Vec<&PartListEntry> = header
-            .part_list
-            .iter()
-            .filter(|entry| entry.abbreviation != entry.display_name)
-            .collect();
-        make_part_list_rows(
-            &entries,
-            base,
-            header.parts_list_columns,
-            header.part_legend_font_size,
-            TextStyleFlags {
-                bold: header.part_legend_bold,
-                italic: header.part_legend_italic,
-                underline: header.part_legend_underline,
-            },
-            header.part_legend_font_family,
-        )
-    } else {
-        vec![]
-    };
+/// Blank space separating the title/subtitle/author block from the part
+/// list or the music below it; omitted when the score has no header text.
+fn make_header_gap_row(header: &Header, base: f32) -> Option<GridRow> {
+    let has_header_text =
+        header.title.is_some() || header.subtitle.is_some() || header.author.is_some();
+    has_header_text.then(|| GridRow {
+        height_pt: header_gap_row_height(base),
+        column_count: 1,
+        has_label_region: false,
+        measure_layout: vec![],
+        elements: vec![],
+    })
+}
 
-    make_title_row(header, base)
+/// The rows above the music: the full header (title, subtitle, author, part
+/// list, `sequence` line) on the first page, only the running title (and
+/// the gap below it) on every later page.
+pub(crate) fn make_header_rows(header: &Header, base: f32, is_first_page: bool) -> Vec<GridRow> {
+    if !is_first_page {
+        return make_running_title_rows(header, base);
+    }
+    let entries: Vec<&PartListEntry> = header
+        .part_list
+        .iter()
+        .filter(|entry| entry.abbreviation != entry.display_name)
+        .collect();
+    let part_list_rows = make_part_list_rows(&entries, header);
+
+    make_title_row(header)
         .into_iter()
-        .chain(std::iter::once(make_subtitle_author_row(header, base)))
+        .chain(make_subtitle_author_row(header))
+        .chain(make_header_gap_row(header, base))
         .chain(part_list_rows)
-        .chain(make_sequence_rows(header, base, include_part_list))
+        .chain(make_sequence_rows(header, base))
         .collect()
 }
 
-fn make_part_list_rows(
-    entries: &[&PartListEntry],
-    base: f32,
-    columns: u32,
-    font_size: f32,
-    style: TextStyleFlags,
-    font_family: crate::compositor::types::FontFamily,
-) -> Vec<GridRow> {
+fn make_part_list_rows(entries: &[&PartListEntry], header: &Header) -> Vec<GridRow> {
     entries
-        .chunks(columns as usize)
+        .chunks(header.parts_list_columns as usize)
         .map(|chunk| GridRow {
-            height_pt: header_part_list_row_height(base),
-            column_count: columns,
+            height_pt: text_row_height(
+                header.part_legend_font_size,
+                header.part_legend_vertical_padding_pt,
+            ),
+            column_count: header.parts_list_columns,
             has_label_region: false,
             measure_layout: vec![],
             elements: chunk
@@ -332,12 +346,12 @@ fn make_part_list_rows(
                     halign: HAlign::Start,
                     valign: VAlign::Center,
                     content: GridContent::Text {
-                        content: format!("{} \u{2014} {}", entry.abbreviation, entry.display_name),
-                        font_size,
-                        bold: style.bold,
-                        italic: style.italic,
-                        underline: style.underline,
-                        font_family,
+                        content: entry.legend_text(),
+                        font_size: header.part_legend_font_size,
+                        bold: header.part_legend_bold,
+                        italic: header.part_legend_italic,
+                        underline: header.part_legend_underline,
+                        font_family: header.part_legend_font_family,
                     },
                 })
                 .collect(),

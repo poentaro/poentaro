@@ -72,3 +72,35 @@ pub struct PartLabelClickTarget {
     pub measure_index_start: usize,
     pub measure_index_end: usize,
 }
+
+/// Invisible click hit target for one lyric syllable, in its own row,
+/// starting at the syllable's own grid column but widened to match its
+/// note's full written column span (attack plus any dash-continuation
+/// columns — see `grid_layout::click_targets::compute_all_lyric_click_targets`)
+/// so a multi-beat note's syllable box covers its whole duration —
+/// independent of its note's own [`PlaybackCursorTarget`]-derived click
+/// target, so a click on the syllable itself always wins hit-testing there
+/// (see `renderer::new_types::Tag::Lyric`).
+#[derive(Debug, Clone)]
+pub struct LyricClickTarget {
+    pub row: usize,
+    pub column_start: f32,
+    pub column_end: f32,
+    pub source_part_index: usize,
+    pub note_id: usize,
+}
+
+/// Invisible hit target laid over one verse's `RowLabel` text (e.g.
+/// "M:v1"), spanning that one verse row within the fixed-width label region
+/// (columns `0..LABEL_COLS`) — the lyric-side mirror of
+/// [`PartLabelClickTarget`]. Clicking or range-selecting it is a shortcut for
+/// selecting every syllable that verse sings across the whole system the
+/// label sits in — `measure_index_start`/`measure_index_end` give that
+/// system's full measure range, same as `PartLabelClickTarget`'s.
+#[derive(Debug, Clone)]
+pub struct LyricLabelClickTarget {
+    pub row: usize,
+    pub source_part_index: usize,
+    pub measure_index_start: usize,
+    pub measure_index_end: usize,
+}

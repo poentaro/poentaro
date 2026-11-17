@@ -21,7 +21,13 @@ pub struct ByteRange {
 impl ByteRange {
     /// Whether `span` shares at least one byte with this range.
     pub(super) fn overlaps(&self, span: Span) -> bool {
-        span.start < self.end_byte as usize && span.end > self.start_byte as usize
+        self.overlaps_bytes(span.start, span.end)
+    }
+
+    /// Whether `[start, end)` shares at least one byte with this range. A
+    /// zero-width range (a bare caret) overlaps nothing.
+    pub fn overlaps_bytes(&self, start: usize, end: usize) -> bool {
+        start < self.end_byte as usize && end > self.start_byte as usize
     }
 }
 

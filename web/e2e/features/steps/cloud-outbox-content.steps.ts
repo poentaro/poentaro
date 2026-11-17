@@ -31,7 +31,6 @@ Given(
   },
 )
 
-// 5xx only: the existing "... fail with a 401 response" step owns 401.
 Given(
   /^the first content-save request will fail with a (5\d\d) response$/,
   async ({ page }, status: string) => {

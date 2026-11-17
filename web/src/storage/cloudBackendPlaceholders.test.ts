@@ -31,10 +31,10 @@ function lane(
 }
 
 const emptyStore: FileStoreState = {
-  active: 'a.jianpu',
-  userFiles: { 'a.jianpu': 'A' },
+  active: 'a.poentaro',
+  userFiles: { 'a.poentaro': 'A' },
   bin: {},
-  fileIds: { 'a.jianpu': 'id-a' },
+  fileIds: { 'a.poentaro': 'id-a' },
 }
 
 describe('createCloudBackend: empty folders are placeholder files', () => {
@@ -42,7 +42,7 @@ describe('createCloudBackend: empty folders are placeholder files', () => {
     fetchMock.mockResolvedValue(
       jsonResponse(200, {
         files: [
-          listed('id-a', 'a.jianpu'),
+          listed('id-a', 'a.poentaro'),
           listed('id-k1', 'Empty/.keep'),
           listed('id-k2', 'Deleted/.keep', 5),
         ],
@@ -51,15 +51,15 @@ describe('createCloudBackend: empty folders are placeholder files', () => {
 
     const state = await createTestBackend().backend.load()
 
-    expect(state.userFiles).toEqual({ 'a.jianpu': '' })
+    expect(state.userFiles).toEqual({ 'a.poentaro': '' })
     expect(state.bin).toEqual({})
-    expect(state.fileIds).toEqual({ 'a.jianpu': 'id-a' })
+    expect(state.fileIds).toEqual({ 'a.poentaro': 'id-a' })
     expect(state.folders).toEqual(['Empty'])
   })
 
   it('load() leaves a store without placeholders without a folders field', async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse(200, { files: [listed('id-a', 'a.jianpu')] }),
+      jsonResponse(200, { files: [listed('id-a', 'a.poentaro')] }),
     )
     const state = await createTestBackend().backend.load()
     expect(state).not.toHaveProperty('folders')
@@ -86,7 +86,7 @@ describe('createCloudBackend: empty folders are placeholder files', () => {
     fetchMock.mockImplementation((request) =>
       request.url.endsWith('/files/list')
         ? Promise.resolve(
-            jsonResponse(200, { files: [listed('id-a', 'a.jianpu')] }),
+            jsonResponse(200, { files: [listed('id-a', 'a.poentaro')] }),
           )
         : new Promise(() => undefined),
     )
@@ -94,7 +94,7 @@ describe('createCloudBackend: empty folders are placeholder files', () => {
     const state = await backend.load()
 
     expect(state.folders).toEqual(['New folder'])
-    expect(Object.keys(state.userFiles)).toEqual(['a.jianpu'])
+    expect(Object.keys(state.userFiles)).toEqual(['a.poentaro'])
   })
 
   it('renaming an empty folder renames its placeholder', async () => {
@@ -140,7 +140,7 @@ describe('createCloudBackend: empty folders are placeholder files', () => {
     fetchMock.mockResolvedValue(
       jsonResponse(200, {
         files: [
-          listed('id-a', 'a.jianpu'),
+          listed('id-a', 'a.poentaro'),
           listed('id-k', 'New folder/.keep', 9),
         ],
       }),

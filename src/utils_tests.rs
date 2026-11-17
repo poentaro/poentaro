@@ -127,13 +127,13 @@ fn trailing_dash_on_word_is_syllable_break() {
 
 #[test]
 fn count_lyric_slots_skips_tie_continuation() {
-    use crate::ast::parsed::{JianPuPitch, ParsedNote, ScoreEvent};
+    use crate::ast::parsed::{NumberedPitch, ParsedNote, ScoreEvent};
     use crate::error::{Span, Spanned};
 
     let events = vec![
         Spanned::new(
             ScoreEvent::Note(ParsedNote {
-                pitch: JianPuPitch::Three,
+                pitch: NumberedPitch::Three,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
                 duration: 4,
@@ -150,7 +150,7 @@ fn count_lyric_slots_skips_tie_continuation() {
         ),
         Spanned::new(
             ScoreEvent::Note(ParsedNote {
-                pitch: JianPuPitch::Three,
+                pitch: NumberedPitch::Three,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
                 duration: 4,
@@ -167,7 +167,7 @@ fn count_lyric_slots_skips_tie_continuation() {
         ),
         Spanned::new(
             ScoreEvent::Note(ParsedNote {
-                pitch: JianPuPitch::One,
+                pitch: NumberedPitch::One,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
                 duration: 4,
@@ -190,12 +190,12 @@ fn count_lyric_slots_skips_tie_continuation() {
 
 #[test]
 fn count_lyric_slots_carries_tie_across_bars() {
-    use crate::ast::parsed::{JianPuPitch, ParsedNote, ScoreEvent};
+    use crate::ast::parsed::{NumberedPitch, ParsedNote, ScoreEvent};
     use crate::error::{Span, Spanned};
 
     let bar1 = vec![Spanned::new(
         ScoreEvent::Note(ParsedNote {
-            pitch: JianPuPitch::Three,
+            pitch: NumberedPitch::Three,
             accidental: crate::ast::parsed::Accidental::Natural,
             octave: 0,
             duration: 4,
@@ -212,7 +212,7 @@ fn count_lyric_slots_carries_tie_across_bars() {
     )];
     let bar2 = vec![Spanned::new(
         ScoreEvent::Note(ParsedNote {
-            pitch: JianPuPitch::Three,
+            pitch: NumberedPitch::Three,
             accidental: crate::ast::parsed::Accidental::Natural,
             octave: 0,
             duration: 4,

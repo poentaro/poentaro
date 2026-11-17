@@ -22,7 +22,7 @@ Feature: Playing a part-label selection in a synced share viewer
     Given clipboard permissions are granted
 
   Scenario: Selecting only one part in a synced viewer plays only that part
-    Given the owner is signed in as "e2e-test-user@jianpu.test"
+    Given the owner is signed in as "e2e-test-user@poentaro.test"
     And the file store is seeded with a two-part synced range-select score
     When the owner loads the app and clicks "Sync"
     Then the synced link is copied

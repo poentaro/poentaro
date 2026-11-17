@@ -381,7 +381,7 @@ patching instances one at a time.
 
 A tagged union mirroring exactly what TS already reads off `data-*`
 attributes today (no new ID scheme to invent) — new type in
-`crates/jianpu-wasm/src/note_selection_types.rs` (or a new
+`crates/poentaro-wasm/src/note_selection_types.rs` (or a new
 `selection_range_types.rs`, since it's shared by note+lyric+label
 resolution, not note-only):
 
@@ -536,20 +536,20 @@ migration.
 
 ## Migration steps
 
-1. `crates/jianpu-wasm/src/selection_range_types.rs` (new): `ClickableElementId`,
+1. `crates/poentaro-wasm/src/selection_range_types.rs` (new): `ClickableElementId`,
    `ResolveSelectionRangeResponse`, `NoteCellOut`/`LyricCellOut` (or reuse
    existing output types if `note_selection_types.rs`/`lyric_selection_types.rs`
    already have equivalents — check before adding new ones).
-2. `crates/jianpu-wasm/src/lib.rs`: add `resolve_selection_range`, following
+2. `crates/poentaro-wasm/src/lib.rs`: add `resolve_selection_range`, following
    `group_note_selection`'s pattern exactly (decode two `JsValue` span
    arrays + two `JsValue` IDs via `serde_wasm_bindgen::from_value`).
 3. Rust-side implementation (new module, e.g.
-   `crates/jianpu-wasm/src/selection_range.rs`): Phase 1 table above, one
+   `crates/poentaro-wasm/src/selection_range.rs`): Phase 1 table above, one
    match arm per `(anchor, current)` discriminant pair; anything not in the
    table returns `Err` (signalling "caller, use the pixel-marquee fallback"
    — see step 6).
 4. Rust unit tests (separate file per this repo's convention, e.g.
-   `crates/jianpu-wasm/src/selection_range_tests.rs`): table-driven,
+   `crates/poentaro-wasm/src/selection_range_tests.rs`): table-driven,
    `(note_spans, lyric_spans, anchor, current) -> expected cells`, covering
    every Phase 1 row above plus its reverse (`current`/`anchor` swapped) and
    an out-of-scope Phase 2 pair (asserting `Err`, i.e. "caller must fall

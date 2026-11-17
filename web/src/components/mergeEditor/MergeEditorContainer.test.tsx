@@ -18,7 +18,7 @@ function setup() {
   const resolve = vi.fn(async () => undefined)
   const props = {
     conflict,
-    fileName: 'a.jianpu',
+    fileName: 'a.poentaro',
     looper: { resolve } as unknown as OutboxLooper,
     onKeepBoth: vi.fn(async () => undefined),
     onDiscard: vi.fn(),

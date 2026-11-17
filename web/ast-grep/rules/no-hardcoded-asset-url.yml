@@ -2,10 +2,9 @@ id: no-hardcoded-asset-url
 language: typescript
 severity: error
 message: >-
-  Hardcoded root-relative path inside a CSS url(...) string. Production
-  serves this app under a non-root base path (VITE_BASE_PATH=/jianpu-generator/
-  in .github/workflows/pages.yml), so a literal "/..." here resolves against
-  the site root and 404s once deployed, even though it works fine against the
+  Hardcoded root-relative path inside a CSS url(...) string. A deploy can
+  serve this app under a non-root base path (VITE_BASE_PATH), where a literal
+  "/..." here resolves against the site root and 404s, even though it works fine against the
   dev server's root base. Interpolate `import.meta.env.BASE_URL` (or a
   `baseUrl` parameter sourced from it) in front of the path instead — see
   injectFontFaces.ts's `buildFontFaceCss` for the pattern.

@@ -1,6 +1,6 @@
 // Read-only questions and the import step for a shared folder (a synced
 // `?s=` link or a static `#share-folder=` link) seen by a viewer. Pure
-// conversions around the wasm exports (`jianpu_generator::file_tree::
+// conversions around the wasm exports (`poentaro::file_tree::
 // shared_folder`); the viewer's tree, first file and the import's unique
 // folder name are all decided in Rust. Needs the wasm component initialised.
 
@@ -11,8 +11,8 @@ import type {
   FileActiveLabel,
   FileTreeViewRow,
   FolderSnapshot,
-} from './jianpuWasm'
-import { jianpuWasm } from './jianpuWasm'
+} from './poentaroWasm'
+import { poentaroWasm } from './poentaroWasm'
 
 /** The visible rows of the viewer's file list, rooted at the shared folder
  * (no Demo row, no share markers). Empty if the folder is not valid. */
@@ -21,7 +21,7 @@ export function sharedFolderView(
   active: string,
   expanded: string[],
 ): FileTreeViewRow[] {
-  const response = jianpuWasm().sharedFolderView(snapshot, active, expanded)
+  const response = poentaroWasm().sharedFolderView(snapshot, active, expanded)
   return response.tag === 'ok' ? response.val : []
 }
 
@@ -29,7 +29,7 @@ export function sharedFolderView(
 export function sharedFolderFirstFile(
   snapshot: FolderSnapshot,
 ): string | undefined {
-  return jianpuWasm().sharedFolderFirstFile(snapshot) ?? undefined
+  return poentaroWasm().sharedFolderFirstFile(snapshot) ?? undefined
 }
 
 /** `state` with the shared folder copied in as a new top-level folder
@@ -40,7 +40,7 @@ export function importSharedFolderState(
   snapshot: FolderSnapshot,
 ): FileStoreState {
   const result = storeResult(
-    jianpuWasm().fileStoreImportSharedFolder(
+    poentaroWasm().fileStoreImportSharedFolder(
       toWasmState(state),
       snapshot,
       snapshot.files.map(() => generateFileId()),
@@ -54,5 +54,5 @@ export function importSharedFolderState(
 /** The open file split into its folders and own name for the picker button
  * (no demo files exist in a shared folder). */
 export function sharedFolderActiveLabel(path: string): FileActiveLabel {
-  return jianpuWasm().fileStoreActiveLabel(path, [])
+  return poentaroWasm().fileStoreActiveLabel(path, [])
 }

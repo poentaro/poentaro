@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { instantiate } from '../../../../crates/jianpu-wasm/pkg-component/jianpu_wasm.js'
+import { instantiate } from '../../../../crates/poentaro-wasm/pkg-component/poentaro_wasm.js'
 import {
   type SendRequest,
   type SendResult,
   setWasmRoot,
-} from '../../jianpuWasm'
+} from '../../poentaroWasm'
 import { createBaseSnapshots } from './baseSnapshots'
 import {
   createConflictFlow,
@@ -18,7 +18,7 @@ import { createOutboxLooper } from './outboxLooper'
 beforeAll(async () => {
   const bytes = readFileSync(
     new URL(
-      '../../../../crates/jianpu-wasm/pkg-component/jianpu_wasm.core.wasm',
+      '../../../../crates/poentaro-wasm/pkg-component/poentaro_wasm.core.wasm',
       import.meta.url,
     ),
   )
@@ -27,6 +27,8 @@ beforeAll(async () => {
 })
 
 const BASE = 'a\nb\nc\nd\ne\n'
+const score = (first: number, second: number, third: number) =>
+  `score """\n[M] ${first}\n\n[M] ${second}\n\n[M] ${third}\n"""\n`
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
 
 function makeHarness(options: {
@@ -87,17 +89,17 @@ const save = (content: string) => ({
 describe('conflict flow', () => {
   it('saves a clean merge and raises a notice', async () => {
     const harness = makeHarness({
-      base: BASE,
-      server: { revision: 5, content: 'a\nb\nc\nd\ne\nf\n' },
+      base: score(1, 2, 3),
+      server: { revision: 5, content: score(1, 2, 6) },
     })
     await harness.ready
-    await harness.looper.enqueue('file-a', save('0\na\nb\nc\nd\ne\n'))
+    await harness.looper.enqueue('file-a', save(score(5, 2, 3)))
     await settle()
     await harness.looper.whenIdle()
     await settle()
 
     const merged = harness.sent.at(-1)
-    expect(merged?.message).toEqual(save('0\na\nb\nc\nd\ne\nf\n'))
+    expect(merged?.message).toEqual(save(score(5, 2, 6)))
     expect(merged?.expectedRevision).toBe(5n)
     expect(harness.notices).toEqual([MERGED_NOTICE])
     expect(harness.flow.conflicts()).toEqual([])

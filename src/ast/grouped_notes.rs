@@ -1,5 +1,5 @@
 use crate::ast::parsed::{
-    Accidental, BassDegree, Extension, JianPuPitch, TriadQuality, TupletInfo,
+    Accidental, BassDegree, Extension, NumberedPitch, TriadQuality, TupletInfo,
 };
 use crate::error::Span;
 
@@ -31,7 +31,7 @@ impl NoteEvent {
 
 #[derive(Clone)]
 pub struct GroupedChordNote {
-    pub degree: JianPuPitch,
+    pub degree: NumberedPitch,
     pub accidental: Accidental,
     pub triad: TriadQuality,
     pub extension: Option<Extension>,
@@ -52,7 +52,7 @@ pub struct GroupedChordNote {
 
 #[derive(Clone)]
 pub struct GroupedNote {
-    pub pitch: JianPuPitch,
+    pub pitch: NumberedPitch,
     pub accidental: Accidental,
     pub octave: i8,
     /// Duration in quarter-beats, including any beats added by `-` extensions.

@@ -9,7 +9,7 @@ describe('createCloudBackend: fetchServerFile()', () => {
   const files = [
     {
       id: 'id-a',
-      name: 'a.jianpu',
+      name: 'a.poentaro',
       content: '1 2',
       revision: 4,
       trashedAt: null,

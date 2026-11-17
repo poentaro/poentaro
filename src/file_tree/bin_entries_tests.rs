@@ -20,14 +20,14 @@ fn entry(key: &str, name: &str, location: Option<&str>) -> BinEntry {
 
 #[test]
 fn entries_split_the_leaf_name_from_the_original_folder() {
-    let state = store(&["Old.jianpu", "Hymns/Advent/Veni.jianpu"]);
+    let state = store(&["Old.poentaro", "Hymns/Advent/Veni.poentaro"]);
     assert_eq!(
         bin_entries(&state),
         vec![
-            entry("Old.jianpu", "Old.jianpu", None),
+            entry("Old.poentaro", "Old.poentaro", None),
             entry(
-                "Hymns/Advent/Veni.jianpu",
-                "Veni.jianpu",
+                "Hymns/Advent/Veni.poentaro",
+                "Veni.poentaro",
                 Some("Hymns/Advent")
             ),
         ]
@@ -37,28 +37,28 @@ fn entries_split_the_leaf_name_from_the_original_folder() {
 #[test]
 fn entries_sort_by_name_then_location_ignoring_case() {
     let state = store(&[
-        "b/Veni.jianpu",
-        "A/veni.jianpu",
-        "Zed.jianpu",
-        "Veni.jianpu",
+        "b/Veni.poentaro",
+        "A/veni.poentaro",
+        "Zed.poentaro",
+        "Veni.poentaro",
     ]);
     let keys: Vec<String> = bin_entries(&state).into_iter().map(|e| e.key).collect();
     assert_eq!(
         keys,
         vec![
-            "Veni.jianpu",
-            "A/veni.jianpu",
-            "b/Veni.jianpu",
-            "Zed.jianpu"
+            "Veni.poentaro",
+            "A/veni.poentaro",
+            "b/Veni.poentaro",
+            "Zed.poentaro"
         ]
     );
 }
 
 #[test]
 fn an_invalid_key_is_listed_whole_at_the_top_level() {
-    let state = store(&["a//b.jianpu"]);
+    let state = store(&["a//b.poentaro"]);
     assert_eq!(
         bin_entries(&state),
-        vec![entry("a//b.jianpu", "a//b.jianpu", None)]
+        vec![entry("a//b.poentaro", "a//b.poentaro", None)]
     );
 }

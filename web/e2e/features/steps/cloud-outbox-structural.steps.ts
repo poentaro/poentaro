@@ -26,7 +26,7 @@ const WORKER_ROUTES = `${CLOUD_WORKER_ORIGIN}/**`
 const OUTBOX_RETRY_CAP_MS = 65_000
 const DELIVERY_TIMEOUT_MS = 25_000
 
-const displayName = (fileName: string) => fileName.replace(/\.jianpu$/, '')
+const displayName = (fileName: string) => fileName.replace(/\.poentaro$/, '')
 
 /** Loads the app while the worker is still reachable (so the file list
  * loads), then makes every request to the worker origin fail. */

@@ -9,7 +9,7 @@ fn live_view() -> ShareView {
     ShareView {
         ended_at: None,
         trashed_at: None,
-        filename: "song.jianpu".to_string(),
+        filename: "song.poentaro".to_string(),
         content: "[M] 1".to_string(),
         revision: 3,
     }
@@ -26,7 +26,7 @@ fn a_live_share_shows_the_files_current_content() {
         to_public_doc(Some(&live_view())),
         SyncedDoc {
             ended: false,
-            filename: "song.jianpu".to_string(),
+            filename: "song.poentaro".to_string(),
             content: "[M] 1".to_string(),
             revision: 3,
             folder: None,
@@ -66,9 +66,9 @@ fn never_leaks_an_owner_id_on_the_wire() -> Result<(), serde_json::Error> {
 #[test]
 fn a_nested_file_is_shown_by_its_last_path_segment_only() {
     let view = ShareView {
-        filename: "Hymns/Advent/O Come.jianpu".to_string(),
+        filename: "Hymns/Advent/O Come.poentaro".to_string(),
         ..live_view()
     };
 
-    assert_eq!(to_public_doc(Some(&view)).filename, "O Come.jianpu");
+    assert_eq!(to_public_doc(Some(&view)).filename, "O Come.poentaro");
 }
