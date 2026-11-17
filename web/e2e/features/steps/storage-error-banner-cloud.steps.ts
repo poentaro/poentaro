@@ -11,7 +11,7 @@ import { gotoCloudApp } from './cloud-account-helpers'
 import { installContentSaveTracking } from './cloud-content-save-tracking'
 import { Given, Then, When } from './fixtures'
 
-const CONTENT_SAVE = 'files/write _ at revision _ content _'
+const CONTENT_SAVE = 'write file _ at revision _ content _'
 
 // Mirrors `useStorageBackend.ts`'s `AUTOSAVE_DEBOUNCE_MS`. Not imported
 // directly -- that module transitively pulls in `fileStore.ts`'s Vite-only

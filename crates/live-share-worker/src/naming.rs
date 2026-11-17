@@ -9,7 +9,7 @@ use poentaro::file_tree::{unique_path, PathError, TreePath};
 use crate::files::FileNameRow;
 use crate::protocol::RenameBatchMove;
 
-/// A file without its score: what `files/list` returns and what naming
+/// A file without its score: what `list files` returns and what naming
 /// looks at.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileSummaryRow {

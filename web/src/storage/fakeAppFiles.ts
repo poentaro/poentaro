@@ -1,8 +1,4 @@
-import type {
-  FilesFile,
-  FilesFileSummary,
-  FilesVersionsVersion,
-} from '../generated/protocol/app'
+import type { File, FileSummary, Version } from '../generated/protocol/app'
 import type { AppFileCalls } from '../protocol/clients'
 import type { CallOutcome } from '../protocol/outcome'
 
@@ -42,12 +38,14 @@ interface StoredFile {
 const value = <T>(value: T) => ({ kind: 'value', value }) as const
 const error = <E>(error: E) => ({ kind: 'error', error }) as const
 
-function summaryOf(file: StoredFile): FilesFileSummary {
+function summaryOf(file: StoredFile): FileSummary {
   return {
     id: file.id,
     path: file.path,
     revision: file.revision,
-    ...(file.trashedAt === undefined ? {} : { trashedAt: file.trashedAt }),
+    ...(file.trashedAt === undefined
+      ? {}
+      : { trashedAt: new Date(file.trashedAt) }),
   }
 }
 
@@ -129,117 +127,111 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
   }
 
   const app: AppFileCalls = {
-    files: {
-      list: () =>
-        call('files/list', [], () => value([...files.values()].map(summaryOf))),
-      read: (id) =>
-        call('files/read _', [id], () => {
-          const file = files.get(id)
-          return file
-            ? value<FilesFile>({
-                summary: summaryOf(file),
-                content: file.content,
-              })
-            : error({ kind: 'missing' })
-        }),
-      writeAtRevisionContent: (id, revision, content) =>
-        call(
-          'files/write _ at revision _ content _',
-          [id, revision, content],
-          () => {
-            const file = files.get(id)
-            if (!file) return error({ kind: 'missing' })
-            if (file.trashedAt) return error({ kind: 'trashed' })
-            if (file.revision !== revision) {
-              return error({
-                kind: 'conflictAtRevisionContent',
-                revision: file.revision,
-                content: file.content,
-              })
-            }
-            return value(save(file, content))
-          },
-        ),
-      createAtContent: (id, path, content) =>
-        call('files/create _ at _ content _', [id, path, content], () => {
-          if (files.has(id)) return error({ kind: 'idTaken' })
-          if (holder(path)) return error({ kind: 'taken' })
-          const file = { id, path, content, revision: 0, versions: [] }
-          files.set(id, file)
-          return value(summaryOf(file))
-        }),
-      moveTo: (id, path) =>
-        call('files/move _ to _', [id, path], () => {
+    listFiles: () =>
+      call('list files', [], () => value([...files.values()].map(summaryOf))),
+    readFile: (id) =>
+      call('read file _', [id], () => {
+        const file = files.get(id)
+        return file
+          ? value<File>({
+              summary: summaryOf(file),
+              content: file.content,
+            })
+          : error({ kind: 'missing' })
+      }),
+    writeFileAtRevisionContent: (id, revision, content) =>
+      call(
+        'write file _ at revision _ content _',
+        [id, revision, content],
+        () => {
           const file = files.get(id)
           if (!file) return error({ kind: 'missing' })
-          const other = holder(path)
-          if (other && other.id !== id) return error({ kind: 'taken' })
-          file.path = path
-          return value(undefined)
-        }),
-      trash: (id) =>
-        call('files/trash _', [id], () => {
-          const file = files.get(id)
-          if (!file) return error({ kind: 'missing' })
-          file.trashedAt ??= clock++
-          return value(undefined)
-        }),
-      restore: (id) =>
-        call('files/restore _', [id], () => {
-          const file = files.get(id)
-          if (!file) return error({ kind: 'missing' })
-          if (!file.trashedAt) return error({ kind: 'notTrashed' })
-          file.path = freePath(file.path, (path) => !!holder(path))
-          file.trashedAt = undefined
-          return value(file.path)
-        }),
-      versions: {
-        list: (id) =>
-          call('files/versions/list _', [id], () => {
-            const file = files.get(id)
-            return file
-              ? value<FilesVersionsVersion[]>(
-                  file.versions.map(({ revision, savedAt }) => ({
-                    revision,
-                    savedAt,
-                  })),
-                )
-              : error({ kind: 'missing' })
-          }),
-        readAtRevision: (id, revision) =>
-          call('files/versions/read _ at revision _', [id, revision], () => {
-            const file = files.get(id)
-            if (!file) return error({ kind: 'missing' })
-            const version = file.versions.find(
-              (saved) => saved.revision === revision,
+          if (file.trashedAt) return error({ kind: 'trashed' })
+          if (file.revision !== revision) {
+            return error({
+              kind: 'conflictAtRevisionContent',
+              revision: file.revision,
+              content: file.content,
+            })
+          }
+          return value(save(file, content))
+        },
+      ),
+    createFileAtContent: (id, path, content) =>
+      call('create file _ at _ content _', [id, path, content], () => {
+        if (files.has(id)) return error({ kind: 'idTaken' })
+        if (holder(path)) return error({ kind: 'taken' })
+        const file = { id, path, content, revision: 0, versions: [] }
+        files.set(id, file)
+        return value(summaryOf(file))
+      }),
+    moveFileTo: (id, path) =>
+      call('move file _ to _', [id, path], () => {
+        const file = files.get(id)
+        if (!file) return error({ kind: 'missing' })
+        const other = holder(path)
+        if (other && other.id !== id) return error({ kind: 'taken' })
+        file.path = path
+        return value(undefined)
+      }),
+    trashFile: (id) =>
+      call('trash file _', [id], () => {
+        const file = files.get(id)
+        if (!file) return error({ kind: 'missing' })
+        file.trashedAt ??= clock++
+        return value(undefined)
+      }),
+    restoreFile: (id) =>
+      call('restore file _', [id], () => {
+        const file = files.get(id)
+        if (!file) return error({ kind: 'missing' })
+        if (!file.trashedAt) return error({ kind: 'notTrashed' })
+        file.path = freePath(file.path, (path) => !!holder(path))
+        file.trashedAt = undefined
+        return value(file.path)
+      }),
+    listVersionsOfFile: (id) =>
+      call('list versions of file _', [id], () => {
+        const file = files.get(id)
+        return file
+          ? value<Version[]>(
+              file.versions.map(({ revision, savedAt }) => ({
+                revision,
+                savedAt: new Date(savedAt),
+              })),
             )
-            return version
-              ? value(version.content)
-              : error({ kind: 'noSuchVersion' })
-          }),
-      },
-    },
+          : error({ kind: 'missing' })
+      }),
+    readFileAtRevision: (id, revision) =>
+      call('read file _ at revision _', [id, revision], () => {
+        const file = files.get(id)
+        if (!file) return error({ kind: 'missing' })
+        const version = file.versions.find(
+          (saved) => saved.revision === revision,
+        )
+        return version
+          ? value(version.content)
+          : error({ kind: 'noSuchVersion' })
+      }),
     batch: (build) => Promise.all(build(app)),
-    folders: {
-      moveTo: (from, to) =>
-        call('folders/move _ to _', [from, to], () => {
-          const inside = (folder: string) => (file: StoredFile) =>
-            file.path.startsWith(`${folder}/`)
-          const moving = live().filter(inside(from))
-          if (moving.length === 0) {
-            return live().some(inside(to))
-              ? value(live().filter(inside(to)).map(summaryOf))
-              : error({ kind: 'noSuchFolder' })
-          }
-          if (live().some(inside(to))) {
-            return error({ kind: 'takenByOtherFiles', paths: [to] })
-          }
-          for (const file of moving) {
-            file.path = `${to}${file.path.slice(from.length)}`
-          }
-          return value(moving.map(summaryOf))
-        }),
-    },
+    moveFolderTo: (from, to) =>
+      call('move folder _ to _', [from, to], () => {
+        const inside = (folder: string) => (file: StoredFile) =>
+          file.path.startsWith(`${folder}/`)
+        const moving = live().filter(inside(from))
+        if (moving.length === 0) {
+          return live().some(inside(to))
+            ? value(live().filter(inside(to)).map(summaryOf))
+            : error({ kind: 'noSuchFolder' })
+        }
+        if (live().some(inside(to))) {
+          return error({ kind: 'takenByOtherFiles', paths: [to] })
+        }
+        for (const file of moving) {
+          file.path = `${to}${file.path.slice(from.length)}`
+        }
+        return value(moving.map(summaryOf))
+      }),
   }
 
   return {

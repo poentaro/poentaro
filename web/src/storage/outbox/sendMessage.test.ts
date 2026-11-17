@@ -33,7 +33,7 @@ const fileOne: FakeFile = {
   revision: 3,
 }
 
-const WRITE = 'files/write _ at revision _ content _'
+const WRITE = 'write file _ at revision _ content _'
 
 function send(message: Message, seed: FakeFile[] = [fileOne]) {
   const server = createFakeAppFiles(seed)
@@ -121,10 +121,7 @@ describe('sendMessage failures', () => {
     const pending = sendMessage(requestFor(saveContent('x')), {
       app: async () => ({
         ...calls,
-        files: {
-          ...calls.files,
-          writeAtRevisionContent: () => new Promise(() => undefined),
-        },
+        writeFileAtRevisionContent: () => new Promise(() => undefined),
       }),
       timeoutMs: 15_000,
     })
@@ -208,7 +205,7 @@ describe('sendMessage folder move', () => {
     const { server, result } = send(folderMove('Old', 'New'), [inOld])
     expect(await result).toEqual({ tag: 'ok', val: { revision: 3n } })
     expect(server.calls).toEqual([
-      { method: 'folders/move _ to _', args: ['Old', 'New'] },
+      { method: 'move folder _ to _', args: ['Old', 'New'] },
     ])
     expect(server.file('a')?.path).toBe('New/a.poentaro')
   })
@@ -237,7 +234,7 @@ describe('sendMessage folder move race', () => {
     const server = createFakeAppFiles([
       { id: 'a', path: 'Old/a.poentaro', content: '' },
     ])
-    server.failNext('folders/move _ to _', {
+    server.failNext('move folder _ to _', {
       kind: 'error',
       error: { kind: 'takenByOtherFiles', paths: ['New/a.poentaro'] },
     })

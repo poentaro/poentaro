@@ -4,12 +4,13 @@
 
 mod files;
 mod links;
+mod server;
 
-use poentaro_protocol::app::account::ChangePasswordFromToError;
-use poentaro_protocol::app::keys::{CreatedKey, Key, RevokeError};
+use poentaro_protocol::app::ChangePasswordFromToError;
+use poentaro_protocol::app::{CreatedKey, Key, KeyId, RevokeAgentKeyError};
 use worker::D1Database;
 
-use super::internal;
+use super::{instant, internal};
 use crate::api_error::ApiError;
 use crate::api_keys::{ApiKeySummary, CreatedApiKey};
 use crate::app_log::RequestMeta;
@@ -26,18 +27,14 @@ pub(super) struct AppServer<'a> {
     pub(super) user_id: String,
 }
 
-impl poentaro_protocol::app::Server for AppServer<'_> {
-    type Error = worker::Error;
-}
-
-impl poentaro_protocol::app::account::Server for AppServer<'_> {
-    async fn sign_out(&self) -> worker::Result<()> {
+impl AppServer<'_> {
+    pub(super) async fn sign_out(&self) -> worker::Result<()> {
         auth::end_session(self.d1, &self.token, self.meta)
             .await
             .map_err(internal)
     }
 
-    async fn change_password_from_to(
+    pub(super) async fn change_password_from_to(
         &self,
         current_password: String,
         new_password: String,
@@ -57,8 +54,8 @@ impl poentaro_protocol::app::account::Server for AppServer<'_> {
             }
             Err(ApiError::SignInLocked {
                 retry_after_seconds,
-            }) => Ok(Err(ChangePasswordFromToError::LockedForSeconds {
-                duration: retry_after_seconds,
+            }) => Ok(Err(ChangePasswordFromToError::LockedFor {
+                duration: std::time::Duration::from_secs(retry_after_seconds.unsigned_abs()),
             })),
             Err(ApiError::WeakPassword { message }) => {
                 Ok(Err(ChangePasswordFromToError::WeakPassword { message }))
@@ -70,17 +67,17 @@ impl poentaro_protocol::app::account::Server for AppServer<'_> {
 
 fn key(summary: ApiKeySummary) -> Key {
     Key {
-        id: summary.id,
+        id: summary.id.into(),
         prefix: summary.prefix,
-        created_at: summary.created_at,
-        last_used_at: summary.last_used_at,
-        expires_at: summary.expires_at,
+        created_at: instant(summary.created_at),
+        last_used_at: summary.last_used_at.map(instant),
+        expires_at: instant(summary.expires_at),
         expired: summary.expired,
     }
 }
 
-impl poentaro_protocol::app::keys::Server for AppServer<'_> {
-    async fn list(&self) -> worker::Result<Vec<Key>> {
+impl AppServer<'_> {
+    pub(super) async fn list_agent_keys(&self) -> worker::Result<Vec<Key>> {
         let now = now_millis();
         Ok(db::list_api_keys(self.d1, &self.user_id)
             .await?
@@ -89,7 +86,7 @@ impl poentaro_protocol::app::keys::Server for AppServer<'_> {
             .collect())
     }
 
-    async fn create(&self) -> worker::Result<CreatedKey> {
+    pub(super) async fn create_agent_key(&self) -> worker::Result<CreatedKey> {
         let CreatedApiKey {
             key: summary,
             prompt,
@@ -102,10 +99,10 @@ impl poentaro_protocol::app::keys::Server for AppServer<'_> {
         })
     }
 
-    async fn revoke(&self, id: String) -> Outcome<(), RevokeError> {
-        match api_keys::revoke_key(self.d1, &self.user_id, &id, self.meta).await {
+    pub(super) async fn revoke_agent_key(&self, id: KeyId) -> Outcome<(), RevokeAgentKeyError> {
+        match api_keys::revoke_key(self.d1, &self.user_id, &id.0, self.meta).await {
             Ok(()) => Ok(Ok(())),
-            Err(ApiError::NotFound) => Ok(Err(RevokeError::MissingKey)),
+            Err(ApiError::NotFound) => Ok(Err(RevokeAgentKeyError::MissingKey)),
             Err(error) => Err(internal(error)),
         }
     }

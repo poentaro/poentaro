@@ -45,6 +45,9 @@ Given(
 Given(
   'every content-save request for {string} will be refused as {string}',
   async ({ page }, fileName: string, error: string) => {
+    if (error !== 'trashed' && error !== 'missing') {
+      throw new Error(`Unsupported content-save refusal: ${error}`)
+    }
     await interceptContentSaves(
       page,
       { fault: { kind: 'refuse', error }, fileName },

@@ -6,7 +6,7 @@ import { createTestBackend } from './cloudBackendTestHelpers'
 // -- split out of `cloudBackend.test.ts` to stay under this repo's
 // 400-line cap. See that file for load/createFile/saveContent coverage.
 
-const WRITE = 'files/write _ at revision _ content _'
+const WRITE = 'write file _ at revision _ content _'
 
 function stateWith(content: string): FileStoreState {
   return {

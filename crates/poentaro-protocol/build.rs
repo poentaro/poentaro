@@ -1,5 +1,5 @@
 //! Generates each audience's server traits, codec and client from its
-//! schema folder in `schemas/`, as the module `<audience>` in
+//! entry file in `schemas/`, as the module `<audience>` in
 //! `OUT_DIR/<audience>.rs`, which `lib.rs` includes. The module wraps the
 //! generated code here because `include!` refuses its `#![allow(...)]`.
 //! The TypeScript client goes to `OUT_DIR/<audience>.ts`, for the
@@ -11,7 +11,7 @@
 
 use std::path::{Path, PathBuf};
 
-use anyx_protocol::{Schema, SchemaFile};
+use anyx_protocol::Schema;
 
 const AUDIENCES: [&str; 4] = ["agent", "app", "public", "test"];
 
@@ -43,51 +43,36 @@ struct Generated {
     hash: String,
 }
 
-/// The code generated from every `.anyx` file under `folder`.
+/// Generate from an explicit entry, embedding only its imported files.
 fn generate(folder: &Path, audience: &str) -> Generated {
-    let mut paths = Vec::new();
-    collect(folder, folder, &mut paths);
-    paths.sort();
-    let sources: Vec<String> = paths
-        .iter()
-        .map(|path| {
-            println!("cargo::rerun-if-changed={}", folder.join(path).display());
-            std::fs::read_to_string(folder.join(path))
-                .unwrap_or_else(|error| panic!("schemas/{audience}/{path}: {error}"))
-        })
-        .collect();
-    let files: Vec<SchemaFile> = paths
-        .iter()
-        .zip(&sources)
-        .map(|(path, source)| SchemaFile { path, source })
-        .collect();
-    let schema = Schema::parse_files(&files).unwrap_or_else(|diagnostics| {
-        let rendered = diagnostics
+    let mut sources = std::collections::BTreeMap::new();
+    let schema = Schema::load("protocol.protocol.anyx", |path| {
+        let source = std::fs::read_to_string(folder.join(path))?;
+        println!("cargo::rerun-if-changed={}", folder.join(path).display());
+        sources.insert(path.to_string(), source.clone());
+        Ok::<_, std::io::Error>(source)
+    })
+    .unwrap_or_else(|diagnostics| {
+        let rendered: Vec<String> = diagnostics
             .iter()
             .map(|diagnostic| {
-                let index = paths
-                    .iter()
-                    .position(|path| *path == diagnostic.path)
-                    .unwrap_or(0);
-                diagnostic.render(
-                    &sources[index],
-                    &format!("schemas/{audience}/{}", diagnostic.path),
-                )
+                let source = sources.get(&diagnostic.path).map_or("", String::as_str);
+                diagnostic.render(source, &format!("schemas/{audience}/{}", diagnostic.path))
             })
-            .collect::<Vec<_>>();
+            .collect();
         panic!("{}", rendered.join("\n"))
     });
     let fail = |error: anyx_protocol_generate::Error| panic!("schemas/{audience}: {error}");
     Generated {
         rust: anyx_protocol_generate::rust(&schema).unwrap_or_else(fail),
         typescript: anyx_protocol_generate::typescript(&schema).unwrap_or_else(fail),
-        hash: hash(&files),
+        hash: hash(&schema.files),
     }
 }
 
 /// FNV-1a over each file's path and source, in hex. Written out here rather
 /// than taken from `std`, whose hashers may change between Rust releases.
-fn hash(files: &[SchemaFile]) -> String {
+fn hash(files: &[anyx_protocol::schema::SourceFile]) -> String {
     let hash = files
         .iter()
         .flat_map(|file| [file.path.as_bytes(), &[0], file.source.as_bytes(), &[0]])
@@ -96,20 +81,4 @@ fn hash(files: &[SchemaFile]) -> String {
             (hash ^ u64::from(*byte)).wrapping_mul(0x0100_0000_01b3)
         });
     format!("{hash:016x}")
-}
-
-/// Every `.anyx` file under `folder`, as a slash path relative to `root`.
-fn collect(root: &Path, folder: &Path, found: &mut Vec<String>) {
-    for entry in std::fs::read_dir(folder).expect("the schema folder is readable") {
-        let path = entry.expect("the schema folder is readable").path();
-        if path.is_dir() {
-            collect(root, &path, found);
-        } else if path
-            .extension()
-            .is_some_and(|extension| extension == "anyx")
-        {
-            let relative = path.strip_prefix(root).expect("under the schema folder");
-            found.push(relative.to_string_lossy().replace('\\', "/"));
-        }
-    }
 }

@@ -1,2 +1,4 @@
 # Sets up end-to-end tests. Served only by a worker started for them.
 PROTOCOL poentaro test VERSION 1,
+
+USE "./accounts.protocol.anyx",

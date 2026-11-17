@@ -107,9 +107,7 @@ When(
       // a time: each must reach the worker before the next starts.
       await dialog.getByLabel('Password', { exact: true }).fill(password)
       await Promise.all([
-        page.waitForResponse((response) =>
-          answersCall(response, 'account/sign in'),
-        ),
+        page.waitForResponse((response) => answersCall(response, 'sign in')),
         dialog.getByRole('button', { name: 'Sign in', exact: true }).click(),
       ])
     }
@@ -157,13 +155,13 @@ Then("the account dialog's sign-in button is disabled", async ({ page }) => {
 Then(
   'the worker refuses the right password for {string} while it is locked',
   async ({}, email: string) => {
-    const outcome = await (await publicClient()).account.signInPassword(
+    const outcome = await (await publicClient()).signInPassword(
       email,
       E2E_PASSWORD,
     )
     expect(outcome).toMatchObject({
       kind: 'error',
-      error: { kind: 'lockedForSeconds' },
+      error: { kind: 'lockedFor' },
     })
   },
 )
@@ -209,7 +207,7 @@ Then(
   async ({}, email: string, password: string) => {
     const session = await valueOrFail(
       `sign-in for ${email}`,
-      (await publicClient()).account.signInPassword(email, password),
+      (await publicClient()).signInPassword(email, password),
     )
     expect(session.email).toBe(email)
   },

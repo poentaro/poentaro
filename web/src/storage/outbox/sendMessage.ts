@@ -86,7 +86,7 @@ async function moveEach(
 ): Promise<SendResult | Refusal> {
   const taken: string[] = []
   for (const move of moves) {
-    const outcome = settled(await app.files.moveTo(move.fileId, move.to))
+    const outcome = settled(await app.moveFileTo(move.fileId, move.to))
     if (outcome.kind === 'value') continue
     switch (outcome.error.kind) {
       case 'taken':
@@ -108,7 +108,7 @@ async function moveFolder(
   request: SendRequest,
   folder: FolderMove,
 ): Promise<SendResult | Refusal> {
-  const outcome = settled(await app.folders.moveTo(folder.from, folder.to))
+  const outcome = settled(await app.moveFolderTo(folder.from, folder.to))
   if (outcome.kind === 'value') return ok(request.expectedRevision)
   switch (outcome.error.kind) {
     // Nothing left in it: every file was moved or trashed since.
@@ -136,14 +136,14 @@ async function createFile(
   content: string,
 ): Promise<SendResult | Refusal> {
   const id = request.fileId
-  const outcome = settled(await app.files.createAtContent(id, name, content))
+  const outcome = settled(await app.createFileAtContent(id, name, content))
   if (outcome.kind === 'value') return ok(outcome.value.revision)
   switch (outcome.error.kind) {
     case 'taken':
       return nameTaken(request, name)
     // An earlier try made it and its answer was lost.
     case 'idTaken': {
-      const file = settled(await app.files.read(id))
+      const file = settled(await app.readFile(id))
       return file.kind === 'value'
         ? ok(file.value.summary.revision)
         : refused(file.error, 409)
@@ -161,7 +161,7 @@ async function saveContent(
   content: string,
 ): Promise<SendResult | Refusal> {
   const outcome = settled(
-    await app.files.writeAtRevisionContent(
+    await app.writeFileAtRevisionContent(
       request.fileId,
       Number(request.expectedRevision),
       content,
@@ -192,7 +192,7 @@ async function renameFile(
   request: SendRequest,
   to: string,
 ): Promise<SendResult | Refusal> {
-  const outcome = settled(await app.files.moveTo(request.fileId, to))
+  const outcome = settled(await app.moveFileTo(request.fileId, to))
   if (outcome.kind === 'value') return ok(request.expectedRevision)
   switch (outcome.error.kind) {
     case 'taken':
@@ -210,7 +210,7 @@ async function restoreFile(
   app: AppFileCalls,
   request: SendRequest,
 ): Promise<SendResult | Refusal> {
-  const outcome = settled(await app.files.restore(request.fileId))
+  const outcome = settled(await app.restoreFile(request.fileId))
   if (outcome.kind === 'value') return ok(request.expectedRevision)
   switch (outcome.error.kind) {
     // An earlier try restored it and its answer was lost.
@@ -242,7 +242,7 @@ async function deliver(
         : moveEach(app, request, message.val.moves)
     // Trashing a file twice, or one gone since, leaves it trashed.
     case 'trash-file':
-      settled(await app.files.trash(request.fileId))
+      settled(await app.trashFile(request.fileId))
       return ok(request.expectedRevision)
     case 'restore-file':
       return restoreFile(app, request)

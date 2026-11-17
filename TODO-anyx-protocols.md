@@ -74,7 +74,7 @@ are deleted, and nothing in `web/` builds a URL other than these endpoints.
 
 ### 0. anyx (`~/repos/anyx`, commit and push straight to upstream `master`)
 
-- [x] `RETURNS NOTHING` in the schema grammar (anyx `adf3324`) (`protocol.anyx`), the checker,
+- [x] `RETURNS NOTHING` in the schema grammar (anyx `adf3324`) (`protocol.protocol.anyx`), the checker,
       the codec (a result of `RETURNS` with no value), the Rust/wasm/TS
       generators, `PROTOCOL.md` and the guide. Round-trip tests.
 - [x] Repin anyx in poentaro.
@@ -200,7 +200,7 @@ One caller at a time; each stays green on its e2e features.
       `cloud-outbox-structural`, `file-op-error-cloud`, `session-ended`.
 - [ ] New feature: an old tab whose schema hash is stale is asked to reload.
 - [ ] New feature: a file's content loads when it is opened, not before.
-- [ ] `agent-protocol` steps unchanged and passing.
+- [ ] `agent-protocol` scenarios passing with flat method names and positional outcomes.
 
 ### 7. Delete REST (follow-up PR)
 
@@ -214,3 +214,15 @@ once `app_log` shows no REST calls for a while.
       `web/src/generated/live-share-worker/` from `web/`.
 - [ ] Update `ARCHITECTURE.md` (wire types, endpoints, glossary: "app
       protocol", "public protocol", "test protocol").
+
+## Schema migration after the AnyX protocol update
+
+- [x] Explicit `USE` imports, one flat namespace per audience, and a build
+      loader that hashes only the imported files.
+- [x] Distinct method names across files, consolidated shared errors,
+      Title Case types, `Instant` timestamps and `Duration` lockouts.
+- [x] Named key and origin-handoff IDs, conservative method effects, and
+      schema-checked examples including annotations for empty lists.
+- [x] Flat Rust servers and TypeScript clients throughout the existing
+      protocol callers, fakes and e2e interception helpers.
+- [x] Responses contain outcomes in call order without echoed arguments.

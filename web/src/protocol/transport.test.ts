@@ -33,11 +33,11 @@ describe('sendTo', () => {
       schemaHash: 'abc',
       token: 'tok',
     })
-    expect(await send('files/list')).toBe('RESULTS')
+    expect(await send('list files')).toBe('RESULTS')
     const { url, init } = sent()
     expect(url).toBe('http://localhost:8787/app')
     expect(init?.method).toBe('POST')
-    expect(init?.body).toBe('files/list')
+    expect(init?.body).toBe('list files')
     const headers = init?.headers as Record<string, string>
     expect(headers[SCHEMA_HEADER]).toBe('abc')
     expect(headers.Authorization).toBe('Bearer tok')

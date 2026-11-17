@@ -15,12 +15,12 @@ const newButton = ({ page }: { page: import('@playwright/test').Page }) =>
 Given(
   'the first file-create request will fail with a 500 error',
   async ({ page }) => {
-    // Registered before navigating: fails the first `files/create` call
+    // Registered before navigating: fails the first `create file` call
     // with a 500, then lets every call after through (including a retried
     // create), so the real worker behaves normally once this one-shot
     // failure has fired.
     let createCount = 0
-    await routeAppCall(page, 'files/create _ at _ content _', async (route) => {
+    await routeAppCall(page, 'create file _ at _ content _', async (route) => {
       createCount += 1
       if (createCount === 1) {
         await route.fulfill({ status: 500, body: 'Internal Server Error' })

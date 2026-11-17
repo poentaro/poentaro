@@ -18,7 +18,7 @@ export function createServerReads(app: () => Promise<AppFileCalls>) {
     /** The server's revision and text of `fileId`; `undefined` when the
      * account has no such file. */
     async fetchServerFile(fileId: string): Promise<ServerFile | undefined> {
-      const outcome = settled(await (await app()).files.read(fileId))
+      const outcome = settled(await (await app()).readFile(fileId))
       return outcome.kind === 'value'
         ? {
             revision: outcome.value.summary.revision,
@@ -32,9 +32,9 @@ export function createServerReads(app: () => Promise<AppFileCalls>) {
      * between is left out. */
     async listFiles(): Promise<ListedServerFile[]> {
       const calls = await app()
-      const summaries = await expectValue(calls.files.list())
+      const summaries = await expectValue(calls.listFiles())
       const reads = await calls.batch((batch) =>
-        summaries.map((summary) => batch.files.read(summary.id)),
+        summaries.map((summary) => batch.readFile(summary.id)),
       )
       return reads.map(settled).flatMap((read) => {
         if (read.kind === 'error') return []
@@ -44,7 +44,10 @@ export function createServerReads(app: () => Promise<AppFileCalls>) {
             id: file.summary.id,
             name: file.summary.path,
             revision: file.summary.revision,
-            trashedAt: file.summary.trashedAt ?? null,
+            trashedAt:
+              file.summary.trashedAt == null
+                ? null
+                : file.summary.trashedAt.getTime(),
             content: file.content,
           },
         ]

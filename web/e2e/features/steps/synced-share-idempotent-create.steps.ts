@@ -90,7 +90,7 @@ When(
   },
 )
 
-/** Answers `files/list` and `files/read` with a synthetic entry carrying *another* account's
+/** Answers `list files` and `read file` with a synthetic entry carrying *another* account's
  * real D1 file id -- see `loadSecondContextOnCloudFile`'s doc comment for
  * why this is the only way to send a share request for someone else's file
  * through the real worker: D1's `files.id` is a globally unique primary
@@ -105,10 +105,10 @@ async function mockCloudFileListWithForeignFile(
     path: `${actualNameFor(tabName)}.poentaro`,
     revision: 0,
   }
-  await routeAppCall(page, 'files/list', (route) =>
+  await routeAppCall(page, 'list files', (route) =>
     answerCall(route, { kind: 'value', value: [summary] }),
   )
-  await routeAppCall(page, 'files/read _', (route) =>
+  await routeAppCall(page, 'read file _', (route) =>
     answerCall(route, {
       kind: 'value',
       value: { summary, content: idempotentSharingSource(tabName) },

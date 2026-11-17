@@ -1,0 +1,18 @@
+USE "./errors.protocol.anyx",
+
+TYPE Migration Id: Text,
+
+# Hands what an old origin kept in the browser to the new origin. The server
+# never reads `payload`.
+METHOD upload origin handoff (payload: Text)
+    RETURNS (id: Migration Id)
+    ERRORS size errors + rate limit errors,
+
+# The payload as it was uploaded. A handoff can be claimed once.
+METHOD claim origin handoff (id: Migration Id)
+    RETURNS (payload: Text)
+    ERRORS [
+        # No handoff has this id, or it was claimed already.
+        missing,
+    ]
+    EXAMPLES [claim origin handoff ("handoff-a" AS Migration Id) ERROR missing],

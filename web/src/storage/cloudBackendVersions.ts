@@ -9,11 +9,11 @@ export function createVersionCalls(
 ): Pick<CloudBackend, 'listVersions' | 'fetchVersion'> {
   return {
     listVersions: async (fileId) =>
-      expectValue((await app()).files.versions.list(fileId)),
+      expectValue((await app()).listVersionsOfFile(fileId)),
 
     fetchVersion: async (fileId, revision) => ({
       content: await expectValue(
-        (await app()).files.versions.readAtRevision(fileId, revision),
+        (await app()).readFileAtRevision(fileId, revision),
       ),
     }),
   }

@@ -99,9 +99,7 @@ When('the owner signs out on device {string}', async ({}, name: string) => {
   // Sign-out tells the worker without awaiting it -- wait for it here, so
   // later steps on other devices can't race ahead of it.
   await Promise.all([
-    page.waitForResponse((response) =>
-      answersCall(response, 'account/sign out'),
-    ),
+    page.waitForResponse((response) => answersCall(response, 'sign out')),
     page
       .getByTestId('account-popover')
       .getByRole('button', { name: 'Sign out' })

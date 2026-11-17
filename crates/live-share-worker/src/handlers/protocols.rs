@@ -196,3 +196,18 @@ fn text_response(body: String, status: u16) -> Result<Response> {
         .set("Content-Type", "text/plain; charset=utf-8")?;
     Ok(response)
 }
+
+/// A database timestamp at the generated protocol boundary. D1 stores
+/// signed milliseconds; AnyX uses `SystemTime` and writes RFC 3339.
+fn instant(milliseconds: i64) -> std::time::SystemTime {
+    let offset = std::time::Duration::from_millis(milliseconds.unsigned_abs());
+    if milliseconds >= 0 {
+        std::time::UNIX_EPOCH + offset
+    } else {
+        std::time::UNIX_EPOCH - offset
+    }
+}
+
+#[cfg(test)]
+#[path = "protocols/tests.rs"]
+mod tests;

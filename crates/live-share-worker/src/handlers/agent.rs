@@ -3,7 +3,7 @@
 //!
 //! `POST /agent` runs a request, sent with `Authorization: Bearer poe_…`.
 //! Everything an agent reads comes through it: `SCHEMA` answers the guide
-//! (how to write a request, then the schema) and `score/syntax` answers
+//! (how to write a request, then the schema) and `score syntax` answers
 //! `syntax.md`.
 //!
 //! It answers plain text, not `ApiErrorBody` JSON, since an agent reads

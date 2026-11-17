@@ -8,7 +8,7 @@ import { currentSignedInEmail } from './cloud-account.steps'
 import { Given, Then, When } from './fixtures'
 
 const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
-const FOLDER_MOVE = 'folders/move _ to _'
+const FOLDER_MOVE = 'move folder _ to _'
 const DELIVERY_TIMEOUT_MS = 25_000
 
 /** What the worker answered folder moves with, per page: `returned`,

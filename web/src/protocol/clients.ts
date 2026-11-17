@@ -6,7 +6,19 @@ import { codecFor, sendTo } from './transport'
 
 /** The calls the cloud file store makes, so tests can stand in a fake.
  * `batch` sends several of them as one request. */
-export type AppFileCalls = Pick<app.Client, 'files' | 'folders'> & {
+export type AppFileCalls = Pick<
+  app.Client,
+  | 'readFileAtRevision'
+  | 'listVersionsOfFile'
+  | 'listFiles'
+  | 'readFile'
+  | 'writeFileAtRevisionContent'
+  | 'createFileAtContent'
+  | 'moveFileTo'
+  | 'trashFile'
+  | 'restoreFile'
+  | 'moveFolderTo'
+> & {
   batch<R>(build: (calls: AppFileCalls) => Promise<R>[]): Promise<R[]>
 }
 

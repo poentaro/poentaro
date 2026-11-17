@@ -30,8 +30,8 @@ pub struct KeyRejected {
 }
 
 /// One request's calls, each as its method and how it ended:
-/// `files/read _: ok`,
-/// `files/write _ at revision _ content _: conflict at revision _ content _`, or
+/// `read file _: ok`,
+/// `write file _ at revision _ content _: conflict at revision _ content _`, or
 /// `…: internal error: <cause>`. Empty when the request couldn't be read.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Called {

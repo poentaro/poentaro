@@ -37,7 +37,7 @@ describe('the generated client batch', () => {
       file('c'),
     ])
     const outcomes = await client.batch((calls) =>
-      ['a', 'b', 'c'].map((id) => calls.files.read(id)),
+      ['a', 'b', 'c'].map((id) => calls.readFile(id)),
     )
     expect(requests).toHaveLength(1)
     expect(outcomes.map((outcome) => outcome.kind)).toEqual([
@@ -49,8 +49,8 @@ describe('the generated client batch', () => {
 
   it('sends a call outside a batch on its own', async () => {
     const { client, requests } = clientAnswering([file('a'), file('b')])
-    await client.files.read('a')
-    await client.files.read('b')
+    await client.readFile('a')
+    await client.readFile('b')
     expect(requests).toHaveLength(2)
   })
 
@@ -65,7 +65,7 @@ describe('the generated client batch', () => {
       Promise.reject(new Error('offline')),
     )
     await expect(
-      client.batch((calls) => [calls.files.read('a'), calls.files.read('b')]),
+      client.batch((calls) => [calls.readFile('a'), calls.readFile('b')]),
     ).rejects.toThrow('offline')
   })
 })

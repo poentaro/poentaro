@@ -62,7 +62,7 @@ When('the app loads with cloud storage', async ({ page }) => {
 When('the session is ended on the worker', async () => {
   await valueOrFail(
     'sign-out',
-    (await appClient(lastSeededSessionToken())).account.signOut(),
+    (await appClient(lastSeededSessionToken())).signOut(),
   )
 })
 

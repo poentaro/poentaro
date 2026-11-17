@@ -1,2 +1,3 @@
 # How to write a `.poentaro` score. Read it before you write one.
-METHOD syntax RETURNS (syntax: TEXT),
+READ ONLY METHOD score syntax
+    RETURNS syntax: Text

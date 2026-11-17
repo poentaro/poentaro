@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import type { File, FileSummary } from '../../../src/generated/protocol/app'
 import type { AppOutcome } from '../../appCalls'
 import { rewriteAnswers } from '../../appCalls'
 import { seedCloudFile, trashCloudFile } from '../../cloudFileHelpers'
@@ -61,26 +62,22 @@ Given(
     await trashCloudFile(email, trashSource.id)
 
     // Only while still trashed: once restored, its real name shows.
-    interface Summary {
-      id: string
-      path: string
-      trashedAt?: number
-    }
+    type Summary = FileSummary
     const relabel = (summary: Summary): Summary =>
       summary.id === trashSource.id && summary.trashedAt !== undefined
         ? { ...summary, path: 'original.poentaro' }
         : summary
     await rewriteAnswers(
       page,
-      'files/list',
+      'list files',
       (outcome): AppOutcome =>
         outcome.kind === 'value'
           ? { ...outcome, value: (outcome.value as Summary[]).map(relabel) }
           : outcome,
     )
-    await rewriteAnswers(page, 'files/read _', (outcome): AppOutcome => {
+    await rewriteAnswers(page, 'read file _', (outcome): AppOutcome => {
       if (outcome.kind !== 'value') return outcome
-      const file = outcome.value as { summary: Summary; content: string }
+      const file = outcome.value as File
       return { ...outcome, value: { ...file, summary: relabel(file.summary) } }
     })
   },

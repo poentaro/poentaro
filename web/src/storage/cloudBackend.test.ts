@@ -8,7 +8,7 @@ import { createTestBackend } from './cloudBackendTestHelpers'
 // offline-retry/name-collision-retry coverage -- split out to stay under
 // this repo's 400-line cap.
 
-const WRITE = 'files/write _ at revision _ content _'
+const WRITE = 'write file _ at revision _ content _'
 
 describe('createCloudBackend: load()', () => {
   it('lists the files and partitions them by trashedAt', async () => {
@@ -18,7 +18,7 @@ describe('createCloudBackend: load()', () => {
     ])
     const state = await backend.load()
 
-    expect(server.callsTo('files/list')).toHaveLength(1)
+    expect(server.callsTo('list files')).toHaveLength(1)
     expect(state.userFiles).toEqual({ 'a.poentaro': '1 2 3' })
     expect(state.bin).toEqual({ 'b.poentaro': 'x' })
     expect(state.fileIds).toEqual({

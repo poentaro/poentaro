@@ -1,8 +1,8 @@
 // The synthetic email + password accounts the e2e scenarios sign in as.
 // Each one is a real account in the local `cf dev` worker's D1, created on
-// first use through `poentaro public`'s `account/sign up`. Every email a
+// first use through `poentaro public`'s `sign up`. Every email a
 // scenario uses must be listed here: the list is also the allowlist the
-// worker's `poentaro test` `accounts/reset` may delete (see
+// worker's `poentaro test` `reset test accounts` may delete (see
 // `playwright.config.ts` and `crates/live-share-worker/src/e2e_reset.rs`).
 //
 // A module of its own, free of imports, since `playwright.config.ts`

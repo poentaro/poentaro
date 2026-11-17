@@ -27,7 +27,7 @@ function assertKnownEmail(email: string): void {
 export async function signInE2eAccount(email: string): Promise<string> {
   assertKnownEmail(email)
   const client = await publicClient()
-  const signUp = await client.account.signUpPassword(email, E2E_PASSWORD)
+  const signUp = await client.signUpPassword(email, E2E_PASSWORD)
   if (signUp.kind === 'value') return signUp.value.token
   if (signUp.kind !== 'error' || signUp.error.kind !== 'emailTaken') {
     throw new Error(
@@ -36,7 +36,7 @@ export async function signInE2eAccount(email: string): Promise<string> {
   }
   const session = await valueOrFail(
     `e2eAccounts: sign-in for ${email}`,
-    client.account.signInPassword(email, E2E_PASSWORD),
+    client.signInPassword(email, E2E_PASSWORD),
   )
   return session.token
 }
@@ -48,7 +48,7 @@ export async function resetE2eAccounts(emails: string[]): Promise<void> {
   emails.forEach(assertKnownEmail)
   await valueOrFail(
     `e2eAccounts: reset of ${emails.join(', ')}`,
-    (await testClient()).accounts.reset(emails),
+    (await testClient()).resetTestAccounts(emails),
   )
 }
 
@@ -58,7 +58,7 @@ export async function isSessionTokenAccepted(token: string): Promise<boolean> {
   try {
     await valueOrFail(
       'e2eAccounts: checking a session token',
-      (await appClient(token)).keys.list(),
+      (await appClient(token)).listAgentKeys(),
     )
     return true
   } catch (error) {

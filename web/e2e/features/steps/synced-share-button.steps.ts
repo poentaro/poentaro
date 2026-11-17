@@ -328,10 +328,10 @@ When(
 When("the owner's autosave debounce interval elapses", async ({ page }) => {
   // Waits for the save itself to land, not just the timer -- the viewer
   // reads whatever the worker has stored, so reloading it before the
-  // `files/write` answer would race the write.
+  // `write file` answer would race the write.
   await Promise.all([
     page.waitForResponse(
-      (response) => answersCall(response, 'files/write') && response.ok(),
+      (response) => answersCall(response, 'write file') && response.ok(),
     ),
     page.clock.fastForward(AUTOSAVE_DEBOUNCE_MS),
   ])

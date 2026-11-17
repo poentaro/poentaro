@@ -6,10 +6,11 @@
 
 use std::cell::RefCell;
 
-use poentaro_protocol::agent::files::export::{MidiError, SvgError};
-use poentaro_protocol::agent::files::{
-    CreateContentError, File, FileSummary, ReadError, Saved, WriteAtRevisionContentError,
+use poentaro_protocol::agent::{
+    CreateFileContentError, File, FileSummary, ReadFileError, Saved,
+    WriteFileAtRevisionContentError,
 };
+use poentaro_protocol::agent::{ExportMidiError, ExportSvgError};
 use poentaro_protocol::{IntoValue, Value};
 use worker::D1Database;
 
@@ -19,7 +20,7 @@ use crate::files::{self, ContentWriteAttempt, StoredFile};
 use crate::handlers::file_store::{proposed_name, record_version};
 use crate::handlers::{is_unique_constraint_violation, now_millis};
 
-/// The score syntax, which `score/syntax` answers.
+/// The score syntax, which `score syntax` answers.
 const SYNTAX: &str = include_str!("../../../../../syntax.md");
 
 type Outcome<T, E> = worker::Result<Result<T, E>>;
@@ -48,10 +49,10 @@ impl AgentFiles<'_> {
         db::get_file_by_name(self.d1, &self.user_id, path).await
     }
 
-    async fn read_file(&self, path: &str) -> Outcome<File, ReadError> {
+    async fn read_file(&self, path: &str) -> Outcome<File, ReadFileError> {
         Ok(match self.file_at(path).await? {
-            None => Err(ReadError::Missing),
-            Some(file) if file.trashed_at.is_some() => Err(ReadError::Trashed),
+            None => Err(ReadFileError::Missing),
+            Some(file) if file.trashed_at.is_some() => Err(ReadFileError::Trashed),
             Some(file) => Ok(File {
                 path: file.name,
                 revision: file.revision,
@@ -61,7 +62,7 @@ impl AgentFiles<'_> {
     }
 
     /// The content of the live file at `path`, for an export.
-    async fn content_to_export(&self, path: &str) -> worker::Result<Result<String, ReadError>> {
+    async fn content_to_export(&self, path: &str) -> worker::Result<Result<String, ReadFileError>> {
         Ok(self.read_file(path).await?.map(|file| file.content))
     }
 
@@ -70,11 +71,11 @@ impl AgentFiles<'_> {
         path: &str,
         revision: i64,
         content: String,
-    ) -> Outcome<Saved, WriteAtRevisionContentError> {
+    ) -> Outcome<Saved, WriteFileAtRevisionContentError> {
         let previous = match self.file_at(path).await? {
-            None => return Ok(Err(WriteAtRevisionContentError::Missing)),
+            None => return Ok(Err(WriteFileAtRevisionContentError::Missing)),
             Some(file) if file.trashed_at.is_some() => {
-                return Ok(Err(WriteAtRevisionContentError::Trashed))
+                return Ok(Err(WriteFileAtRevisionContentError::Trashed))
             }
             Some(file) => file,
         };
@@ -83,7 +84,7 @@ impl AgentFiles<'_> {
         }
         let diagnostics = score_diagnostics(&content);
         if !diagnostics.errors.is_empty() {
-            return Ok(Err(WriteAtRevisionContentError::Rejected {
+            return Ok(Err(WriteFileAtRevisionContentError::Rejected {
                 diagnostics: diagnostics.errors,
             }));
         }
@@ -111,8 +112,10 @@ impl AgentFiles<'_> {
             // Someone saved, trashed or deleted it since it was read above.
             ContentWriteAttempt::RowsAffectedZero => Ok(Err(
                 match db::get_file_by_id(self.d1, &previous.id, &self.user_id).await? {
-                    None => WriteAtRevisionContentError::Missing,
-                    Some(file) if file.trashed_at.is_some() => WriteAtRevisionContentError::Trashed,
+                    None => WriteFileAtRevisionContentError::Missing,
+                    Some(file) if file.trashed_at.is_some() => {
+                        WriteFileAtRevisionContentError::Trashed
+                    }
                     Some(file) => conflict(file),
                 },
             )),
@@ -123,9 +126,9 @@ impl AgentFiles<'_> {
         &self,
         path: String,
         content: String,
-    ) -> Outcome<Saved, CreateContentError> {
+    ) -> Outcome<Saved, CreateFileContentError> {
         if let Some(message) = new_file_path_problem(&path) {
-            return Ok(Err(CreateContentError::InvalidPath { message }));
+            return Ok(Err(CreateFileContentError::InvalidPath { message }));
         }
         if let Some(existing) = self.file_at(&path).await? {
             return Ok(Err(already_exists(&existing)));
@@ -134,11 +137,11 @@ impl AgentFiles<'_> {
         let live = db::list_live_file_names(self.d1, &self.user_id).await?;
         if let Some(clash) = files::find_file_folder_conflict(&live, &proposed_name(&id, &path)) {
             let message = format!("found `{clash}` as both a file and a folder; expected a path that is only one of them");
-            return Ok(Err(CreateContentError::InvalidPath { message }));
+            return Ok(Err(CreateFileContentError::InvalidPath { message }));
         }
         let diagnostics = score_diagnostics(&content);
         if !diagnostics.errors.is_empty() {
-            return Ok(Err(CreateContentError::Rejected {
+            return Ok(Err(CreateFileContentError::Rejected {
                 diagnostics: diagnostics.errors,
             }));
         }
@@ -174,15 +177,15 @@ fn internal_error(error: &worker::Error) -> String {
     format!("internal error: {error}")
 }
 
-fn conflict(current: StoredFile) -> WriteAtRevisionContentError {
-    WriteAtRevisionContentError::ConflictAtRevisionContent {
+fn conflict(current: StoredFile) -> WriteFileAtRevisionContentError {
+    WriteFileAtRevisionContentError::ConflictAtRevisionContent {
         revision: current.revision,
         content: current.content,
     }
 }
 
-fn already_exists(existing: &StoredFile) -> CreateContentError {
-    CreateContentError::AlreadyExistsAtRevision {
+fn already_exists(existing: &StoredFile) -> CreateFileContentError {
+    CreateFileContentError::AlreadyExistsAtRevision {
         revision: existing.revision,
     }
 }
@@ -195,10 +198,8 @@ fn random_id_bytes() -> worker::Result<[u8; 16]> {
 
 impl poentaro_protocol::agent::Server for AgentFiles<'_> {
     type Error = worker::Error;
-}
 
-impl poentaro_protocol::agent::files::Server for AgentFiles<'_> {
-    async fn list(&self) -> worker::Result<Vec<FileSummary>> {
+    async fn list_files(&self) -> worker::Result<Vec<FileSummary>> {
         let listed = db::list_files_by_owner(self.d1, &self.user_id).await;
         let ending = match &listed {
             Ok(_) => "ok".to_string(),
@@ -206,7 +207,7 @@ impl poentaro_protocol::agent::files::Server for AgentFiles<'_> {
         };
         self.calls
             .borrow_mut()
-            .push(format!("files/list: {ending}"));
+            .push(format!("list files: {ending}"));
         let mut summaries: Vec<FileSummary> = listed?
             .into_iter()
             .filter(|file| file.trashed_at.is_none())
@@ -219,67 +220,63 @@ impl poentaro_protocol::agent::files::Server for AgentFiles<'_> {
         Ok(summaries)
     }
 
-    async fn read(&self, path: String) -> Outcome<File, ReadError> {
+    async fn read_file(&self, path: String) -> Outcome<File, ReadFileError> {
         let outcome = self.read_file(&path).await;
-        self.note("files/read _", &outcome);
+        self.note("read file _", &outcome);
         outcome
     }
 
-    async fn write_at_revision_content(
+    async fn write_file_at_revision_content(
         &self,
         path: String,
         revision: i64,
         content: String,
-    ) -> Outcome<Saved, WriteAtRevisionContentError> {
+    ) -> Outcome<Saved, WriteFileAtRevisionContentError> {
         let outcome = self.write_file(&path, revision, content).await;
-        self.note("files/write _ at revision _ content _", &outcome);
+        self.note("write file _ at revision _ content _", &outcome);
         outcome
     }
 
-    async fn create_content(
+    async fn create_file_content(
         &self,
         path: String,
         content: String,
-    ) -> Outcome<Saved, CreateContentError> {
+    ) -> Outcome<Saved, CreateFileContentError> {
         let outcome = self.create_file(path, content).await;
-        self.note("files/create _ content _", &outcome);
-        outcome
-    }
-}
-
-impl poentaro_protocol::agent::files::export::Server for AgentFiles<'_> {
-    async fn svg(&self, path: String) -> Outcome<Vec<String>, SvgError> {
-        let outcome =
-            self.content_to_export(&path)
-                .await
-                .map(|content| match content {
-                    Err(ReadError::Missing) => Err(SvgError::Missing),
-                    Err(ReadError::Trashed) => Err(SvgError::Trashed),
-                    Ok(content) => export_svg(&content)
-                        .map_err(|diagnostics| SvgError::Unreadable { diagnostics }),
-                });
-        self.note("files/export/svg _", &outcome);
+        self.note("create file _ content _", &outcome);
         outcome
     }
 
-    async fn midi(&self, path: String) -> Outcome<Vec<u8>, MidiError> {
+    async fn export_svg(&self, path: String) -> Outcome<Vec<String>, ExportSvgError> {
         let outcome = self
             .content_to_export(&path)
             .await
             .map(|content| match content {
-                Err(ReadError::Missing) => Err(MidiError::Missing),
-                Err(ReadError::Trashed) => Err(MidiError::Trashed),
-                Ok(content) => export_midi(&content)
-                    .map_err(|diagnostics| MidiError::Unreadable { diagnostics }),
+                Err(ReadFileError::Missing) => Err(ExportSvgError::Missing),
+                Err(ReadFileError::Trashed) => Err(ExportSvgError::Trashed),
+                Ok(content) => export_svg(&content)
+                    .map_err(|diagnostics| ExportSvgError::Unreadable { diagnostics }),
             });
-        self.note("files/export/midi _", &outcome);
+        self.note("export svg _", &outcome);
         outcome
     }
-}
 
-impl poentaro_protocol::agent::score::Server for AgentFiles<'_> {
-    async fn syntax(&self) -> worker::Result<String> {
-        self.calls.borrow_mut().push("score/syntax: ok".to_string());
+    async fn export_midi(&self, path: String) -> Outcome<Vec<u8>, ExportMidiError> {
+        let outcome = self
+            .content_to_export(&path)
+            .await
+            .map(|content| match content {
+                Err(ReadFileError::Missing) => Err(ExportMidiError::Missing),
+                Err(ReadFileError::Trashed) => Err(ExportMidiError::Trashed),
+                Ok(content) => export_midi(&content)
+                    .map_err(|diagnostics| ExportMidiError::Unreadable { diagnostics }),
+            });
+        self.note("export midi _", &outcome);
+        outcome
+    }
+
+    async fn score_syntax(&self) -> worker::Result<String> {
+        self.calls.borrow_mut().push("score syntax: ok".to_string());
         Ok(SYNTAX.to_string())
     }
 }

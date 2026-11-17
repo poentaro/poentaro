@@ -76,7 +76,7 @@ describe('createCloudBackend: empty folders are placeholder files', () => {
     const { backend, server } = createTestBackend([
       listed('id-a', 'a.poentaro'),
     ])
-    server.hang('files/create _ at _ content _')
+    server.hang('create file _ at _ content _')
     await backend.createFolder(emptyStore, undefined, 'New folder')
 
     const state = await backend.load()

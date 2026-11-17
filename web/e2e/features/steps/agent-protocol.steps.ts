@@ -89,7 +89,7 @@ async function firstSeenRevision(path: string): Promise<number> {
 async function writeAsAgent(path: string, content: string): Promise<void> {
   const revision = await firstSeenRevision(path)
   await sendAsAgent(
-    `files/write ${JSON.stringify(path)} at revision ${revision} content ${JSON.stringify(content)}`,
+    `write file ${JSON.stringify(path)} at revision ${revision} content ${JSON.stringify(content)}`,
   )
 }
 
@@ -97,7 +97,7 @@ Given('the signed-in account has an API key', async () => {
   const identityToken = await seedTokenFor(currentSignedInEmail())
   const created = await valueOrFail(
     'creating an API key',
-    (await appClient(identityToken)).keys.create(),
+    (await appClient(identityToken)).createAgentKey(),
   )
   key = {
     id: created.key.id,

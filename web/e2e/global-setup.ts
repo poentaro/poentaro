@@ -14,7 +14,7 @@ import { testClient, valueOrFail } from './protocolClients.ts'
 // ...) and the next run's "the active tab becomes 'source 2'" expectation
 // would fall further behind until it fails outright.
 //
-// The delete itself is `poentaro test`'s `accounts/reset`
+// The delete itself is `poentaro test`'s `reset test accounts`
 // (`crates/live-share-worker/src/e2e_reset.rs`), which owns the SQL and
 // only touches the accounts `playwright.config.ts` allowlists for it -- so
 // nothing here knows the D1 schema, and any failure (including `/test`
@@ -23,7 +23,7 @@ import { testClient, valueOrFail } from './protocolClients.ts'
 export default async function globalSetup() {
   const deleted = await valueOrFail(
     'e2e reset',
-    (await testClient()).accounts.reset([]),
+    (await testClient()).resetTestAccounts([]),
   )
   console.log(
     `e2e reset: deleted ${deleted.accounts} accounts, ${deleted.files} files and ${deleted.shares} shares`,

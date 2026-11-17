@@ -1,3 +1,0 @@
-# What the Poentaro web app calls for a signed-in account. Send the session's
-# token as `Authorization: Bearer <token>`.
-PROTOCOL poentaro app VERSION 1,

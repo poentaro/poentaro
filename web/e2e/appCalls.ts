@@ -1,4 +1,5 @@
 import type { Page, Request, Response, Route } from '@playwright/test'
+import type { Client, EFFECTS, Outcome } from '../src/generated/protocol/app'
 import { poentaroWasm } from '../src/poentaroWasm'
 import { ensureWasm, WORKER_HOST } from './protocolClients'
 
@@ -9,10 +10,13 @@ import { ensureWasm, WORKER_HOST } from './protocolClients'
 /** Where the page sends `poentaro app` requests. */
 export const APP_ENDPOINT = `http://${WORKER_HOST}/app`
 
+/** Method names are generated from the schema, including SCHEMA. */
+export type AppMethod = keyof typeof EFFECTS
+
 /** One call of a request, as the generated client names it. */
 export interface AppCall {
-  /** The method's full name, e.g. `files/write _ at revision _ content _`. */
-  method: string
+  /** The method's full name, e.g. `write file _ at revision _ content _`. */
+  method: AppMethod
   arguments: unknown[]
 }
 
@@ -33,7 +37,7 @@ export async function appCallsOf(request: Request): Promise<AppCall[]> {
 /** The request's first call if it is a call of `method`. */
 export async function appCallTo(
   request: Request,
-  method: string,
+  method: AppMethod,
 ): Promise<AppCall | undefined> {
   const [call] = await appCallsOf(request)
   return call?.method === method ? call : undefined
@@ -44,7 +48,7 @@ export async function appCallTo(
  * function that removes the route. */
 export async function routeAppCall(
   page: Page,
-  method: string,
+  method: AppMethod,
   handler: (route: Route, call: AppCall) => Promise<void>,
 ): Promise<() => Promise<void>> {
   const routed = async (route: Route) => {
@@ -58,7 +62,7 @@ export async function routeAppCall(
 
 /** The outcome of each call of `methods`, read from a response's text. */
 export async function outcomesOf(
-  methods: string[],
+  methods: AppMethod[],
   text: string,
 ): Promise<AppOutcome[]> {
   await ensureWasm()
@@ -71,7 +75,7 @@ export async function outcomesOf(
  * the method error's kind in words (`taken by other files`), or how the call
  * failed. */
 export async function answerOf(
-  method: string,
+  method: AppMethod,
   response: Response,
 ): Promise<string> {
   const [outcome] = await outcomesOf([method], await response.text())
@@ -84,11 +88,17 @@ export async function answerOf(
 
 /** One call's outcome, as the generated client reads it: `{ kind:
  * 'value', value }`, `{ kind: 'error', error: { kind, ... } }`, ... */
-export interface AppOutcome {
-  kind: string
-  value?: unknown
-  error?: { kind: string; [field: string]: unknown }
-}
+type ClientOutcome = Awaited<ReturnType<Client[Exclude<keyof Client, 'batch'>]>>
+type AppValue = Extract<ClientOutcome, { kind: 'value' }>['value']
+export type AppOutcome = Outcome<AppValue, AppError>
+
+type AppError = Extract<ClientOutcome, { kind: 'error' }>['error']
+type SimpleAppError = {
+  [Kind in AppError['kind']]: { kind: Kind } extends AppError
+    ? { kind: Kind }
+    : never
+}[AppError['kind']]
+export type AppRefusal = SimpleAppError['kind']
 
 /** Answers the routed request with `outcomes`, one per call, written in
  * Rust as the worker would. */
@@ -121,7 +131,7 @@ export async function answerCall(
 }
 
 /** Answers the routed call with the method error `kind`, e.g. `trashed`. */
-export function refuseCall(route: Route, kind: string): Promise<void> {
+export function refuseCall(route: Route, kind: AppRefusal): Promise<void> {
   return answerCall(route, { kind: 'error', error: { kind } })
 }
 
@@ -129,7 +139,7 @@ export function refuseCall(route: Route, kind: string): Promise<void> {
  * hands the page `rewrite`'s version of each call's answer instead. */
 export function rewriteAnswers(
   page: Page,
-  method: string,
+  method: AppMethod,
   rewrite: (outcome: AppOutcome, call: AppCall) => AppOutcome,
 ): Promise<() => Promise<void>> {
   return routeAppCall(page, method, async (route) => {

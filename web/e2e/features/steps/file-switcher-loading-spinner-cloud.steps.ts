@@ -11,9 +11,9 @@ import { Given, Then, When } from './fixtures'
 Given(
   'the cloud file-list request is delayed by 5 seconds for the file switcher',
   async ({ page }) => {
-    // Delays the `files/list` call `backend.load()` makes so the
+    // Delays the `list files` call `backend.load()` makes so the
     // spinner has a window to be observed before the listing resolves.
-    await routeAppCall(page, 'files/list', async (route) => {
+    await routeAppCall(page, 'list files', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 5000))
       await route.fallback()
     })

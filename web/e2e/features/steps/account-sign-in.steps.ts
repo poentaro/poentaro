@@ -63,7 +63,7 @@ When(
     // including the post-disconnect edit attempt at the very end -- see
     // "no content request is sent to the worker after disconnecting" below.
     page.on('request', (request) => {
-      if (answersCall(request, 'files/write')) {
+      if (answersCall(request, 'write file')) {
         contentSaveRequests.push(request.postData() ?? '')
       }
     })

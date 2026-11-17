@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { DEMO_FILE_NAMES, type FileStoreState } from '../fileStore'
 import { createTestBackend } from './cloudBackendTestHelpers'
 
-const CREATE = 'files/create _ at _ content _'
-const WRITE = 'files/write _ at revision _ content _'
+const CREATE = 'create file _ at _ content _'
+const WRITE = 'write file _ at revision _ content _'
 
 const emptyState: FileStoreState = {
   active: DEMO_FILE_NAMES[0] ?? '',

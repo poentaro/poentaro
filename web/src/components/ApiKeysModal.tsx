@@ -51,8 +51,8 @@ const keyUseStyle: React.CSSProperties = {
   fontSize: '12px',
 }
 
-function day(millis: number): string {
-  return new Date(millis).toLocaleDateString()
+function day(instant: ApiKeySummary['expiresAt']): string {
+  return new Date(instant).toLocaleDateString()
 }
 
 function keyStatus(key: ApiKeySummary): string {

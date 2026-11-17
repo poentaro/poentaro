@@ -19,9 +19,7 @@ When(
     const dialog = page.getByTestId('account-auth-modal')
     await dialog.getByLabel('Password', { exact: true }).fill(password)
     const [response] = await Promise.all([
-      page.waitForResponse((response) =>
-        answersCall(response, 'account/sign in'),
-      ),
+      page.waitForResponse((response) => answersCall(response, 'sign in')),
       dialog.getByRole('button', { name: 'Sign in', exact: true }).click(),
     ])
     const traceId = response.headers()['x-trace-id'] ?? null

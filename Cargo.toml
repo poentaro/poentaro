@@ -57,6 +57,8 @@ debug = true
 # plain `release`) are unaffected.
 [profile.release-wasm]
 inherits = "release"
+opt-level = "z"
+lto = true
 debug = false
 strip = true
 
@@ -98,7 +100,7 @@ rusty_mp3 = { version = "0.7", optional = true }
 zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 base64 = "0.22"
-anyx = { git = "https://github.com/wongjiahau/anyx", rev = "2edb20a79c697a382219c016b1ace899f91fac7e" }
+anyx = { git = "https://github.com/wongjiahau/anyx", rev = "e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4" }
 poentaro-grammar = { path = "crates/poentaro-grammar" }
 poentaro-singer = { path = "crates/poentaro-singer" }
 

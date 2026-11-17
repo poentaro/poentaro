@@ -1,9 +1,11 @@
 //! `poentaro public`: what anyone calls without signing in. It runs the
 //! same code as the REST routes it replaces.
 
-use poentaro_protocol::public::account::{Session, SignInPasswordError, SignUpPasswordError};
-use poentaro_protocol::public::links::{FolderFile, OpenError, Shared, SharedFile, SharedFolder};
-use poentaro_protocol::public::migrations::{ClaimError, UploadError};
+use poentaro_protocol::public::{ClaimOriginHandoffError, MigrationId, UploadOriginHandoffError};
+use poentaro_protocol::public::{
+    FolderFile, OpenSharedLinkError, Shared, SharedFile, SharedFolder,
+};
+use poentaro_protocol::public::{Session, SignInPasswordError, SignUpPasswordError};
 use worker::{D1Database, Env};
 
 use super::internal;
@@ -22,16 +24,7 @@ pub(super) struct PublicServer<'a> {
 
 impl poentaro_protocol::public::Server for PublicServer<'_> {
     type Error = worker::Error;
-}
 
-fn session(response: SessionResponse) -> Session {
-    Session {
-        token: response.session_token,
-        email: response.email,
-    }
-}
-
-impl poentaro_protocol::public::account::Server for PublicServer<'_> {
     async fn sign_up_password(
         &self,
         email: String,
@@ -59,13 +52,55 @@ impl poentaro_protocol::public::account::Server for PublicServer<'_> {
             Err(ApiError::IncorrectCredentials) => Ok(Err(SignInPasswordError::Incorrect)),
             Err(ApiError::SignInLocked {
                 retry_after_seconds,
-            }) => Ok(Err(SignInPasswordError::LockedForSeconds {
-                duration: retry_after_seconds,
+            }) => Ok(Err(SignInPasswordError::LockedFor {
+                duration: std::time::Duration::from_secs(retry_after_seconds.unsigned_abs()),
             })),
             Err(ApiError::InvalidEmail) => Ok(Err(SignInPasswordError::InvalidEmail)),
             Err(ApiError::RateLimited) => Ok(Err(SignInPasswordError::TooManyRequests)),
             Err(error) => Err(internal(error)),
         }
+    }
+
+    async fn open_shared_link(&self, share_id: String) -> Outcome<Shared, OpenSharedLinkError> {
+        match shares::read_share(self.d1, &share_id).await {
+            Ok(doc) => Ok(Ok(shared(doc))),
+            Err(ApiError::SharedFolderTooLarge { message }) => {
+                Ok(Err(OpenSharedLinkError::TooLarge { message }))
+            }
+            Err(error) => Err(internal(error)),
+        }
+    }
+
+    async fn upload_origin_handoff(
+        &self,
+        payload: String,
+    ) -> Outcome<MigrationId, UploadOriginHandoffError> {
+        match origin_migrations::store(self.env, self.d1, &payload, self.meta).await {
+            Ok(id) => Ok(Ok(id.into())),
+            Err(ApiError::OriginMigrationTooLarge { message }) => {
+                Ok(Err(UploadOriginHandoffError::TooLarge { message }))
+            }
+            Err(ApiError::RateLimited) => Ok(Err(UploadOriginHandoffError::TooManyRequests)),
+            Err(error) => Err(internal(error)),
+        }
+    }
+
+    async fn claim_origin_handoff(
+        &self,
+        id: MigrationId,
+    ) -> Outcome<String, ClaimOriginHandoffError> {
+        match origin_migrations::take(self.d1, &id.0).await {
+            Ok(payload) => Ok(Ok(payload)),
+            Err(ApiError::NotFound) => Ok(Err(ClaimOriginHandoffError::Missing)),
+            Err(error) => Err(internal(error)),
+        }
+    }
+}
+
+fn session(response: SessionResponse) -> Session {
+    Session {
+        token: response.session_token,
+        email: response.email,
     }
 }
 
@@ -103,38 +138,5 @@ fn shared(doc: SyncedDoc) -> Shared {
                 revision,
             },
         },
-    }
-}
-
-impl poentaro_protocol::public::links::Server for PublicServer<'_> {
-    async fn open(&self, share_id: String) -> Outcome<Shared, OpenError> {
-        match shares::read_share(self.d1, &share_id).await {
-            Ok(doc) => Ok(Ok(shared(doc))),
-            Err(ApiError::SharedFolderTooLarge { message }) => {
-                Ok(Err(OpenError::TooLarge { message }))
-            }
-            Err(error) => Err(internal(error)),
-        }
-    }
-}
-
-impl poentaro_protocol::public::migrations::Server for PublicServer<'_> {
-    async fn upload(&self, payload: String) -> Outcome<String, UploadError> {
-        match origin_migrations::store(self.env, self.d1, &payload, self.meta).await {
-            Ok(id) => Ok(Ok(id)),
-            Err(ApiError::OriginMigrationTooLarge { message }) => {
-                Ok(Err(UploadError::TooLarge { message }))
-            }
-            Err(ApiError::RateLimited) => Ok(Err(UploadError::TooManyRequests)),
-            Err(error) => Err(internal(error)),
-        }
-    }
-
-    async fn claim(&self, id: String) -> Outcome<String, ClaimError> {
-        match origin_migrations::take(self.d1, &id).await {
-            Ok(payload) => Ok(Ok(payload)),
-            Err(ApiError::NotFound) => Ok(Err(ClaimError::Missing)),
-            Err(error) => Err(internal(error)),
-        }
     }
 }

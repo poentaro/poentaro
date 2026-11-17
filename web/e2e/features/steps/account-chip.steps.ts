@@ -178,7 +178,7 @@ When(
   async ({ page }) => {
     contentSaveRequests = []
     page.on('request', (request) => {
-      if (answersCall(request, 'files/write')) {
+      if (answersCall(request, 'write file')) {
         contentSaveRequests.push(request.postData() ?? '')
       }
     })

@@ -1,4 +1,13 @@
-import type { KeysCreatedKey, KeysKey } from '../generated/protocol/app'
+import {
+  type ChangePasswordFromToError,
+  type CreatedKey,
+  type Key,
+  KeyId,
+} from '../generated/protocol/app'
+import type {
+  SignInPasswordError,
+  SignUpPasswordError,
+} from '../generated/protocol/public'
 import {
   appClient,
   type ClientOptions,
@@ -37,13 +46,9 @@ export type AccountResult<T> =
 
 /** Every error an account method can answer, by `kind`. */
 type AccountError =
-  | { kind: 'emailTaken' }
-  | { kind: 'weakPassword'; message: string }
-  | { kind: 'invalidEmail' }
-  | { kind: 'tooManyRequests' }
-  | { kind: 'incorrect' }
-  | { kind: 'incorrectPassword' }
-  | { kind: 'lockedForSeconds'; duration: number }
+  | ChangePasswordFromToError
+  | SignInPasswordError
+  | SignUpPasswordError
 
 const SOMETHING_WENT_WRONG: AccountFailure = {
   kind: 'message',
@@ -54,8 +59,11 @@ function errorFailure(error: AccountError): AccountFailure {
   switch (error.kind) {
     case 'emailTaken':
       return { kind: 'email-taken' }
-    case 'lockedForSeconds':
-      return { kind: 'locked', retryAfterSeconds: error.duration }
+    case 'lockedFor':
+      return {
+        kind: 'locked',
+        retryAfterSeconds: Math.ceil(error.duration / 1000),
+      }
     case 'invalidEmail':
       return { kind: 'message', message: 'Enter a valid email address.' }
     case 'weakPassword':
@@ -117,7 +125,7 @@ export async function signUp(
   password: string,
 ): Promise<AccountResult<StoredAccountAuth>> {
   const result = await attempt(async (options) =>
-    (await publicClient(options)).account.signUpPassword(email, password),
+    (await publicClient(options)).signUpPassword(email, password),
   )
   return result.ok ? { ok: true, value: stored(result.value) } : result
 }
@@ -127,7 +135,7 @@ export async function signIn(
   password: string,
 ): Promise<AccountResult<StoredAccountAuth>> {
   const result = await attempt(async (options) =>
-    (await publicClient(options)).account.signInPassword(email, password),
+    (await publicClient(options)).signInPassword(email, password),
   )
   return result.ok ? { ok: true, value: stored(result.value) } : result
 }
@@ -140,7 +148,7 @@ export async function changePassword(
   newPassword: string,
 ): Promise<AccountResult<null>> {
   const result = await attempt(async (options) =>
-    (await appClient(identityToken, options)).account.changePasswordFromTo(
+    (await appClient(identityToken, options)).changePasswordFromTo(
       currentPassword,
       newPassword,
     ),
@@ -153,12 +161,12 @@ export async function changePassword(
  * on its own. */
 export function signOutSession(identityToken: string): void {
   void appClient(identityToken)
-    .then((client) => expectValue(client.account.signOut()))
+    .then((client) => expectValue(client.signOut()))
     .catch(() => {})
 }
 
-export type ApiKeySummary = KeysKey
-export type CreatedApiKey = KeysCreatedKey
+export type ApiKeySummary = Key
+export type CreatedApiKey = CreatedKey
 
 /** Runs a call whose method has no errors of its own. */
 async function attemptValue<T>(
@@ -180,7 +188,7 @@ export function listApiKeys(
   identityToken: string,
 ): Promise<AccountResult<ApiKeySummary[]>> {
   return attemptValue(async () =>
-    expectValue((await appClient(identityToken)).keys.list()),
+    expectValue((await appClient(identityToken)).listAgentKeys()),
   )
 }
 
@@ -190,7 +198,7 @@ export function createApiKey(
   identityToken: string,
 ): Promise<AccountResult<CreatedApiKey>> {
   return attemptValue(async () =>
-    expectValue((await appClient(identityToken)).keys.create()),
+    expectValue((await appClient(identityToken)).createAgentKey()),
   )
 }
 
@@ -201,7 +209,7 @@ export function revokeApiKey(
   id: string,
 ): Promise<AccountResult<null>> {
   return attemptValue(async () => {
-    settled(await (await appClient(identityToken)).keys.revoke(id))
+    settled(await (await appClient(identityToken)).revokeAgentKey(KeyId(id)))
     return null
   })
 }

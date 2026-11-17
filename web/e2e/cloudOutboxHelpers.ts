@@ -1,5 +1,5 @@
 import { expect, type Page, type Route } from '@playwright/test'
-import { refuseCall, routeAppCall } from './appCalls'
+import { type AppRefusal, refuseCall, routeAppCall } from './appCalls'
 
 // Generic helpers for e2e scenarios about the cloud outbox (content saves,
 // and later the structural / visibility / conflict phases). Plain functions,
@@ -13,7 +13,7 @@ type ContentSaveFault =
   | { kind: 'status'; status: number }
   /** The server refuses the save with the method error `error`, e.g.
    * `trashed`. */
-  | { kind: 'refuse'; error: string }
+  | { kind: 'refuse'; error: AppRefusal }
   /** The server applies the save, but the browser never sees the response. */
   | { kind: 'drop-response' }
 
@@ -37,7 +37,7 @@ const rulesByPage = new WeakMap<Page, RuleState[]>()
 /** Maps a worker file id to its current name (see `ContentSaveTracker`). */
 export type FileNameResolver = (fileId: string) => string | undefined
 
-const WRITE = 'files/write _ at revision _ content _'
+const WRITE = 'write file _ at revision _ content _'
 
 async function handleContentSave(
   route: Route,
@@ -78,7 +78,7 @@ async function handleContentSave(
 }
 
 /**
- * Faults content-save requests (`files/write` calls) according to
+ * Faults content-save requests (`write file` calls) according to
  * `rule`. Rules accumulate and the first still-active matching one applies.
  * Survives page reloads, so a fault can span a refresh until
  * `allowContentSaves` is called. `nameForId` is only needed for per-file rules.

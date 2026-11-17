@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test'
-import type { FilesFileSummary } from '../../../src/generated/protocol/app'
+import type { FileSummary } from '../../../src/generated/protocol/app'
 import { appCallTo, outcomesOf } from '../../appCalls'
 
-const WRITE = 'files/write _ at revision _ content _'
-const LIST = 'files/list'
+const WRITE = 'write file _ at revision _ content _'
+const LIST = 'list files'
 
 // Shared observation helper for the cloud backend's content-save requests,
 // used by several `.steps.ts` files (`files-cloud-backend`,
@@ -19,7 +19,7 @@ export interface ContentSaveRecord {
 
 export interface ContentSaveTracker {
   records: ContentSaveRecord[]
-  /** File id -> current name, learned from every `files/list`
+  /** File id -> current name, learned from every `list files`
    * answer the page receives -- lets assertions read naturally by
    * filename instead of by the file's opaque D1 id. */
   nameForId: Map<string, string>
@@ -30,14 +30,14 @@ export interface ContentSaveTracker {
  * traffic to the real local worker, via `page.on('request'/'response')`
  * rather than `page.route()` -- mirrors the deleted GitHub backend's
  * `onPut` callback + accumulated `putBodies` array, but for the cloud
- * backend's `files/write` calls. Nothing here
+ * backend's `write file` calls. Nothing here
  * needs to change what actually happens on the wire (every `files/*`
  * call is worker+D1 mediated -- see this feature set's own framing note
  * in the plan), so a passive observer is simpler and safer than a route
  * handler that has to remember to `route.continue()`.
  *
  * Call once per scenario, before navigating, so the very first
- * `files/list` (which populates `nameForId`) is captured too.
+ * `list files` (which populates `nameForId`) is captured too.
  */
 // Module-level, not a fixture -- matches every other `.steps.ts` file's
 // established pattern for cross-step state within one scenario (e.g.
@@ -65,7 +65,8 @@ export function installContentSaveTracking(page: Page): ContentSaveTracker {
     if (!(await appCallTo(response.request(), LIST))) return
     try {
       const [outcome] = await outcomesOf([LIST], await response.text())
-      for (const file of (outcome?.value as FilesFileSummary[]) ?? []) {
+      if (outcome?.kind !== 'value') return
+      for (const file of (outcome.value as FileSummary[]) ?? []) {
         tracker.nameForId.set(file.id, file.path)
       }
     } catch {
@@ -91,7 +92,7 @@ export function currentContentSaveTracker(): ContentSaveTracker {
 
 /** The most recent content-save record for the file currently known by
  * `name`, if any. `undefined` both when no such file has been seen yet
- * (via a `files/list` answer) and when it has but no save has landed
+ * (via a `list files` answer) and when it has but no save has landed
  * for it. */
 export function lastContentSaveFor(
   tracker: ContentSaveTracker,

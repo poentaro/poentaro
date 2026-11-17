@@ -89,7 +89,7 @@ interface SentRequest {
 }
 
 /** Whether `message` (a request, or the response to one) is a protocol
- * request that calls `method`, e.g. `account/sign in`, for steps that
+ * request that calls `method`, e.g. `sign in`, for steps that
  * watch or wait on what the page sends. */
 export function answersCall(
   message: SentRequest | { request(): SentRequest },

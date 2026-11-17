@@ -24,12 +24,12 @@ describe('createCloudBackend: load()', () => {
       { id: 'id-a', path: 'a.poentaro', content: 'a' },
       { id: 'id-b', path: 'b.poentaro', content: 'b' },
     ])
-    server.failNext('files/read _', {
+    server.failNext('read file _', {
       kind: 'error',
       error: { kind: 'missing' },
     })
     const state = await backend.load()
     expect(Object.keys(state.userFiles)).toEqual(['b.poentaro'])
-    expect(server.callsTo('files/read _')).toHaveLength(2)
+    expect(server.callsTo('read file _')).toHaveLength(2)
   })
 })
