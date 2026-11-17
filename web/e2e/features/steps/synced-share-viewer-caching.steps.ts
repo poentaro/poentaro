@@ -1,5 +1,6 @@
 import type { Response } from '@playwright/test'
 import { expect } from '@playwright/test'
+import { publicCallTo } from '../../protocolClients'
 import { AfterScenario, Then, When } from './fixtures'
 import { syncedShareButtonState as state } from './synced-share-button-state'
 
@@ -23,14 +24,13 @@ When(
     state.viewerContext = await browser.newContext()
     state.viewerPage = await state.viewerContext.newPage()
 
-    // Registered before navigation so the initial `GET /shares/:share_id`
-    // fetch (see `useSyncedShareViewer.ts`) can't fire before the listener
-    // is attached.
-    state.viewerPage.on('response', (response) => {
-      if (response.url().includes('/shares/')) capturedShareResponse = response
-    })
+    // Watch the public protocol's document call before navigation starts it.
+    const shareResponse = state.viewerPage.waitForResponse((response) =>
+      publicCallTo(response.request(), 'open shared link _'),
+    )
 
     await state.viewerPage.goto(state.syncedShareLink)
+    capturedShareResponse = await shareResponse
     await state.viewerPage.waitForSelector('.preview-page', {
       timeout: 15_000,
     })

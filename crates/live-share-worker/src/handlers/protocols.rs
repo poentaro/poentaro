@@ -194,6 +194,9 @@ fn text_response(body: String, status: u16) -> Result<Response> {
     response
         .headers_mut()
         .set("Content-Type", "text/plain; charset=utf-8")?;
+    // Protocol replies include live documents and account data. Keep the
+    // same no-store policy as the REST routes, including refused requests.
+    response.headers_mut().set("Cache-Control", "no-store")?;
     Ok(response)
 }
 

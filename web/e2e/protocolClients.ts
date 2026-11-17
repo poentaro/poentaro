@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises'
+import type { Request } from '@playwright/test'
 import * as app from '../src/generated/protocol/app'
 import * as publicProtocol from '../src/generated/protocol/public'
 import * as test from '../src/generated/protocol/test'
-import { setWasmRoot } from '../src/poentaroWasm'
+import { poentaroWasm, setWasmRoot } from '../src/poentaroWasm'
 import { type CallOutcome, settled } from '../src/protocol/outcome'
 import { codecFor, sendTo } from '../src/protocol/transport'
 
@@ -97,4 +98,21 @@ export function answersCall(
 ): boolean {
   const request = 'postData' in message ? message : message.request()
   return request.postData()?.includes(method) ?? false
+}
+
+/** Whether a public-protocol request calls this generated method. */
+export async function publicCallTo(
+  request: Request,
+  method: keyof typeof publicProtocol.EFFECTS,
+): Promise<boolean> {
+  if (
+    request.method() !== 'POST' ||
+    request.url() !== `http://${WORKER_HOST}/public`
+  )
+    return false
+  await ensureWasm()
+  const calls: { method: keyof typeof publicProtocol.EFFECTS }[] = JSON.parse(
+    poentaroWasm().protocolDecodeRequest('public', request.postData() ?? ''),
+  )
+  return calls.some((call) => call.method === method)
 }

@@ -1,12 +1,8 @@
 import { expect } from '@playwright/test'
 import createClient from 'openapi-fetch'
 import type { paths } from '../../../src/generated/live-share-worker/schema'
-import {
-  CLOUD_WORKER_ORIGIN,
-  fulfillWithApiError,
-  seedTokenFor,
-  workerRouteGlob,
-} from '../../cloudFileHelpers'
+import { routeAppCall } from '../../appCalls'
+import { CLOUD_WORKER_ORIGIN, seedTokenFor } from '../../cloudFileHelpers'
 import {
   fileSwitcherTrigger,
   fileTabByExactName,
@@ -42,14 +38,9 @@ Given(
 Given(
   'the worker refuses the share overview as unauthorized',
   async ({ page }) => {
-    await page.route(workerRouteGlob('/shares/overview'), async (route) => {
-      await fulfillWithApiError(route, 401, {
-        code: 'unauthorized',
-        reason: 'Your session has ended. Sign in again.',
-        failedAt: Date.now(),
-        attempts: 1,
-      })
-    })
+    await routeAppCall(page, 'list shared links', (route) =>
+      route.fulfill({ status: 401, body: 'Your session has ended.' }),
+    )
   },
 )
 

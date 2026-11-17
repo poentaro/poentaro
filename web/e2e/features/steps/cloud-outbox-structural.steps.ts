@@ -1,11 +1,8 @@
 import { expect, type Page } from '@playwright/test'
 import createClient from 'openapi-fetch'
 import type { paths } from '../../../src/generated/live-share-worker/schema'
-import {
-  CLOUD_WORKER_ORIGIN,
-  matchWorkerRoute,
-  seedTokenFor,
-} from '../../cloudFileHelpers'
+import { appCallTo } from '../../appCalls'
+import { CLOUD_WORKER_ORIGIN, seedTokenFor } from '../../cloudFileHelpers'
 import {
   fileSwitcherTrigger,
   fileTabByExactName,
@@ -42,12 +39,12 @@ Given('the cloud is unreachable', async ({ page }) => {
   await expect(
     fileSwitcherTrigger(page).locator('.file-tab-bar-spinner'),
   ).toHaveCount(0, { timeout: 15_000 })
-  await page.route(WORKER_ROUTES, (route) =>
+  await page.route(WORKER_ROUTES, async (route) =>
     // The share-status lookup the owner hook fires for every newly active
     // cloud file is unrelated to the outbox, yet raises a full-screen
     // "failed to sync" dialog when it fails (an app discrepancy reported
     // with this test); let it through so the dialog does not cover the page.
-    matchWorkerRoute('/files/{id}/share/status', route.request().url())
+    (await appCallTo(route.request(), 'sharing status of file _'))
       ? route.continue()
       : route.abort('connectionrefused'),
   )
