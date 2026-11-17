@@ -14,9 +14,16 @@ fn rests_keep_their_written_underlines() {
         ("3:{0_. 1_. 2_.} 3 4_ 5", vec![0]),
     ] {
         let source = format!(
-            "# metadata\ntitle=\"Rest underlines\"\n# parts\nM = notes\n# score\n[M] {line}\n"
+            r#"metadata {{ title "Rest underlines" }},
+
+parts ["M": notes],
+
+score """
+    [M] {line}
+    """,
+"#
         );
-        let doc = parse(&source, "test.jianpu", &[]).unwrap();
+        let doc = parse(&source, "test.poentaro", &[]).unwrap();
         let score = group(doc).unwrap();
         let result = compile(&score);
         let row = &result.blocks[0].rows[0];
