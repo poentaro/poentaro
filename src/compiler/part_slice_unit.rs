@@ -57,18 +57,22 @@ pub(super) struct CompiledUnit {
     pub(super) head: ElementContent,
 }
 
-/// Beam/underline count reflects each note's *written* duration (e.g. `=` sixteenth
+/// Beam/underline count reflects each note or rest's *written* duration (e.g. `=` sixteenth
 /// notes always get a double underline), not its tuplet-rescaled duration — a triplet
 /// squeezing 3 sixteenth notes into an eighth note's space is still notated with the
 /// sixteenth note's double beam underneath, with the tuplet bracket/number drawn as a
 /// separate overlay (see `tuplet_spans.rs`). For tuplet-tagged units, undo the
-/// `* den / num` rescale (exact, since `unit.duration` was constructed as a multiple
+/// `* den / num` rescale (exact, since `duration` was constructed as a multiple
 /// of `den`) to recover the multiplier-scaled written duration before comparing it
 /// against the thresholds below.
-fn written_underline_count(unit: &CompiledUnit, multiplier: u32) -> u32 {
-    let scaled_written_duration = match unit.tuplet {
-        Some(TupletInfo { num, den, .. }) => unit.duration / den * num,
-        None => unit.duration,
+pub(super) fn written_underline_count(
+    duration: u32,
+    tuplet: Option<TupletInfo>,
+    multiplier: u32,
+) -> u32 {
+    let scaled_written_duration = match tuplet {
+        Some(TupletInfo { num, den, .. }) => duration / den * num,
+        None => duration,
     };
     if scaled_written_duration == multiplier {
         2
@@ -98,7 +102,7 @@ pub(super) fn compile_unit(
     );
 
     let multiplier = state.multiplier;
-    let underline_count = written_underline_count(&unit, multiplier);
+    let underline_count = written_underline_count(unit.duration, unit.tuplet, multiplier);
 
     state.elements.push(ColumnElement {
         column: *state.col,

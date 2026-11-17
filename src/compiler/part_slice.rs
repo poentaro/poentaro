@@ -1,5 +1,5 @@
 use super::beam::{flush_beam_buffer, BeamEntry};
-use super::part_slice_unit::{compile_unit, CompiledUnit, PartState};
+use super::part_slice_unit::{compile_unit, written_underline_count, CompiledUnit, PartState};
 use super::slur_chains::{extend_note_chains, PendingSlurOpen, SlurChainContext, SlurKey};
 use super::timed_unit::TimedUnit;
 use super::tuplet_spans::{finish_tuplet_spans, record_tuplet_tag, TupletSpanContext};
@@ -284,13 +284,7 @@ fn compile_rest(
     note_id: usize,
 ) {
     let multiplier = state.multiplier;
-    let underline_count = if rest.duration == multiplier {
-        2
-    } else if rest.duration == 2 * multiplier {
-        1
-    } else {
-        0
-    };
+    let underline_count = written_underline_count(rest.duration, rest.tuplet, multiplier);
 
     if underline_count == 0 {
         flush_beam_buffer(state.beam_buf, state.elements);
