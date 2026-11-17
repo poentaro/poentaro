@@ -124,14 +124,14 @@ impl AppServer<'_> {
                 .map(|entry| FileLink {
                     share_id: entry.share_id,
                     file_id: entry.file_id,
-                    path: entry.name,
+                    name: entry.name,
                 })
                 .collect(),
             folders: folders
                 .into_iter()
                 .map(|entry| FolderLink {
                     share_id: entry.share_id,
-                    path: entry.folder,
+                    folder: entry.folder,
                 })
                 .collect(),
         })

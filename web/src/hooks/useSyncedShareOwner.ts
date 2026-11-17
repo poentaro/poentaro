@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { appClient } from '../protocol/clients'
+import { expectValue } from '../protocol/outcome'
 import { useAccountAuth } from '../storage/accountAuth'
 import { signOutSession } from '../storage/accountRequests'
 import {
@@ -6,7 +8,6 @@ import {
   type SyncedShareFailure,
   type SyncedShareOperation,
 } from '../syncedShare/errors'
-import { callWorker, createWorkerClient } from '../syncedShare/workerClient'
 import { buildSyncedShareUrl } from '../syncedShareUrl'
 import { type FolderShares, useFolderShares } from './useFolderShares'
 import type { DisplaySaveStatus } from './useStorageBackend'
@@ -154,13 +155,13 @@ export function useSyncedShareOwner(
   const runShareRequest = useCallback(
     async <Data>(
       operation: SyncedShareOperation,
-      send: (client: ReturnType<typeof createWorkerClient>) => Promise<Data>,
+      send: (client: Awaited<ReturnType<typeof appClient>>) => Promise<Data>,
       options?: { silent?: boolean },
     ): Promise<{ data: Data } | null> => {
       const host = import.meta.env.VITE_SYNCED_SHARE_HOST
-      if (!host) return null
+      if (!host || !identityToken) return null
       try {
-        return { data: await send(createWorkerClient(host)) }
+        return { data: await send(await appClient(identityToken, { host })) }
       } catch (error) {
         const failure = buildSyncedShareFailure(operation, error)
         if (!options?.silent) {
@@ -171,24 +172,25 @@ export function useSyncedShareOwner(
         return null
       }
     },
-    [recordSyncFailure, setAccountAuth],
+    [identityToken, recordSyncFailure, setAccountAuth],
   )
 
   useEffect(() => {
     if (!cloudFileId || !identityToken) return
     void runShareRequest('status', (client) =>
-      callWorker(
-        client.POST('/files/{id}/share/status', {
-          params: { path: { id: cloudFileId } },
-          body: { identityToken },
-        }),
-      ),
+      expectValue(client.sharingStatusOfFile(cloudFileId)),
     ).then((result) => {
       if (!result) return
-      const { share } = result.data
+      const share = result.data
       applyStatusFor(
         cloudFileId,
-        share ? { fileId: cloudFileId, ...share } : null,
+        share.kind === 'neverShared'
+          ? null
+          : {
+              fileId: cloudFileId,
+              shareId: share.shareId,
+              ended: share.kind === 'stopped',
+            },
       )
     })
   }, [cloudFileId, identityToken, runShareRequest, applyStatusFor])
@@ -200,15 +202,10 @@ export function useSyncedShareOwner(
     // a defensive backstop, not the primary gate.
     if (!cloudFileId || !identityToken) return null
     const result = await runShareRequest('start', (client) =>
-      callWorker(
-        client.POST('/files/{id}/share', {
-          params: { path: { id: cloudFileId } },
-          body: { identityToken },
-        }),
-      ),
+      expectValue(client.startSharingFile(cloudFileId)),
     )
     if (!result) return null
-    const { shareId } = result.data
+    const shareId = result.data
     applyStatusFor(cloudFileId, {
       fileId: cloudFileId,
       shareId,
@@ -227,12 +224,7 @@ export function useSyncedShareOwner(
     if (!isSynced || !cloudFileId || !identityToken || !status) return
     const stopped = { ...status, ended: true }
     void runShareRequest('stop', (client) =>
-      callWorker(
-        client.POST('/files/{id}/share/stop', {
-          params: { path: { id: cloudFileId } },
-          body: { identityToken },
-        }),
-      ),
+      expectValue(client.stopSharingFile(cloudFileId)),
     ).then((result) => {
       if (result) applyStatusFor(cloudFileId, stopped)
     })

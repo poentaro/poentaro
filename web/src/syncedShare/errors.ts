@@ -9,6 +9,7 @@
 // backstop for any other failure shape (a raw non-2xx body, a thrown network
 // error) that might somehow echo one back.
 
+import { SessionEnded } from '../protocol/transport'
 import { WorkerRequestError } from './workerClient'
 
 export type SyncedShareOperation = 'start' | 'stop' | 'status'
@@ -76,6 +77,14 @@ export function buildSyncedShareFailure(
   operation: SyncedShareOperation,
   error: unknown,
 ): SyncedShareFailure {
+  if (error instanceof SessionEnded) {
+    return {
+      operation,
+      reason: 'Your session has ended.',
+      failedAt: Date.now(),
+      authRejected: true,
+    }
+  }
   if (!(error instanceof WorkerRequestError)) {
     const message = error instanceof Error ? error.message : String(error)
     return {

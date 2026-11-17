@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ShareOverview } from '../poentaroWasm'
+import type { appClient } from '../protocol/clients'
+import { expectValue } from '../protocol/outcome'
 import type { SyncedShareOperation } from '../syncedShare/errors'
-import {
-  callWorker,
-  type createWorkerClient,
-} from '../syncedShare/workerClient'
 import { buildSyncedShareUrl } from '../syncedShareUrl'
 import type { DisplaySaveStatus } from './useStorageBackend'
 
 const NO_SHARES: ShareOverview = { files: [], folders: [] }
 
-type WorkerClient = ReturnType<typeof createWorkerClient>
+type WorkerClient = Awaited<ReturnType<typeof appClient>>
 
 /** Sends one owner-side request and records its failure (see
  * `useSyncedShareOwner`'s `runShareRequest`). */
@@ -71,10 +69,7 @@ export function useFolderShares({
     }
     const result = await runShareRequest(
       'status',
-      (client) =>
-        callWorker(
-          client.POST('/shares/overview', { body: { identityToken } }),
-        ),
+      (client) => expectValue(client.listSharedLinks()),
       { silent: true },
     )
     if (result) setOverview(result.data)
@@ -97,13 +92,11 @@ export function useFolderShares({
     async (folder: string, name: string): Promise<string | null> => {
       if (!enabled || !identityToken) return null
       const result = await runShareRequest('start', (client) =>
-        callWorker(
-          client.POST('/folders/share', { body: { identityToken, folder } }),
-        ),
+        expectValue(client.startSharingFolder(folder)),
       )
       if (!result) return null
       await refresh()
-      return buildSyncedShareUrl(result.data.shareId, name)
+      return buildSyncedShareUrl(result.data, name)
     },
     [enabled, identityToken, runShareRequest, refresh],
   )
@@ -112,11 +105,7 @@ export function useFolderShares({
     async (folder: string): Promise<void> => {
       if (!enabled || !identityToken) return
       const result = await runShareRequest('stop', (client) =>
-        callWorker(
-          client.POST('/folders/share/stop', {
-            body: { identityToken, folder },
-          }),
-        ),
+        expectValue(client.stopSharingFolder(folder)),
       )
       if (result) await refresh()
     },

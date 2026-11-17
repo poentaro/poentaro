@@ -11,9 +11,9 @@ CHOICE Status {
     stopped (share id: Text),
 },
 
-RECORD File Link { share id: Text, file id: Text, path: Text },
+RECORD File Link { share id: Text, file id: Text, name: Text },
 
-RECORD Folder Link { share id: Text, path: Text },
+RECORD Folder Link { share id: Text, folder: Text },
 
 # Every live link. A file or folder is also shared through any shared
 # folder it's in.
