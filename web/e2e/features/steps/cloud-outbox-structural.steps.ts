@@ -1,6 +1,4 @@
 import { expect, type Page } from '@playwright/test'
-import createClient from 'openapi-fetch'
-import type { paths } from '../../../src/generated/live-share-worker/schema'
 import { appCallTo } from '../../appCalls'
 import { CLOUD_WORKER_ORIGIN, seedTokenFor } from '../../cloudFileHelpers'
 import {
@@ -10,6 +8,7 @@ import {
   openFileActions,
   openFileList,
 } from '../../fileSwitcherHelpers'
+import { appClient, valueOrFail } from '../../protocolClients'
 import {
   currentSeededFileDisplayName,
   currentSignedInEmail,
@@ -17,7 +16,6 @@ import {
 import { gotoCloudApp } from './cloud-account-helpers'
 import { Given, Then, When } from './fixtures'
 
-const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 const WORKER_ROUTES = `${CLOUD_WORKER_ORIGIN}/**`
 /** The longest retry delay (Appendix A.2: backoff capped at 60 s). */
 const OUTBOX_RETRY_CAP_MS = 65_000
@@ -118,13 +116,12 @@ Then(
     await expect
       .poll(
         async () => {
-          const { data } = await worker.POST('/files/list', {
-            body: { identityToken },
-          })
-          return (
-            data?.files.some(
-              (file) => file.name === fileName && file.trashedAt === null,
-            ) ?? false
+          const files = await valueOrFail(
+            'list files',
+            (await appClient(identityToken)).listFiles(),
+          )
+          return files.some(
+            (file) => file.path === fileName && file.trashedAt === undefined,
           )
         },
         { timeout: DELIVERY_TIMEOUT_MS },

@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
-import createClient from 'openapi-fetch'
-import type { paths } from '../../../src/generated/live-share-worker/schema'
 import { routeAppCall } from '../../appCalls'
-import { CLOUD_WORKER_ORIGIN, seedTokenFor } from '../../cloudFileHelpers'
+import { seedTokenFor } from '../../cloudFileHelpers'
 import {
   fileSwitcherTrigger,
   fileTabByExactName,
@@ -16,8 +14,6 @@ import { Given, Then, When } from './fixtures'
 
 // Covers session-ended.feature: a session that ends while the page still
 // holds it signs the browser out at the first refused request.
-
-const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 
 Given(
   'I open {string} from the cloud file list',
@@ -76,10 +72,12 @@ Then(
     await expect
       .poll(
         async () => {
-          const { data } = await worker.POST('/files/list', {
-            body: { identityToken },
-          })
-          return data?.files.find((file) => file.name === name)?.content
+          const client = await appClient(identityToken)
+          const files = await valueOrFail('list files', client.listFiles())
+          const file = files.find((file) => file.path === name)
+          return file
+            ? (await valueOrFail('read file', client.readFile(file.id))).content
+            : undefined
         },
         { timeout: 15_000 },
       )

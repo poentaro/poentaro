@@ -1,8 +1,5 @@
 import { expect, type Page } from '@playwright/test'
-import createClient from 'openapi-fetch'
-import type { paths } from '../../../src/generated/live-share-worker/schema'
 import {
-  CLOUD_WORKER_ORIGIN,
   DEFAULT_CLOUD_FILE_CONTENT,
   seedCloudFile,
   seedTokenFor,
@@ -13,12 +10,11 @@ import {
   focusEditor,
   openFileList,
 } from '../../fileSwitcherHelpers'
+import { appClient, valueOrFail } from '../../protocolClients'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { gotoCloudApp } from './cloud-account-helpers'
 import { installContentSaveTracking } from './cloud-content-save-tracking'
 import { Given, Then, When } from './fixtures'
-
-const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 
 const EDITOR_LINES = '.monaco-editor .view-lines'
 const displayName = (fileName: string) => fileName.replace(/\.poentaro$/, '')
@@ -42,29 +38,29 @@ async function changeServerCopy(
   content: string,
 ): Promise<void> {
   const identityToken = await seedTokenFor(currentSignedInEmail())
-  const { data: listed } = await worker.POST('/files/list', {
-    body: { identityToken },
-  })
-  const file = listed?.files.find(
-    (candidate) => candidate.name === fileName && candidate.trashedAt === null,
+  const client = await appClient(identityToken)
+  const files = await valueOrFail('list files', client.listFiles())
+  const file = files.find(
+    (file) => file.path === fileName && file.trashedAt === undefined,
   )
   if (!file) throw new Error(`no server file named ${fileName}`)
-  const { error } = await worker.POST('/files/{id}/content', {
-    params: { path: { id: file.id } },
-    body: { identityToken, content, expectedRevision: file.revision },
-  })
-  if (error) throw new Error(`server edit failed: ${JSON.stringify(error)}`)
+  await valueOrFail(
+    'write file',
+    client.writeFileAtRevisionContent(file.id, file.revision, content),
+  )
 }
 
 /** The server's current content of `fileName` ('' when absent). */
 async function serverContentOf(fileName: string): Promise<string> {
   const identityToken = await seedTokenFor(currentSignedInEmail())
-  const { data } = await worker.POST('/files/list', { body: { identityToken } })
-  return (
-    data?.files.find(
-      (file) => file.name === fileName && file.trashedAt === null,
-    )?.content ?? ''
+  const client = await appClient(identityToken)
+  const files = await valueOrFail('list files', client.listFiles())
+  const file = files.find(
+    (file) => file.path === fileName && file.trashedAt === undefined,
   )
+  return file
+    ? (await valueOrFail('read file', client.readFile(file.id))).content
+    : ''
 }
 
 /** Loads the app (installing save tracking first) and opens `name`. */

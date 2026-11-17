@@ -1,11 +1,11 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { routeAppCall } from '../../appCalls'
 import {
   DEFAULT_CLOUD_FILE_CONTENT,
   renameCloudFile,
   seedCloudFile,
   seedTokenFor,
   trashCloudFile,
-  workerRouteGlob,
 } from '../../cloudFileHelpers'
 import { openFileList } from '../../fileSwitcherHelpers'
 import { currentSignedInEmail } from './cloud-account.steps'
@@ -73,7 +73,7 @@ async function openViewer(
     const released = new Promise<void>((resolve) => {
       releaseViewerFileList = resolve
     })
-    await page.route(workerRouteGlob('/files/list'), async (route) => {
+    await routeAppCall(page, 'list files', async (route) => {
       await released
       await route.continue()
     })

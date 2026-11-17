@@ -79,20 +79,9 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             .with_cors(&cors);
     }
 
-    let e2e_reset_enabled = env.var(e2e_reset::EMAILS_VAR).is_ok();
     let route = format!("{} {}", req.method(), req.path());
     let request_meta = handlers::request_meta(&req);
-    let outcome = handlers::routes(e2e_reset_enabled)?
-        .into_router()
-        .run(req, env.clone())
-        .await;
-    let response = match outcome {
-        Ok(response) if response.headers().has(handlers::TRACE_ID_HEADER)? => response,
-        // No route matched: the router's own plain-text 404/405.
-        Ok(_) => handlers::fail(&env, &route, ApiError::NotFound, &request_meta).await?,
-        // The router itself failed, outside any route's `fail`.
-        Err(error) => handlers::fail(&env, &route, error.into(), &request_meta).await?,
-    };
+    let response = handlers::fail(&env, &route, ApiError::NotFound, &request_meta).await?;
     response.with_cors(&cors)
 }
 

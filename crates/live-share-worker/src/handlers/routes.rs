@@ -351,10 +351,6 @@ impl Routes {
         Ok(self)
     }
 
-    pub(crate) fn into_router(self) -> Router<'static, ()> {
-        self.router
-    }
-
     pub(crate) fn into_openapi(self) -> OpenApi {
         OpenApiBuilder::new()
             .info(Info::new("live-share-worker", env!("CARGO_PKG_VERSION")))

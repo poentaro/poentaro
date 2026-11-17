@@ -1,13 +1,11 @@
 import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
-import createClient from 'openapi-fetch'
-import type { paths } from '../../../src/generated/live-share-worker/schema'
 import { answerOf, appCallTo, routeAppCall } from '../../appCalls'
-import { CLOUD_WORKER_ORIGIN, seedTokenFor } from '../../cloudFileHelpers'
+import { seedTokenFor } from '../../cloudFileHelpers'
+import { appClient, valueOrFail } from '../../protocolClients'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { Given, Then, When } from './fixtures'
 
-const worker = createClient<paths>({ baseUrl: CLOUD_WORKER_ORIGIN })
 const FOLDER_MOVE = 'move folder _ to _'
 const DELIVERY_TIMEOUT_MS = 25_000
 
@@ -61,13 +59,12 @@ Then(
     await expect
       .poll(
         async () => {
-          const { data } = await worker.POST('/files/list', {
-            body: { identityToken },
-          })
-          return (
-            data?.files.some(
-              (file) => file.name === fileName && file.trashedAt === null,
-            ) ?? false
+          const files = await valueOrFail(
+            'list files',
+            (await appClient(identityToken)).listFiles(),
+          )
+          return files.some(
+            (file) => file.path === fileName && file.trashedAt === undefined,
           )
         },
         { timeout: DELIVERY_TIMEOUT_MS },
