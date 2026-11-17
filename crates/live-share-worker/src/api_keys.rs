@@ -6,8 +6,7 @@
 //! D1-free and `pub` so `tests/api_keys.rs` can test it; the queries live in
 //! `db::api_keys` and the routes in `handlers::api_keys`.
 
-use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
+use serde::Serialize;
 
 /// What every key starts with, so a leaked key is recognisable.
 pub const KEY_PREFIX: &str = "poe_";
@@ -83,7 +82,7 @@ pub fn agent_prompt(origin: &str, key: &str) -> String {
 }
 
 /// A key in a response.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiKeySummary {
     pub id: String,
@@ -111,34 +110,12 @@ impl ApiKeySummary {
     }
 }
 
-/// Body of `POST /api-keys`, `POST /api-keys/list` and
-/// `POST /api-keys/{id}/revoke`.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ApiKeysRequest {
-    pub identity_token: String,
-}
-
-/// Response of `POST /api-keys/list`: the caller's keys, newest first.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ListApiKeysResponse {
-    pub keys: Vec<ApiKeySummary>,
-}
-
 /// Response of `POST /api-keys`. `prompt` holds the whole key; neither is
 /// shown again.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatedApiKey {
     pub key: ApiKeySummary,
     /// What the owner pastes into their agent (`agent_prompt`).
     pub prompt: String,
-}
-
-/// Path parameters of `POST /api-keys/{id}/revoke`.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, IntoParams)]
-#[into_params(parameter_in = Path)]
-pub struct ApiKeyIdPath {
-    pub id: String,
 }

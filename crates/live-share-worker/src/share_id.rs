@@ -17,7 +17,6 @@
 use std::future::Future;
 
 use serde::Serialize;
-use utoipa::openapi::schema::{Object, ObjectBuilder, Type};
 use worker::{D1Database, Result};
 
 use crate::db;
@@ -41,7 +40,7 @@ const ID_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
 /// function: as the `share_id` path param's schema in the OpenAPI spec
 /// (`share_id_schema`), and as
 /// `web/src/generated/live-share-worker/shareIdFormat.json`
-/// (`tests/export_openapi.rs`), which `web/src/syncedShareUrl.ts` and
+/// (`tests/export_web_config.rs`), which `web/src/syncedShareUrl.ts` and
 /// `web/functions/index.ts` read to parse a share link.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ShareIdFormat {
@@ -69,17 +68,6 @@ fn escape_in_character_class(character: char) -> String {
         '\\' | ']' | '[' | '^' | '-' => format!("\\{character}"),
         _ => character.to_string(),
     }
-}
-
-/// The OpenAPI schema of a `share_id` path param -- see `ShareIdFormat`.
-pub(crate) fn share_id_schema() -> Object {
-    let format = share_id_format();
-    ObjectBuilder::new()
-        .schema_type(Type::String)
-        .min_length(Some(format.length))
-        .max_length(Some(format.length))
-        .pattern(Some(format.pattern))
-        .build()
 }
 
 pub(crate) fn generate_id(length: usize) -> String {

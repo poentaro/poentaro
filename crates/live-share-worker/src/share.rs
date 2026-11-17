@@ -6,7 +6,7 @@
 //! owner-scoped SQL in `queries/`, the same way the `/files/*` routes work,
 //! so nothing here needs to compare identities.
 
-use crate::protocol::SyncedDoc;
+use crate::model::SyncedDoc;
 
 /// What `queries/get_share_view.sql` returns for a share id: the share's
 /// own state plus the fields of the file it points at. Never carries the

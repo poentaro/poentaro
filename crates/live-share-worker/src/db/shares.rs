@@ -5,7 +5,7 @@ use worker::wasm_bindgen::JsValue;
 use worker::{D1Database, Result};
 
 use crate::folder_share::{FolderFileRow, FolderShareHeader, FolderStats};
-use crate::protocol::{FileShareEntry, FolderShareEntry, ShareStatus};
+use crate::model::{FileShareEntry, FolderShareEntry, ShareStatus};
 use crate::share::ShareView;
 
 const GET_SHARE_VIEW: &str = include_str!("../../queries/get_share_view.sql");

@@ -94,20 +94,8 @@ export function buildSyncedShareFailure(
       authRejected: false,
     }
   }
-  const { apiError, response } = error
+  const { response } = error
   const traceId = error.traceId ?? undefined
-  if (apiError?.code === 'unauthorized') {
-    return {
-      operation,
-      reason: redactSecrets(apiError.reason),
-      failedAt: apiError.failedAt,
-      attempts: apiError.attempts,
-      httpStatus: response.status,
-      httpStatusText: response.statusText,
-      traceId,
-      authRejected: true,
-    }
-  }
   return {
     operation,
     reason: `Synced Share "${operation}" request failed`,

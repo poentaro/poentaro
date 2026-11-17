@@ -1,19 +1,11 @@
-//! The one error body every route answers a failure with. A tagged union
-//! (`code`) rather than ad-hoc status/body pairs, so the web client's
-//! generated types (see `crate::handlers::routes`) let it `switch` on
-//! `code` exhaustively instead of re-matching raw HTTP statuses or
-//! hand-typed `{code: "..."}` literals. The HTTP status is derived from the
-//! variant (`status_code`), never chosen separately at a call site.
-//!
-//! On the wire every failure is an `ApiErrorBody`: the `ApiError` plus the
-//! request's trace ID, which the web app shows and `app_log` is keyed by.
+//! Internal service errors, translated into method errors by AnyX servers.
+//! Unhandled HTTP failures retain a trace ID for request logging.
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::auth::session::VerificationFailure;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "code", rename_all = "snake_case")]
 pub enum ApiError {
     /// The request body or a path parameter didn't parse.
@@ -124,7 +116,7 @@ impl ApiError {
 /// trace ID next to its `code` (and in the `X-Trace-Id` header). The ID is
 /// also the `trace_id` of the request's `app_log` row, so a user can send it
 /// and the failure can be looked up directly.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ApiErrorBody {
     #[serde(flatten)]
     pub error: ApiError,

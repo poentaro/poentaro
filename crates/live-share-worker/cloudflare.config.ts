@@ -12,7 +12,7 @@ import deploy from './deploy.json' with { type: 'json' }
 
 // Local-run overrides, `{ "<var name>": "<value>" }` as JSON in
 // `WORKER_VAR_OVERRIDES` (cf has no `--var` flag): e2e's
-// `web/playwright.config.ts` enables the test-only `POST /e2e/reset` route
+// `web/playwright.config.ts` enables the test-only `POST /test` route
 // with it. Never set on deploy, so production only ever sees the values
 // declared below.
 const overrides: Record<string, string> = JSON.parse(
@@ -78,7 +78,7 @@ export default defineConfig({
         simple: { limit: rateLimitOverride ?? 60, period: 60 },
       }),
       // The worker never reads it; it is declared so this crate is the
-      // single source of deployment config -- `tests/export_openapi.rs`
+      // single source of deployment config -- `tests/export_web_config.rs`
       // publishes `deploy.json` to
       // `web/src/generated/live-share-worker/deployConfig.json`.
       SYNCED_SHARE_PUBLIC_HOST: bindings.text(deploy.workerHost),

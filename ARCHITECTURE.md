@@ -540,40 +540,12 @@ migrations (see "Storage" below), nothing else.
   (observability)" below — and then expired `origin_migrations` rows.
 - File names are slash paths: `files.name` holds the whole path (`Hymns/Advent/O Come.poentaro`) and `idx_files_owner_name` (unique on `(owner_user_id, name)`) is therefore a uniqueness constraint on the full path; the schema has no length cap or character filter. The worker depends on the root `poentaro` crate (`default-features = false`, same as `crates/poentaro-wasm`), and `files::validate_file_name` runs `file_tree::TreePath::parse` on the name of every `POST /files`, `/files/{id}/rename` and `/files/{id}/restore` before touching D1, so the web app and the worker share one rule set (no empty segments, no `.`/`..`, at most 1024 UTF-8 bytes for the whole path). A violation answers `ApiError::InvalidName` (400). `POST /files/rename-batch` (`{identityToken, moves:[{id,name}]}`, `RenameBatchRequest`) validates every name, then `files::plan_batch_rename` over the current rows decides `Apply`, `AlreadyApplied` (an ack-lost retry succeeds), `NotFound`, `Invalid` or `NamesTaken`; the move itself is one `UPDATE ... json_each(?1)` statement (`queries/rename_files_batch.sql`), atomic by statement semantics and free of D1's per-invocation query limit. Create, rename, restore and batch rename also enforce that a path is not both a file and a folder: the handler loads the owner's live file names (`queries/list_live_file_names.sql`) and `files::find_file_folder_conflict` judges the final state (a batch is evaluated as a whole; `<folder>/.keep` is an ordinary file, so it only conflicts with a file named `<folder>`). A violation answers `ApiError::FileFolderConflict { path }` (409), which the outbox treats as a permanent failure. The check is read-then-write, not atomic, so two concurrent writes can still race past it. `share::to_public_doc` returns only the last path segment as `filename`, so a viewer of one shared file never sees the owner's folder names.
 - Folder shares (`src/folder_share.rs`, pure; handlers in `handlers/shares.rs`; migration `0005_folder_shares.sql`): a `shares` row is either a file share (`file_id`) or a folder share (`folder_prefix`, the folder path without trailing slash), exactly one (CHECK), and now carries its own `owner_user_id` (file shares used to derive it from the file). A folder has at most one row per owner (unique `(owner_user_id, folder_prefix)`), so stop-then-start reuses the `share_id`. The worker still knows nothing about folders as entities: a folder share covers every active, non-binned file whose name starts with `<prefix>/` at read time (matched with `substr`, whole segments, so `Hymns` never covers `Hymns 2/...`; `%`/`_` are literal), so files added, edited, moved in or out and deleted show on the viewer's next load (no push, no polling). Shared folders are read-only for viewers. Routes: `POST /folders/share` (`FolderShareRequest {identityToken, folder}` -> `{shareId}`; `folder` validated with `TreePath` rules plus "no `.keep` segment" -> `invalid_name`; `not_found` when the folder has no active file, a `.keep` placeholder counts; `shared_folder_too_large` (413) over the limits), `/folders/share/stop` (204, or `not_found` if never shared; works on a folder that has since emptied), `/folders/share/status` (`{share: {shareId, ended} | null}`, same shape as the file status). `POST /shares/overview` (`{identityToken}` -> `{files: [{shareId, fileId, name}], folders: [{shareId, folder}]}`, live links only, binned files excluded) is the one read the share UI derives everything from: own-link markers, "shared via <ancestor>" (a `folders` entry that is a path-segment prefix of the file/folder) and the "this folder contains files with their own link" warning. Viewer: `GET /shares/{share_id}` falls through from the file-share view to `get_folder_share_header`; for a folder share `SyncedDoc.folder` (`SharedFolder {name, files: [{path (relative to the shared folder), content, revision}], emptyFolders}`) holds the tree, `filename` repeats the folder name, `content` is `""` and `revision` 0; `.keep` rows are never files, and `emptyFolders` are placeholder folders with no file under them. `folder` is absent (skipped, not `null`) for file shares, ended shares and unknown ids, so those responses are unchanged. A stopped share answers `ended: true` with nothing else; a live folder with no files is an empty live tree (trashing every file does not end the share). Size limit: `folder_share::MAX_SHARED_FOLDER_FILES` (300 files, placeholders included) and `MAX_SHARED_FOLDER_BYTES` (10 MiB of content), checked by `get_folder_files_stats.sql` both when starting and when a viewer loads; over it answers `ApiError::SharedFolderTooLarge`, never a truncated tree. Renames: `POST /files/rename-batch` reads the owner's folder-share prefixes (live or stopped), and `folder_share::plan_prefix_rewrites` treats a prefix as moved when the batch moves every active file under it to one common new folder keeping the rest of each path (a folder rename/move); nested shared folders get their own rewrite, partial moves leave the share alone (it follows the prefix, not file ids). The file renames and `rewrite_folder_share_prefix.sql` updates go out in one D1 `batch` (one transaction), so the link keeps its `share_id`; a rewrite onto a folder that already has its own share hits the unique index and answers `name_taken`.
-- Route list and generated client: `handlers::routes()` is the one list of
-  routes. Each `.get(path, handler)`/`.post(path, handler)` call on
-  `handlers::routes::Routes` registers the route into both the
-  `worker::Router` and an OpenAPI spec, deriving every part of the spec
-  from the handler's signature — path params from an `IntoParams` struct
-  (`protocol::FileIdPath`/`ShareIdPath`, checked against the path
-  template's `{name}` segments when the list is built), the request body
-  from a `ToSchema` type, the success response from its `Reply` type
-  (`Json<T>` → `200`, `NoContent` → `204`), and `api_error::ApiError` as
-  every route's `default` response. `openapi_json()` (`src/lib.rs`) serializes
-  that spec; `tests/export_openapi.rs` writes it to
-  `web/src/generated/live-share-worker/openapi.json`, and `web`'s
-  `build:worker-types` script turns it into `schema.ts` with
-  `openapi-typescript` (pinned to TypeScript 5 by `web/.pnpmfile.cjs`, since
-  it needs the TS 5 compiler API). The same test also writes
-  `shareIdFormat.json` there (`share_id::share_id_format()`: a `share_id`'s
-  length and anchored regex), a runtime value rather than a type, which
-  `web/src/syncedShareUrl.ts` and the Pages Function `web/functions/index.ts`
-  import to parse share links — so neither restates the id shape — and
-  `e2eWorkerConfig.json` (`e2e_worker_config::e2e_worker_config()`: the `--var`
-  name `web/playwright.config.ts` sets to enable `POST /e2e/reset`) and
-  `deployConfig.json` (the public host out of `deploy.json`, which
-  `web/vite.config.ts` and `web/functions/index.ts` read). All five
-  files are gitignored and regenerated by `build:worker-types` (run by
-  `predev`/`prebuild` and the `web-typecheck` pre-commit job), so they
-  can't go stale against the Rust source. `web/src/syncedShare/workerClient.ts`'s
-  `createWorkerClient(host)` is an `openapi-fetch` client over those types,
-  and `callWorker` turns each call's result into its success body or a
-  `NetworkFailure`/`UnreadableResponse`/`WorkerRequestError` (the latter
-  carrying the parsed `ApiError`) — every web call site and e2e helper
-  (`web/e2e/cloudFileHelpers.ts`) goes through it, and the Pages Function
-  `web/functions/index.ts` builds its own `openapi-fetch` client over the same
-  `paths` type (keeping SPA code out of its edge bundle), so no path, method,
-  body shape or error literal is restated by hand in TS.
+- Protocol clients: AnyX schemas generate Rust servers and TypeScript clients,
+  with Rust wasm codecs. The worker serves `/public`, `/app`, `/agent`, and
+  test-only `/test`; former REST URLs return 404. `build:worker-types` runs
+  `tests/export_web_config.rs` for share-id format, deployment settings and
+  test-worker configuration, then generates the AnyX clients. It produces no
+  OpenAPI spec or REST client. Pages previews and Node e2e helpers use AnyX.
 - Storage: D1 (SQLite), not the old KV namespace. Schema in
   `live-share-worker/migrations/0001_init.sql` (shared, as plain `.sql`,
   between real D1 migrations and a local shadow SQLite database
@@ -819,9 +791,8 @@ text, and the methods are declared in a schema.
 
 ### Web app protocols (`/public`, `/app`, `/test`)
 
-The web app is moving off the REST routes onto three anyx protocols, each
-generated from its folder in `crates/poentaro-protocol/schemas`. The REST
-routes stay served until no old tab calls them.
+The web app uses three AnyX protocols generated from
+`crates/poentaro-protocol/schemas`. The REST routes have been removed.
 
 - Route (`src/handlers/protocols.rs`, `handlers::protocol_endpoint` /
   `serve_protocol`): `POST /public` needs no credential; `POST /app` needs a
@@ -832,8 +803,7 @@ routes stay served until no old tab calls them.
   `409`, and the web app asks to reload.
 - Servers: `PublicServer` (`protocols/public.rs`), `AppServer`
   (`protocols/app.rs`, with `app/server.rs` delegating to `app/files.rs` and `app/links.rs`) and
-  `TestServer` (`protocols/test.rs`). They call the same cores as the REST
-  handlers: `handlers::file_store` for file writes, `shares::start_file_link`
+  `TestServer` (`protocols/test.rs`). They call the service cores: `handlers::file_store` for file writes, `shares::start_file_link`
   and friends, `api_keys::create_key`/`revoke_key`, `auth::create_account`,
   `start_session`, `end_session`, `replace_password`.
 - The app addresses files by id. `list files` returns summaries without
@@ -1175,7 +1145,7 @@ away from the wasm build both times:
 | **token tag** | `app_log::token_tag`: the first 12 hex chars of a session token's SHA-256 hash (`auth::session::hash_token`). Enough to tell tokens apart in `app_log`, never the token or full hash. |
 | **VerificationFailure** | `auth::session::VerificationFailure { reason, failed_at, attempts }`: why a request's token was refused (no live session), returned as `ApiError::Unauthorized` (a `401` body with `code: "unauthorized"` beside these fields). `attempts` is always 1, kept from the GitHub era so the web reads it unchanged. Never carries the token or its hash. |
 | **ApiError** | `api_error::ApiError`: the `code`-tagged union every Synced Share worker route answers a failure with; its HTTP status is derived from the variant. `web/` switches on the generated `code` literals (`WorkerRequestError.apiError`), never on raw statuses. |
-| **Worker client** | The typed `openapi-fetch` client for the Synced Share worker (`web/src/syncedShare/workerClient.ts`), generated from the OpenAPI spec that `handlers::routes()` builds from the Rust handlers' own signatures — see "Route list and generated client". |
+| **Worker client** | The generated AnyX clients and Rust wasm codecs, used by the browser, Pages previews and e2e helpers. |
 | **owner_user_id** | A file's owner (`files.owner_user_id`, an internal `users.id`), and so also the owner of that file's share — `shares` has no owner column of its own. Replaced the old KV model's bearer `ownerToken`, which any first writer could claim. |
 | **Account** | An email + password (`password_credentials`) on a `users` row, signing in to **both** cloud file storage and Synced Share ownership. Held in the browser as `accountAuth.ts`'s `{ token, email }` under `poentaro:account-auth:v2`. See "Accounts (email + password)". |
 | **static folder link** | A `#share-folder=<payload>` link carrying a compressed `FolderSnapshot` of a folder at one moment; works for local and cloud folders, never updates, and is not offered above `MAX_STATIC_FOLDER_LINK_CHARS` (the dialog suggests a synced link instead). |

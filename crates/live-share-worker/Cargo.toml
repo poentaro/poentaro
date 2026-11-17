@@ -34,12 +34,6 @@ web-sys = { version = "0.3", features = [
     "Pbkdf2Params",
     "SubtleCrypto",
 ] }
-# Describes every route (method, path, params, request/response bodies,
-# `ApiError`) as OpenAPI, from the same `#[utoipa::path]` annotations the
-# worker `Router` is registered from (see `src/handlers/routes.rs`) --
-# `web/` generates its typed client from the exported spec, so the two
-# can't drift.
-utoipa = "6"
 # File names are slash paths (`Hymns/Advent/O Come.poentaro`); the web app and
 # this worker validate them with the very same rules, `file_tree::TreePath`
 # (no empty segments, no `.`/`..`, at most 1024 UTF-8 bytes for the whole

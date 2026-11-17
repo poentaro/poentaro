@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  NetworkFailure,
-  WorkerRequestError,
-  type WorkerSchemas,
-} from '../syncedShare/workerClient'
+import { SessionEnded } from '../protocol/transport'
+import { NetworkFailure, WorkerRequestError } from '../syncedShare/workerClient'
 import { cloudLoadRetryDelayMs, isAuthRejection } from './useCloudStoreLoader'
 
 describe('cloudLoadRetryDelayMs', () => {
@@ -18,28 +15,17 @@ describe('cloudLoadRetryDelayMs', () => {
   })
 })
 
-function workerError(
-  status: number,
-  body: WorkerSchemas['ApiError'],
-): WorkerRequestError {
+function workerError(status: number, body: unknown): WorkerRequestError {
   return new WorkerRequestError(new Response(null, { status }), {
-    ...body,
-    traceId: '0123456789abcdef',
+    body,
   })
 }
 
 describe('isAuthRejection', () => {
   it('treats an unauthorized ApiError as a rejected token', () => {
-    expect(
-      isAuthRejection(
-        workerError(401, {
-          code: 'unauthorized',
-          reason: 'revoked',
-          failedAt: 0,
-          attempts: 3,
-        }),
-      ),
-    ).toBe(true)
+    expect(isAuthRejection(new SessionEnded('Your session has ended.'))).toBe(
+      true,
+    )
   })
 
   it('treats server errors and network failures as transient', () => {

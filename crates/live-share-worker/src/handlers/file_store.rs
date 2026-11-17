@@ -8,10 +8,10 @@ use crate::db;
 use crate::file_history::{self, VersionRow};
 use crate::files::{self, ContentWriteAttempt, ContentWriteOutcome, PublicFile};
 use crate::folder_share;
-use crate::protocol::{FileVersionSummary, RenameBatchMove};
+use crate::model::{FileVersionSummary, RenameBatchMove};
 
 use super::is_unique_constraint_violation;
-use super::routes::HandlerResult;
+use super::HandlerResult;
 
 fn now() -> i64 {
     worker::Date::now().as_millis() as i64

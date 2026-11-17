@@ -7,12 +7,10 @@
 //! only ever reaches `crate::crypto::pbkdf2_sha256`, and a session is stored
 //! and logged by its hash (`auth::session::hash_token`).
 
-use worker::{D1Database, Env, RouteContext};
+use worker::{D1Database, Env};
 
-use super::routes::{HandlerResult, Json, NoContent, NoPathParams};
-use super::{
-    check_rate_limit, is_unique_constraint_violation, now_millis, resolve_files_caller, D1_BINDING,
-};
+use super::HandlerResult;
+use super::{check_rate_limit, is_unique_constraint_violation, now_millis};
 use crate::api_error::ApiError;
 use crate::app_log::{
     self, AuthEvent, LockedOut, LogEvent, PasswordChanged, RequestMeta, SignInFailed,
@@ -24,7 +22,7 @@ use crate::auth::password::{password_weakness, PasswordHash, PBKDF2_ITERATIONS, 
 use crate::auth::session::{hash_token, SESSION_LIFETIME_MILLIS};
 use crate::crypto;
 use crate::db::{self, PasswordCredentials};
-use crate::protocol::{ChangePasswordRequest, CredentialsRequest, SessionResponse, SignOutRequest};
+use crate::model::SessionResponse;
 
 /// Rate limit bindings (`cloudflare.config.ts`), keyed per client IP.
 const SIGN_IN_RATE_LIMITER: &str = "SIGN_IN_RATE_LIMITER";
@@ -55,19 +53,6 @@ fn new_session() -> HandlerResult<NewSession> {
     let token = crypto::new_session_token()?;
     let token_hash = hash_token(&token);
     Ok(NewSession { token, token_hash })
-}
-
-/// `POST /auth/sign-up`.
-pub(super) async fn sign_up(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: CredentialsRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<Json<SessionResponse>> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    create_account(&ctx.env, &d1, &body.email, &body.password, &request_meta)
-        .await
-        .map(Json)
 }
 
 /// Creates an account and signs it in.
@@ -200,19 +185,6 @@ async fn check_password(
     }
 }
 
-/// `POST /auth/sign-in`.
-pub(super) async fn sign_in(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: CredentialsRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<Json<SessionResponse>> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    start_session(&ctx.env, &d1, &body.email, &body.password, &request_meta)
-        .await
-        .map(Json)
-}
-
 /// Starts a session for an email and its password.
 pub(super) async fn start_session(
     env: &Env,
@@ -246,18 +218,6 @@ pub(super) async fn start_session(
     })
 }
 
-/// `POST /auth/sign-out`.
-pub(super) async fn sign_out(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: SignOutRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<NoContent> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    end_session(&d1, &body.identity_token, &request_meta).await?;
-    Ok(NoContent)
-}
-
 /// Ends one session (this device's). Answers the same whether or not the
 /// session still existed.
 pub(super) async fn end_session(
@@ -272,27 +232,6 @@ pub(super) async fn end_session(
     });
     log(d1, event, None, request_meta).await;
     Ok(())
-}
-
-/// `POST /auth/change-password`.
-pub(super) async fn change_password(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: ChangePasswordRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<NoContent> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    let user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
-    let session = SignedInSession {
-        token: &body.identity_token,
-        user_id: &user_id,
-    };
-    let passwords = PasswordChange {
-        current: &body.current_password,
-        new: &body.new_password,
-    };
-    replace_password(&d1, session, passwords, &request_meta).await?;
-    Ok(NoContent)
 }
 
 /// A session that resolved to its account.

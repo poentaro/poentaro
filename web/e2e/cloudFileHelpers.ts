@@ -1,4 +1,3 @@
-import type { components } from '../src/generated/live-share-worker/schema'
 import type {
   CreateFileAtContentError,
   MoveFileToError,
@@ -6,9 +5,6 @@ import type {
 import { settled } from '../src/protocol/outcome'
 import { signInE2eAccount } from './e2eAccounts.ts'
 import { appClient, publicClient, valueOrFail } from './protocolClients'
-
-export type WorkerSchemas = components['schemas']
-type PublicFile = WorkerSchemas['PublicFile']
 
 // Seeds and mutates real rows through the same generated AnyX clients as
 // the app. Calls from Node bypass browser interception while exercising
@@ -72,7 +68,7 @@ export async function seedCloudFile(
   email: string,
   name: string,
   content: string = DEFAULT_CLOUD_FILE_CONTENT,
-): Promise<PublicFile> {
+) {
   const client = await appClient(await seedTokenFor(email))
   const result = settled(
     await client.createFileAtContent(crypto.randomUUID(), name, content),
@@ -98,7 +94,7 @@ async function reseedExistingFile(
   email: string,
   name: string,
   content: string,
-): Promise<PublicFile> {
+) {
   const client = await appClient(await seedTokenFor(email))
   const files = await valueOrFail('list files', client.listFiles())
   const existing = files.find((file) => file.path === name)

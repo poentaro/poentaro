@@ -6,7 +6,7 @@ use worker::{D1Database, Result};
 
 use crate::files::{ContentWriteAttempt, FileNameRow, StoredFile};
 use crate::folder_share::{ActiveFileName, PrefixRewrite};
-use crate::protocol::RenameBatchMove;
+use crate::model::RenameBatchMove;
 
 const LIST_FILES_BY_OWNER: &str = include_str!("../../queries/list_files_by_owner.sql");
 const INSERT_FILE: &str = include_str!("../../queries/insert_file.sql");

@@ -4,7 +4,6 @@
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use utoipa::ToSchema;
 
 /// How long a session lasts after it was last used.
 pub const SESSION_LIFETIME_MILLIS: i64 = 60 * 24 * 60 * 60 * 1000;
@@ -39,7 +38,7 @@ pub fn hash_token(token: &str) -> String {
 /// The shape (and the `attempts` field, always 1 now) predates sessions,
 /// when this reported a failed GitHub verification after retries; it is
 /// kept so the web app's error dialog reads it unchanged.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VerificationFailure {
     pub reason: String,

@@ -11,7 +11,7 @@ use std::collections::{BTreeSet, HashMap};
 use poentaro::file_tree::{is_placeholder_path, TreePath, PLACEHOLDER_LEAF};
 
 use crate::api_error::ApiError;
-use crate::protocol::{RenameBatchMove, SharedFolder, SharedFolderFile, SyncedDoc};
+use crate::model::{RenameBatchMove, SharedFolder, SharedFolderFile, SyncedDoc};
 use crate::share::empty_doc;
 
 /// Most files (placeholders included) one folder share may cover. A viewer

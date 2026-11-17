@@ -64,11 +64,8 @@ are deleted, and nothing in `web/` builds a URL other than these endpoints.
 - **Generated code is built, not checked in**, for all four schemas,
   including the agent one: a build script runs the generator, and
   `src/generated.rs`, `tests/generated.rs` and `just generate-protocol` go.
-- **One PR for the whole migration, REST deleted in a follow-up.** Tabs open
-  on today's bundle call REST without a schema hash, so REST stays served
-  until `app_log` shows no REST calls for a while; then a small PR deletes it.
-- **anyx changes are committed straight to anyx's upstream `master`**, not
-  through a PR; then poentaro repins.
+- **Cut over in this PR.** Former REST endpoints return 404. Older clients
+  must reload; downtime is acceptable.
 
 ## Steps
 
@@ -202,18 +199,14 @@ One caller at a time; each stays green on its e2e features.
 - [ ] New feature: a file's content loads when it is opened, not before.
 - [ ] `agent-protocol` scenarios passing with flat method names and positional outcomes.
 
-### 7. Delete REST (follow-up PR)
+### 7. Delete REST (completed in this PR)
 
-Steps 1–6 are one PR and keep REST served. This step is its own small PR,
-once `app_log` shows no REST calls for a while.
-
-- [ ] `handlers/routes.rs`, the REST handlers in `handlers/`, `api_error.rs`,
-      `protocol.rs` (and `protocol/origin_migration.rs`), `share_id.rs`'s
-      OpenAPI schema, `tests/export_openapi.rs`.
-- [ ] `utoipa` from `Cargo.toml`; `openapi-typescript` and
-      `web/src/generated/live-share-worker/` from `web/`.
-- [ ] Update `ARCHITECTURE.md` (wire types, endpoints, glossary: "app
-      protocol", "public protocol", "test protocol").
+- [x] Removed REST registration, handler wrappers, OpenAPI schema annotations,
+      request-only DTOs, and REST client generation.
+- [x] Removed `utoipa`, `openapi-fetch`, and `openapi-typescript`.
+- [x] Export build configuration separately with `export_web_config.rs`.
+- [x] Use generated AnyX clients for browser, Pages previews, and Node e2e calls.
+- [x] Keep shared internal values in `model.rs`; these are not HTTP contracts.
 
 ## Schema migration after the AnyX protocol update
 

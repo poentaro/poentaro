@@ -5,33 +5,17 @@
 //! what a viewer sees. These routes only start, stop and report on the
 //! pointer itself.
 
-use worker::{D1Database, RouteContext};
+use worker::D1Database;
 
 use crate::api_error::ApiError;
-use crate::app_log::RequestMeta;
 use crate::db;
 use crate::folder_share;
-use crate::protocol::{
-    FileIdPath, FileShareRequest, FileShareResponse, FolderShareRequest, ShareIdPath,
-    ShareOverviewRequest, ShareOverviewResponse, ShareStatusResponse, SyncedDoc,
-};
+use crate::model::SyncedDoc;
 use crate::share;
 use crate::share_id;
 
-use super::routes::{HandlerResult, Json, NoContent, NoPathParams};
-use super::{now_millis, resolve_files_caller, D1_BINDING};
-
-/// `GET /shares/{share_id}` -- fully anonymous: the unguessable `share_id`
-/// is the sole credential needed to view (TODO §0). Reads the pointed-at
-/// file directly; an ended share returns no content (see
-/// `share::to_public_doc`). Never cached -- see `routes::respond`.
-pub(super) async fn get_share(
-    ctx: RouteContext<()>,
-    path: ShareIdPath,
-) -> HandlerResult<Json<SyncedDoc>> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    read_share(&d1, &path.share_id).await.map(Json)
-}
+use super::now_millis;
+use super::HandlerResult;
 
 /// What the link `share_id` shows: a file, a folder, or nothing for an
 /// ended link or an unknown id.
@@ -62,23 +46,6 @@ async fn read_folder_share(
     Ok(folder_share::to_public_folder_doc(header, &rows))
 }
 
-/// `POST /files/{id}/share` -- starts (or resumes) sharing one of the
-/// caller's active files. Idempotent: a file that was ever shared keeps its
-/// existing `share_id` (`queries/upsert_share.sql`'s `ON CONFLICT
-/// (file_id)`), so re-sharing always reproduces the same link, from any
-/// device.
-pub(super) async fn start_share(
-    ctx: RouteContext<()>,
-    path: FileIdPath,
-    body: FileShareRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<Json<FileShareResponse>> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
-    let share_id = start_file_link(&d1, &owner_user_id, &path.id).await?;
-    Ok(Json(FileShareResponse { share_id }))
-}
-
 /// The link of the owner's file `file_id`, started or resumed. `NotFound`
 /// when the owner has no such file outside the trash.
 pub(super) async fn start_file_link(
@@ -100,22 +67,6 @@ pub(super) async fn start_file_link(
         })
 }
 
-/// `POST /files/{id}/share/stop` -- ends the caller's share of this file.
-/// The row is kept so a later start reproduces the same link. `NoContent`,
-/// or `NotFound` when the caller has no share for this file.
-pub(super) async fn stop_share(
-    ctx: RouteContext<()>,
-    path: FileIdPath,
-    body: FileShareRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<NoContent> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
-
-    stop_file_link(&d1, &owner_user_id, &path.id).await?;
-    Ok(NoContent)
-}
-
 /// Ends the link of the owner's file `file_id`. `NotFound` when it was
 /// never shared.
 pub(super) async fn stop_file_link(
@@ -128,44 +79,6 @@ pub(super) async fn stop_file_link(
     } else {
         Err(ApiError::NotFound)
     }
-}
-
-/// `POST /files/{id}/share/status` -- whether the caller's file is shared,
-/// and under which link. The server is the single source of truth, so every
-/// device the owner signs in on sees the same live/stopped state.
-pub(super) async fn share_status(
-    ctx: RouteContext<()>,
-    path: FileIdPath,
-    body: FileShareRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<Json<ShareStatusResponse>> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
-
-    let share = db::get_share_status_by_file(&d1, &path.id, &owner_user_id).await?;
-    Ok(Json(ShareStatusResponse { share }))
-}
-
-/// `POST /folders/share` -- starts (or resumes) sharing one of the caller's
-/// folders, named by path. The folder must hold at least one active file
-/// (an empty folder is kept alive by its `.keep` placeholder, which counts)
-/// and stay within the size limits; otherwise `NotFound` /
-/// `SharedFolderTooLarge`. Idempotent like a file share: the folder keeps its
-/// `share_id` across stop and start. Sharing does not look at ancestors or
-/// descendants: a file or subfolder with its own link keeps it (the client
-/// warns from `POST /shares/overview`).
-pub(super) async fn start_folder_share(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: FolderShareRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<Json<FileShareResponse>> {
-    let folder = folder_share::validate_folder_path(&body.folder)?;
-    let d1 = ctx.d1(D1_BINDING)?;
-    let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
-
-    let share_id = start_folder_link(&d1, &owner_user_id, folder.as_str()).await?;
-    Ok(Json(FileShareResponse { share_id }))
 }
 
 /// The link of the owner's folder `folder` (already validated), started or
@@ -189,23 +102,6 @@ pub(super) async fn start_folder_link(
         })
 }
 
-/// `POST /folders/share/stop` -- ends the caller's share of this folder
-/// (the row stays so a later start reproduces the link). `NotFound` when the
-/// caller never shared it; works even if the folder no longer has files.
-pub(super) async fn stop_folder_share(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: FolderShareRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<NoContent> {
-    let folder = folder_share::validate_folder_path(&body.folder)?;
-    let d1 = ctx.d1(D1_BINDING)?;
-    let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
-
-    stop_folder_link(&d1, &owner_user_id, folder.as_str()).await?;
-    Ok(NoContent)
-}
-
 /// Ends the link of the owner's folder `folder`. `NotFound` when it was
 /// never shared.
 pub(super) async fn stop_folder_link(
@@ -218,35 +114,4 @@ pub(super) async fn stop_folder_link(
     } else {
         Err(ApiError::NotFound)
     }
-}
-
-/// `POST /folders/share/status` -- the caller's link on this folder, if any.
-pub(super) async fn folder_share_status(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: FolderShareRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<Json<ShareStatusResponse>> {
-    let folder = folder_share::validate_folder_path(&body.folder)?;
-    let d1 = ctx.d1(D1_BINDING)?;
-    let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
-
-    let share = db::get_folder_share_status(&d1, &owner_user_id, folder.as_str()).await?;
-    Ok(Json(ShareStatusResponse { share }))
-}
-
-/// `POST /shares/overview` -- every live link the caller has, on files and
-/// on folders (see `protocol::ShareOverviewResponse`).
-pub(super) async fn share_overview(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: ShareOverviewRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<Json<ShareOverviewResponse>> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    let owner_user_id = resolve_files_caller(&d1, &body.identity_token, &request_meta).await?;
-
-    let files = db::list_live_file_shares(&d1, &owner_user_id).await?;
-    let folders = db::list_live_folder_shares(&d1, &owner_user_id).await?;
-    Ok(Json(ShareOverviewResponse { files, folders }))
 }

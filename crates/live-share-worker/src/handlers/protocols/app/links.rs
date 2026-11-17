@@ -12,7 +12,7 @@ use crate::db;
 use crate::folder_share;
 use crate::handlers::protocols::internal;
 use crate::handlers::shares;
-use crate::protocol::ShareStatus;
+use crate::model::ShareStatus;
 
 fn status(share: Option<ShareStatus>) -> Status {
     match share {

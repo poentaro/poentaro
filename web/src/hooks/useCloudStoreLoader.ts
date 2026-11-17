@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { FileStoreState } from '../fileStore'
+import { SessionEnded } from '../protocol/transport'
 import type { StorageBackend } from '../storage/types'
-import { traceIdOf, WorkerRequestError } from '../syncedShare/workerClient'
+import { traceIdOf } from '../syncedShare/workerClient'
 
 const INITIAL_RETRY_DELAY_MS = 1_000
 const MAX_RETRY_DELAY_MS = 30_000
@@ -18,10 +19,7 @@ export function cloudLoadRetryDelayMs(attempt: number): number {
  * change elsewhere ended it), as opposed to a transient network/server failure.
  * Retrying such a token can never succeed. */
 export function isAuthRejection(error: unknown): boolean {
-  return (
-    error instanceof WorkerRequestError &&
-    error.apiError?.code === 'unauthorized'
-  )
+  return error instanceof SessionEnded
 }
 
 /** The last failed load while a retry is pending. `traceId` is `null` when

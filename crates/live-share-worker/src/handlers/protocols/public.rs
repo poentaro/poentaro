@@ -12,7 +12,7 @@ use super::internal;
 use crate::api_error::ApiError;
 use crate::app_log::RequestMeta;
 use crate::handlers::{auth, origin_migrations, shares};
-use crate::protocol::{SessionResponse, SyncedDoc};
+use crate::model::{SessionResponse, SyncedDoc};
 
 type Outcome<T, E> = worker::Result<Result<T, E>>;
 

@@ -33,9 +33,9 @@ pub mod e2e_worker_config;
 pub mod file_history;
 pub mod files;
 pub mod folder_share;
+pub mod model;
 pub mod naming;
 pub mod origin_migration;
-pub mod protocol;
 pub mod share;
 pub mod share_id;
 
@@ -118,15 +118,4 @@ async fn prune_app_log(env: &Env) -> Result<()> {
         }
     }
     Ok(())
-}
-
-/// The OpenAPI spec of every route this worker serves, built from the same
-/// `handlers::routes()` list the `fetch` handler above serves from -- see
-/// `handlers::routes`. `tests/export_openapi.rs` writes it out for `web/`'s
-/// generated client.
-pub fn openapi_json() -> Result<String> {
-    handlers::routes(false)?
-        .into_openapi()
-        .to_pretty_json()
-        .map_err(|error| worker::Error::RustError(error.to_string()))
 }

@@ -4,35 +4,19 @@
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use worker::{D1Database, Env, RouteContext};
+use worker::{D1Database, Env};
 
 use crate::api_error::ApiError;
 use crate::app_log::RequestMeta;
 use crate::crypto;
 use crate::db;
 use crate::origin_migration::{is_claimable, payload_rejection, ORIGIN_MIGRATION_ID_BYTES};
-use crate::protocol::{
-    OriginMigrationClaimRequest, OriginMigrationClaimResponse, OriginMigrationUploadRequest,
-    OriginMigrationUploadResponse,
-};
 
-use super::routes::{HandlerResult, Json, NoPathParams};
-use super::{check_rate_limit, now_millis, D1_BINDING};
+use super::HandlerResult;
+use super::{check_rate_limit, now_millis};
 
 /// Rate limit binding (`cloudflare.config.ts`), keyed per client IP.
 const ORIGIN_MIGRATION_RATE_LIMITER: &str = "ORIGIN_MIGRATION_RATE_LIMITER";
-
-/// `POST /origin-migrations`.
-pub(super) async fn upload(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: OriginMigrationUploadRequest,
-    request_meta: RequestMeta,
-) -> HandlerResult<Json<OriginMigrationUploadResponse>> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    let id = store(&ctx.env, &d1, &body.payload, &request_meta).await?;
-    Ok(Json(OriginMigrationUploadResponse { id }))
-}
 
 /// Stores a handoff and answers its id.
 pub(super) async fn store(
@@ -48,18 +32,6 @@ pub(super) async fn store(
     let id = URL_SAFE_NO_PAD.encode(crypto::random_bytes(ORIGIN_MIGRATION_ID_BYTES)?);
     db::insert_origin_migration(d1, &id, payload, now_millis()).await?;
     Ok(id)
-}
-
-/// `POST /origin-migrations/claim`.
-pub(super) async fn claim(
-    ctx: RouteContext<()>,
-    _path: NoPathParams,
-    body: OriginMigrationClaimRequest,
-    _request_meta: RequestMeta,
-) -> HandlerResult<Json<OriginMigrationClaimResponse>> {
-    let d1 = ctx.d1(D1_BINDING)?;
-    let payload = take(&d1, &body.id).await?;
-    Ok(Json(OriginMigrationClaimResponse { payload }))
 }
 
 /// Answers a handoff's payload once and deletes it. An unknown, already

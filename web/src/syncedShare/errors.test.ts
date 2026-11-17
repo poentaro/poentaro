@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { SessionEnded } from '../protocol/transport'
 import { buildSyncedShareFailure, redactSecrets } from './errors'
-import {
-  NetworkFailure,
-  WorkerRequestError,
-  type WorkerSchemas,
-} from './workerClient'
+import { NetworkFailure, WorkerRequestError } from './workerClient'
 
 const TRACE_ID = '0123456789abcdef'
 
@@ -35,7 +32,7 @@ describe('redactSecrets', () => {
 function workerError(
   status: number,
   statusText: string,
-  body: WorkerSchemas['ApiError'] | string,
+  body: string,
 ): WorkerRequestError {
   return new WorkerRequestError(
     new Response(null, {
@@ -43,48 +40,15 @@ function workerError(
       statusText,
       headers: { 'X-Trace-Id': TRACE_ID },
     }),
-    typeof body === 'string' ? body : { ...body, traceId: TRACE_ID },
+    body,
   )
 }
 
 describe('buildSyncedShareFailure: worker failure responses', () => {
-  it('renders the worker unauthorized ApiError verbosely', () => {
-    const failure = buildSyncedShareFailure(
-      'start',
-      workerError(401, 'Unauthorized', {
-        code: 'unauthorized',
-        reason: 'Your session has ended. Sign in again.',
-        failedAt: 1_700_000_000_000,
-        attempts: 3,
-      }),
-    )
-    expect(failure).toEqual({
-      operation: 'start',
-      reason: 'Your session has ended. Sign in again.',
-      failedAt: 1_700_000_000_000,
-      attempts: 3,
-      httpStatus: 401,
-      httpStatusText: 'Unauthorized',
-      traceId: TRACE_ID,
-      authRejected: true,
-    })
-  })
-
-  it('redacts a token-shaped value even inside an unauthorized ApiError', () => {
-    const failure = buildSyncedShareFailure(
-      'start',
-      workerError(401, 'Unauthorized', {
-        code: 'unauthorized',
-        reason:
-          'unexpected token Zq3_kP9-xV2mL8nR4tY7wB1cD6fH0jK5sA2eG9uI3oQ in response',
-        failedAt: 1,
-        attempts: 1,
-      }),
-    )
-    expect(failure.reason).not.toContain(
-      'Zq3_kP9-xV2mL8nR4tY7wB1cD6fH0jK5sA2eG9uI3oQ',
-    )
-    expect(failure.reason).toContain('[redacted]')
+  it('recognizes an ended protocol session', () => {
+    const failure = buildSyncedShareFailure('start', new SessionEnded('ended'))
+    expect(failure.authRejected).toBe(true)
+    expect(failure.reason).toBe('Your session has ended.')
   })
 
   it('falls back to raw status/body (redacted) for any other failure', () => {

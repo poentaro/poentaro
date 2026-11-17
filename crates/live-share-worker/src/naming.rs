@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use poentaro::file_tree::{unique_path, PathError, TreePath};
 
 use crate::files::FileNameRow;
-use crate::protocol::RenameBatchMove;
+use crate::model::RenameBatchMove;
 
 /// A file without its score: what `list files` returns and what naming
 /// looks at.

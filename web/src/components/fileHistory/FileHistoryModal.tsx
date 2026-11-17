@@ -35,9 +35,7 @@ function errorMessage(error: unknown): string {
 
 /** A file the server has not got yet has no history, not an error. */
 function isNotFound(error: unknown): boolean {
-  return (
-    error instanceof WorkerRequestError && error.apiError?.code === 'not_found'
-  )
+  return error instanceof WorkerRequestError && error.response.status === 404
 }
 
 /** Runs `load` whenever `key` changes; a null `key` loads nothing. */
