@@ -217,3 +217,11 @@ The Cloudflare account has no payment method, and the owner won't add one. Don't
 - When a step needs a key only the owner should type (e.g. the Backblaze master key), and you're running inside herdr (`HERDR_ENV=1`), don't hand the command back. Open a pane (`herdr pane split` + `herdr pane run`) running a script that reads the key with `read -s`, then wait for its result with `herdr pane wait-output`.
 - Create Backblaze keys with `b2 key create` and an explicit capability list. The web UI's "Write Only" option also grants `deleteFiles` and lifecycle-rule changes.
 - The B2 restore key lives in each laptop's Keychain (service `jianpu-backup-reader`, accounts `keyID` and `applicationKey`). On a laptop without it, create one with the master key in a herdr pane: `uvx b2==5.0.0 key create --bucket jianpu-live-share-backups jianpu-backup-reader-<machine> listBuckets,listFiles,readFiles`. Then store both values there.
+
+## Shared agent skills
+
+Repository skills live in `.claude/skills/`. `.agents/skills` is a relative
+symlink to that directory so Codex and Claude Code discover the same files.
+Add or edit skills in `.claude/skills/<name>/SKILL.md`; do not duplicate them
+in a separate Codex directory. Keep shared instructions usable with either
+agent, describing the operation rather than requiring agent-specific tool names.
