@@ -22,21 +22,12 @@ fn dotted_eighth_note_without_sixteenth_tail_is_recoverable() {
 }
 
 #[test]
-fn dotted_eighth_rest_without_sixteenth_tail_is_recoverable() {
-    // `0_.` is a dotted eighth rest; same rule applies.
-    let source = minimal_fixture("time=4/4 key=C4 bpm=120\n[Melody] 0_. 1_ 2_ 3_ 4_ 5_ 6_ 0=\n");
+fn dotted_eighth_rest_without_sixteenth_tail_is_valid() {
+    let source = minimal_fixture("time=4/4 key=C4 bpm=120\n    [Melody] 0_. 1_ 2_. 3 4\n");
     let output = render_svgs_from_source(&source, "test.poentaro", &[])
-        .expect("dotted eighth rest without sixteenth tail must not abort the render");
+        .expect("dotted eighth rest without sixteenth tail must render");
     assert!(!output.svgs.is_empty());
-    assert!(
-        has_error_containing(&output, "dotted eighth"),
-        "expected error about dotted eighth, got: {:?}",
-        output
-            .diagnostics
-            .iter()
-            .map(|d| d.message())
-            .collect::<Vec<_>>()
-    );
+    assert!(output.diagnostics.is_empty(), "{:?}", output.diagnostics);
 }
 
 // NoteExpectedPitchDigit

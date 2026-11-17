@@ -86,7 +86,14 @@ fn advance_timed_cluster(
         span,
         multiplier,
     } = *advance;
-    if is_dotted_eighth_at_beat_start(fields.dotted, fields.duration, *pos, multiplier) {
+    // Rests may end between beats without requiring a sixteenth tail. Advance
+    // them normally so later notes are validated at their actual positions.
+    let is_rest = matches!(
+        events.get(index).map(|e| &e.value),
+        Some(ScoreEvent::Rest(_))
+    );
+    if !is_rest && is_dotted_eighth_at_beat_start(fields.dotted, fields.duration, *pos, multiplier)
+    {
         let next_timed = next_timed_index(events, index);
         if let Some(error) = validate_dotted_eighth_tail(events, next_timed, span, multiplier)? {
             recoverable_errors.push(error);

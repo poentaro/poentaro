@@ -362,6 +362,8 @@ mod tests_lyrics_and_diagnostics;
 #[cfg(test)]
 mod tests_multi_measure_rest;
 #[cfg(test)]
+mod tests_rest_underlines;
+#[cfg(test)]
 mod tests_row_part_kind;
 #[cfg(test)]
 mod tests_slur;

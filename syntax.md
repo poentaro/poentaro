@@ -666,7 +666,7 @@ A second dot (`..`) adds a quarter of the base duration on top of the dot's own 
 
 You can also attach dashes as suffixes on a note or rest (`2---`, `0---`). Both forms may be mixed in one measure. Repeated rests (`0 0`, `0 0 0 0`) remain equally valid — `0---` and `0 0 0 0` both produce a whole rest in 4/4.
 
-Shorter rests still use `_`, `=`, or `.` on a single `0` (`0_`, `0=`, `0.`).
+Shorter rests still use `_`, `=`, or `.` on a single `0` (`0_`, `0=`, `0.`). Combine `_` and `.` for a dotted eighth rest (`0_.`, three quarter-beats); it does not require a following sixteenth.
 
 ### Tie and slur groups
 
@@ -757,7 +757,7 @@ measure capacity = N × (16 / D) quarter-beats
 In 4/4, the parser rejects rhythm spellings that cross metrical boundaries without exposing the split:
 
 1. **Half-bar boundary:** after beat 1, no single note/rest may span from before beat 3 into beat 3 or beyond (quarter-beat position 8). Use a beam group such as `(2_ 2_)` or a tie instead of a single long value (e.g. `1. 2. 3_ 4_` is invalid; `1. (2_ 2_) 3_ 4_ 0_` is valid). Long notes/rests starting on beat 1 (including a fully extended `1` or `1---`) are allowed.
-2. **Dotted-eighth tail:** a dotted eighth note/rest at the start of a beat must be followed immediately by a sixteenth note/rest filling the remaining sixteenth (e.g. `1_. 2= 3_ …`); `1_. 2_ 3_ 4_` is invalid (`2_.` is a dotted eighth, not an eighth).
+2. **Dotted-eighth tail:** a dotted eighth note/chord/percussion hit at the start of a beat must be followed immediately by a sixteenth note/rest filling the remaining sixteenth (e.g. `1_. 2= 3_ …`); `1_. 2_ 3_ 4_` is invalid (`2_.` is a dotted eighth, not an eighth).
 
 Other time signatures skip these checks for now. Violations are diagnostics attached to the note (half-bar-boundary crossing is a **warning**; the dotted-eighth-tail rule is a **recoverable error**) — the file still renders.
 
