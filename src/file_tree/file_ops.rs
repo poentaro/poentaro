@@ -7,10 +7,13 @@ use super::path::TreePath;
 use super::placeholder::is_reserved_leaf;
 use super::store_state::{FileOperationContext, FileStoreError, FileStoreState};
 use super::unique_name::unique_path;
+use crate::ast::parsed::MetadataTextKey;
+use crate::source_edit::{parse_metadata_fields, update_metadata_field, MetadataEdit};
 
 /// A new file `name` (one path segment, trimmed, `.poentaro` appended when
 /// missing) in `folder` (`None` = top level) holding `content`; it becomes
-/// active. It may not collide with a file, folder, demo file or bin entry
+/// active. A blank or missing `title` in `content`'s metadata becomes the
+/// file's name without its extension. It may not collide with a file, folder, demo file or bin entry
 /// (`Collision`).
 pub fn create_file(
     state: &FileStoreState,
@@ -33,12 +36,33 @@ pub fn create_file(
     if state.reserved_paths(context).contains(&path) {
         return Err(FileStoreError::Collision { path });
     }
+    let stem = leaf.strip_suffix(FILE_EXTENSION).unwrap_or(&leaf);
     Ok(insert_active_file(
         state,
         &path,
-        content.to_string(),
+        titled_by_default(content, stem),
         context,
     ))
+}
+
+/// `content` with `title` set to `name` when its metadata has none.
+fn titled_by_default(content: &str, name: &str) -> String {
+    let fields = parse_metadata_fields(content, None);
+    if fields
+        .metadata
+        .text(MetadataTextKey::Title)
+        .is_some_and(|title| !title.trim().is_empty())
+    {
+        return content.to_string();
+    }
+    update_metadata_field(
+        content,
+        None,
+        MetadataEdit::Text {
+            key: MetadataTextKey::Title,
+            value: Some(name.to_string()),
+        },
+    )
 }
 
 /// Copies `source` (a user or demo file) next to itself, in the same folder,

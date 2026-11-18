@@ -1,4 +1,4 @@
-metadata { title "Untitled", author "" },
+metadata { author "" },
 
 parts ["Melody": notes],
 

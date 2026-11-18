@@ -72,6 +72,8 @@ mod extension_tests;
 #[cfg(test)]
 mod file_ops_tests;
 #[cfg(test)]
+mod file_ops_title_tests;
+#[cfg(test)]
 mod folder_ops_tests;
 #[cfg(test)]
 mod folder_queries_tests;
