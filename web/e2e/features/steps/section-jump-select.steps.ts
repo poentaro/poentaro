@@ -25,14 +25,14 @@ const source = [
   '',
   'score """',
   '    time=4/4 key=C4 bpm=120 label="A"',
-  '    1 2 3 4',
+  '    [M] 1 2 3 4',
   '',
-  "    5 6 7 1'",
+  "    [M] 5 6 7 1'",
   '',
   '    label="B"',
-  "    1' 7 6 5",
+  "    [M] 1' 7 6 5",
   '',
-  '    4 3 2 1',
+  '    [M] 4 3 2 1',
   '    """,',
 ].join('\n')
 
@@ -289,5 +289,24 @@ Then(
     await expect(sectionButton(page, labelB)).toHaveClass(
       /section-jump-btn--dragging/,
     )
+  },
+)
+
+Then(
+  'only the eight notes in section B are range-selected',
+  async ({ page }) => {
+    const selectedNotes = page.locator(
+      `.preview-pages [data-note-range-selected] > ${rectVariantSelector('note-click-target')}`,
+    )
+    await expect(selectedNotes).toHaveCount(8)
+    const noteTargets = page.locator(
+      `.preview-pages ${rectVariantSelector('note-click-target')}`,
+    )
+    for (let index = 8; index < 16; index++) {
+      await expect(noteTargets.nth(index).locator('..')).toHaveAttribute(
+        'data-note-range-selected',
+        '',
+      )
+    }
   },
 )
