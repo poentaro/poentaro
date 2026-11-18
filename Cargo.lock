@@ -388,7 +388,7 @@ dependencies = [
 [[package]]
 name = "chimera"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/chimera-vocal-synth?rev=955665cf59e0f66c428f363c603e2c3bb901948e#955665cf59e0f66c428f363c603e2c3bb901948e"
+source = "git+https://github.com/jamesondh/chimera-vocal-synth?rev=eeb0c1940d2d52f5f5effdecf3507fe79157f389#eeb0c1940d2d52f5f5effdecf3507fe79157f389"
 dependencies = [
  "libm",
  "serde",
