@@ -18,12 +18,13 @@ pub(super) fn render_split_meis(
     preset_name: Option<String>,
     raw_instruments: Vec<InstrumentInfo>,
     clef: StaffClef,
+    score_order: ScoreOrder,
 ) -> RenderSplitMeisResponse {
     let instruments: Vec<poentaro::parser::parts_parser::InstrumentInfo> = raw_instruments
         .into_iter()
         .map(instrument_info_from_wit)
         .collect();
-    match poentaro::staff_export::render_split_meis_from_source(
+    match poentaro::staff_export::render_split_meis_in_order(
         &source,
         "input.poentaro",
         &base_name,
@@ -32,7 +33,10 @@ pub(super) fn render_split_meis(
             preset_name: preset_name.as_deref(),
         },
         &instruments,
-        clef_choice_from_wit(clef),
+        poentaro::staff_export::StaffRenderView {
+            clef: clef_choice_from_wit(clef),
+            score_order: score_order_from_wit(score_order),
+        },
     ) {
         Ok(entries) => RenderSplitMeisResponse::Ok(
             entries

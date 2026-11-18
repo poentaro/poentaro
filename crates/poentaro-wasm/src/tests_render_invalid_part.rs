@@ -1,6 +1,6 @@
 use crate::responses::render_response;
 use crate::types::RenderResponse;
-use poentaro::{NoteLabels, ResolvedPartVisibility};
+use poentaro::ResolvedPartVisibility;
 
 #[test]
 fn a_document_with_an_invalid_part_still_renders_and_reports_only_that_error() {
@@ -9,8 +9,7 @@ fn a_document_with_an_invalid_part_still_renders_and_reports_only_that_error() {
         source,
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     );
     let RenderResponse::Ok {
         documents,

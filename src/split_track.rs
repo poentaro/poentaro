@@ -2,11 +2,11 @@ use crate::ast::grouped::Score;
 use crate::error::IrrecoverableError;
 #[cfg(any(feature = "pdf", feature = "midi"))]
 use crate::error::{IrrecoverableErrorKind, Span};
+#[cfg(feature = "pdf")]
+use crate::filter_part_list;
 #[cfg(any(feature = "pdf", feature = "midi"))]
 use crate::filters::filter_tracks;
 use crate::list_parts_from_source;
-#[cfg(feature = "pdf")]
-use crate::{filter_part_list, render_svgs_with_parts};
 
 /// Sanitize a track name for use in filenames (mirrors CLI).
 pub fn sanitize_track_name(name: &str) -> String {
@@ -162,6 +162,29 @@ pub fn write_split_pdfs_from_source(
     fonts: &crate::fonts::FontBytesByFamily,
     note_labels: crate::compiler::NoteLabels,
 ) -> Result<Vec<SplitPdfEntry>, IrrecoverableError> {
+    write_split_pdfs_in_order(
+        source,
+        filename,
+        base_name,
+        selection,
+        fonts,
+        crate::RenderView {
+            note_labels,
+            ..crate::RenderView::default()
+        },
+    )
+}
+
+/// Write one PDF per part in the selected score order.
+#[cfg(feature = "pdf")]
+pub fn write_split_pdfs_in_order(
+    source: &str,
+    filename: &str,
+    base_name: &str,
+    selection: SplitSelection,
+    fonts: &crate::fonts::FontBytesByFamily,
+    view: crate::RenderView,
+) -> Result<Vec<SplitPdfEntry>, IrrecoverableError> {
     let score = crate::compile_with_preset(source, filename, &[], selection.preset_name)?;
     let track_names = split_track_names(source, filename, &score, selection)?;
     let base_name = selection.file_base_name(base_name);
@@ -173,7 +196,7 @@ pub fn write_split_pdfs_from_source(
         let enabled_tracks = track_with_its_lyric_parts(&score, &track);
         filter_tracks(&mut score_clone, &enabled_tracks);
         let parts = filter_part_list(all_parts.clone(), Some(&enabled_tracks));
-        let svgs = render_svgs_with_parts(&score_clone, &parts, None, note_labels)?.svgs;
+        let svgs = crate::document_render::render_pdf_pages(&score_clone, &parts, view)?;
         let pdf = crate::pdf::write_pdf(&svgs, fonts, None)?;
         let label = split_track_label(&display_names, &track);
         entries.push(SplitPdfEntry {

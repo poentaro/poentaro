@@ -160,12 +160,14 @@ pub(super) fn generate_pdf(
     visibility: ResolvedPartVisibility,
     fonts: FontBytesByFamily,
     note_labels: NoteLabels,
+    score_order: ScoreOrder,
 ) -> GeneratePdfResponse {
     generate_pdf_response_to_wit(crate::responses::generate_pdf_response(
         &source,
         &resolved_part_visibility_from_wit(visibility),
         &font_bytes_by_family_from_wit(fonts),
         note_labels_from_wit(note_labels),
+        score_order_from_wit(score_order),
     ))
 }
 
@@ -175,6 +177,7 @@ pub(super) fn generate_split_pdfs(
     preset_name: Option<String>,
     fonts: FontBytesByFamily,
     note_labels: NoteLabels,
+    score_order: ScoreOrder,
 ) -> GenerateSplitPdfsResponse {
     generate_split_pdfs_response_to_wit(crate::responses::generate_split_pdfs_response(
         &source,
@@ -182,6 +185,7 @@ pub(super) fn generate_split_pdfs(
         preset_name.as_deref(),
         &font_bytes_by_family_from_wit(fonts),
         note_labels_from_wit(note_labels),
+        score_order_from_wit(score_order),
     ))
 }
 

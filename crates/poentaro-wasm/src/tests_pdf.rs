@@ -14,6 +14,7 @@ fn reference_poentaro_generates_pdf() {
             &ResolvedPartVisibility::default(),
             &fonts,
             NoteLabels::Degrees,
+            poentaro::ScoreOrder::Written,
         );
         match resp {
             GeneratePdfResponse::Ok { pdf } => {
@@ -39,7 +40,14 @@ fn reference_poentaro_generates_split_pdf_zip() {
     for path in super::demo_file_paths() {
         let source = super::read_demo_file(&path);
         let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("demo");
-        let resp = generate_split_pdfs_response(&source, stem, None, &fonts, NoteLabels::Degrees);
+        let resp = generate_split_pdfs_response(
+            &source,
+            stem,
+            None,
+            &fonts,
+            NoteLabels::Degrees,
+            poentaro::ScoreOrder::Written,
+        );
         match resp {
             GenerateSplitPdfsResponse::Ok { zip } => {
                 assert!(zip.len() > 4);

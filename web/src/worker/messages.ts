@@ -2,6 +2,7 @@ import type {
   FontBytesByFamily,
   NoteTiming,
   PageLayout,
+  ScoreOrder,
   StaffClef,
   StaffMeasure,
   SvgDocument,
@@ -66,6 +67,7 @@ export type WorkerRequest =
       visibility: ResolvedPartVisibility
       notation: Notation
       pageLayout: PageLayout
+      scoreOrder: ScoreOrder
     }
   | { type: 'listParts'; source: string; id: number }
   | {
@@ -80,8 +82,8 @@ export type WorkerRequest =
       source: string
       id: number
       visibility: ResolvedPartVisibility
-      /** The preview's notation; the PDF is engraved in the same one. */
       notation: Notation
+      scoreOrder: ScoreOrder
     }
   | {
       type: 'generateSplitPdf'
@@ -92,6 +94,7 @@ export type WorkerRequest =
        * named after it. */
       presetName?: string
       notation: Notation
+      scoreOrder: ScoreOrder
     }
   | {
       type: 'generateMidi'
@@ -191,6 +194,7 @@ export type WorkerRequest =
       visibility: ResolvedPartVisibility
       notation: Notation
       pageLayout: PageLayout
+      scoreOrder: ScoreOrder
     }
   | { type: 'listMeasureSpans'; source: string; id: number }
   | {
@@ -251,6 +255,7 @@ export type WorkerRequest =
       visibility: ResolvedPartVisibility
       clef: StaffClef
       pageLayout: PageLayout
+      scoreOrder: ScoreOrder
     }
 
 export type WorkerResponse =

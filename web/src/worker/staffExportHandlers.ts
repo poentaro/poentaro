@@ -36,6 +36,7 @@ export async function handleGenerateStaffPdf(
     msg.visibility,
     GM_INSTRUMENTS,
     clef,
+    msg.scoreOrder,
   )
   if (mei.tag === 'err') return fail(mei.val.diagnostics)
   const engraved = await engraveMei(mei.val.mei, { tag: 'a4' })
@@ -73,6 +74,7 @@ export async function handleGenerateSplitStaffPdf(
     msg.presetName,
     GM_INSTRUMENTS,
     clef,
+    msg.scoreOrder,
   )
   if (meis.tag === 'err') return fail(meis.val.diagnostics)
   const parts = []

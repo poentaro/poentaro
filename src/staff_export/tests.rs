@@ -1,4 +1,4 @@
-use super::render_split_meis_from_source;
+use super::{render_split_meis_in_order, StaffRenderView};
 use crate::mei_export::ClefChoice;
 use crate::split_track::SplitSelection;
 
@@ -14,13 +14,16 @@ score """
 
 #[test]
 fn split_meis_give_each_sounding_part_its_own_score_and_lyrics() {
-    let entries = render_split_meis_from_source(
+    let entries = render_split_meis_in_order(
         SOURCE,
         "test.poentaro",
         "song",
         SplitSelection::default(),
         &[],
-        ClefChoice::Automatic,
+        StaffRenderView {
+            clef: ClefChoice::Automatic,
+            score_order: crate::ScoreOrder::Written,
+        },
     )
     .unwrap();
     let summary: Vec<(&str, &str)> = entries

@@ -15,6 +15,9 @@ use slur_chains::{PartCrossState, PendingSlurOpen};
 
 mod tuplet_spans;
 
+mod expanded_order;
+pub(crate) use expanded_order::compile_expanded;
+
 mod rest_runs;
 use rest_runs::merge_rest_runs;
 
@@ -27,6 +30,7 @@ mod element_position;
 mod harmonica_tabs;
 mod least_movement_path;
 mod letter_names;
+pub(crate) use letter_names::label_note_heads_with_parts;
 pub use letter_names::{label_note_heads, NoteLabels};
 
 mod guitar_chords;
@@ -48,6 +52,13 @@ struct PartSliceResult {
 }
 
 pub fn compile(score: &Score) -> CompileResult {
+    compile_in_order(score, None)
+}
+
+fn compile_in_order(
+    score: &Score,
+    order: Option<&expanded_order::ExpandedOrder<'_>>,
+) -> CompileResult {
     let max_parts = score
         .measures
         .iter()
@@ -64,13 +75,15 @@ pub fn compile(score: &Score) -> CompileResult {
         .iter()
         .enumerate()
         .map(|(measure_index, measure)| {
+            let source_parts = order
+                .and_then(|order| order.prepare_measure(measure, measure_index, &mut cross_states));
             compile_measure(
                 measure,
-                measure_index + 1,
                 measure_index,
                 &mut cross_states,
                 &mut slur_spans,
                 &mut tuplet_spans,
+                source_parts,
             )
         })
         .collect();
@@ -220,11 +233,11 @@ fn update_cross_state(cs: &mut PartCrossState, result: &mut PartSliceResult) {
 
 fn compile_measure(
     measure: &MultiPartMeasure,
-    bar_number: usize,
     measure_index: usize,
     cross_states: &mut Vec<PartCrossState>,
     slur_spans: &mut Vec<SlurSpan>,
     tuplet_spans: &mut Vec<TupletSpan>,
+    source_parts: Option<&[usize]>,
 ) -> MeasureBlock {
     while cross_states.len() < measure.parts.len() {
         cross_states.push(PartCrossState::new());
@@ -232,7 +245,7 @@ fn compile_measure(
 
     let visible = visible_part_indices(measure);
 
-    let decorations = collect_decorations(measure, bar_number);
+    let decorations = collect_decorations(measure, measure_index + 1);
     let mut rows: Vec<MeasureRow> = Vec::new();
     for (part_idx, part_row) in measure.parts.iter().enumerate() {
         if !visible.contains(&part_idx) {
@@ -259,6 +272,10 @@ fn compile_measure(
                 )
             };
         let init_next_note_id = cs.next_note_id;
+        let source_part = source_parts
+            .and_then(|parts| parts.get(part_idx))
+            .copied()
+            .unwrap_or(part_idx);
 
         let mut slice_result = compile_part_slice(
             part_row.slice(),
@@ -270,7 +287,7 @@ fn compile_measure(
                 prev_tie_note_id: init_tie_note_id,
                 next_note_id: init_next_note_id,
                 measure_index,
-                part_index: part_idx,
+                part_index: source_part,
             },
             slur_spans,
             tuplet_spans,
@@ -292,7 +309,7 @@ fn compile_measure(
             label,
             kind,
             elements: slice_result.elements,
-            source_part_index: part_idx,
+            source_part_index: source_part,
             absorbed_rows: Vec::new(),
         });
     }

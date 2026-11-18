@@ -209,8 +209,7 @@ pub(super) fn render_svg(
     source: String,
     visibility: ResolvedPartVisibility,
     raw_instruments: Vec<InstrumentInfo>,
-    note_labels: NoteLabels,
-    page_layout: PageLayout,
+    view: RenderView,
 ) -> RenderResponse {
     let instruments: Vec<poentaro::parser::parts_parser::InstrumentInfo> = raw_instruments
         .into_iter()
@@ -220,8 +219,7 @@ pub(super) fn render_svg(
         &source,
         &resolved_part_visibility_from_wit(visibility),
         &instruments,
-        note_labels_from_wit(note_labels),
-        page_layout_from_wit(page_layout),
+        render_view_from_wit(view),
     ))
 }
 
@@ -230,8 +228,7 @@ pub(super) fn render_svg_with_highlight_range(
     raw_measure_ranges: Vec<MeasureRangeIn>,
     visibility: ResolvedPartVisibility,
     raw_instruments: Vec<InstrumentInfo>,
-    note_labels: NoteLabels,
-    page_layout: PageLayout,
+    view: RenderView,
 ) -> RenderResponse {
     let instruments: Vec<poentaro::parser::parts_parser::InstrumentInfo> = raw_instruments
         .into_iter()
@@ -246,8 +243,7 @@ pub(super) fn render_svg_with_highlight_range(
         &measure_ranges,
         &resolved_part_visibility_from_wit(visibility),
         &instruments,
-        note_labels_from_wit(note_labels),
-        page_layout_from_wit(page_layout),
+        render_view_from_wit(view),
     ))
 }
 
@@ -256,6 +252,7 @@ pub(super) fn render_mei(
     visibility: ResolvedPartVisibility,
     raw_instruments: Vec<InstrumentInfo>,
     clef: StaffClef,
+    score_order: ScoreOrder,
 ) -> RenderMeiResponse {
     let instruments: Vec<poentaro::parser::parts_parser::InstrumentInfo> = raw_instruments
         .into_iter()
@@ -264,12 +261,13 @@ pub(super) fn render_mei(
     if let Err(diagnostics) = crate::opened_document::open_checked(&source, &instruments) {
         return RenderMeiResponse::Err(diagnostics_error_to_wit(&diagnostics));
     }
-    match poentaro::render_mei_from_source_with_visibility(
+    match poentaro::render_mei_in_order(
         &source,
         "input.poentaro",
         &resolved_part_visibility_from_wit(visibility),
         &instruments,
         clef_choice_from_wit(clef),
+        score_order_from_wit(score_order),
     ) {
         Ok(document) => RenderMeiResponse::Ok(RenderMeiSuccess {
             mei: document.mei,
@@ -285,5 +283,20 @@ pub(super) fn render_mei(
         Err(error) => RenderMeiResponse::Err(diagnostics_error_to_wit(&[
             crate::diagnostics::diagnostic_from_error(&error),
         ])),
+    }
+}
+
+pub(super) fn score_order_from_wit(order: ScoreOrder) -> poentaro::ScoreOrder {
+    match order {
+        ScoreOrder::Written => poentaro::ScoreOrder::Written,
+        ScoreOrder::Expanded => poentaro::ScoreOrder::Expanded,
+    }
+}
+
+fn render_view_from_wit(view: RenderView) -> poentaro::RenderView {
+    poentaro::RenderView {
+        note_labels: note_labels_from_wit(view.note_labels),
+        page_layout: page_layout_from_wit(view.page_layout),
+        score_order: score_order_from_wit(view.score_order),
     }
 }

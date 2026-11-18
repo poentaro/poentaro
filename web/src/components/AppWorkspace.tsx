@@ -17,6 +17,7 @@ import { PitchDrawer } from './PitchDrawer'
 import { Preview } from './Preview'
 import { PartFocusEditor } from './partFocus/PartFocusEditor'
 import { PartFocusMenu } from './partFocus/PartFocusMenu'
+import { ScoreOrderToggle } from './ScoreOrderToggle'
 import { SlurIcon } from './SlurIcon'
 import { TieIcon } from './TieIcon'
 
@@ -358,6 +359,7 @@ export function AppWorkspace({
                 notation={staffNotation.notation}
                 onChange={staffNotation.setNotation}
               />
+              <ScoreOrderToggle layout={previewLayout} />
             </>
           }
           maxView={previewLayout.view === 'max'}

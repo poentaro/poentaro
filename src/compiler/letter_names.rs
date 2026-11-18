@@ -35,6 +35,15 @@ pub enum NoteLabels {
 /// tabs, and for guitar chords each note head's `head_label` set to follow
 /// its degree and each chord symbol's `guitar_voicing` set.
 pub fn label_note_heads(result: CompileResult, score: &Score, labels: NoteLabels) -> CompileResult {
+    label_note_heads_with_parts(result, score, score, labels)
+}
+
+pub(crate) fn label_note_heads_with_parts(
+    result: CompileResult,
+    score: &Score,
+    part_source: &Score,
+    labels: NoteLabels,
+) -> CompileResult {
     match labels {
         NoteLabels::Degrees => result,
         NoteLabels::LetterNames => relabel_blocks(result, score, |content, key| {
@@ -44,7 +53,9 @@ pub fn label_note_heads(result: CompileResult, score: &Score, labels: NoteLabels
                 HeadLabelPlacement::InPlaceOfDegree,
             )
         }),
-        NoteLabels::HarmonicaTabs => super::harmonica_tabs::place_harmonica_tabs(result, score),
+        NoteLabels::HarmonicaTabs => {
+            super::harmonica_tabs::place_harmonica_tabs(result, score, part_source)
+        }
         NoteLabels::GuitarChords => relabel_blocks(
             super::guitar_chords::place_guitar_voicings(result, score),
             score,

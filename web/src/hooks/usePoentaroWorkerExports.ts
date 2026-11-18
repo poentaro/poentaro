@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import type { ScoreOrder } from '../poentaroWasm'
 import type { ResolvedPartVisibility } from '../types'
 import type { Notation } from '../worker/messages'
 import type { WorkerRequest } from '../worker/poentaro.worker'
@@ -10,8 +11,9 @@ interface UsePoentaroWorkerExportsParams {
   activeFileRef: React.RefObject<string>
   enabledTracksRef: React.RefObject<string[] | undefined>
   visibilityRef: React.RefObject<ResolvedPartVisibility>
-  /** PDF exports follow the preview's notation. */
+  /** PDF exports follow the preview's notation and score order. */
   notation: Notation
+  scoreOrder: ScoreOrder
   pdfExporting: boolean
   splitPdfExporting: boolean
   midiExporting: boolean
@@ -49,6 +51,7 @@ export function usePoentaroWorkerExports({
   enabledTracksRef,
   visibilityRef,
   notation,
+  scoreOrder,
   pdfExporting,
   splitPdfExporting,
   midiExporting,
@@ -92,10 +95,12 @@ export function usePoentaroWorkerExports({
       id,
       visibility: visibilityRef.current,
       notation,
+      scoreOrder,
     }
     postAfterPaint(worker, payload)
   }, [
     notation,
+    scoreOrder,
     pdfExporting,
     splitPdfExporting,
     workerRef,
@@ -121,10 +126,12 @@ export function usePoentaroWorkerExports({
       baseName: baseNameFromActiveFile(activeFileRef.current),
       presetName: visibilityRef.current.presetName,
       notation,
+      scoreOrder,
     }
     postAfterPaint(worker, payload)
   }, [
     notation,
+    scoreOrder,
     pdfExporting,
     splitPdfExporting,
     workerRef,

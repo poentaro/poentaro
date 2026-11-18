@@ -56,6 +56,7 @@ pub(super) fn collect_staves(
     score: &Score,
     display_names: &HashMap<String, String>,
     clef_choice: ClefChoice,
+    omit_alternative_lines: bool,
 ) -> Vec<StaffPart> {
     let Some(first) = score.measures.first() else {
         return Vec::new();
@@ -63,6 +64,7 @@ pub(super) fn collect_staves(
     let note_staves = first
         .parts
         .iter()
+        .filter(|row| !omit_alternative_lines || !row.is_alternative_line())
         .map(|row| row.slice())
         .filter(|slice| matches!(slice.kind, PartKind::Notes))
         .filter_map(|slice| {
