@@ -20,7 +20,7 @@ pub const DEFAULT_MERGE_DUPLICATE_MEASURES_ACROSS_PARTS: bool = true;
 /// Default `hide_resting_parts`, used when unset in `metadata`.
 pub const DEFAULT_HIDE_RESTING_PARTS: bool = true;
 /// Default `hide_system_dividers`, used when unset in `metadata`.
-pub const DEFAULT_HIDE_SYSTEM_DIVIDERS: bool = false;
+pub const DEFAULT_HIDE_SYSTEM_DIVIDERS: bool = true;
 /// Default `directive_row_offset`, used when unset in `metadata`.
 pub const DEFAULT_DIRECTIVE_ROW_OFFSET: crate::ast::parsed::Offset =
     crate::ast::parsed::Offset { x: 0, y: 0 };

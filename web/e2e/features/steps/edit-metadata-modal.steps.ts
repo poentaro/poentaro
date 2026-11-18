@@ -217,20 +217,20 @@ When(
   },
 )
 
-When('I check the hide_system_dividers checkbox', async ({ page }) => {
+When('I uncheck the hide_system_dividers checkbox', async ({ page }) => {
   const modal = editMetadataModal(page)
   const hideDividersCheckbox = modal.locator('input[type="checkbox"]').last()
-  await expect(hideDividersCheckbox).not.toBeChecked()
-  await hideDividersCheckbox.check()
+  await expect(hideDividersCheckbox).toBeChecked()
+  await hideDividersCheckbox.uncheck()
 })
 
 When(
-  'I check then uncheck the hide_system_dividers checkbox',
+  'I uncheck then re-check the hide_system_dividers checkbox',
   async ({ page }) => {
     const modal = editMetadataModal(page)
     const hideDividersCheckbox = modal.locator('input[type="checkbox"]').last()
-    await hideDividersCheckbox.check()
     await hideDividersCheckbox.uncheck()
+    await hideDividersCheckbox.check()
   },
 )
 
