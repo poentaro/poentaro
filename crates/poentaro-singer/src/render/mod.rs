@@ -188,7 +188,6 @@ fn render_segment(
                     bpm: 60.0,
                     t0: start - origin,
                     vibrato: VIBRATO_CENTS,
-                    ..Default::default()
                 },
             );
             human.schedule(&plan.gestures);
