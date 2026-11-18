@@ -18,38 +18,14 @@ pub struct SplitMeiEntry {
     pub mei: String,
 }
 
-/// The staff counterpart of `write_split_pdfs_from_source`: one MEI per
-/// sounding part, each keeping the lyric parts that sing along to it.
-pub fn render_split_meis_from_source(
-    source: &str,
-    filename: &str,
-    base_name: &str,
-    selection: SplitSelection,
-    instruments: &[InstrumentInfo],
-    clef_choice: ClefChoice,
-) -> Result<Vec<SplitMeiEntry>, IrrecoverableError> {
-    render_split_meis_in_order(
-        source,
-        filename,
-        base_name,
-        selection,
-        instruments,
-        StaffRenderView {
-            clef: clef_choice,
-            score_order: crate::ScoreOrder::Written,
-        },
-    )
-}
-
 /// Staff notation settings for a per-part export.
 #[derive(Debug, Clone, Copy)]
-
 pub struct StaffRenderView {
     pub clef: ClefChoice,
     pub score_order: crate::ScoreOrder,
 }
 
-/// Render each part's MEI in the selected score order.
+/// Render each sounding part's MEI in score order, including its lyric parts.
 pub fn render_split_meis_in_order(
     source: &str,
     filename: &str,

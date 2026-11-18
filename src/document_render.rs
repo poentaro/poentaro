@@ -225,23 +225,6 @@ fn render_documents_from_source(
 /// Parse, group, apply a resolved part visibility, and export the score as
 /// MEI for Verovio to engrave as staff notation (see `mei_export`). Parts
 /// outside `visibility.rendered_tracks` get no staff, chord line or verse.
-pub fn render_mei_from_source_with_visibility(
-    source: &str,
-    filename: &str,
-    visibility: &ResolvedPartVisibility,
-    instruments: &[crate::parser::parts_parser::InstrumentInfo],
-    clef_choice: crate::mei_export::ClefChoice,
-) -> Result<crate::mei_export::MeiDocument, IrrecoverableError> {
-    render_mei_in_order(
-        source,
-        filename,
-        visibility,
-        instruments,
-        clef_choice,
-        ScoreOrder::Written,
-    )
-}
-
 pub fn render_mei_in_order(
     source: &str,
     filename: &str,

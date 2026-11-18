@@ -215,7 +215,7 @@ score """
     [w] 你好
     """,
 "#;
-    let mei = crate::render_mei_from_source_with_visibility(
+    let mei = crate::render_mei_in_order(
         source,
         "test.poentaro",
         &crate::ResolvedPartVisibility {
@@ -224,6 +224,7 @@ score """
         },
         &[],
         ClefChoice::Automatic,
+        crate::ScoreOrder::Written,
     )
     .unwrap()
     .mei;
@@ -243,7 +244,7 @@ score """
     [w] 你好
     """,
 "#;
-    let mei = crate::render_mei_from_source_with_visibility(
+    let mei = crate::render_mei_in_order(
         source,
         "test.poentaro",
         &crate::ResolvedPartVisibility {
@@ -252,6 +253,7 @@ score """
         },
         &[],
         ClefChoice::Automatic,
+        crate::ScoreOrder::Written,
     )
     .unwrap()
     .mei;

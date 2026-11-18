@@ -80,8 +80,8 @@ pub use audio_source::*;
 pub use compiler::NoteLabels;
 pub use document_render::{
     render_documents_from_source_with_visibility,
-    render_documents_with_highlight_range_and_visibility, render_mei_from_source_with_visibility,
-    render_mei_in_order, RenderDocumentOutput, RenderView, ScoreOrder,
+    render_documents_with_highlight_range_and_visibility, render_mei_in_order,
+    RenderDocumentOutput, RenderView, ScoreOrder,
 };
 pub use filters::*;
 pub use lyric_spans::*;
