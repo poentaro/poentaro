@@ -1,6 +1,6 @@
 ---
 name: next-issue
-description: Work on the next open GitHub issue that no agent has taken yet — claim it with a comment, implement it in a worktree, and open a PR whose description has annotated before/after screenshots, then hand over a local server with production data and a fixture that demonstrates the change. Use when asked to "work on the next issue".
+description: Work on the next open GitHub issue that no agent has taken yet — claim it with a comment, implement it in a worktree, and open a PR whose description has annotated before/after screenshots, then hand over a local server with production data and a fixture that demonstrates the change. Use when asked to "work on the next issue" or when the user approves its PR for CI follow-through and merge.
 ---
 
 # Next issue
@@ -39,23 +39,25 @@ and “Set up the test fixture for the user” in that worktree’s `AGENTS.md`.
 
 ## Once the user approves the PR
 
-Approval means the user says so in chat (e.g. "approved", "lgtm", "ship it")
-or leaves an approving review on GitHub. Then, without pausing between steps:
+When the user says "approved", "lgtm", or "ship it" in chat, or leaves an
+approving GitHub review, treat that as authorization to take the active PR
+through CI and merge it. Continue in the same turn until GitHub confirms the
+merge. Ask again only if resolving a failure would materially change what
+the user approved or a blocker requires their input.
 
-1. **Set auto-merge.** First confirm the PR's base is `master`
-   (`gh pr view <n> --repo poentaro/poentaro --json baseRefName`); if it is
-   stacked on another PR's branch, say so and handle the bottom of the stack
-   first. Confirm the `master` ruleset still requires the CI checks, since
-   auto-merge without them has merged PRs before CI finished. Then
-   `gh pr merge <n> --repo poentaro/poentaro --auto --squash`.
-2. **Watch until merged, fixing CI failures.** Wait on the checks
-   (`gh pr checks <n> --repo poentaro/poentaro --watch`, in the background or
-   via Monitor, not a polling loop). When a check fails, read its log
-   (`gh run view <run-id> --log-failed`), fix the cause in the worktree,
-   commit and push, then keep watching. Investigate e2e failures rather than
-   re-running them away; re-run a job only when the log shows a known flake.
-   If the branch falls behind `master` with conflicts, rebase and push.
-   Stop and ask only if a fix would change what the user approved.
+1. **Watch CI and fix failures.** Confirm the PR targets `master`.
+   For a stacked PR, wait for its prerequisite PR to merge, then confirm the
+   intended base. Use `gh pr checks <n> --repo poentaro/poentaro --watch`.
+   On failure, read the logs with `gh run view <run-id> --log-failed`,
+   fix the cause in the PR worktree, commit and push, and watch CI for the
+   new head. Investigate e2e failures and rerun a job only for a confirmed
+   transient failure. Resolve merge conflicts in the worktree and wait for
+   CI on the updated head.
+2. **Squash-merge after CI passes.** Confirm the expected PR CI workflow ran
+   successfully on the current head and all required checks passed. Then use
+   `gh pr merge <n> --repo poentaro/poentaro --squash --match-head-commit <sha>`
+   with the verified SHA. If the head changes, watch the new head before
+   merging. If GitHub queues the merge, stay on it until the PR is merged.
 3. **Notify on merge.** When `gh pr view <n> --json state` reports `MERGED`,
    send a push notification (PushNotification) and tell the user the PR is
    merged, then ask them to reply "ok" to start the cleanup. Do nothing more
