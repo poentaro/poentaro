@@ -63,3 +63,18 @@ Feature: Section jump select
     And I click the section label "B" in the SVG preview
     Then the section jump selected measure range is "2-3"
     And the section jump Monaco selection spans lines 11 to 14
+
+  Scenario: Clicking a section label replaces a committed note range in the SVG preview
+    When I click-and-click select the note at index 0 then the note at index 4
+    Then the notes at index 0, 1, 2, 3 and 4 are all range-selected
+    When I click the section label "B" in the SVG preview
+    Then the section jump selected measure range is "2-3"
+    And the section jump Monaco selection spans lines 11 to 14
+    And only the eight notes in section B are range-selected
+
+  Scenario: Clicking a section label replaces a recommitted selection in the SVG preview
+    When I click-and-click select the note at index 0 then the note at index 0
+    And I click the section label "B" in the SVG preview
+    Then the section jump selected measure range is "2-3"
+    And the section jump Monaco selection spans lines 11 to 14
+    And only the eight notes in section B are range-selected

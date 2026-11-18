@@ -87,11 +87,11 @@ export function useMeasureRangeSelection(
   applyNoteSelectionSilently: (
     cells: NoteCell[],
     runs: Awaited<ReturnType<typeof groupSelectedNotesIntoContiguousRuns>>,
-  ) => void,
+  ) => () => void,
   applyLyricSelectionSilently: (
     cells: LyricCell[],
     runs: Awaited<ReturnType<typeof groupSelectedLyricsIntoContiguousRuns>>,
-  ) => void,
+  ) => () => void,
   measureSpans: MeasureSpan[],
   notifySelection: (
     startLine: number,
@@ -189,14 +189,18 @@ export function useMeasureRangeSelection(
         groupSelectedNotesIntoContiguousRuns(noteCells, noteSpans),
         groupSelectedLyricsIntoContiguousRuns(lyricCells, lyricSpans),
       ])
-      applyNoteSelectionSilently(noteCells, noteRuns)
-      applyLyricSelectionSilently(lyricCells, lyricRuns)
       const ranges = [
         ...noteRuns.map(noteRunByteRange),
         ...lyricRuns.map(lyricRunByteRange),
       ]
-      if (ranges.length === 0) return
-      editorRef.current.setSelections(ranges)
+      const resumeNoteSync = applyNoteSelectionSilently(noteCells, noteRuns)
+      const resumeLyricSync = applyLyricSelectionSilently(lyricCells, lyricRuns)
+      try {
+        if (ranges.length > 0) editorRef.current.setSelections(ranges)
+      } finally {
+        resumeNoteSync()
+        resumeLyricSync()
+      }
     },
     [
       noteSpans,

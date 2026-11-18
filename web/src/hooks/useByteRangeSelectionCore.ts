@@ -44,12 +44,14 @@ export interface ByteRangeSelectionCore<Cell, Run> {
    *   does `executeEdits` *then* `setSelections` — two notifications, not
    *   one) must pass the real count, or the second, unsuppressed
    *   notification will still re-derive from stale `spans` right after the
-   *   first is correctly swallowed. */
+   *   first is correctly swallowed.
+   * @returns Clears unused suppression after a synchronous editor write.
+   *   Monaco skips the notification when the selection is unchanged. */
   applySelectionSilently: (
     cells: Cell[],
     runs: Run[],
     pendingEditorEchoes?: number,
-  ) => void
+  ) => () => void
   /** Resets `selectedCells`/`runs` back to empty with no Monaco round-trip —
    * for a caller that needs to drop a stale no-mounted-editor highlight this
    * core is still holding (e.g. a section/sequence jump in a Synced/shared
@@ -172,7 +174,11 @@ export function useByteRangeSelectionCore<
       setRuns(newRuns)
       if (newRuns.length === 0) return
       suppressNextEditorSelectionSyncCountRef.current = 1
-      editorRef.current.setSelections(newRuns.map(runByteRange))
+      try {
+        editorRef.current.setSelections(newRuns.map(runByteRange))
+      } finally {
+        suppressNextEditorSelectionSyncCountRef.current = 0
+      }
     },
     [
       spans,
@@ -200,6 +206,9 @@ export function useByteRangeSelectionCore<
       setSelectedCells(cells)
       setRuns(newRuns)
       suppressNextEditorSelectionSyncCountRef.current = pendingEditorEchoes
+      return () => {
+        suppressNextEditorSelectionSyncCountRef.current = 0
+      }
     },
     [runByteRange],
   )
