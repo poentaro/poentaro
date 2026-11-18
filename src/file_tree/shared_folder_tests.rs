@@ -62,7 +62,8 @@ fn a_folder_without_files_has_no_first_file() {
 #[test]
 fn the_view_is_rooted_at_the_shared_folder_without_demo_or_share_markers() {
     let shared = snapshot(&["Advent/O Come.poentaro", "Amazing.poentaro"], &["Rounds"]);
-    let rows = shared_folder_view(&shared, "Advent/O Come.poentaro", &[]).unwrap();
+    let rows =
+        shared_folder_view(&shared, "Advent/O Come.poentaro", &["Advent".to_string()]).unwrap();
     assert_eq!(
         names(&rows),
         vec!["Advent", "  O Come.poentaro", "Rounds", "Amazing.poentaro"]

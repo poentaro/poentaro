@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { activeFileLabel } from '../fileStoreQueries'
+import { useWasmReady } from './useWasmReady'
 
 const STORAGE_KEY = 'poentaro:file-tree-expanded:v1'
 
@@ -23,11 +25,10 @@ function save(keys: string[]) {
   }
 }
 
-/** The folders the user opened in the file list, remembered in this browser
- * only. A per-viewer UI preference: deliberately not part of the
+/** Folder expansion in the file list, remembered in this browser only. A per-viewer UI preference: deliberately not part of the
  * `FileStoreState` that is persisted to the storage backend and synced to the
  * cloud. Rust decides what is actually visible from these raw keys. */
-export function useExpandedFolders() {
+export function useExpandedFolders(activeFile: string) {
   const [expanded, setExpanded] = useState<string[]>(load)
   const toggle = useCallback((key: string) => {
     setExpanded((previous) => {
@@ -48,5 +49,11 @@ export function useExpandedFolders() {
       return next
     })
   }, [])
+  const ready = useWasmReady()
+  useEffect(() => {
+    // Reveal the active file once per selection so later toggles can hide it.
+    if (ready) expand(activeFileLabel(activeFile).ancestorKeys)
+  }, [activeFile, expand, ready])
+
   return { expanded, toggle, expand }
 }

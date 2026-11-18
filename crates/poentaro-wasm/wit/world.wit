@@ -2085,8 +2085,7 @@ world poentaro-wasm {
     }
 
     // A visible row of the file list. `key` is the folder path, file path,
-    // bare demo file name, or (demo folder) the expansion key `Demo/`; the
-    // ancestors of the active file are already `expanded`.
+    // bare demo file name, or (demo folder) the expansion key `Demo/`.
     record file-tree-view-row {
         key: string,
         name: string,
@@ -2179,6 +2178,8 @@ world poentaro-wasm {
         file-name: string,
         // The folder holding the file (new items go next to it); none at the top level and for demo files.
         folder-path: option<string>,
+        // Expansion keys needed to reveal the file in the picker.
+        ancestor-keys: list<string>,
     }
 
     variant file-tree-response {

@@ -213,7 +213,7 @@ When('the viewer opens the file list', async () => {
     .click()
 })
 
-When('the viewer expands the folder {string}', async ({}, folder: string) => {
+When('the viewer toggles the folder {string}', async ({}, folder: string) => {
   await viewer().getByRole('button', { name: folder, exact: true }).click()
 })
 

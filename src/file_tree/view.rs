@@ -48,8 +48,7 @@ pub struct TreeViewRow {
     /// 0 at the top level.
     pub depth: usize,
     pub kind: TreeViewRowKind,
-    /// Open folder (always false for files). The ancestors of the active file
-    /// are open regardless of `expanded`.
+    /// Open folder (always false for files).
     pub expanded: bool,
     /// Files at any depth below a folder row; 0 for the other kinds.
     pub file_count: usize,
@@ -85,6 +84,8 @@ pub struct ActiveLabel {
     /// Full path of the folder holding the file, where new files and folders
     /// go "next to" it; `None` at the top level and for read-only demo files.
     pub folder_path: Option<String>,
+    /// Expansion keys needed to reveal the file in the picker.
+    pub ancestor_keys: Vec<String>,
 }
 
 impl FileTree {
@@ -127,9 +128,8 @@ fn folder_rows(
         .flat_map(|folder| {
             // While searching, every folder that is shown is open. A folder
             // matching by its own name shows everything inside it.
-            let expanded = filter.is_some()
-                || input.expanded.iter().any(|key| key == folder.path.as_str())
-                || active_path.is_some_and(|active| active.is_within(&folder.path));
+            let expanded =
+                filter.is_some() || input.expanded.iter().any(|key| key == folder.path.as_str());
             let child_filter = filter.filter(|query| !name_matches(&folder.name, query));
             let header = TreeViewRow {
                 key: folder.path.as_str().to_string(),
@@ -206,13 +206,7 @@ fn demo_rows(input: &TreeViewInput, filter: Option<&str>) -> Vec<TreeViewRow> {
     if shown_files.is_empty() {
         return vec![];
     }
-    let active_is_demo = input
-        .demo_file_names
-        .iter()
-        .any(|name| name == input.active);
-    let expanded = filter.is_some()
-        || active_is_demo
-        || input.expanded.iter().any(|key| key == DEMO_EXPANSION_KEY);
+    let expanded = filter.is_some() || input.expanded.iter().any(|key| key == DEMO_EXPANSION_KEY);
     let header = TreeViewRow {
         key: DEMO_EXPANSION_KEY.to_string(),
         name: DEMO_FOLDER_NAME.to_string(),
@@ -317,22 +311,30 @@ pub fn active_label(active: &str, demo_file_names: &[String]) -> ActiveLabel {
             folder_names: vec![DEMO_FOLDER_NAME.to_string()],
             file_name: active.to_string(),
             folder_path: None,
+            ancestor_keys: vec![DEMO_EXPANSION_KEY.to_string()],
         };
     }
     match TreePath::parse(active) {
-        Ok(path) => ActiveLabel {
-            folder_names: path
-                .ancestors()
-                .iter()
-                .map(|ancestor| ancestor.name().to_string())
-                .collect(),
-            file_name: path.name().to_string(),
-            folder_path: path.parent().map(|parent| parent.as_str().to_string()),
-        },
+        Ok(path) => {
+            let ancestors = path.ancestors();
+            ActiveLabel {
+                folder_names: ancestors
+                    .iter()
+                    .map(|ancestor| ancestor.name().to_string())
+                    .collect(),
+                file_name: path.name().to_string(),
+                folder_path: path.parent().map(|parent| parent.as_str().to_string()),
+                ancestor_keys: ancestors
+                    .into_iter()
+                    .map(|ancestor| ancestor.as_str().to_string())
+                    .collect(),
+            }
+        }
         Err(_) => ActiveLabel {
             folder_names: vec![],
             file_name: active.to_string(),
             folder_path: None,
+            ancestor_keys: vec![],
         },
     }
 }

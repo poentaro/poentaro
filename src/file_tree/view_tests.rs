@@ -88,7 +88,7 @@ fn an_expanded_folder_shows_its_children_and_remembers_nothing_else() {
 }
 
 #[test]
-fn ancestors_of_the_active_file_are_open_even_when_not_expanded() {
+fn ancestors_of_the_active_file_can_be_collapsed() {
     let rows = tree().view_rows(&TreeViewInput {
         active: "Hymns/Advent/Rejoice.poentaro",
         expanded: &[],
@@ -99,15 +99,7 @@ fn ancestors_of_the_active_file_are_open_even_when_not_expanded() {
     });
     assert_eq!(
         render(&rows),
-        vec![
-            "Empty/ 0 closed",
-            "Hymns/ 3 open",
-            "  Advent/ 2 open",
-            "    O Come.poentaro",
-            "    Rejoice.poentaro *",
-            "  Amazing.poentaro",
-            "Scratch.poentaro",
-        ]
+        vec!["Empty/ 0 closed", "Hymns/ 3 closed", "Scratch.poentaro"]
     );
 }
 
@@ -127,7 +119,7 @@ fn an_expanded_empty_folder_gets_a_hint_row() {
 }
 
 #[test]
-fn demo_is_last_collapsed_by_default_and_opens_by_key_or_active_file() {
+fn demo_is_last_and_expands_by_key() {
     let demo = strings(&["01.poentaro", "02.poentaro"]);
     let opened = tree().view_rows(&TreeViewInput {
         active: "Scratch.poentaro",
@@ -151,10 +143,7 @@ fn demo_is_last_collapsed_by_default_and_opens_by_key_or_active_file() {
         query: "",
         selected: &[],
     });
-    assert_eq!(
-        &render(&active_demo)[3..],
-        ["Demo/ 2 open", "  01.poentaro", "  02.poentaro *"]
-    );
+    assert_eq!(&render(&active_demo)[3..], ["Demo/ 2 closed"]);
 }
 
 #[test]
@@ -165,6 +154,7 @@ fn active_label_splits_folders_from_the_file_name() {
             folder_names: strings(&["Hymns", "Advent"]),
             file_name: "O Come.poentaro".to_string(),
             folder_path: Some("Hymns/Advent".to_string()),
+            ancestor_keys: strings(&["Hymns", "Hymns/Advent"]),
         }
     );
     assert_eq!(
@@ -176,6 +166,10 @@ fn active_label_splits_folders_from_the_file_name() {
         strings(&["Demo"])
     );
     assert_eq!(active_label("a.poentaro", &[]).folder_path, None);
+    assert_eq!(
+        active_label("01.poentaro", &strings(&["01.poentaro"])).ancestor_keys,
+        strings(&[DEMO_EXPANSION_KEY])
+    );
     assert_eq!(
         active_label("01.poentaro", &strings(&["01.poentaro"])).folder_path,
         None
@@ -309,7 +303,7 @@ fn a_matching_row_reports_where_the_query_occurs_in_its_displayed_name() {
 fn every_row_lists_the_keys_of_the_folders_it_lies_inside() {
     let rows = tree().view_rows(&TreeViewInput {
         active: "Hymns/Advent/Rejoice.poentaro",
-        expanded: &strings(&["Empty"]),
+        expanded: &strings(&["Empty", "Hymns", "Hymns/Advent"]),
         demo_file_names: &strings(&["01.poentaro"]),
         shares: &ShareOverview::default(),
         query: "",

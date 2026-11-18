@@ -49,8 +49,8 @@ pub fn shared_folder_first_file(snapshot: &FolderSnapshot) -> Option<String> {
 }
 
 /// The visible rows of the viewer's file list, rooted at the shared folder:
-/// like the owner's list (collapsed folders hide their contents, ancestors of
-/// `active` are open) but with no `Demo/` row and no share markers.
+/// Collapsed folders hide their contents, and the viewer has no `Demo/` row
+/// or share markers.
 pub fn shared_folder_view(
     snapshot: &FolderSnapshot,
     active: &str,

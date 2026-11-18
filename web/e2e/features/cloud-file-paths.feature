@@ -16,8 +16,8 @@ Feature: Cloud files whose names are slash paths keep their folders
     And I rename the active file to "CloudPathsB/Sub/renamed"
     Then "CloudPathsB/Sub/renamed.poentaro" exists on the server for the signed-in account
     When I reload the page and reopen the file list
-    And I click the file tree folder "CloudPathsB"
-    And I click the file tree folder "Sub"
+    And I expand the file tree folder "CloudPathsB"
+    And I expand the file tree folder "Sub"
     Then the file tree shows the file "renamed"
 
   Scenario: A new file created in a folder offline that collides on delivery stays in the folder

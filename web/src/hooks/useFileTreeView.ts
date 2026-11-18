@@ -34,6 +34,7 @@ export function useFileTreeView(
           folderNames: [],
           fileName: activeName,
           folderPath: undefined,
+          ancestorKeys: [],
         },
       }
 }

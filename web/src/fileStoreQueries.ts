@@ -28,11 +28,9 @@ export function fileTreeRows(state: FileStoreState): FileTreeRow[] {
   return response.tag === 'ok' ? response.val : []
 }
 
-/** The visible rows of the file list (collapsed folders hidden, the active
- * file's ancestors forced open, the read-only `Demo/` row last), computed in
- * Rust from the raw `expanded` set, the search `query` (blank shows
- * everything) and the `selected` file paths (each row's checkbox). Empty if
- * the paths conflict. */
+/** The visible rows of the file list (collapsed folders hidden, the
+ * read-only `Demo/` row last), computed in Rust from the expanded folders,
+ * search query and selected file paths. Empty if the paths conflict. */
 export function fileTreeView(
   state: FileStoreState,
   expanded: string[],
