@@ -286,7 +286,7 @@ pub(super) fn render_mei(
     }
 }
 
-fn score_order_from_wit(order: ScoreOrder) -> poentaro::ScoreOrder {
+pub(super) fn score_order_from_wit(order: ScoreOrder) -> poentaro::ScoreOrder {
     match order {
         ScoreOrder::Written => poentaro::ScoreOrder::Written,
         ScoreOrder::Expanded => poentaro::ScoreOrder::Expanded,

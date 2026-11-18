@@ -82,8 +82,8 @@ export type WorkerRequest =
       source: string
       id: number
       visibility: ResolvedPartVisibility
-      /** The preview's notation; the PDF is engraved in the same one. */
       notation: Notation
+      scoreOrder: ScoreOrder
     }
   | {
       type: 'generateSplitPdf'
@@ -94,6 +94,7 @@ export type WorkerRequest =
        * named after it. */
       presetName?: string
       notation: Notation
+      scoreOrder: ScoreOrder
     }
   | {
       type: 'generateMidi'

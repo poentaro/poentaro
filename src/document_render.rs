@@ -104,6 +104,24 @@ fn render_documents(
     })
 }
 
+#[cfg(feature = "pdf")]
+pub(crate) fn render_pdf_pages(
+    score: &Score,
+    parts: &[PartInfo],
+    view: RenderView,
+) -> Result<Vec<String>, IrrecoverableError> {
+    let expanded = view.score_order.expand(score)?;
+    let result = render_documents(
+        score,
+        parts,
+        None,
+        view.note_labels,
+        view.page_layout,
+        expanded.as_ref(),
+    )?;
+    Ok(crate::serializer::serialize(&result.documents, None))
+}
+
 /// How the preview draws a score: what its note heads read and the pages it
 /// lands on.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -247,19 +265,28 @@ pub fn render_mei_in_order(
         visibility.preset_name.as_deref(),
     )?;
     crate::apply_track_filter(&mut score, enabled_tracks);
-    if let Some(expanded) = order.expand(&score)? {
+    score_to_mei_in_order(&score, &display_names, clef_choice, order)
+}
+
+pub(crate) fn score_to_mei_in_order(
+    score: &Score,
+    display_names: &std::collections::HashMap<String, String>,
+    clef_choice: crate::mei_export::ClefChoice,
+    order: ScoreOrder,
+) -> Result<crate::mei_export::MeiDocument, IrrecoverableError> {
+    if let Some(expanded) = order.expand(score)? {
         let mut document = crate::mei_export::score_to_mei_with_staves(
             &expanded.score,
-            Some(&score),
-            &display_names,
+            Some(score),
+            display_names,
             clef_choice,
         );
         expanded.remap_staff_measures(&mut document.measures);
         return Ok(document);
     }
     Ok(crate::mei_export::score_to_mei(
-        &score,
-        &display_names,
+        score,
+        display_names,
         clef_choice,
     ))
 }

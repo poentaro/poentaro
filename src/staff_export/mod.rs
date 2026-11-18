@@ -28,11 +28,41 @@ pub fn render_split_meis_from_source(
     instruments: &[InstrumentInfo],
     clef_choice: ClefChoice,
 ) -> Result<Vec<SplitMeiEntry>, IrrecoverableError> {
+    render_split_meis_in_order(
+        source,
+        filename,
+        base_name,
+        selection,
+        instruments,
+        StaffRenderView {
+            clef: clef_choice,
+            score_order: crate::ScoreOrder::Written,
+        },
+    )
+}
+
+/// Staff notation settings for a per-part export.
+#[derive(Debug, Clone, Copy)]
+
+pub struct StaffRenderView {
+    pub clef: ClefChoice,
+    pub score_order: crate::ScoreOrder,
+}
+
+/// Render each part's MEI in the selected score order.
+pub fn render_split_meis_in_order(
+    source: &str,
+    filename: &str,
+    base_name: &str,
+    selection: SplitSelection,
+    instruments: &[InstrumentInfo],
+    view: StaffRenderView,
+) -> Result<Vec<SplitMeiEntry>, IrrecoverableError> {
     let score = crate::compile_with_preset(source, filename, instruments, selection.preset_name)?;
     let base_name = selection.file_base_name(base_name);
     let labels = part_display_name_map(source, filename)?;
     let all_parts = crate::list_parts_from_source(source, filename, instruments)?;
-    Ok(split_track_names(source, filename, &score, selection)?
+    split_track_names(source, filename, &score, selection)?
         .into_iter()
         .map(|track| {
             let enabled_tracks = track_with_its_lyric_parts(&score, &track);
@@ -42,13 +72,19 @@ pub fn render_split_meis_from_source(
                 .into_iter()
                 .map(|part| (part.abbreviation, part.display_name))
                 .collect();
-            SplitMeiEntry {
+            Ok(SplitMeiEntry {
                 filename: split_pdf_filename(&base_name, &split_track_label(&labels, &track)),
-                mei: crate::mei_export::score_to_mei(&part_score, &display_names, clef_choice).mei,
+                mei: crate::document_render::score_to_mei_in_order(
+                    &part_score,
+                    &display_names,
+                    view.clef,
+                    view.score_order,
+                )?
+                .mei,
                 track_name: track,
-            }
+            })
         })
-        .collect())
+        .collect()
 }
 
 /// Verovio's SVG pages for one part's PDF in a split staff export.

@@ -50,12 +50,36 @@ pub fn write_pdf_from_source_with_visibility(
     instruments: &[InstrumentInfo],
     note_labels: NoteLabels,
 ) -> Result<Vec<u8>, IrrecoverableError> {
-    let render_output = render_svgs_from_source_with_visibility(
+    write_pdf_in_order(
+        source,
+        filename,
+        visibility,
+        fonts,
+        instruments,
+        crate::RenderView {
+            note_labels,
+            ..crate::RenderView::default()
+        },
+    )
+}
+
+/// Write a PDF in the selected score order.
+#[cfg(feature = "pdf")]
+pub fn write_pdf_in_order(
+    source: &str,
+    filename: &str,
+    visibility: &ResolvedPartVisibility,
+    fonts: &crate::fonts::FontBytesByFamily,
+    instruments: &[InstrumentInfo],
+    view: crate::RenderView,
+) -> Result<Vec<u8>, IrrecoverableError> {
+    let render_output = crate::render_documents_from_source_with_visibility(
         source,
         filename,
         visibility,
         instruments,
-        note_labels,
+        view,
     )?;
-    crate::pdf::write_pdf(&render_output.svgs, fonts, Some(source))
+    let svgs = crate::serializer::serialize(&render_output.documents, None);
+    crate::pdf::write_pdf(&svgs, fonts, Some(source))
 }

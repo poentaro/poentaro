@@ -241,6 +241,7 @@ export function usePoentaroWorkerActions({
     enabledTracksRef: state.enabledTracksRef,
     visibilityRef: state.visibilityRef,
     notation: staffNotation.notation,
+    scoreOrder: previewLayout.scoreOrder,
     pdfExporting: state.pdfExporting,
     splitPdfExporting: state.splitPdfExporting,
     midiExporting: state.midiExporting,

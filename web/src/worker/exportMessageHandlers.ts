@@ -34,6 +34,7 @@ export function handleGeneratePdf(
     msg.visibility,
     loadedFonts,
     noteLabelsFor(msg.notation),
+    msg.scoreOrder,
   )
   if (result.tag === 'ok') {
     const pdfBuffer = binaryBufferFromResult(result.val.pdf)
@@ -73,6 +74,7 @@ export function handleGenerateSplitPdf(
     msg.presetName,
     loadedFonts,
     noteLabelsFor(msg.notation),
+    msg.scoreOrder,
   )
   if (result.tag === 'ok') {
     const zipBuffer = binaryBufferFromResult(result.val.zip)

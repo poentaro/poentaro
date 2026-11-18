@@ -105,8 +105,9 @@ impl Guest for Component {
         visibility: ResolvedPartVisibility,
         fonts: FontBytesByFamily,
         note_labels: NoteLabels,
+        score_order: ScoreOrder,
     ) -> GeneratePdfResponse {
-        generate_pdf(source, visibility, fonts, note_labels)
+        generate_pdf(source, visibility, fonts, note_labels, score_order)
     }
 
     fn generate_midi(source: String, enabled_tracks: Option<Vec<String>>) -> GenerateMidiResponse {
@@ -331,10 +332,10 @@ impl Guest for Component {
         source_ranges_to_part_stream(source: String, abbreviation: String, edited_stream: String, ranges: Vec<Span>) -> Vec<Span>;
         render_svg(source: String, visibility: ResolvedPartVisibility, raw_instruments: Vec<InstrumentInfo>, view: RenderView) -> RenderResponse;
         render_svg_with_highlight_range(source: String, raw_measure_ranges: Vec<MeasureRangeIn>, visibility: ResolvedPartVisibility, raw_instruments: Vec<InstrumentInfo>, view: RenderView) -> RenderResponse;
-        render_split_meis(source: String, base_name: String, preset_name: Option<String>, raw_instruments: Vec<InstrumentInfo>, clef: StaffClef) -> RenderSplitMeisResponse;
+        render_split_meis(source: String, base_name: String, preset_name: Option<String>, raw_instruments: Vec<InstrumentInfo>, clef: StaffClef, score_order: ScoreOrder) -> RenderSplitMeisResponse;
         generate_staff_pdf(pages: Vec<String>, source: String, fonts: FontBytesByFamily) -> GeneratePdfResponse;
         generate_split_staff_pdfs(parts: Vec<StaffPdfPart>, fonts: FontBytesByFamily) -> GenerateSplitPdfsResponse;
-        generate_split_pdfs(source: String, base_name: String, preset_name: Option<String>, fonts: FontBytesByFamily, note_labels: NoteLabels) -> GenerateSplitPdfsResponse;
+        generate_split_pdfs(source: String, base_name: String, preset_name: Option<String>, fonts: FontBytesByFamily, note_labels: NoteLabels, score_order: ScoreOrder) -> GenerateSplitPdfsResponse;
         generate_split_midis(source: String, base_name: String, preset_name: Option<String>) -> GenerateSplitMidisResponse;
         generate_split_wavs(source: String, base_name: String, preset_name: Option<String>, soundfont: Vec<u8>, vocals: Vec<TrackVocals>) -> GenerateSplitWavsResponse;
         generate_split_mp3s(source: String, base_name: String, preset_name: Option<String>, soundfont: Vec<u8>, vocals: Vec<TrackVocals>) -> GenerateSplitMp3sResponse;
