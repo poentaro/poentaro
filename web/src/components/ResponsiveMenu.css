@@ -57,6 +57,9 @@
 .responsive-menu-drawer-body .file-tabs {
   min-width: 0;
   max-height: none;
+}
+
+.responsive-menu-drawer-body .file-tabs {
   overflow: visible;
 }
 
