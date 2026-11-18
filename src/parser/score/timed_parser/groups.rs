@@ -15,6 +15,7 @@ pub struct GroupStack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GroupFrame {
     pub note_count: usize,
+    has_pitched_note: bool,
     pub segment_start: usize,
     /// Source span of this group's opening `(`.
     pub open_paren_span: Span,
@@ -28,6 +29,7 @@ impl GroupStack {
     pub fn push(&mut self, segment_start: usize, open_paren_span: Span) {
         self.frames.push(GroupFrame {
             note_count: 0,
+            has_pitched_note: false,
             segment_start,
             open_paren_span,
         });
@@ -41,6 +43,15 @@ impl GroupStack {
             close_paren_span,
         });
         Some(frame)
+    }
+
+    pub(super) fn mark_slur_continuation(&mut self, event: &mut ScoreEvent) {
+        if let ScoreEvent::Note(note) = event {
+            note.slur_continuation = self
+                .frames
+                .first_mut()
+                .is_some_and(|outer| std::mem::replace(&mut outer.has_pitched_note, true));
+        }
     }
 
     pub fn increment_note_count(&mut self) {

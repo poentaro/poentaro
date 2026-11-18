@@ -838,8 +838,11 @@ Empty lyrics lines are **not** allowed. Whitespace-only lines are treated as mea
 In each measure, the number of lyric syllables must match the number of notes that take lyrics in the paired notes row:
 
 - Each non-rest note head counts, except a **tie continuation** (same pitch immediately after a tied note, including across a bar line).
+- A **slur group** (`(…)`) takes one lyric slot at its first pitched note. The remaining notes share that syllable, including across bar lines and inside nested slurs. A tie continuation still takes no slot.
 - Held-syllable markers (`-`) count as their own syllables — e.g. `你 - 好` is three syllables for three lyric slots.
 - The `_` no-lyrics marker skips this check (zero syllables allowed regardless of notes).
+
+If an older score uses `-` in the lyric row for a slurred continuation, remove that marker. Keep markers that occupy separate lyric slots.
 
 Mismatch is a non-fatal **warning** (rendering continues, with empty-string syllables inserted for underflow), e.g. `[Soprano] lyrics underflow: ran out of syllables at syllable 3 (fewer syllables than notes)` or `[Soprano] lyrics overflow: 1 extra syllable(s) after all notes are consumed`.
 
@@ -1136,7 +1139,7 @@ The editor re-bars the stream on every keystroke, so each line always holds exac
 
 ### Lyric streams
 
-A lyric stream is cut into measures by its target's **lyric slots**: each measure takes as many syllables as its target has notes that aren't the continuation of a tie (ties carry across barlines). `-` held syllables count as syllables. A measure whose target has no slots takes nothing. If the stream runs out partway through a measure, that measure keeps what it has (a warning; it shows the usual lyrics-underflow warning after Apply). Syllables past the last slot are appended to the score as new measures, so lyrics can be written before the notes: each line of them is one measure, and `_` is a measure on its own. If every syllable past the last slot is `_` (placeholders pushed past the end by syllables typed before them), they are deleted instead.
+A lyric stream is cut into measures by its target's **lyric slots**: each measure takes one syllable per target note head, skipping tie and slur continuations even across bar lines. `-` held syllables count as syllables. A measure whose target has no slots takes nothing. If the stream runs out partway through a measure, that measure keeps what it has (a warning; it shows the usual lyrics-underflow warning after Apply). Syllables past the last slot are appended to the score as new measures, so lyrics can be written before the notes: each line of them is one measure, and `_` is a measure on its own. If every syllable past the last slot is `_` (placeholders pushed past the end by syllables typed before them), they are deleted instead.
 
 ### Lyric streams under a chords part
 

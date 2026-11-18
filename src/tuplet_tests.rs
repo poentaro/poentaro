@@ -13,6 +13,7 @@ fn rescale_tuplets(events: Vec<Spanned<ScoreEvent>>) -> (Vec<Spanned<ScoreEvent>
 fn note(duration: u32, tuplet: Option<TupletInfo>) -> Spanned<ScoreEvent> {
     Spanned::new(
         ScoreEvent::Note(ParsedNote {
+            slur_continuation: false,
             pitch: NumberedPitch::One,
             accidental: Accidental::Natural,
             octave: 0,

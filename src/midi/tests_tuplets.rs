@@ -19,6 +19,7 @@ fn triplet_eighth_note_event() -> NoteEvent {
     // occupy exactly one real quarter-beat, matching `plain_quarter_note_event`'s
     // single (unscaled) duration of `4`.
     NoteEvent::Note(GroupedNote {
+        slur_continuation: false,
         pitch: NumberedPitch::One,
         accidental: Accidental::Natural,
         octave: 0,
@@ -37,6 +38,7 @@ fn triplet_eighth_note_event() -> NoteEvent {
 
 fn plain_quarter_note_event() -> NoteEvent {
     NoteEvent::Note(GroupedNote {
+        slur_continuation: false,
         pitch: NumberedPitch::One,
         accidental: Accidental::Natural,
         octave: 0,

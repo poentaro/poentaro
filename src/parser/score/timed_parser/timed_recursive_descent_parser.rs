@@ -329,6 +329,7 @@ impl<'a, H: TimedUnitHead> TimedRecursiveDescentParser<'a, H> {
             },
         );
         Self::attach_tie_to_next(&mut event, duration_meta.tie_to_next_span);
+        self.stack.mark_slur_continuation(&mut event);
         if matches!(
             event,
             ScoreEvent::Note(_) | ScoreEvent::Chord(_) | ScoreEvent::PercussionHit(_)

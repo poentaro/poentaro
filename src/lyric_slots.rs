@@ -2,11 +2,15 @@
 //!
 //! A lyric part has no notes of its own: it sings along to its target's. This
 //! is the one place that decides which of the target's events consume a
-//! syllable (every `Note` that isn't the continuation of a tie), so the
-//! grouper's tie-aware pairing, the compiler's column placement and the lyric
+//! syllable (each note head except tie and slur continuations), so the
+//! grouper's pairing, the compiler's column placement and the lyric
 //! source spans can never disagree.
 
 use crate::ast::grouped::NoteEvent;
+
+pub(crate) fn takes_lyric_slot(tied: bool, slur_continuation: bool) -> bool {
+    !tied && !slur_continuation
+}
 
 /// One lyric slot: a note that takes a syllable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,10 +59,11 @@ pub(crate) fn measure_lyric_slots(events: &[NoteEvent], entering_tied: bool) -> 
         .filter_map(|(event_index, event)| {
             let slot = match event {
                 NoteEvent::Note(note) => {
-                    let slot = (!tied).then_some(LyricSlot {
-                        event_index,
-                        column,
-                    });
+                    let slot =
+                        takes_lyric_slot(tied, note.slur_continuation).then_some(LyricSlot {
+                            event_index,
+                            column,
+                        });
                     tied = note.tie_to_next();
                     slot
                 }

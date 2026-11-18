@@ -4,8 +4,8 @@ parts ["Melody" [M]: notes, "Melody lyrics" [Mv1]: lyrics [M]],
 
 score """
     label="Slur group"
-    [M] (1 2) (3 4)
-    [Mv1] _
+    [M] 1 2 (5_6_) 3
+    [Mv1] 我 爱 你 呀
 
     label="Tie: basic"
     [M] 4~4 3 2
@@ -22,16 +22,18 @@ score """
 
     label="Tie inside slur"
     [M] (4~4 3) 2
+    [Mv1] sing on
 
     label="Nested slur"
     [M] ((1_ 2_) 3) 4
-    [Mv1] _
+    [Mv1] sing on
 
     label="Cross-measure slur"
     [M] 1 2 3 (4
+    [Mv1] Let the song ring
 
 
 
     [M] 5) 6 7 0
-    [Mv1] _
+    [Mv1] out now
     """,

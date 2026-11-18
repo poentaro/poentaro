@@ -9,6 +9,7 @@ use crate::error::Span;
 
 fn tied_note_event(tied: bool) -> NoteEvent {
     NoteEvent::Note(GroupedNote {
+        slur_continuation: false,
         pitch: NumberedPitch::One,
         accidental: Accidental::Natural,
         octave: 0,

@@ -249,6 +249,7 @@ impl PartGrouper {
             span,
             pn.duration,
             NoteEvent::Note(GroupedNote {
+                slur_continuation: pn.slur_continuation,
                 pitch: pn.pitch,
                 accidental: pn.accidental,
                 octave: pn.octave,

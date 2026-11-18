@@ -133,6 +133,7 @@ fn count_lyric_slots_skips_tie_continuation() {
     let events = vec![
         Spanned::new(
             ScoreEvent::Note(ParsedNote {
+                slur_continuation: false,
                 pitch: NumberedPitch::Three,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
@@ -150,6 +151,7 @@ fn count_lyric_slots_skips_tie_continuation() {
         ),
         Spanned::new(
             ScoreEvent::Note(ParsedNote {
+                slur_continuation: false,
                 pitch: NumberedPitch::Three,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
@@ -167,6 +169,7 @@ fn count_lyric_slots_skips_tie_continuation() {
         ),
         Spanned::new(
             ScoreEvent::Note(ParsedNote {
+                slur_continuation: false,
                 pitch: NumberedPitch::One,
                 accidental: crate::ast::parsed::Accidental::Natural,
                 octave: 0,
@@ -195,6 +198,7 @@ fn count_lyric_slots_carries_tie_across_bars() {
 
     let bar1 = vec![Spanned::new(
         ScoreEvent::Note(ParsedNote {
+            slur_continuation: false,
             pitch: NumberedPitch::Three,
             accidental: crate::ast::parsed::Accidental::Natural,
             octave: 0,
@@ -212,6 +216,7 @@ fn count_lyric_slots_carries_tie_across_bars() {
     )];
     let bar2 = vec![Spanned::new(
         ScoreEvent::Note(ParsedNote {
+            slur_continuation: false,
             pitch: NumberedPitch::Three,
             accidental: crate::ast::parsed::Accidental::Natural,
             octave: 0,

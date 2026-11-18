@@ -185,6 +185,7 @@ fn slurred_same_pitch_notes_produce_two_note_ons() {
 
     let make_note = |slur: bool| {
         NoteEvent::Note(GroupedNote {
+            slur_continuation: false,
             pitch: NumberedPitch::One,
             accidental: crate::ast::parsed::Accidental::Natural,
             octave: 0,
