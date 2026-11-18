@@ -24,14 +24,18 @@ and “Set up the test fixture for the user” in that worktree’s `AGENTS.md`.
    every startup. The recipe reuses an existing local copy. Read from
    production and write fixture changes only to the worktree’s local database.
 2. Prepare the local state that demonstrates the PR. Create or update the
-   relevant local file, records, or settings as needed. Follow the local
-   sign-in setup in `AGENTS.md` when the fixture needs an account so the user
-   can open it directly. Keep any scratch scripts and config out of the PR.
+   relevant local file, records, or settings as needed. Automatically sign
+   in as `hou32hou@gmail.com` using that account's identity in the local copy
+   of production, even when the fixture can be opened anonymously. Follow
+   the local session setup in `AGENTS.md` with a fresh token bound to the
+   local worker. Serve the signed-in preview on loopback and keep tokens and
+   scratch configuration out of the PR.
 3. Build the URL using the actual Vite port. If the fixture is a file, include
    its URL-encoded name in `?file=<name>` and add any other supported URL
    state that opens the relevant view.
 4. Open the exact URL in a fresh browser and confirm it reaches the prepared
-   fixture. Give the user that URL and any remaining steps to see the change.
+   fixture already signed in as the requested account. Give the user that URL
+   and any remaining steps to see the change.
 
 ## Once the user approves the PR
 
