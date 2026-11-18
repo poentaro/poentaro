@@ -1,5 +1,6 @@
 use crate::ast::parsed::{ScoreEvent, Syllable};
 use crate::error::{RecoverableError, Span, Spanned};
+use crate::lyric_slots::takes_lyric_slot;
 use crate::pinyin::PinyinSyllable;
 
 /// Tracks tie state across measure boundaries for lyric-slot counting.
@@ -8,7 +9,7 @@ pub struct LyricTieState {
     pub prev_tie_to_next: bool,
 }
 
-/// Count note heads in `events` that consume a lyric syllable (non-tie-continuation notes).
+/// Count note heads in `events` that consume a lyric syllable (skipping tie and slur continuations).
 /// Updates `state` so the next measure can continue cross-bar ties.
 pub fn count_lyric_slots_in_events(
     events: &[Spanned<ScoreEvent>],
@@ -18,7 +19,7 @@ pub fn count_lyric_slots_in_events(
     for spanned in events {
         match &spanned.value {
             ScoreEvent::Note(note) => {
-                if !state.prev_tie_to_next {
+                if takes_lyric_slot(state.prev_tie_to_next, note.slur_continuation) {
                     count += 1;
                 }
                 state.prev_tie_to_next = note.tie_to_next();

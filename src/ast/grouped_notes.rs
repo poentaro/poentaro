@@ -52,6 +52,8 @@ pub struct GroupedChordNote {
 
 #[derive(Clone)]
 pub struct GroupedNote {
+    /// The outermost slur already has a pitched note before this one.
+    pub slur_continuation: bool,
     pub pitch: NumberedPitch,
     pub accidental: Accidental,
     pub octave: i8,

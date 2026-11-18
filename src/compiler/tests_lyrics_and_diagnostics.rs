@@ -57,6 +57,32 @@ fn cross_measure_tilde_tie_does_not_consume_lyric_slot_for_continuation_note() {
 }
 
 #[test]
+fn a_slur_places_one_syllable_at_its_first_note() {
+    for notes in ["(4_ 3_) 2", "(4_ (3= 2=)) 2", "(4=~4= 3_) 2"] {
+        let source = lyrics_doc(&format!(
+            "time=2/4 key=C4 bpm=120\n[S] {notes}\n[Sv] sing on"
+        ));
+        let score = score_from(&source);
+        let result = compile(&score);
+        let block = &result.blocks[0];
+        assert!(
+            block.diagnostics.is_empty(),
+            "{notes}: {:?}",
+            block.diagnostics
+        );
+        let lyrics = block.rows[1]
+            .elements
+            .iter()
+            .filter_map(|element| match &element.content {
+                ElementContent::Lyric { text, .. } => Some((element.column, text.as_str())),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(lyrics, [(0, "sing"), (4, "on")], "{notes}");
+    }
+}
+
+#[test]
 fn lyrics_underflow_errors_propagate_to_measure_block() {
     // 4 notes but only 2 syllables → block should have errors
     let source = lyrics_doc("time=4/4 key=C4 bpm=120\n[S] 1 2 3 4\n[Sv] a b\n");

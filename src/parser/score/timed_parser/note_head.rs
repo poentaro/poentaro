@@ -105,6 +105,7 @@ impl TimedUnitHead for NoteHead {
             })
         } else {
             ScoreEvent::Note(ParsedNote {
+                slur_continuation: false,
                 pitch: head.pitch.clone(),
                 accidental: head.accidental.clone(),
                 octave,

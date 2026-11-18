@@ -174,6 +174,7 @@ pub(super) fn one_measure_score() -> Score {
                 singing_voice: None,
                 notes: Notes {
                     events: vec![NoteEvent::Note(GroupedNote {
+                        slur_continuation: false,
                         pitch: NumberedPitch::One,
                         accidental: Accidental::Natural,
                         octave: 0,
@@ -259,6 +260,7 @@ fn one_note_score_with_octave_offset(octave_offset: i8) -> Score {
                 singing_voice: None,
                 notes: Notes {
                     events: vec![NoteEvent::Note(GroupedNote {
+                        slur_continuation: false,
                         pitch: NumberedPitch::One,
                         accidental: Accidental::Natural,
                         octave: 0,

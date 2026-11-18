@@ -132,7 +132,7 @@ pub struct LyricsSlice {
     /// The target is a `chords` part: syllables are then placed by
     /// `chord_lyric_placement` instead of one per note slot.
     pub targets_chords: bool,
-    /// Tie-aware syllables, one per lyric slot of `target_events` (see
+    /// Syllables, one per lyric slot of `target_events` (see
     /// `lyric_slots::measure_lyric_slots`); empty for no lyrics (`_`). Under a
     /// chord target there are no such slots: these are the line's syllables
     /// whole, in order, bracketed ones (`Syllable::bracketed`) tallied 1:1 with
@@ -308,7 +308,7 @@ pub(crate) struct GroupedScore {
 pub(crate) struct GroupedMeasure {
     pub(crate) notes: Notes,
     pub(crate) source_span: Span,
-    /// Tie-aware syllables paired to the target's lyric slots in this measure.
+    /// Syllables paired to the target's lyric slots in this measure.
     /// Set only for a lyric part, during grouping.
     pub(crate) paired_lyrics: Vec<Syllable>,
     /// Recoverable lyrics underflow/overflow for this measure, if any.

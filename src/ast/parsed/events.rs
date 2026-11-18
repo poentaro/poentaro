@@ -73,6 +73,8 @@ pub struct TupletInfo {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedNote {
+    /// The outermost slur already has a pitched note before this one.
+    pub slur_continuation: bool,
     pub pitch: NumberedPitch,
     pub accidental: Accidental,
     /// Octave offset from the default octave. 0 = default, positive = up, negative = down.

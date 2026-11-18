@@ -15,7 +15,7 @@ pub(in crate::grouper) struct PairedMeasure<'a> {
 
 /// Builds a lyric part's grouped measures by pairing each measure's raw
 /// syllables to the lyric slots of its paired target measure's notes
-/// (tie-aware). Underflow is recovered by padding empty syllables and
+/// (skipping tie and slur continuations). Underflow is recovered by padding empty syllables and
 /// recording a warning. Tie state depends only on the paired part's own
 /// notes, never on the lyrics.
 pub(super) fn pair_lyrics_measures(

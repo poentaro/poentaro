@@ -70,6 +70,7 @@ impl<'a, H: TimedUnitHead> TimedRecursiveDescentParser<'a, H> {
             _ => {}
         }
 
+        self.stack.mark_slur_continuation(&mut event);
         self.stack.last_pitched_event = Some(event.clone());
         self.staging
             .push(DepthEvent::new(Spanned::new(event, span)));

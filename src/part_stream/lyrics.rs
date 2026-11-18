@@ -1,5 +1,5 @@
 //! Lyric parts bound to a notes part: measures are cut by the target's
-//! **lyric slots** (its notes that aren't the continuation of a tie), never
+//! **lyric slots** (skipping tie and slur continuations), never
 //! by guessing from the lyric text. Past the last slot, each line is a measure.
 
 use itertools::Itertools;

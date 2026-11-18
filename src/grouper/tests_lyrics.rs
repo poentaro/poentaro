@@ -239,10 +239,7 @@ score """
 }
 
 #[test]
-fn cross_measure_slur_note_consumes_syllable() {
-    // (5 ... 5) is a slur, not a tie — the closing 5) still plays as its own
-    // note and must consume a lyric syllable. Measure 2 has notes 5, 6, 7, 0 (rest),
-    // so "hi ha ho" (3 syllables) is exactly sufficient — no underflow.
+fn cross_measure_slur_continuation_skips_a_lyric_slot() {
     let input = r#"metadata { title "t", author "a" },
 
 parts ["Melody": notes, "Melody lyrics" [Melodyv1]: lyrics [Melody]],
@@ -253,7 +250,7 @@ score """
     [Melodyv1] fa fo fi fu
 
     [Melody] 5) 6 7 0
-    [Melodyv1] hi ha ho
+    [Melodyv1] ha ho
     """,
 "#;
     let doc = parser::parse(input, "test.poentaro", &[]).unwrap();
