@@ -16,6 +16,13 @@ Feature: Creating, nesting and moving files and folders from the file actions me
     And I name the new file "untitled"
     Then the file switcher toolbar button shows no folder prefix and the file name "untitled"
 
+  Scenario: A new file's score is titled by the file's name
+    When the file tree app loads
+    And I choose "New" from the file actions menu
+    And I name the new file "Amazing Grace"
+    Then the editor source contains 'title "Amazing Grace"'
+    And the preview contains "Amazing Grace"
+
   Scenario: New asks for a name before creating anything
     When the file tree app loads
     And I choose "New" from the file actions menu
