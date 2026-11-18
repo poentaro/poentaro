@@ -73,7 +73,7 @@ export function FileSwitcher({
     expanded,
     toggle: toggleFolder,
     expand: expandFolders,
-  } = useExpandedFolders()
+  } = useExpandedFolders(store.active)
   const selection = useFileSelection(store)
   const { rows, activeLabel } = useFileTreeView(
     store,

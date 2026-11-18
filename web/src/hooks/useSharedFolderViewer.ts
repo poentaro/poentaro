@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import * as R from 'remeda'
 import type { FileStoreState } from '../fileStore'
 import type { FileTreeViewRow, FolderSnapshot } from '../poentaroWasm'
-import { sharedFolderFirstFile, sharedFolderView } from '../sharedFolder'
+import {
+  sharedFolderActiveLabel,
+  sharedFolderFirstFile,
+  sharedFolderView,
+} from '../sharedFolder'
 import { clearShareHash, parseFolderShareFromHash } from '../shareUrl'
 import type { StorageBackend } from '../storage/types'
 import { ensureWasmInit } from '../wasmInit'
@@ -88,6 +93,14 @@ export function useSharedFolderViewer(
       ? (selectedPath ?? '')
       : (sharedFolderFirstFile(snapshot) ?? '')
   }, [snapshot, wasmReady, selectedPath])
+  useEffect(() => {
+    if (!wasmReady || !activePath) return
+    const { ancestorKeys } = sharedFolderActiveLabel(activePath)
+    if (ancestorKeys.length > 0) {
+      setExpanded((previous) => R.unique([...previous, ...ancestorKeys]))
+    }
+  }, [activePath, wasmReady])
+
   const rows = useMemo(
     () =>
       snapshot && wasmReady

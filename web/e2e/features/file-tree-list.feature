@@ -42,6 +42,27 @@ Feature: The file list is a collapsible folder tree
     And the file tree highlights the file "O Come"
     And the file tree shows the file "Amazing"
 
+  Scenario: The folder holding the active file can be collapsed
+    Given the file tree active file is "Hymns/Advent/O Come.poentaro"
+    When the file tree app loads
+    And I open the file tree list
+    Then the file tree highlights the file "O Come"
+    When I click the file tree folder "Hymns"
+    Then the file tree does not show the file "O Come"
+    When I press Escape in the file browser
+    And I open the file tree list
+    Then the file tree does not show the file "O Come"
+    When I click the file tree folder "Hymns"
+    Then the file tree highlights the file "O Come"
+
+  Scenario: Selecting a search result opens its folders when the list reopens
+    When the file tree app loads
+    And I open the file tree list
+    And I search the file browser for "O Come"
+    And I click the file tree file "O Come"
+    And I open the file tree list
+    Then the file tree highlights the file "O Come"
+
   Scenario: Expanded folders are remembered after a reload
     When the file tree app loads
     And I open the file tree list

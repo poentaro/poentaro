@@ -23,7 +23,10 @@ Feature: Viewing and importing a shared folder
     Then the viewer's file list shows the file "amazing"
     And the viewer's file list has no Demo folder
     And the viewer's file list offers no editing actions
-    When the viewer expands the folder "Advent"
+    And the viewer's file list shows the file "o-come"
+    When the viewer toggles the folder "Advent"
+    Then the viewer's file list shows no file "o-come"
+    When the viewer toggles the folder "Advent"
     Then the viewer's file list shows the file "o-come"
     When the viewer selects the file "amazing"
     Then the viewer's preview contains "Amazing Grace"

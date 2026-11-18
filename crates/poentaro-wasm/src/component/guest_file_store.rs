@@ -272,6 +272,7 @@ pub(super) fn file_store_active_label(
         folder_names: label.folder_names,
         file_name: label.file_name,
         folder_path: label.folder_path,
+        ancestor_keys: label.ancestor_keys,
     }
 }
 
