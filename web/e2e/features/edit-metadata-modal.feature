@@ -55,19 +55,19 @@ Feature: Edit Metadata modal
     And I close the metadata modal with Escape
     Then the editor source and stored source both contain "hide resting parts: yes"
 
-  Scenario: Checking hide_system_dividers writes = yes to the source
-    Given the edit-metadata-modal test fixture is loaded
-    When I open the Edit Metadata modal
-    And I check the hide_system_dividers checkbox
-    And I close the metadata modal with Escape
-    Then the editor source and stored source both contain "hide system dividers: yes"
-
   Scenario: Unchecking hide_system_dividers writes = no to the source
     Given the edit-metadata-modal test fixture is loaded
     When I open the Edit Metadata modal
-    And I check then uncheck the hide_system_dividers checkbox
+    And I uncheck the hide_system_dividers checkbox
     And I close the metadata modal with Escape
     Then the editor source and stored source both contain "hide system dividers: no"
+
+  Scenario: Re-checking hide_system_dividers writes = yes to the source
+    Given the edit-metadata-modal test fixture is loaded
+    When I open the Edit Metadata modal
+    And I uncheck then re-check the hide_system_dividers checkbox
+    And I close the metadata modal with Escape
+    Then the editor source and stored source both contain "hide system dividers: yes"
 
   Scenario: Editing the Part Label Width updates the source
     Given the edit-metadata-modal test fixture is loaded

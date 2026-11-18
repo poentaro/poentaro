@@ -93,7 +93,7 @@ A single `#` outside a string starts a line string, which a document doesn't acc
 | `page margin pt` | no | `25` | Blank space (points) on every side of the page, between the paper's edge and the header, music and page number. A wider margin also narrows each system, so measures may wrap differently |
 | `merge duplicate measures across parts` | no | `yes` | Score-wide default for whether identical measures from different parts are merged into a single row (`yes`/`no`); can be overridden from a given measure onward with the `merge_duplicate_measures_across_parts=` directive line; see [Directive lines](#directive-lines) |
 | `hide resting parts` | no | `yes` | Score-wide default for whether an all-rest part is omitted from a measure where other parts have content (`yes`/`no`); can be overridden from a given measure onward with the `hide_resting_parts=` directive line; see [Directive lines](#directive-lines) |
-| `hide system dividers` | no | `no` | Whether the horizontal divider line between systems is omitted (`yes`/`no`) |
+| `hide system dividers` | no | `yes` | Whether the horizontal divider line between systems is omitted (`yes`/`no`); set `no` to draw it |
 | `directive row offset` | no | `(0, 0)` | Translation `(x, y)` (points) applied to every rendered directive row (bar number, section label, key, bpm, time signature), moving that row's text without affecting the layout of anything else. Not applied to the `sequence` summary header. |
 
 ### Text styles

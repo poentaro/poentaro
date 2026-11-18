@@ -94,7 +94,7 @@ Can be overridden from a specific measure onward with a
 Can be overridden from a specific measure onward with a
 \`hide_resting_parts=yes\`/\`no\` directive line.`,
 
-  'hide-system-dividers': `When on, the horizontal divider line normally drawn between consecutive systems (rows of measures) is omitted.`,
+  'hide-system-dividers': `When off, a horizontal divider line is drawn between consecutive systems (rows of measures).`,
 
   'directive-row-offset': `Translation (points, \`"x y"\`) applied to every rendered directive row — bar number, section label, key, bpm, and time signature.
 
