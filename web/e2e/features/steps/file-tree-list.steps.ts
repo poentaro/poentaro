@@ -140,6 +140,17 @@ When(
   },
 )
 
+When(
+  'I expand the file tree folder {string}',
+  async ({ page }, name: string) => {
+    const folder = folderRow(page, name)
+    if ((await folder.getAttribute('aria-expanded')) === 'false') {
+      await folder.click()
+    }
+    await expect(folder).toHaveAttribute('aria-expanded', 'true')
+  },
+)
+
 When('I click the file tree file {string}', async ({ page }, name: string) => {
   await fileRow(page, name).click()
 })
