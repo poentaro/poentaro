@@ -72,7 +72,22 @@ pub fn score_to_mei(
     display_names: &HashMap<String, String>,
     clef_choice: ClefChoice,
 ) -> MeiDocument {
-    let staves = collect_staves(score, display_names, clef_choice);
+    score_to_mei_with_staves(score, None, display_names, clef_choice)
+}
+
+pub(crate) fn score_to_mei_with_staves(
+    score: &Score,
+    written_score: Option<&Score>,
+    display_names: &HashMap<String, String>,
+    clef_choice: ClefChoice,
+) -> MeiDocument {
+    let expanded = written_score.is_some();
+    let staves = collect_staves(
+        written_score.unwrap_or(score),
+        display_names,
+        clef_choice,
+        expanded,
+    );
     let verses = collect_verses(score);
     let parts = ScoreParts {
         staves: &staves,
@@ -97,7 +112,12 @@ pub fn score_to_mei(
         .measures
         .iter()
         .enumerate()
-        .map(|(index, measure)| measure_xml(measure, index, &parts, &mut state))
+        .map(|(index, measure)| {
+            if expanded && measure.label.is_some() {
+                state.staves.fill_with(StaffState::default);
+            }
+            measure_xml(measure, index, &parts, &mut state)
+        })
         .collect();
     for slur in &state.slurs {
         if let Some(measure) = measures.get_mut(slur.start_measure) {

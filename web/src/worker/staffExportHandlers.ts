@@ -36,6 +36,7 @@ export async function handleGenerateStaffPdf(
     msg.visibility,
     GM_INSTRUMENTS,
     clef,
+    'written',
   )
   if (mei.tag === 'err') return fail(mei.val.diagnostics)
   const engraved = await engraveMei(mei.val.mei, { tag: 'a4' })

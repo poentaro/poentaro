@@ -183,6 +183,7 @@ export function usePoentaroWorkerActions({
     source,
     visibility: state.visibility,
     pageLayout: previewLayout.pageLayout,
+    scoreOrder: previewLayout.scoreOrder,
     staffRenderTracker: state.staffRenderTracker,
     debounceMs,
   })
@@ -197,6 +198,7 @@ export function usePoentaroWorkerActions({
     visibility: state.visibility,
     notation: staffNotation.notation,
     pageLayout: previewLayout.pageLayout,
+    scoreOrder: previewLayout.scoreOrder,
     renderedTracks: state.renderedTracks,
     setDocuments: state.setDocuments,
     setNextWavUrl,

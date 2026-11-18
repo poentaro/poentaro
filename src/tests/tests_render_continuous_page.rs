@@ -24,6 +24,7 @@ fn render(page_layout: PageLayout) -> Vec<String> {
         RenderView {
             note_labels: NoteLabels::Degrees,
             page_layout,
+            ..RenderView::default()
         },
     )
     .unwrap();
@@ -73,6 +74,7 @@ fn a_continuous_page_is_as_wide_as_asked_and_as_tall_as_its_content() {
         RenderView {
             note_labels: NoteLabels::Degrees,
             page_layout: continuous(400.0),
+            ..RenderView::default()
         },
     )
     .unwrap();

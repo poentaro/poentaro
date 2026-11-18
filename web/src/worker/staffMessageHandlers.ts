@@ -96,6 +96,7 @@ async function renderStaff(
     msg.visibility,
     GM_INSTRUMENTS,
     msg.clef,
+    msg.scoreOrder,
   )
   if (mei.tag === 'err') {
     return {

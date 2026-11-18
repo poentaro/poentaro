@@ -134,11 +134,15 @@ struct NoteFingerings {
 /// the least. A note the harmonica can't play reads `?` and is skipped by
 /// the path, as if it weren't there. The hole already says which octave the
 /// note is in, so octave dots are dropped.
-pub(super) fn place_harmonica_tabs(result: CompileResult, score: &Score) -> CompileResult {
+pub(super) fn place_harmonica_tabs(
+    result: CompileResult,
+    score: &Score,
+    part_source: &Score,
+) -> CompileResult {
     let keys = block_keys(&result.blocks, score);
     let harmonica = |part_index: usize| {
         Harmonica::for_instrument(
-            score
+            part_source
                 .measures
                 .iter()
                 .find_map(|measure| measure.parts.get(part_index))

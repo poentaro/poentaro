@@ -41,3 +41,6 @@ mod tests_section_label_alignment;
 mod tests_source_embed;
 #[path = "tests_text_style_rendering.rs"]
 mod tests_text_style_rendering;
+
+#[path = "tests_render_expanded_order.rs"]
+mod tests_render_expanded_order;

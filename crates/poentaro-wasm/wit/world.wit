@@ -64,6 +64,17 @@ world poentaro-wasm {
         guitar-chords,
     }
 
+    enum score-order {
+        written,
+        expanded,
+    }
+
+    record render-view {
+        note-labels: note-labels,
+        page-layout: page-layout,
+        score-order: score-order,
+    }
+
     /// The page(s) the preview lays the numbered layout out on
     /// (`poentaro::grid_layout::PageLayout`): A4 pages, or max view's one
     /// continuous page as wide as the preview.
@@ -523,9 +534,9 @@ world poentaro-wasm {
     // `list-note-spans`, `rename-symbol`, ...) was safe by accident, since
     // hyphens vs. underscores kept the two mechanisms' literal export names
     // distinct — this was the first single-word export.
-    export render-svg: func(source: string, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, note-labels: note-labels, page-layout: page-layout) -> render-response;
+    export render-svg: func(source: string, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, view: render-view) -> render-response;
 
-    export render-svg-with-highlight-range: func(source: string, raw-measure-ranges: list<measure-range-in>, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, note-labels: note-labels, page-layout: page-layout) -> render-response;
+    export render-svg-with-highlight-range: func(source: string, raw-measure-ranges: list<measure-range-in>, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, view: render-view) -> render-response;
 
     /// Which `<measure>` in the MEI (and so which `id` in Verovio's SVG)
     /// engraves which score measure — the staff view's only way to map
@@ -549,7 +560,7 @@ world poentaro-wasm {
     // (`poentaro::render_mei_from_source_with_visibility`), for the
     // worker to engrave with Verovio. Takes the same visibility as
     // `render-svg`, so hidden parts get no staff.
-    export render-mei: func(source: string, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, clef: staff-clef) -> render-mei-response;
+    export render-mei: func(source: string, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, clef: staff-clef, score-order: score-order) -> render-mei-response;
 
     /// A box in whichever space its caller measured it in: client pixels
     /// to hit-test, the SVG's user units to paint.

@@ -111,6 +111,7 @@ const raceMessages: WorkerRequest[] = [
     visibility: ALL_PARTS_VISIBLE,
     notation: 'numbered',
     pageLayout: { tag: 'a4' },
+    scoreOrder: 'written',
   },
   { type: 'listParts', source: '', id: 2 },
   {
@@ -161,6 +162,7 @@ const raceMessages: WorkerRequest[] = [
     visibility: ALL_PARTS_VISIBLE,
     notation: 'numbered',
     pageLayout: { tag: 'a4' },
+    scoreOrder: 'written',
   },
   { type: 'listMeasureSpans', source: '', id: 12 },
   { type: 'previewInstrument', id: 13, programNumber: 0 },

@@ -260,8 +260,11 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       msg.ranges,
       msg.visibility,
       GM_INSTRUMENTS,
-      noteLabelsFor(msg.notation),
-      msg.pageLayout,
+      {
+        noteLabels: noteLabelsFor(msg.notation),
+        pageLayout: msg.pageLayout,
+        scoreOrder: msg.scoreOrder,
+      },
     )
     if (result.tag === 'ok') {
       postMessage({
@@ -330,8 +333,11 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     msg.source,
     msg.visibility,
     GM_INSTRUMENTS,
-    noteLabelsFor(msg.notation),
-    msg.pageLayout,
+    {
+      noteLabels: noteLabelsFor(msg.notation),
+      pageLayout: msg.pageLayout,
+      scoreOrder: msg.scoreOrder,
+    },
   )
   if (result.tag === 'ok') {
     postMessage({

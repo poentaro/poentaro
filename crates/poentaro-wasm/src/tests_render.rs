@@ -1,7 +1,7 @@
 use super::*;
 use crate::responses::render_response;
 use crate::types::RenderResponse;
-use poentaro::{NoteLabels, ResolvedPartVisibility};
+use poentaro::ResolvedPartVisibility;
 use types::DiagnosticSeverity;
 
 #[test]
@@ -20,8 +20,7 @@ score """
         input,
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     );
     match resp {
         RenderResponse::Ok { documents, .. } => {
@@ -55,8 +54,7 @@ score """
         input,
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     ) {
         RenderResponse::Ok { documents, .. } => documents,
         RenderResponse::Err { .. } => panic!("expected ok"),
@@ -68,8 +66,7 @@ score """
             ..Default::default()
         },
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     ) {
         RenderResponse::Ok { documents, .. } => documents,
         RenderResponse::Err { .. } => panic!("expected ok"),
@@ -94,8 +91,7 @@ score """
         input,
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     ) {
         RenderResponse::Ok { documents, .. } => documents,
         RenderResponse::Err { .. } => panic!("expected ok"),
@@ -107,8 +103,7 @@ score """
             ..Default::default()
         },
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     ) {
         RenderResponse::Ok { documents, .. } => documents,
         RenderResponse::Err { .. } => panic!("expected ok"),
@@ -124,8 +119,7 @@ fn err_response_has_structured_diagnostic() {
         "not valid poentaro",
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     );
     let diagnostics = match resp {
         RenderResponse::Err { diagnostics, .. } | RenderResponse::Ok { diagnostics, .. } => {
@@ -154,8 +148,7 @@ score """
         input,
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     );
     match resp {
         RenderResponse::Ok {
@@ -184,8 +177,7 @@ fn reference_poentaro_renders() {
             &source,
             &ResolvedPartVisibility::default(),
             &[],
-            NoteLabels::Degrees,
-            poentaro::grid_layout::PageLayout::A4,
+            poentaro::RenderView::default(),
         );
         match resp {
             RenderResponse::Ok {
@@ -236,8 +228,7 @@ score """
         source,
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     );
     let diagnostics = match resp {
         RenderResponse::Ok { diagnostics, .. } => diagnostics,
@@ -294,8 +285,7 @@ score """
         input,
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     );
     match resp {
         RenderResponse::Ok {
@@ -351,8 +341,7 @@ score """
         input,
         &ResolvedPartVisibility::default(),
         &[],
-        NoteLabels::Degrees,
-        poentaro::grid_layout::PageLayout::A4,
+        poentaro::RenderView::default(),
     );
     match resp {
         RenderResponse::Ok {

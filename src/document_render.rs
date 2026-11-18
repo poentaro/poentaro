@@ -1,3 +1,8 @@
+#[path = "document_render_order.rs"]
+mod order;
+use order::ExpandedScore;
+pub use order::ScoreOrder;
+
 use crate::ast::grouped::Score;
 use crate::compiler::NoteLabels;
 use crate::error::IrrecoverableError;
@@ -30,12 +35,23 @@ fn render_documents(
     highlighted_measure_ranges: Option<Vec<crate::grid_layout::MeasureRange>>,
     note_labels: NoteLabels,
     page_layout: PageLayout,
+    expanded: Option<&ExpandedScore>,
 ) -> Result<DocumentsResult, IrrecoverableError> {
+    let compile_result = expanded.map_or_else(
+        || crate::compiler::compile(score),
+        |expanded| crate::compiler::compile_expanded(score, &expanded.score, &expanded.origins),
+    );
+    let written_score = score;
+    let score = expanded.map_or(score, |expanded| &expanded.score);
     let mut config = crate::render_config::RenderConfig::from_metadata(&score.metadata);
     config.page_margin_pt = page_layout.margin_pt(config.page_margin_pt);
     let header = crate::build_header(score, parts);
-    let compile_result =
-        crate::compiler::label_note_heads(crate::compiler::compile(score), score, note_labels);
+    let compile_result = crate::compiler::label_note_heads_with_parts(
+        compile_result,
+        score,
+        written_score,
+        note_labels,
+    );
     let compile_result = crate::consolidator::consolidate(compile_result);
     let crate::grid_layout::LayoutOutput {
         pages: grid_pages,
@@ -94,6 +110,7 @@ fn render_documents(
 pub struct RenderView {
     pub note_labels: NoteLabels,
     pub page_layout: PageLayout,
+    pub score_order: ScoreOrder,
 }
 
 impl Default for RenderView {
@@ -102,6 +119,7 @@ impl Default for RenderView {
         RenderView {
             note_labels: NoteLabels::default(),
             page_layout: PageLayout::A4,
+            score_order: ScoreOrder::Written,
         }
     }
 }
@@ -161,13 +179,24 @@ fn render_documents_from_source(
     )?;
     crate::apply_track_filter(&mut score, enabled_tracks);
     let mut diagnostics = crate::collect_measure_diagnostics(&score);
-    let result = render_documents(
+    let expanded = view.score_order.expand(&score)?;
+    let highlighted_measure_ranges = highlighted_measure_ranges.map(|ranges| match &expanded {
+        Some(expanded) => expanded.highlight_ranges(&ranges),
+        None => ranges,
+    });
+    let mut result = render_documents(
         &score,
         &parts,
         highlighted_measure_ranges,
         view.note_labels,
         view.page_layout,
+        expanded.as_ref(),
     )?;
+    if let Some(expanded) = expanded {
+        for document in &mut result.documents {
+            expanded.remap_tags(&mut document.elements);
+        }
+    }
     diagnostics.extend(result.diagnostics);
     Ok(RenderDocumentOutput {
         documents: result.documents,
@@ -185,6 +214,24 @@ pub fn render_mei_from_source_with_visibility(
     instruments: &[crate::parser::parts_parser::InstrumentInfo],
     clef_choice: crate::mei_export::ClefChoice,
 ) -> Result<crate::mei_export::MeiDocument, IrrecoverableError> {
+    render_mei_in_order(
+        source,
+        filename,
+        visibility,
+        instruments,
+        clef_choice,
+        ScoreOrder::Written,
+    )
+}
+
+pub fn render_mei_in_order(
+    source: &str,
+    filename: &str,
+    visibility: &ResolvedPartVisibility,
+    instruments: &[crate::parser::parts_parser::InstrumentInfo],
+    clef_choice: crate::mei_export::ClefChoice,
+    order: ScoreOrder,
+) -> Result<crate::mei_export::MeiDocument, IrrecoverableError> {
     let enabled_tracks = visibility.rendered_tracks.as_deref();
     let display_names = crate::filter_part_list(
         crate::list_parts_from_source(source, filename, instruments)?,
@@ -200,6 +247,16 @@ pub fn render_mei_from_source_with_visibility(
         visibility.preset_name.as_deref(),
     )?;
     crate::apply_track_filter(&mut score, enabled_tracks);
+    if let Some(expanded) = order.expand(&score)? {
+        let mut document = crate::mei_export::score_to_mei_with_staves(
+            &expanded.score,
+            Some(&score),
+            &display_names,
+            clef_choice,
+        );
+        expanded.remap_staff_measures(&mut document.measures);
+        return Ok(document);
+    }
     Ok(crate::mei_export::score_to_mei(
         &score,
         &display_names,

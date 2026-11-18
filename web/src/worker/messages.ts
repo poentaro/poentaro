@@ -2,6 +2,7 @@ import type {
   FontBytesByFamily,
   NoteTiming,
   PageLayout,
+  ScoreOrder,
   StaffClef,
   StaffMeasure,
   SvgDocument,
@@ -66,6 +67,7 @@ export type WorkerRequest =
       visibility: ResolvedPartVisibility
       notation: Notation
       pageLayout: PageLayout
+      scoreOrder: ScoreOrder
     }
   | { type: 'listParts'; source: string; id: number }
   | {
@@ -191,6 +193,7 @@ export type WorkerRequest =
       visibility: ResolvedPartVisibility
       notation: Notation
       pageLayout: PageLayout
+      scoreOrder: ScoreOrder
     }
   | { type: 'listMeasureSpans'; source: string; id: number }
   | {
@@ -251,6 +254,7 @@ export type WorkerRequest =
       visibility: ResolvedPartVisibility
       clef: StaffClef
       pageLayout: PageLayout
+      scoreOrder: ScoreOrder
     }
 
 export type WorkerResponse =
