@@ -45,7 +45,7 @@ Avoid using uncommon abbreviations when naming (e.g. `TimedRdParser` for "recurs
 
 Test cases should not be inlined with the source code, they should live in separate files.
 
-Never use tuple in new data structures, always use struct instead.
+Never use tuple in new data structures, always use struct instead. The exception is code generated from an anyx protocol schema: a record field with several slots, such as `between (Integer) and (Integer)`, becomes a tuple, and that's fine when it makes the protocol read more naturally.
 
 ## Node scripts
 
