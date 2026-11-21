@@ -20,6 +20,9 @@ export interface SendMessageDeps {
    * `options.onTraceId`. */
   app(options: ClientOptions): Promise<AppFileCalls>
   timeoutMs?: number
+  /** Told the server's text and revision whenever a send's answer reveals
+   * them (a conflict answer carries the current text). */
+  onServerText?(fileId: string, revision: number, text: string): void
 }
 
 /** A method error the outbox can't fix by retrying, as the sync panel
@@ -159,6 +162,7 @@ async function saveContent(
   app: AppFileCalls,
   request: SendRequest,
   content: string,
+  deps: SendMessageDeps,
 ): Promise<SendResult | Refusal> {
   const outcome = settled(
     await app.writeFileAtRevisionContent(
@@ -173,6 +177,7 @@ async function saveContent(
     // lost, not the write.
     case 'conflictAtRevisionContent': {
       const current = outcome.error
+      deps.onServerText?.(request.fileId, current.revision, current.content)
       return current.content === content
         ? ok(current.revision)
         : {
@@ -227,13 +232,14 @@ async function restoreFile(
 async function deliver(
   app: AppFileCalls,
   request: SendRequest,
+  deps: SendMessageDeps,
 ): Promise<SendResult | Refusal> {
   const { message } = request
   switch (message.tag) {
     case 'create-file':
       return createFile(app, request, message.val.name, message.val.content)
     case 'save-content':
-      return saveContent(app, request, message.val.content)
+      return saveContent(app, request, message.val.content, deps)
     case 'rename-file':
       return renameFile(app, request, message.val.to)
     case 'rename-files':
@@ -292,7 +298,10 @@ export async function sendMessage(
   const timer = timeout(deps.timeoutMs ?? SEND_TIMEOUT_MS)
   try {
     const app = await deps.app(options)
-    const result = await Promise.race([deliver(app, request), timer.promise])
+    const result = await Promise.race([
+      deliver(app, request, deps),
+      timer.promise,
+    ])
     if (!isRefusal(result)) return result
     return {
       tag: 'permanent',

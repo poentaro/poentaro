@@ -33,3 +33,46 @@ describe('createCloudBackend: load()', () => {
     expect(server.callsTo('read file _')).toHaveLength(2)
   })
 })
+
+describe('createCloudBackend: file text cache', () => {
+  const seed = [{ id: 'id-a', path: 'a.poentaro', content: '1 2', revision: 4 }]
+
+  it('remembers the text of a file it fetched, at its revision', async () => {
+    const { backend, texts } = createTestBackend(seed)
+    await backend.fetchServerFile('id-a')
+    expect(await texts.read('id-a', 4)).toBe('1 2')
+    expect(await texts.read('id-a', 5)).toBeUndefined()
+  })
+
+  it('remembers the text the server acknowledged at the new revision', async () => {
+    const { texts, looper } = createTestBackend([
+      { id: 'id-a', path: 'a.poentaro', content: '1 2' },
+    ])
+    await looper.start()
+    await looper.enqueue('id-a', {
+      tag: 'save-content',
+      val: { content: 'saved' },
+    })
+    await looper.whenIdle()
+    expect(await texts.read('id-a', 1)).toBe('saved')
+  })
+
+  it("remembers the server's text from a conflict answer", async () => {
+    const { texts, looper, server } = createTestBackend(seed)
+    server.failNext('write file _ at revision _ content _', {
+      kind: 'error',
+      error: {
+        kind: 'conflictAtRevisionContent',
+        revision: 7,
+        content: 'theirs',
+      },
+    })
+    await looper.start()
+    await looper.enqueue('id-a', {
+      tag: 'save-content',
+      val: { content: 'mine' },
+    })
+    await looper.whenIdle()
+    expect(await texts.read('id-a', 7)).toBe('theirs')
+  })
+})

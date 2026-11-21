@@ -39,6 +39,7 @@ import type {
   LocalRename,
 } from './cloudBackendTypes'
 import { createVersionCalls } from './cloudBackendVersions'
+import type { FileTextCache } from './fileTextCache'
 import type { BaseSnapshots } from './outbox/baseSnapshots'
 import { type ConflictFlow, createConflictFlow } from './outbox/conflictFlow'
 import type { OutboxLooper, OutboxSnapshot } from './outbox/outboxLooper'
@@ -68,6 +69,7 @@ export interface CloudBackendDependencies {
   app?: (options: ClientOptions) => Promise<AppFileCalls>
   looper?: OutboxLooper
   bases?: BaseSnapshots
+  texts?: FileTextCache
   ensureWasm?: () => Promise<void>
 }
 
@@ -102,7 +104,7 @@ export function createCloudBackend(
     return trashedIdByName.get(name) ?? fileIdForName(state, name)
   }
 
-  const { looper, bases } = createCloudOutbox(
+  const { looper, bases, texts } = createCloudOutbox(
     { app, account: config.account },
     dependencies,
   )
@@ -118,7 +120,7 @@ export function createCloudBackend(
     activeIdByName,
     trashedIdByName,
   })
-  const { fetchServerFile, listFiles } = createServerReads(() => app({}))
+  const { fetchServerFile, listFiles } = createServerReads(() => app({}), texts)
 
   const noticeListeners = new Set<(message: string) => void>()
   let conflictFlow: ConflictFlow | null = null

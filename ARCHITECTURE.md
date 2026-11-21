@@ -1281,6 +1281,7 @@ The shell only does I/O, timers and rendering; every decision is a wasm call.
 | **Looper** | The TS loop (`outboxLooper.ts`) that repeatedly calls `begin_send`, performs the request, and feeds the `SendResult` to `on_result`, sleeping until `next_wake_ms`. |
 | **Halt** | A lane stopping instead of retrying: `NeedsSignIn`, `NeedsMerge` or `Failed`. It stays halted until a `Resolution` (or `resolve_signed_in`) moves it back to `Draining`. |
 | **Base snapshot** | The last content known to match the server for a file (kept by `baseSnapshots.ts`); the `base` input of `merge_three_way` when a revision conflict needs merging. |
+| **File text cache** | The text a cloud file had at a server revision, kept in the outbox's IndexedDB store under `text:<fileId>` by `web/src/storage/fileTextCache.ts`. A read hits only on the exact revision, so a file that has not changed is not downloaded again. |
 
 ### AnyX protocol types and effects
 
