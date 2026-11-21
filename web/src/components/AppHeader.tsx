@@ -113,6 +113,7 @@ interface AppHeaderProps {
   duplicatingFile?: boolean
   renamingFileName?: string | null
   isLoadingCloud: boolean
+  fileTextLoading: boolean
   cloudLoadFailure?: CloudLoadFailure | null
   onOpenBin: () => void
   onOpenSyncPanel?: () => void
@@ -187,6 +188,7 @@ export function AppHeader({
   duplicatingFile,
   renamingFileName,
   isLoadingCloud,
+  fileTextLoading,
   cloudLoadFailure,
   onOpenBin,
   onOpenSyncPanel,
@@ -310,6 +312,7 @@ export function AppHeader({
             duplicating={duplicatingFile}
             renamingName={renamingFileName}
             isLoadingCloud={isLoadingCloud}
+            fileTextLoading={fileTextLoading}
             cloudLoadFailure={cloudLoadFailure}
             importing={importing}
             onImportFile={onImportFile}
@@ -360,7 +363,7 @@ export function AppHeader({
           splitMp3Exporting={splitMp3Exporting}
           onExportSplitMp3={onExportSplitMp3}
           partsCount={partsCount}
-          isLoadingCloud={isLoadingCloud}
+          isLoadingCloud={isLoadingCloud || fileTextLoading}
         />
         <ProfileControl
           isSignedIn={syncedShare.isSignedIn}

@@ -21,7 +21,7 @@ import type {
 } from './poentaroWasm'
 import { poentaroWasm } from './poentaroWasm'
 
-export { mergeBackendResult } from './fileStoreMerge'
+export { mergeBackendResult, mergeLoadedTexts } from './fileStoreMerge'
 export {
   loadedFiles,
   loadedFileText,

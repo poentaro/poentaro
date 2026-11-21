@@ -12,6 +12,8 @@ Feature: Cloud outbox structural operations: file create and rename go through t
 
   Scenario: B2 A rename made while offline is applied once the cloud returns
     Given a cloud file named "outbox-b2.poentaro" is seeded for the signed-in account
+    When the app loads the cloud-backed file list
+    And the user has opened "outbox-b2.poentaro" from the file list
     And the cloud is unreachable
     When I rename "outbox-b2" to "outbox-b2-renamed"
     Then "outbox-b2-renamed.poentaro" is listed in the file switcher

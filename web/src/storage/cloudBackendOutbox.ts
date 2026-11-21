@@ -46,22 +46,23 @@ export function baseSnapshotHooks(bases: BaseSnapshots, texts: FileTextCache) {
   }
 }
 
-/** Records the listed text of every file as its base, except for files with
- * unsent messages: their base must stay the last text the server is known to
- * have for them. */
-export async function recordListedBases(
+/** Records the server revision of every listed file, except for files with
+ * unsent messages: their recorded revision is what conflict detection
+ * compares against. */
+export async function recordServerRevisions(
   looper: OutboxLooper,
-  bases: BaseSnapshots,
-  files: ReadonlyArray<{ id: string; content: string }>,
+  files: ReadonlyArray<{ id: string; revision: number }>,
 ): Promise<void> {
-  const unsent = new Set(
+  const pending = new Set(
     looper
       .snapshot()
       .queue.lanes.filter((lane) => lane.messages.length > 0)
       .map((lane) => lane.fileId),
   )
   for (const file of files) {
-    if (!unsent.has(file.id)) await bases.recordBase(file.id, file.content)
+    if (!pending.has(file.id)) {
+      await looper.recordRevision(file.id, BigInt(file.revision))
+    }
   }
 }
 
@@ -178,7 +179,9 @@ export function pendingContentByFileId(
   const pending = new Map<string, string>()
   for (const lane of snapshot.queue.lanes) {
     const saves = lane.messages.flatMap(({ message }) =>
-      message.tag === 'save-content' ? [message.val.content] : [],
+      message.tag === 'save-content' || message.tag === 'create-file'
+        ? [message.val.content]
+        : [],
     )
     const newest = saves.at(-1)
     if (newest !== undefined) pending.set(lane.fileId, newest)
@@ -226,7 +229,7 @@ export function pendingNameByFileId(
 interface ListedFile {
   id: string
   name: string
-  content: string
+  content?: string
   revision: number
   trashedAt?: number | null
 }

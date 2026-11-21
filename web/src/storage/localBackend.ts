@@ -63,6 +63,9 @@ export const localBackend: StorageBackend = {
 
   load: () => Promise.resolve(readInitialStoreSync()),
 
+  // Local files are always in memory.
+  ensureLoaded: (state) => Promise.resolve(state),
+
   createFile: (state, folder, name) =>
     afterWasm(() => createFile(state, folder, name)),
 

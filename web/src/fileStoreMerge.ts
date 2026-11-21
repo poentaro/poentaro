@@ -75,3 +75,50 @@ export function mergeBackendResult(
     ),
   }
 }
+
+function carryLoadedTexts(
+  prevRecord: FileStoreState['userFiles'],
+  prevIds: FileStoreState['fileIds'],
+  loaded: FileStoreState,
+  loadedRecord: FileStoreState['userFiles'],
+): FileStoreState['userFiles'] {
+  const keyById = new Map(
+    Object.keys(loadedRecord).flatMap((key) => {
+      const id = loaded.fileIds[key]
+      return id === undefined ? [] : [[id, key] as [string, string]]
+    }),
+  )
+  return Object.fromEntries(
+    Object.entries(prevRecord).map(([key, text]) => {
+      const id = prevIds[key]
+      const loadedKey = id === undefined ? undefined : keyById.get(id)
+      const carried =
+        loadedKey === undefined ? undefined : loadedRecord[loadedKey]
+      return [
+        key,
+        text.tag === 'not-loaded' && carried?.tag === 'loaded' ? carried : text,
+      ]
+    }),
+  )
+}
+
+/**
+ * `prev` with the texts `loaded` has read for files that `prev` still holds
+ * as not loaded. A text already in `prev` is never replaced, so an edit made
+ * while the read was in flight is kept; files are matched by id.
+ */
+export function mergeLoadedTexts(
+  prev: FileStoreState,
+  loaded: FileStoreState,
+): FileStoreState {
+  return {
+    ...prev,
+    userFiles: carryLoadedTexts(
+      prev.userFiles,
+      prev.fileIds,
+      loaded,
+      loaded.userFiles,
+    ),
+    bin: carryLoadedTexts(prev.bin, prev.fileIds, loaded, loaded.bin),
+  }
+}

@@ -821,8 +821,10 @@ The web app uses three AnyX protocols generated from
   and decoded in Rust (WIT `protocol-encode-request` takes every call of a
   request, `protocol-decode-response` gives an outcome per call). A
   client's `batch(build)` sends every call `build` makes as one request;
-  `cloudBackendListing.ts` reads all files listed by `list files` in one
-  batch, leaving out a file gone since. The cloud backend and its outbox
+  `cloudBackendListing.ts` reads the account's `list files` without any file
+  text; `cloudBackendTextLoading.ts`'s `ensureLoaded` reads one file's text
+  (unsent edits, then the on-device `fileTextCache`, then `read file`) when
+  it is first needed. The cloud backend and its outbox
   take `AppFileCalls` (the client's file and folder methods and `batch`),
   which the unit tests replace with `createFakeAppFiles`
   (`web/src/storage/fakeAppFiles.ts`, an in-memory server).

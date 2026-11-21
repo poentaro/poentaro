@@ -50,6 +50,8 @@ export interface FileSwitcherProps {
   /** Whether the cloud backend is still fetching its file list — shows a
    * spinner on the trigger and a loading hint instead of the demo hint. */
   isLoadingCloud?: boolean
+  /** The open file's text is being read: the trigger shows the spinner. */
+  fileTextLoading?: boolean
   /** Set while a failed cloud load waits to be retried. */
   cloudLoadFailure?: CloudLoadFailure | null
   importing?: boolean

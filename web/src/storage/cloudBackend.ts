@@ -5,6 +5,7 @@ import {
   isReadOnlyFile,
   loadedFileText,
   loadedText,
+  NOT_LOADED,
   createFile as pureCreateFile,
   deleteFile as pureDeleteFile,
   duplicateFile as pureDuplicateFile,
@@ -29,9 +30,10 @@ import {
   outboxSaveStatus,
   pendingContentByFileId,
   pendingNameByFileId,
-  recordListedBases,
+  recordServerRevisions,
 } from './cloudBackendOutbox'
 import { createPlaceholders } from './cloudBackendPlaceholders'
+import { createTextLoader } from './cloudBackendTextLoading'
 import type {
   CloudBackend,
   CloudBackendConfig,
@@ -122,6 +124,19 @@ export function createCloudBackend(
   })
   const { fetchServerFile, listFiles } = createServerReads(() => app({}), texts)
 
+  const revisionById = new Map<string, number>()
+  const textLoader = createTextLoader({
+    looper,
+    bases,
+    texts,
+    fetchServerFile,
+    revisionById,
+    idOf: (state, name) =>
+      name in state.userFiles
+        ? activeFileId(state, name)
+        : trashedFileId(state, name),
+  })
+
   const noticeListeners = new Set<(message: string) => void>()
   let conflictFlow: ConflictFlow | null = null
   let startGeneration = 0
@@ -184,25 +199,6 @@ export function createCloudBackend(
     })
   }
 
-  /** Tells the outbox each file's server revision, except for files with
-   * unsent messages: their recorded revision is what conflict detection
-   * compares against. */
-  async function recordServerRevisions(
-    files: ReadonlyArray<{ id: string; revision: number }>,
-  ): Promise<void> {
-    const pending = new Set(
-      looper
-        .snapshot()
-        .queue.lanes.filter((lane) => lane.messages.length > 0)
-        .map((lane) => lane.fileId),
-    )
-    for (const file of files) {
-      if (!pending.has(file.id)) {
-        await looper.recordRevision(file.id, BigInt(file.revision))
-      }
-    }
-  }
-
   /** Queues the creation of the file `nextState` added relative to `state`
    * (create, import, duplicate); the file already exists locally. */
   async function createRemoteFile(
@@ -244,20 +240,21 @@ export function createCloudBackend(
           ? response.files
           : applyPendingStructure(response.files, pendingSnapshot),
       )
+      revisionById.clear()
       for (const file of listed) {
         fileIds[file.name] = file.id
+        revisionById.set(file.id, file.revision)
         if (file.trashedAt === null) {
-          userFiles[file.name] = loadedFileText(file.content)
+          userFiles[file.name] = NOT_LOADED
           activeIdByName.set(file.name, file.id)
         } else {
-          bin[file.name] = loadedFileText(file.content)
+          bin[file.name] = NOT_LOADED
           trashedIdByName.set(file.name, file.id)
         }
       }
       // An unreadable outbox must not stop the files from loading.
       if (!looper.snapshot().halted) {
-        await recordServerRevisions(response.files)
-        await recordListedBases(looper, bases, response.files)
+        await recordServerRevisions(looper, response.files)
       }
       for (const [id, content] of pendingContentByFileId(pendingSnapshot)) {
         const name = [...activeIdByName].find(([, value]) => value === id)?.[0]
@@ -271,6 +268,8 @@ export function createCloudBackend(
         ...(folders.length > 0 ? { folders } : {}),
       }
     },
+
+    ensureLoaded: textLoader.ensureLoaded,
 
     createFile: (state, folder, name) =>
       ensureWasm().then(() =>

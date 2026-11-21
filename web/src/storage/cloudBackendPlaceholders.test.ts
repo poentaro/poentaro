@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FileStoreState } from '../fileStore'
-import { loadedFiles } from '../fileStore'
+import { loadedFiles, NOT_LOADED } from '../fileStore'
 import { createTestBackend } from './cloudBackendTestHelpers'
 import type { FakeFile } from './fakeAppFiles'
 
@@ -47,7 +47,7 @@ describe('createCloudBackend: empty folders are placeholder files', () => {
       listed('id-k2', 'Deleted/.keep', 5),
     ]).backend.load()
 
-    expect(state.userFiles).toEqual(loadedFiles({ 'a.poentaro': '' }))
+    expect(state.userFiles).toEqual({ 'a.poentaro': NOT_LOADED })
     expect(state.bin).toEqual({})
     expect(state.fileIds).toEqual({ 'a.poentaro': 'id-a' })
     expect(state.folders).toEqual(['Empty'])

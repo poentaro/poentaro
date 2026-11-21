@@ -19,18 +19,14 @@ describe('createCloudBackend: fetchServerFile()', () => {
 })
 
 describe('createCloudBackend: load()', () => {
-  it('reads every file, leaving out one deleted after the list', async () => {
+  it('lists every file without reading any text', async () => {
     const { backend, server } = createTestBackend([
       { id: 'id-a', path: 'a.poentaro', content: 'a' },
       { id: 'id-b', path: 'b.poentaro', content: 'b' },
     ])
-    server.failNext('read file _', {
-      kind: 'error',
-      error: { kind: 'missing' },
-    })
     const state = await backend.load()
-    expect(Object.keys(state.userFiles)).toEqual(['b.poentaro'])
-    expect(server.callsTo('read file _')).toHaveLength(2)
+    expect(Object.keys(state.userFiles)).toEqual(['a.poentaro', 'b.poentaro'])
+    expect(server.callsTo('read file _')).toHaveLength(0)
   })
 })
 

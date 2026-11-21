@@ -48,6 +48,7 @@ export function FileSwitcher({
   duplicating = false,
   renamingName = null,
   isLoadingCloud = false,
+  fileTextLoading = false,
   cloudLoadFailure = null,
   importing = false,
   onImportFile,
@@ -136,7 +137,7 @@ export function FileSwitcher({
           trigger={
             <FileSwitcherTrigger
               activeLabel={activeLabel}
-              isLoadingCloud={isLoadingCloud}
+              isLoadingCloud={isLoadingCloud || fileTextLoading}
             />
           }
           activePath={store.active}
