@@ -8,7 +8,7 @@ fn store(files: &[(&str, &str)], folders: &[&str]) -> FileStoreState {
             .unwrap_or_default(),
         user_files: files
             .iter()
-            .map(|(path, _)| (path.to_string(), format!("content of {path}")))
+            .map(|(path, _)| (path.to_string(), format!("content of {path}").into()))
             .collect(),
         file_ids: files
             .iter()
@@ -29,7 +29,7 @@ fn context() -> FileOperationContext {
     }
 }
 
-fn keys(map: &std::collections::BTreeMap<String, String>) -> Vec<&str> {
+fn keys(map: &std::collections::BTreeMap<String, FileText>) -> Vec<&str> {
     map.keys().map(String::as_str).collect()
 }
 
@@ -116,7 +116,7 @@ fn a_carried_id_already_in_use_is_replaced() {
 fn carried_bin_entries_move_under_the_folder_too() {
     let current = store(&[("a.poentaro", "id-1")], &[]);
     let carried = FileStoreState {
-        bin: [("old.poentaro".to_string(), "gone".to_string())].into(),
+        bin: [("old.poentaro".to_string(), "gone".into())].into(),
         ..FileStoreState::default()
     };
 

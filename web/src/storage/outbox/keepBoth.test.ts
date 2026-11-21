@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { FileStoreState } from '../../fileStore'
+import { loadedFiles, loadedText } from '../../fileStore'
 import { createTestBackend } from '../cloudBackendTestHelpers'
 import { keepBoth } from './keepBoth'
 
 const state: FileStoreState = {
   active: 'a.poentaro',
-  userFiles: { 'a.poentaro': 'local text' },
-  bin: {},
+  userFiles: loadedFiles({ 'a.poentaro': 'local text' }),
+  bin: loadedFiles({}),
   fileIds: { 'a.poentaro': 'id-a' },
 }
 
@@ -27,7 +28,7 @@ async function run() {
 describe('keepBoth', () => {
   it('saves the local text as a copy named with the date', async () => {
     const { next } = await run()
-    expect(next.userFiles['a (conflicted copy 2026-10-10).poentaro']).toBe(
+    expect(loadedText(next, 'a (conflicted copy 2026-10-10).poentaro')).toBe(
       'local text',
     )
   })
@@ -42,7 +43,7 @@ describe('keepBoth', () => {
 
   it('reverts the original to the server version and keeps it open', async () => {
     const { next } = await run()
-    expect(next.userFiles['a.poentaro']).toBe('server text')
+    expect(loadedText(next, 'a.poentaro')).toBe('server text')
     expect(next.active).toBe('a.poentaro')
   })
 })

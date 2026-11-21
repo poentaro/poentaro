@@ -2,6 +2,7 @@
 //! `poentaro::file_tree` types, call it, convert back. No logic
 //! beyond conversion.
 #![allow(clippy::needless_pass_by_value)]
+use super::guest_file_text::{text_entries, text_map_of};
 use super::*;
 use poentaro::file_tree as tree;
 use std::collections::BTreeMap;
@@ -312,8 +313,8 @@ impl From<FileStoreState> for tree::FileStoreState {
     fn from(state: FileStoreState) -> Self {
         Self {
             active: state.active,
-            user_files: map_of(state.user_files),
-            bin: map_of(state.bin),
+            user_files: text_map_of(state.user_files),
+            bin: text_map_of(state.bin),
             file_ids: map_of(state.file_ids),
             // A malformed stored folder path is dropped rather than failing
             // every operation; the files themselves are unaffected.
@@ -330,8 +331,8 @@ impl From<tree::FileStoreState> for FileStoreState {
     fn from(state: tree::FileStoreState) -> Self {
         Self {
             active: state.active,
-            user_files: entries(state.user_files),
-            bin: entries(state.bin),
+            user_files: text_entries(state.user_files),
+            bin: text_entries(state.bin),
             file_ids: entries(state.file_ids),
             folders: state
                 .folders
@@ -383,6 +384,7 @@ impl From<tree::FileStoreError> for FileStoreFailure {
             tree::FileStoreError::MoveIntoItself { .. } => FileStoreErrorKind::MoveIntoItself,
             tree::FileStoreError::DemoFileReadOnly { .. } => FileStoreErrorKind::DemoFileReadOnly,
             tree::FileStoreError::ReservedName { .. } => FileStoreErrorKind::ReservedName,
+            tree::FileStoreError::NotLoaded { .. } => FileStoreErrorKind::NotLoaded,
             tree::FileStoreError::InvalidSharedFolder { .. } => FileStoreErrorKind::InvalidPath,
         };
         Self {

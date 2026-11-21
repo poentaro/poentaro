@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { FileStoreState } from '../fileStore'
+import { loadedFiles } from '../fileStore'
 import { createTestBackend } from './cloudBackendTestHelpers'
 
 const state: FileStoreState = {
   active: 'Scratch.poentaro',
-  userFiles: {
+  userFiles: loadedFiles({
     'Hymns/Advent/O Come.poentaro': 'a',
     'Hymns/Amazing.poentaro': 'b',
     'Scratch.poentaro': 'c',
-  },
-  bin: {},
+  }),
+  bin: loadedFiles({}),
   fileIds: {
     'Hymns/Advent/O Come.poentaro': 'id-come',
     'Hymns/Amazing.poentaro': 'id-amazing',

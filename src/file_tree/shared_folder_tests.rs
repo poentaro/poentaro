@@ -18,7 +18,7 @@ fn store(files: &[&str], folders: &[&str]) -> FileStoreState {
     FileStoreState {
         user_files: files
             .iter()
-            .map(|path| ((*path).to_string(), "mine".to_string()))
+            .map(|path| ((*path).to_string(), "mine".into()))
             .collect(),
         folders: folders
             .iter()

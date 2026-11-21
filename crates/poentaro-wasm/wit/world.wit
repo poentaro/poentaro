@@ -2011,10 +2011,21 @@ world poentaro-wasm {
         value: string,
     }
 
+    // A stored file's text; `not-loaded` is never the same as an empty file.
+    variant file-text {
+        loaded(string),
+        not-loaded,
+    }
+
+    record file-text-entry {
+        key: string,
+        value: file-text,
+    }
+
     record file-store-state {
         active: string,
-        user-files: list<string-entry>,
-        bin: list<string-entry>,
+        user-files: list<file-text-entry>,
+        bin: list<file-text-entry>,
         file-ids: list<string-entry>,
         folders: list<string>,
     }
@@ -2037,6 +2048,7 @@ world poentaro-wasm {
         move-into-itself,
         demo-file-read-only,
         reserved-name,
+        not-loaded,
     }
 
     record file-store-failure {

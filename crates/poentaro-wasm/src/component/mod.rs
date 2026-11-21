@@ -58,6 +58,7 @@ struct Component;
 
 mod guest_file_selection;
 mod guest_file_store;
+mod guest_file_text;
 mod guest_folder_create;
 mod guest_folder_share;
 mod guest_generate_and_timings;

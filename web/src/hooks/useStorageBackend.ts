@@ -5,7 +5,7 @@ import {
   DEMO_FILE_NAMES,
   FILE_STORE_KEY,
   type FileStoreState,
-  fileContent,
+  loadedText,
 } from '../fileStore'
 import { useAccountAuth } from '../storage/accountAuth'
 import { createCloudBackend } from '../storage/cloudBackend'
@@ -14,6 +14,7 @@ import {
   deserializeStoreSync,
   localBackend,
   readInitialStoreSync,
+  serializeStoreSync,
 } from '../storage/localBackend'
 import type { SaveStatus, StorageBackend } from '../storage/types'
 import {
@@ -85,10 +86,10 @@ export type DisplaySaveStatus = SaveStatus | 'unsaved' | 'waiting' | 'attention'
  * `flushPendingSave`, which callers should invoke before changing the
  * active file.
  */
-type ContentSnapshot = { active: string; content: string }
+type ContentSnapshot = { active: string; content: string | undefined }
 
 function activeContentSnapshot(store: FileStoreState): ContentSnapshot {
-  return { active: store.active, content: fileContent(store, store.active) }
+  return { active: store.active, content: loadedText(store, store.active) }
 }
 
 export function shouldScheduleAutosave(
@@ -98,6 +99,7 @@ export function shouldScheduleAutosave(
 ): boolean {
   if (backendKind !== 'cloud') return false
   if (!previous) return false
+  if (previous.content === undefined || next.content === undefined) return false
   return previous.active === next.active && previous.content !== next.content
 }
 
@@ -145,7 +147,7 @@ export function useStorageBackend(): UseStorageBackendResult {
   const [localStore, setLocalStore] = useLocalStorage<FileStoreState>(
     FILE_STORE_KEY,
     readInitialStoreSync,
-    { deserializer: deserializeStoreSync },
+    { deserializer: deserializeStoreSync, serializer: serializeStoreSync },
   )
   const [cloudStore, setCloudStore] = useState<FileStoreState | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')

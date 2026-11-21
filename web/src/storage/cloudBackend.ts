@@ -1,9 +1,10 @@
 import {
   DEMO_FILE_NAMES,
   type FileStoreState,
-  fileContent,
   fileIdForName,
   isReadOnlyFile,
+  loadedFileText,
+  loadedText,
   createFile as pureCreateFile,
   deleteFile as pureDeleteFile,
   duplicateFile as pureDuplicateFile,
@@ -171,10 +172,13 @@ export function createCloudBackend(
    * persisted locally -- delivery happens in the background. */
   async function saveContent(state: FileStoreState): Promise<void> {
     if (isReadOnlyFile(state.active)) return
+    // A file whose text has not loaded must never be saved as empty.
+    const content = loadedText(state, state.active)
+    if (content === undefined) return
     await whenReady()
     await looper.enqueue(fileIdForName(state, state.active), {
       tag: 'save-content',
-      val: { content: fileContent(state, state.active) },
+      val: { content },
     })
   }
 
@@ -205,12 +209,15 @@ export function createCloudBackend(
   ): Promise<FileStoreState> {
     const name = addedName(state, nextState)
     if (!name) return nextState
+    const content = loadedText(nextState, name)
+    // A new file is always loaded; there is nothing to create without text.
+    if (content === undefined) return nextState
     const id = fileIdForName(nextState, name)
     activeIdByName.set(name, id)
     await whenReady()
     await looper.enqueue(id, {
       tag: 'create-file',
-      val: { name, content: nextState.userFiles[name] ?? '' },
+      val: { name, content },
     })
     return nextState
   }
@@ -225,8 +232,8 @@ export function createCloudBackend(
       // the older text, so the edit must be laid over it from this snapshot.
       const pendingSnapshot = looper.snapshot()
       const response = { files: await listFiles() }
-      const userFiles: Record<string, string> = {}
-      const bin: Record<string, string> = {}
+      const userFiles: FileStoreState['userFiles'] = {}
+      const bin: FileStoreState['bin'] = {}
       const fileIds: Record<string, string> = {}
       activeIdByName.clear()
       trashedIdByName.clear()
@@ -238,10 +245,10 @@ export function createCloudBackend(
       for (const file of listed) {
         fileIds[file.name] = file.id
         if (file.trashedAt === null) {
-          userFiles[file.name] = file.content
+          userFiles[file.name] = loadedFileText(file.content)
           activeIdByName.set(file.name, file.id)
         } else {
-          bin[file.name] = file.content
+          bin[file.name] = loadedFileText(file.content)
           trashedIdByName.set(file.name, file.id)
         }
       }
@@ -252,7 +259,7 @@ export function createCloudBackend(
       }
       for (const [id, content] of pendingContentByFileId(pendingSnapshot)) {
         const name = [...activeIdByName].find(([, value]) => value === id)?.[0]
-        if (name !== undefined) userFiles[name] = content
+        if (name !== undefined) userFiles[name] = loadedFileText(content)
       }
       return {
         active: DEMO_FILE_NAMES[0] ?? '',

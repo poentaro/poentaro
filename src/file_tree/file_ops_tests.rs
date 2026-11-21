@@ -19,11 +19,11 @@ fn store(files: &[&str], bin: &[&str]) -> FileStoreState {
         active: files.first().copied().unwrap_or_default().to_string(),
         user_files: files
             .iter()
-            .map(|name| (name.to_string(), format!("content of {name}")))
+            .map(|name| (name.to_string(), format!("content of {name}").into()))
             .collect(),
         bin: bin
             .iter()
-            .map(|name| (name.to_string(), format!("binned {name}")))
+            .map(|name| (name.to_string(), format!("binned {name}").into()))
             .collect(),
         file_ids: files
             .iter()
@@ -290,4 +290,34 @@ fn a_name_that_merely_starts_with_keep_is_fine() {
     let state = store(&["a.poentaro"], &[]);
     let next = rename_file(&state, "a.poentaro", "Songs/.keep.poentaro", &context()).unwrap();
     assert!(next.user_files.contains_key("Songs/.keep.poentaro"));
+}
+
+fn with_unloaded(state: &mut FileStoreState, name: &str) {
+    state
+        .user_files
+        .insert(name.to_string(), FileText::NotLoaded);
+}
+
+#[test]
+fn duplicating_a_file_that_is_not_loaded_asks_for_it_to_be_loaded() {
+    let mut state = store(&["a.poentaro"], &[]);
+    with_unloaded(&mut state, "a.poentaro");
+    assert_eq!(
+        duplicate_file(&state, &path("a.poentaro"), &context()),
+        Err(FileStoreError::NotLoaded {
+            path: "a.poentaro".to_string()
+        })
+    );
+}
+
+#[test]
+fn rename_delete_and_restore_carry_a_file_that_is_not_loaded() {
+    let mut state = store(&["a.poentaro"], &[]);
+    with_unloaded(&mut state, "a.poentaro");
+    let renamed = rename_file(&state, "a.poentaro", "b", &context()).unwrap();
+    assert_eq!(renamed.user_files["b.poentaro"], FileText::NotLoaded);
+    let deleted = delete_file(&renamed, "b.poentaro", &context()).unwrap();
+    assert_eq!(deleted.bin["b.poentaro"], FileText::NotLoaded);
+    let restored = restore_file(&deleted, "b.poentaro", &context()).unwrap();
+    assert_eq!(restored.user_files["b.poentaro"], FileText::NotLoaded);
 }

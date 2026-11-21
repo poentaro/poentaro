@@ -59,8 +59,9 @@ pub enum SnapshotError {
     },
 }
 
-/// Captures `folder` from the store; `None` if it does not exist. Files and
-/// explicit empty folders are sorted by path.
+/// Captures `folder` from the store; `None` if it does not exist or any file
+/// inside it is not loaded (a partial snapshot would silently lose files).
+/// Files and explicit empty folders are sorted by path.
 pub fn folder_snapshot(state: &FileStoreState, folder: &TreePath) -> Option<FolderSnapshot> {
     let files = state.files_within(folder);
     let explicit = state.explicit_folders_within(folder);
@@ -74,13 +75,13 @@ pub fn folder_snapshot(state: &FileStoreState, folder: &TreePath) -> Option<Fold
     };
     let mut captured: Vec<SnapshotFile> = files
         .iter()
-        .filter_map(|path| {
+        .map(|path| {
             Some(SnapshotFile {
                 path: relative(path)?,
-                content: state.user_files.get(path.as_str())?.clone(),
+                content: state.user_files.get(path.as_str())?.loaded()?.to_string(),
             })
         })
-        .collect();
+        .collect::<Option<_>>()?;
     captured.sort_by(|a, b| a.path.cmp(&b.path));
     let mut empty_folders: Vec<String> = explicit
         .iter()

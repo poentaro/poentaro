@@ -46,17 +46,21 @@ pub fn rename_legacy_extensions(
         return None;
     }
     let rename = |path: &String| renames.get(path.as_str()).unwrap_or(path).clone();
-    let rename_keys = |entries: &BTreeMap<String, String>| {
-        entries
-            .iter()
-            .map(|(path, value)| (rename(path), value.clone()))
-            .collect()
-    };
     Some(FileStoreState {
         active: rename(&state.active),
-        user_files: rename_keys(&state.user_files),
-        bin: rename_keys(&state.bin),
-        file_ids: rename_keys(&state.file_ids),
+        user_files: rename_keys(&rename, &state.user_files),
+        bin: rename_keys(&rename, &state.bin),
+        file_ids: rename_keys(&rename, &state.file_ids),
         folders: state.folders.clone(),
     })
+}
+
+fn rename_keys<T: Clone>(
+    rename: &impl Fn(&String) -> String,
+    entries: &BTreeMap<String, T>,
+) -> BTreeMap<String, T> {
+    entries
+        .iter()
+        .map(|(path, value)| (rename(path), value.clone()))
+        .collect()
 }

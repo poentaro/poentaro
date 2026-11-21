@@ -14,6 +14,7 @@ import {
 import {
   deserializeFileStore,
   readInitialFileStore,
+  serializeFileStore,
 } from '../fileStorePersistence'
 import { importSharedFolderState } from '../sharedFolder'
 import { ensureWasmInit } from '../wasmInit'
@@ -39,6 +40,11 @@ export function readInitialStoreSync(): FileStoreState {
  */
 export function deserializeStoreSync(raw: string): FileStoreState {
   return deserializeFileStore(raw)
+}
+
+/** `useLocalStorage`'s `serializer`: the on-disk shape stays plain strings. */
+export function serializeStoreSync(state: FileStoreState): string {
+  return serializeFileStore(state)
 }
 
 /** The store operations run in Rust (wasm), so wait for the component first. */

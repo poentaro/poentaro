@@ -1,8 +1,8 @@
 import {
   type FileStoreState,
-  fileContent,
   fileIdForName,
   isReadOnlyFile,
+  loadedText,
 } from '../fileStore'
 import type { StorageBackend } from '../storage/types'
 import { useSharedFolderViewer } from './useSharedFolderViewer'
@@ -103,15 +103,24 @@ export function useScoreSource(
     sharedPreview === null &&
     (sharedFolder !== null || syncedShareViewerStatus !== 'none')
 
+  const ownFileText = loadedText(store, store.active)
+  // The open file's text has not arrived yet (cloud files load on demand).
+  // `source` is only a placeholder then: the file is read-only until its
+  // text is in, so the placeholder can never be saved.
+  const textLoading =
+    sharedPreview === null &&
+    !syncedShareViewerActive &&
+    ownFileText === undefined
   const source = sharedPreview
     ? sharedPreview.content
     : sharedFolder
       ? sharedFolder.activeContent
       : syncedShareViewerActive
         ? (syncedShareViewerPreview?.content ?? '')
-        : fileContent(store, store.active)
+        : (ownFileText ?? '')
   const readOnly =
     sharedPreview !== null ||
+    textLoading ||
     syncedShareViewerActive ||
     isReadOnlyFile(store.active)
 
@@ -121,6 +130,7 @@ export function useScoreSource(
     syncedShareViewerActive,
     source,
     readOnly,
+    textLoading,
     syncedShare: {
       sharedPreview,
       onImportShared: handleImportShared,

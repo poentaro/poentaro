@@ -1,6 +1,9 @@
 import { openDB } from 'idb'
 import { FILE_STORE_KEY, renameLegacyExtensions } from '../fileStore'
-import { parseStoredFileStore } from '../fileStorePersistence'
+import {
+  parseStoredFileStore,
+  serializeFileStore,
+} from '../fileStorePersistence'
 import { ASSET_CACHE_NAME } from '../hooks/useAssetLoader'
 import {
   OUTBOX_OBJECT_STORE_NAME,
@@ -44,7 +47,7 @@ export async function renameLegacyFiles(): Promise<void> {
   await ensureWasmInit()
   const renamed = renameLegacyExtensions(state)
   if (renamed !== null) {
-    localStorage.setItem(FILE_STORE_KEY, JSON.stringify(renamed))
+    localStorage.setItem(FILE_STORE_KEY, serializeFileStore(renamed))
   }
 }
 

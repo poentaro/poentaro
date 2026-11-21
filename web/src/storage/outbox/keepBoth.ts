@@ -1,5 +1,9 @@
 import { FILE_EXTENSION } from '../../fileExtension'
-import type { FileStoreState } from '../../fileStore'
+import {
+  type FileStoreState,
+  loadedFileText,
+  loadedText,
+} from '../../fileStore'
 import type { CloudBackend } from '../cloudBackendTypes'
 
 export interface KeepBothInput {
@@ -30,11 +34,12 @@ function conflictedCopyName(name: string, today: string): string {
 export async function keepBoth(input: KeepBothInput): Promise<FileStoreState> {
   const { backend, state, fileId, today } = input
   const name = nameOfFile(state, fileId)
-  if (name === undefined) return state
+  const localText = name === undefined ? undefined : loadedText(state, name)
+  if (name === undefined || localText === undefined) return state
   const withCopy = await backend.importFile(
     state,
     conflictedCopyName(name, today),
-    state.userFiles[name] ?? '',
+    localText,
   )
   await backend.outbox().resolve(fileId, { tag: 'discard' })
   const server = await backend.fetchServerFile(fileId)
@@ -42,7 +47,7 @@ export async function keepBoth(input: KeepBothInput): Promise<FileStoreState> {
     ...withCopy,
     active: state.active,
     userFiles: server
-      ? { ...withCopy.userFiles, [name]: server.content }
+      ? { ...withCopy.userFiles, [name]: loadedFileText(server.content) }
       : withCopy.userFiles,
   }
 }

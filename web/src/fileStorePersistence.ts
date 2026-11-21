@@ -4,8 +4,38 @@ import {
   FILE_STORE_KEY,
   type FileStoreState,
   generateFileId,
+  loadedFiles,
   STORAGE_KEY,
 } from './fileStore'
+
+/** What localStorage holds: file text as plain strings, the shape this key
+ * has always had. Local files are always loaded, so the in-memory
+ * `FileText` is converted at this boundary only. */
+interface StoredFileStore {
+  active: string
+  userFiles: Record<string, string>
+  bin: Record<string, string>
+  fileIds: Record<string, string>
+  folders?: string[]
+}
+
+const storedRecord = (files: FileStoreState['userFiles']) =>
+  Object.fromEntries(
+    Object.entries(files).flatMap(([name, text]) =>
+      text.tag === 'loaded' ? [[name, text.val]] : [],
+    ),
+  )
+
+/** The localStorage text of a file store. Files whose text is not loaded
+ * are left out rather than saved as empty. */
+export function serializeFileStore(state: FileStoreState): string {
+  const stored: StoredFileStore = {
+    ...state,
+    userFiles: storedRecord(state.userFiles),
+    bin: storedRecord(state.bin),
+  }
+  return JSON.stringify(stored)
+}
 
 function ensureFileIds(
   userFiles: Record<string, string>,
@@ -22,7 +52,7 @@ function ensureFileIds(
   return fileIds
 }
 
-function normalizeState(parsed: Partial<FileStoreState>): FileStoreState {
+function normalizeState(parsed: Partial<StoredFileStore>): FileStoreState {
   const userFiles = { ...parsed.userFiles }
   const bin = { ...parsed.bin }
   for (const name of DEMO_FILE_NAMES) {
@@ -32,8 +62,8 @@ function normalizeState(parsed: Partial<FileStoreState>): FileStoreState {
 
   const state: FileStoreState = {
     active: parsed.active ?? DEMO_FILE_NAMES[0] ?? '',
-    userFiles,
-    bin,
+    userFiles: loadedFiles(userFiles),
+    bin: loadedFiles(bin),
     fileIds: ensureFileIds(userFiles, bin, parsed.fileIds),
     // Optional and absent in stores saved before folders existed: no version
     // bump, old stores load with no explicit folders.
@@ -51,7 +81,7 @@ function normalizeState(parsed: Partial<FileStoreState>): FileStoreState {
 }
 
 function fileIdsNeedMigration(
-  stored: Partial<FileStoreState>,
+  stored: Partial<StoredFileStore>,
   normalized: FileStoreState,
 ): boolean {
   if (!stored.fileIds) return true
@@ -69,9 +99,9 @@ function persistFileStoreMigration(
   normalized: FileStoreState,
 ): void {
   try {
-    const stored = JSON.parse(raw) as Partial<FileStoreState>
+    const stored = JSON.parse(raw) as Partial<StoredFileStore>
     if (fileIdsNeedMigration(stored, normalized)) {
-      localStorage.setItem(FILE_STORE_KEY, JSON.stringify(normalized))
+      localStorage.setItem(FILE_STORE_KEY, serializeFileStore(normalized))
     }
   } catch {
     // ignore migration write failures
@@ -80,7 +110,7 @@ function persistFileStoreMigration(
 
 export function parseStoredFileStore(raw: string): FileStoreState | null {
   try {
-    const parsed = JSON.parse(raw) as Partial<FileStoreState>
+    const parsed = JSON.parse(raw) as Partial<StoredFileStore>
     if (parsed && typeof parsed.active === 'string' && parsed.userFiles) {
       return normalizeState({
         ...parsed,
@@ -100,7 +130,7 @@ function readLegacyFileStore(): FileStoreState | null {
       const userFiles = { 'untitled.poentaro': legacy }
       return {
         active: 'untitled.poentaro',
-        userFiles,
+        userFiles: loadedFiles(userFiles),
         bin: {},
         fileIds: ensureFileIds(userFiles, {}, undefined),
       }

@@ -3,6 +3,42 @@ use super::tree::{FileTree, FileTreeError};
 use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 
+/// The text of a stored file. A cloud file's text is fetched when it is first
+/// needed, so until then it is [`FileText::NotLoaded`], which is never the
+/// same thing as an empty file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FileText {
+    Loaded(String),
+    NotLoaded,
+}
+
+impl FileText {
+    pub fn loaded(&self) -> Option<&str> {
+        match self {
+            Self::Loaded(text) => Some(text),
+            Self::NotLoaded => None,
+        }
+    }
+}
+
+impl From<String> for FileText {
+    fn from(text: String) -> Self {
+        Self::Loaded(text)
+    }
+}
+
+impl From<&str> for FileText {
+    fn from(text: &str) -> Self {
+        Self::Loaded(text.to_string())
+    }
+}
+
+impl PartialEq<&str> for FileText {
+    fn eq(&self, other: &&str) -> bool {
+        self.loaded() == Some(*other)
+    }
+}
+
 /// Rust mirror of the web app's `FileStoreState` (`web/src/fileStore.ts`),
 /// plus the optional explicit `folders` list. Keys of `user_files`, `bin` and
 /// `file_ids` are full paths (a legacy flat name is just a top-level path).
@@ -11,10 +47,10 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FileStoreState {
     pub active: String,
-    pub user_files: BTreeMap<String, String>,
+    pub user_files: BTreeMap<String, FileText>,
     /// Binned files, keyed by the full path they were deleted from, so a
     /// restore knows where to put them back.
-    pub bin: BTreeMap<String, String>,
+    pub bin: BTreeMap<String, FileText>,
     /// Stable id per path (active and binned); follows the file on move.
     pub file_ids: BTreeMap<String, String>,
     /// Explicitly created folders (possibly empty). Folders that merely
@@ -72,6 +108,11 @@ pub enum FileStoreError {
     InvalidSharedFolder {
         reason: String,
     },
+    /// The operation needs the file's text, which has not been loaded yet.
+    /// The caller loads the file and retries.
+    NotLoaded {
+        path: String,
+    },
 }
 
 impl From<PathError> for FileStoreError {
@@ -102,6 +143,7 @@ impl fmt::Display for FileStoreError {
             Self::InvalidSharedFolder { reason } => {
                 write!(f, "the shared folder is not valid: {reason}")
             }
+            Self::NotLoaded { path } => write!(f, "the text of `{path}` is not loaded"),
             Self::ReservedName { path } => {
                 write!(f, "`{}` is a reserved name and cannot be used", path.name())
             }
@@ -196,7 +238,7 @@ impl FileStoreState {
     }
 }
 
-fn parse_keys(map: &BTreeMap<String, String>) -> Vec<TreePath> {
+fn parse_keys(map: &BTreeMap<String, FileText>) -> Vec<TreePath> {
     map.keys()
         .filter_map(|key| TreePath::parse(key).ok())
         .collect()

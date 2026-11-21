@@ -162,20 +162,24 @@ fn changes_for(
         .collect()
 }
 
+fn rekey<T: Clone>(
+    renames: &HashMap<&str, &str>,
+    map: &BTreeMap<String, T>,
+) -> BTreeMap<String, T> {
+    map.iter()
+        .map(|(key, value)| {
+            let new_key = renames.get(key.as_str()).copied().unwrap_or(key);
+            (new_key.to_string(), value.clone())
+        })
+        .collect()
+}
+
 fn apply(state: &FileStoreState, changes: &[PathChange]) -> FileStoreState {
     let renames: HashMap<&str, &str> = changes
         .iter()
         .filter(|change| change.kind == PathKind::File)
         .map(|change| (change.old_path.as_str(), change.new_path.as_str()))
         .collect();
-    let rekey = |map: &BTreeMap<String, String>| -> BTreeMap<String, String> {
-        map.iter()
-            .map(|(key, value)| {
-                let new_key = renames.get(key.as_str()).copied().unwrap_or(key);
-                (new_key.to_string(), value.clone())
-            })
-            .collect()
-    };
     let folder_renames: HashMap<&TreePath, &TreePath> = changes
         .iter()
         .filter(|change| change.kind == PathKind::ExplicitFolder)
@@ -185,11 +189,11 @@ fn apply(state: &FileStoreState, changes: &[PathChange]) -> FileStoreState {
         active: renames
             .get(state.active.as_str())
             .map_or_else(|| state.active.clone(), |new| new.to_string()),
-        user_files: rekey(&state.user_files),
+        user_files: rekey(&renames, &state.user_files),
         // Bin keys stay: binned files remember where they were, not where
         // their former folder went.
         bin: state.bin.clone(),
-        file_ids: rekey(&state.file_ids),
+        file_ids: rekey(&renames, &state.file_ids),
         folders: state
             .folders
             .iter()

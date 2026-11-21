@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { DEMO_FILE_NAMES, type FileStoreState } from '../fileStore'
+import { DEMO_FILE_NAMES, type FileStoreState, loadedFiles } from '../fileStore'
 import { SessionEnded } from '../protocol/transport'
 import { WorkerRequestError } from '../syncedShare/workerClient'
 import { createTestBackend } from './cloudBackendTestHelpers'
@@ -19,8 +19,8 @@ describe('createCloudBackend: load()', () => {
     const state = await backend.load()
 
     expect(server.callsTo('list files')).toHaveLength(1)
-    expect(state.userFiles).toEqual({ 'a.poentaro': '1 2 3' })
-    expect(state.bin).toEqual({ 'b.poentaro': 'x' })
+    expect(state.userFiles).toEqual(loadedFiles({ 'a.poentaro': '1 2 3' }))
+    expect(state.bin).toEqual(loadedFiles({ 'b.poentaro': 'x' }))
     expect(state.fileIds).toEqual({
       'a.poentaro': 'id-a',
       'b.poentaro': 'id-b',
@@ -33,8 +33,8 @@ describe('createCloudBackend: createFile()', () => {
     const { backend, looper, server } = createTestBackend()
     const state: FileStoreState = {
       active: DEMO_FILE_NAMES[0] ?? '',
-      userFiles: {},
-      bin: {},
+      userFiles: loadedFiles({}),
+      bin: loadedFiles({}),
       fileIds: {},
     }
     const nextState = await backend.createFile(state, undefined, 'untitled')
@@ -51,8 +51,8 @@ describe('createCloudBackend: saveContent()', () => {
   function seededState(): FileStoreState {
     return {
       active: 'a.poentaro',
-      userFiles: { 'a.poentaro': 'new content' },
-      bin: {},
+      userFiles: loadedFiles({ 'a.poentaro': 'new content' }),
+      bin: loadedFiles({}),
       fileIds: { 'a.poentaro': 'id-a' },
     }
   }

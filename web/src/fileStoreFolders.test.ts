@@ -5,6 +5,7 @@ import {
   deleteFolder,
   duplicateFile,
   type FileStoreState,
+  loadedFiles,
   moveFolder,
   renameFile,
   restoreFile,
@@ -18,7 +19,7 @@ beforeAll(loadWasmForTests)
 function makeState(overrides: Partial<FileStoreState>): FileStoreState {
   return {
     active: 'a.poentaro',
-    userFiles: {},
+    userFiles: loadedFiles({}),
     bin: {},
     fileIds: {},
     ...overrides,
@@ -28,7 +29,7 @@ function makeState(overrides: Partial<FileStoreState>): FileStoreState {
 describe('file store operations delegated to Rust', () => {
   it('creates a named file inside a folder', () => {
     const state = makeState({
-      userFiles: { 'Hymns/a.poentaro': 'x' },
+      userFiles: loadedFiles({ 'Hymns/a.poentaro': 'x' }),
       fileIds: { 'Hymns/a.poentaro': 'id-1' },
     })
     const next = createFile(state, 'Hymns', 'Psalm')
@@ -38,7 +39,7 @@ describe('file store operations delegated to Rust', () => {
   it('duplicates in the same folder', () => {
     const state = makeState({
       active: 'A/b.poentaro',
-      userFiles: { 'A/b.poentaro': 'content' },
+      userFiles: loadedFiles({ 'A/b.poentaro': 'content' }),
       fileIds: { 'A/b.poentaro': 'id-b' },
     })
     expect(duplicateFile(state).active).toBe('A/b 2.poentaro')
@@ -46,17 +47,17 @@ describe('file store operations delegated to Rust', () => {
 
   it('moves a file between folders keeping its id', () => {
     const state = makeState({
-      userFiles: { 'a.poentaro': 'content' },
+      userFiles: loadedFiles({ 'a.poentaro': 'content' }),
       fileIds: { 'a.poentaro': 'id-a' },
     })
     const next = renameFile(state, 'a.poentaro', 'X/Y/a')
-    expect(next.userFiles).toEqual({ 'X/Y/a.poentaro': 'content' })
+    expect(next.userFiles).toEqual(loadedFiles({ 'X/Y/a.poentaro': 'content' }))
     expect(next.fileIds['X/Y/a.poentaro']).toBe('id-a')
   })
 
   it('returns the same state object when an operation is rejected', () => {
     const state = makeState({
-      userFiles: { 'a.poentaro': '1', 'b.poentaro': '2' },
+      userFiles: loadedFiles({ 'a.poentaro': '1', 'b.poentaro': '2' }),
       fileIds: { 'a.poentaro': 'id-a', 'b.poentaro': 'id-b' },
     })
     expect(renameFile(state, 'a.poentaro', 'b.poentaro')).toBe(state)
@@ -64,7 +65,7 @@ describe('file store operations delegated to Rust', () => {
 
   it('moves a folder as a batch and reports every change', () => {
     const state = makeState({
-      userFiles: { 'A/x.poentaro': '1', 'A/B/y.poentaro': '2' },
+      userFiles: loadedFiles({ 'A/x.poentaro': '1', 'A/B/y.poentaro': '2' }),
       fileIds: { 'A/x.poentaro': 'id-x', 'A/B/y.poentaro': 'id-y' },
       folders: ['A/Empty'],
     })
@@ -82,7 +83,7 @@ describe('file store operations delegated to Rust', () => {
 
   it('rejects a colliding folder move without changing anything', () => {
     const state = makeState({
-      userFiles: { 'A/x.poentaro': '1', 'B/y.poentaro': '2' },
+      userFiles: loadedFiles({ 'A/x.poentaro': '1', 'B/y.poentaro': '2' }),
       fileIds: { 'A/x.poentaro': 'id-x', 'B/y.poentaro': 'id-y' },
     })
     const result = moveFolder(state, 'A', 'B')
@@ -93,30 +94,32 @@ describe('file store operations delegated to Rust', () => {
 
   it('deletes a folder to the bin and restores a file into the recreated folder', () => {
     const state = makeState({
-      userFiles: { 'A/B/y.poentaro': '2' },
+      userFiles: loadedFiles({ 'A/B/y.poentaro': '2' }),
       fileIds: { 'A/B/y.poentaro': 'id-y' },
     })
     const deleted = deleteFolder(state, 'A')
     expect(deleted.userFiles).toEqual({})
-    expect(deleted.bin).toEqual({ 'A/B/y.poentaro': '2' })
+    expect(deleted.bin).toEqual(loadedFiles({ 'A/B/y.poentaro': '2' }))
     const restored = restoreFile(deleted, 'A/B/y.poentaro')
-    expect(restored.userFiles).toEqual({ 'A/B/y.poentaro': '2' })
+    expect(restored.userFiles).toEqual(loadedFiles({ 'A/B/y.poentaro': '2' }))
     expect(restored.fileIds['A/B/y.poentaro']).toBe('id-y')
   })
 
   it('bins a single file under its full path', () => {
     const state = makeState({
-      userFiles: { 'A/y.poentaro': '2' },
+      userFiles: loadedFiles({ 'A/y.poentaro': '2' }),
       fileIds: { 'A/y.poentaro': 'id-y' },
     })
-    expect(deleteFile(state, 'A/y.poentaro').bin).toEqual({
-      'A/y.poentaro': '2',
-    })
+    expect(deleteFile(state, 'A/y.poentaro').bin).toEqual(
+      loadedFiles({
+        'A/y.poentaro': '2',
+      }),
+    )
   })
 
   it('lists the tree as sorted display rows', () => {
     const state = makeState({
-      userFiles: { 'b.poentaro': '', 'A/z.poentaro': '' },
+      userFiles: loadedFiles({ 'b.poentaro': '', 'A/z.poentaro': '' }),
       folders: ['Empty'],
     })
     expect(
@@ -141,7 +144,7 @@ describe('persistence of the optional folders field', () => {
       }),
     )
     expect(state.folders).toBeUndefined()
-    expect(state.userFiles).toEqual({ 'a.poentaro': 'x' })
+    expect(state.userFiles).toEqual(loadedFiles({ 'a.poentaro': 'x' }))
   })
 
   it('keeps folders and a nested active file when present', () => {

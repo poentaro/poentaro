@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fileContent, sortedUserFileNames } from '../fileStore'
+import { loadedText, sortedUserFileNames } from '../fileStore'
 import {
   fileMoveTargets,
   moveDestination,
@@ -105,7 +105,7 @@ export function FileSwitcher({
   const fileStaticLink = useFileStaticShareLink(
     shareModalOpen,
     store.active,
-    fileContent(store, store.active),
+    loadedText(store, store.active),
   )
   const folderActions = useFolderRowActions({
     folderShares,

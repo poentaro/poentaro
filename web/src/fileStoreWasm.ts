@@ -9,6 +9,8 @@ import type { FileStoreState } from './fileStore'
 import type {
   FileOperationContext,
   FileStoreFailure,
+  FileText,
+  FileTextEntry,
   poentaroWasm,
   StringEntry,
   FileStoreState as WasmFileStoreState,
@@ -20,11 +22,17 @@ const entriesOf = (record: Record<string, string>): StringEntry[] =>
 const recordOf = (entries: StringEntry[]): Record<string, string> =>
   Object.fromEntries(entries.map(({ key, value }) => [key, value]))
 
+const textEntriesOf = (record: Record<string, FileText>): FileTextEntry[] =>
+  Object.entries(record).map(([key, value]) => ({ key, value }))
+
+const textRecordOf = (entries: FileTextEntry[]): Record<string, FileText> =>
+  Object.fromEntries(entries.map(({ key, value }) => [key, value]))
+
 export function toWasmState(state: FileStoreState): WasmFileStoreState {
   return {
     active: state.active,
-    userFiles: entriesOf(state.userFiles),
-    bin: entriesOf(state.bin),
+    userFiles: textEntriesOf(state.userFiles),
+    bin: textEntriesOf(state.bin),
     fileIds: entriesOf(state.fileIds),
     folders: state.folders ?? [],
   }
@@ -35,8 +43,8 @@ export function toWasmState(state: FileStoreState): WasmFileStoreState {
 export function fromWasmState(state: WasmFileStoreState): FileStoreState {
   return {
     active: state.active,
-    userFiles: recordOf(state.userFiles),
-    bin: recordOf(state.bin),
+    userFiles: textRecordOf(state.userFiles),
+    bin: textRecordOf(state.bin),
     fileIds: recordOf(state.fileIds),
     ...(state.folders.length > 0 ? { folders: state.folders } : {}),
   }

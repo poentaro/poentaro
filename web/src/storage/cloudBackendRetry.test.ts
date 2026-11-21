@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FileStoreState } from '../fileStore'
+import { loadedFiles } from '../fileStore'
 import { createTestBackend } from './cloudBackendTestHelpers'
 
 // forceOverwrite/single-flight/offline-retry coverage for `cloudBackend.ts`
@@ -11,8 +12,8 @@ const WRITE = 'write file _ at revision _ content _'
 function stateWith(content: string): FileStoreState {
   return {
     active: 'a.poentaro',
-    userFiles: { 'a.poentaro': content },
-    bin: {},
+    userFiles: loadedFiles({ 'a.poentaro': content }),
+    bin: loadedFiles({}),
     fileIds: { 'a.poentaro': 'id-a' },
   }
 }

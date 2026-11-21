@@ -17,11 +17,11 @@ export interface StaticShareLink {
 export function useFileStaticShareLink(
   open: boolean,
   filename: string,
-  content: string,
+  content: string | undefined,
 ): StaticShareLink | null {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
-    if (!open) return
+    if (!open || content === undefined) return
     let cancelled = false
     void buildShareUrl(filename, content).then((built) => {
       if (!cancelled) setUrl(built)

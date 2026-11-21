@@ -1,4 +1,4 @@
-import type { FileStoreState } from '../fileStore'
+import { type FileStoreState, loadedText } from '../fileStore'
 import type { CloudBackend, CloudBackendError } from '../storage/cloudBackend'
 import type { StorageBackend } from '../storage/types'
 
@@ -22,8 +22,10 @@ export async function resolveCloudConflict(
     return store
   }
   const reloaded = await backend.load()
-  const remoteContent = reloaded.userFiles[store.active] ?? ''
-  return backend.updateActiveContent(store, remoteContent)
+  const remoteContent = loadedText(reloaded, store.active)
+  return remoteContent === undefined
+    ? store
+    : backend.updateActiveContent(store, remoteContent)
 }
 
 export function isCloudBackend(

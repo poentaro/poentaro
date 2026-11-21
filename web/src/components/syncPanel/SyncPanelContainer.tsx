@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { FileStoreState } from '../../fileStore'
+import { type FileStoreState, loadedBinText, loadedText } from '../../fileStore'
 import { useFocusRevisionCheck } from '../../hooks/useFocusRevisionCheck'
 import type { CloudBackend, LocalRename } from '../../storage/cloudBackendTypes'
 import type { ConflictDetails } from '../../storage/outbox/conflictFlow'
@@ -86,7 +86,8 @@ function CloudSyncPanel(
 
   const download = (fileId: string) => {
     const name = nameOfFile(store, fileId)
-    downloadLocalCopy(name, store.userFiles[name] ?? store.bin[name] ?? '')
+    const text = loadedText(store, name) ?? loadedBinText(store, name)
+    if (text !== undefined) downloadLocalCopy(name, text)
   }
 
   const discard = async (fileId: string) => {
