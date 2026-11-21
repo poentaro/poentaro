@@ -21,9 +21,12 @@ export async function resolveCloudConflict(
     await backend.forceOverwrite(store)
     return store
   }
-  const reloaded = await backend.load()
-  const remoteContent = reloaded.userFiles[store.active] ?? ''
-  return backend.updateActiveContent(store, remoteContent)
+  const remote = await backend.fetchServerFile(
+    store.fileIds[store.active] ?? '',
+  )
+  return remote === undefined
+    ? store
+    : backend.updateActiveContent(store, remote.content)
 }
 
 export function isCloudBackend(

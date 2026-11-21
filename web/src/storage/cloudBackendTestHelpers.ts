@@ -4,6 +4,7 @@ import { setWasmRoot } from '../poentaroWasm'
 import { type CloudBackendConfig, createCloudBackend } from './cloudBackend'
 import { baseSnapshotHooks } from './cloudBackendOutbox'
 import { createFakeAppFiles, type FakeFile } from './fakeAppFiles'
+import { createFileTextCache } from './fileTextCache'
 import { createBaseSnapshots } from './outbox/baseSnapshots'
 import { createMemoryOutboxStore } from './outbox/memoryOutboxStore'
 import { createOutboxLooper } from './outbox/outboxLooper'
@@ -39,10 +40,17 @@ export function createTestBackend(
   const server = createFakeAppFiles(seed)
   const store = createMemoryOutboxStore()
   const bases = createBaseSnapshots(store)
+  const texts = createFileTextCache(store)
   const looper = createOutboxLooper({
-    ...baseSnapshotHooks(bases),
+    ...baseSnapshotHooks(bases, texts),
     store,
-    sendMessage: (request) => sendMessage(request, { app: server.app }),
+    sendMessage: (request) =>
+      sendMessage(request, {
+        app: server.app,
+        onServerText: (fileId, revision, text) => {
+          void texts.write(fileId, revision, text)
+        },
+      }),
     createScheduler: (onWake) => {
       wake = onWake
       return {
@@ -64,6 +72,7 @@ export function createTestBackend(
     {
       looper,
       bases,
+      texts,
       app: server.app,
       ensureWasm: installRealWasm,
     },
@@ -73,6 +82,7 @@ export function createTestBackend(
     server,
     looper,
     bases,
+    texts,
     store,
     wake: () => wake(),
     advance: (ms: number) => {

@@ -4,7 +4,7 @@ fn store(files: &[&str], bin: &[&str]) -> FileStoreState {
     let entries = |paths: &[&str]| {
         paths
             .iter()
-            .map(|path| (path.to_string(), format!("content of {path}")))
+            .map(|path| (path.to_string(), format!("content of {path}").into()))
             .collect()
     };
     FileStoreState {
@@ -23,7 +23,7 @@ fn store(files: &[&str], bin: &[&str]) -> FileStoreState {
     }
 }
 
-fn keys(map: &std::collections::BTreeMap<String, String>) -> Vec<&str> {
+fn keys(map: &std::collections::BTreeMap<String, FileText>) -> Vec<&str> {
     map.keys().map(String::as_str).collect()
 }
 

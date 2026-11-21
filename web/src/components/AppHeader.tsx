@@ -113,6 +113,7 @@ interface AppHeaderProps {
   duplicatingFile?: boolean
   renamingFileName?: string | null
   isLoadingCloud: boolean
+  fileTextLoading: boolean
   cloudLoadFailure?: CloudLoadFailure | null
   onOpenBin: () => void
   onOpenSyncPanel?: () => void
@@ -144,6 +145,7 @@ interface AppHeaderProps {
   partsCount?: number
   importing?: boolean
   onImportFile?: (file: File, folder?: string) => void
+  onLoadFolderText?: (folder: string) => Promise<void>
   syncedShare: SyncedShareHeaderProps
   /** The header account chip's only action -- see `App.tsx`'s
    * `handleAccountSignOut`. Everything else `ProfileControl` needs comes
@@ -187,6 +189,7 @@ export function AppHeader({
   duplicatingFile,
   renamingFileName,
   isLoadingCloud,
+  fileTextLoading,
   cloudLoadFailure,
   onOpenBin,
   onOpenSyncPanel,
@@ -218,6 +221,7 @@ export function AppHeader({
   partsCount,
   importing,
   onImportFile,
+  onLoadFolderText,
   syncedShare,
   onSignOut,
 }: AppHeaderProps) {
@@ -310,9 +314,11 @@ export function AppHeader({
             duplicating={duplicatingFile}
             renamingName={renamingFileName}
             isLoadingCloud={isLoadingCloud}
+            fileTextLoading={fileTextLoading}
             cloudLoadFailure={cloudLoadFailure}
             importing={importing}
             onImportFile={onImportFile}
+            onLoadFolderText={onLoadFolderText}
             binNames={sortedBinNames(store)}
             onOpenBin={onOpenBin}
             onOpenSyncPanel={onOpenSyncPanel}
@@ -360,7 +366,7 @@ export function AppHeader({
           splitMp3Exporting={splitMp3Exporting}
           onExportSplitMp3={onExportSplitMp3}
           partsCount={partsCount}
-          isLoadingCloud={isLoadingCloud}
+          isLoadingCloud={isLoadingCloud || fileTextLoading}
         />
         <ProfileControl
           isSignedIn={syncedShare.isSignedIn}

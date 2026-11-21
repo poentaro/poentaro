@@ -5,7 +5,7 @@
 use super::extension::FILE_EXTENSION;
 use super::path::TreePath;
 use super::placeholder::is_reserved_leaf;
-use super::store_state::{FileOperationContext, FileStoreError, FileStoreState};
+use super::store_state::{FileOperationContext, FileStoreError, FileStoreState, FileText};
 use super::unique_name::unique_path;
 use crate::ast::parsed::MetadataTextKey;
 use crate::source_edit::{parse_metadata_fields, update_metadata_field, MetadataEdit};
@@ -72,19 +72,22 @@ pub fn duplicate_file(
     source: &TreePath,
     context: &FileOperationContext,
 ) -> Result<FileStoreState, FileStoreError> {
-    let content = state
-        .user_files
-        .get(source.as_str())
-        .or_else(|| {
-            context
-                .demo_files
-                .iter()
-                .find(|demo| demo.path == *source)
-                .map(|demo| &demo.content)
-        })
-        .ok_or_else(|| FileStoreError::NotFound {
-            path: source.as_str().to_string(),
-        })?;
+    let content = match state.user_files.get(source.as_str()) {
+        Some(FileText::Loaded(text)) => text,
+        Some(FileText::NotLoaded) => {
+            return Err(FileStoreError::NotLoaded {
+                path: source.as_str().to_string(),
+            })
+        }
+        None => context
+            .demo_files
+            .iter()
+            .find(|demo| demo.path == *source)
+            .map(|demo| &demo.content)
+            .ok_or_else(|| FileStoreError::NotFound {
+                path: source.as_str().to_string(),
+            })?,
+    };
     add_new_file(state, source, content.clone(), context)
 }
 
@@ -110,7 +113,8 @@ fn insert_active_file(
     let name = path.as_str().to_string();
     let mut next = state.clone();
     next.active = name.clone();
-    next.user_files.insert(name.clone(), content);
+    next.user_files
+        .insert(name.clone(), FileText::Loaded(content));
     next.file_ids.insert(name, context.new_file_id.clone());
     next
 }

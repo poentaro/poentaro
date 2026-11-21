@@ -26,6 +26,8 @@ export default function App() {
     setStore,
     backend,
     isLoadingCloud,
+    fileTextLoading,
+    loadFolderText,
     cloudLoadFailure,
     saveStatus,
     saveLabel,
@@ -161,6 +163,9 @@ export default function App() {
     syncedShare.onSignOut()
     if (preference.backend === 'cloud') void switchBackend({ kind: 'local' })
   }, [syncedShare, preference, switchBackend])
+  const cloudOnly = (open: () => void) =>
+    backend.kind === 'cloud' ? open : undefined
+
   return (
     <div className="app">
       <AssetLoadingBanner
@@ -210,18 +215,11 @@ export default function App() {
         duplicatingFile={duplicatingFile}
         renamingFileName={renamingFileName}
         isLoadingCloud={isLoadingCloud}
+        fileTextLoading={fileTextLoading}
         cloudLoadFailure={cloudLoadFailure}
         onOpenBin={() => panels.setBinOpen(true)}
-        onOpenSyncPanel={
-          backend.kind === 'cloud'
-            ? () => panels.setSyncPanelOpen(true)
-            : undefined
-        }
-        onOpenHistory={
-          backend.kind === 'cloud'
-            ? () => panels.setHistoryOpen(true)
-            : undefined
-        }
+        onOpenSyncPanel={cloudOnly(() => panels.setSyncPanelOpen(true))}
+        onOpenHistory={cloudOnly(() => panels.setHistoryOpen(true))}
         hasDocuments={documents.length > 0}
         rendering={rendering}
         audioGenerating={audioGenerating}
@@ -249,6 +247,7 @@ export default function App() {
         partsCount={parts.length}
         importing={importingFile}
         onImportFile={handleImportFile}
+        onLoadFolderText={loadFolderText}
         syncedShare={syncedShare}
         onSignOut={handleAccountSignOut}
       />

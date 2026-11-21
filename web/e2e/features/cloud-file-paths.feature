@@ -30,7 +30,10 @@ Feature: Cloud files whose names are slash paths keep their folders
 
   Scenario: A rename that collides on delivery stays in the folder
     Given a cloud file named "CloudPathsD/orig.poentaro" is seeded for the signed-in account
-    And the cloud is unreachable
+    When the app loads the cloud-backed file list
+    And I open the cloud file "CloudPathsD/orig" from the file list
+    Then the file switcher toolbar button shows the folder prefix "CloudPathsD /" and the file name "orig"
+    Given the cloud is unreachable
     When I open the cloud file "CloudPathsD/orig" from the file list
     And I rename the active file in the list to "CloudPathsD/target"
     And a cloud file named "CloudPathsD/target.poentaro" is seeded for the signed-in account

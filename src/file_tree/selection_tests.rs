@@ -20,7 +20,7 @@ fn store(files: &[&str]) -> FileStoreState {
         active: files.first().copied().unwrap_or_default().to_string(),
         user_files: files
             .iter()
-            .map(|name| (name.to_string(), String::new()))
+            .map(|name| (name.to_string(), String::new().into()))
             .collect(),
         bin: Default::default(),
         file_ids: Default::default(),

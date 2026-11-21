@@ -19,11 +19,11 @@ fn store(files: &[&str], folders: &[&str], bin: &[&str]) -> FileStoreState {
         active: files.first().copied().unwrap_or_default().to_string(),
         user_files: files
             .iter()
-            .map(|name| (name.to_string(), format!("content of {name}")))
+            .map(|name| (name.to_string(), format!("content of {name}").into()))
             .collect(),
         bin: bin
             .iter()
-            .map(|name| (name.to_string(), format!("binned {name}")))
+            .map(|name| (name.to_string(), format!("binned {name}").into()))
             .collect(),
         file_ids: files
             .iter()

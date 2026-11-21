@@ -1,5 +1,9 @@
 import { FILE_EXTENSION } from '../../fileExtension'
-import type { FileStoreState } from '../../fileStore'
+import {
+  type FileStoreState,
+  loadedFileText,
+  loadedText,
+} from '../../fileStore'
 import type { CloudBackend } from '../cloudBackendTypes'
 
 export interface KeepBothInput {
@@ -28,13 +32,17 @@ function conflictedCopyName(name: string, today: string): string {
  * both files present, the original still the open one.
  */
 export async function keepBoth(input: KeepBothInput): Promise<FileStoreState> {
-  const { backend, state, fileId, today } = input
-  const name = nameOfFile(state, fileId)
-  if (name === undefined) return state
+  const { backend, fileId, today } = input
+  const name = nameOfFile(input.state, fileId)
+  if (name === undefined) return input.state
+  // The local text may never have been read, or exist only in unsent edits.
+  const state = await backend.ensureLoaded(input.state, name)
+  const localText = loadedText(state, name)
+  if (localText === undefined) return state
   const withCopy = await backend.importFile(
     state,
     conflictedCopyName(name, today),
-    state.userFiles[name] ?? '',
+    localText,
   )
   await backend.outbox().resolve(fileId, { tag: 'discard' })
   const server = await backend.fetchServerFile(fileId)
@@ -42,7 +50,7 @@ export async function keepBoth(input: KeepBothInput): Promise<FileStoreState> {
     ...withCopy,
     active: state.active,
     userFiles: server
-      ? { ...withCopy.userFiles, [name]: server.content }
+      ? { ...withCopy.userFiles, [name]: loadedFileText(server.content) }
       : withCopy.userFiles,
   }
 }

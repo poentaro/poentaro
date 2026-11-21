@@ -1,6 +1,7 @@
 import type { SendRequest } from '../poentaroWasm'
 import type { AppFileCalls, ClientOptions } from '../protocol/clients'
 import type { CloudBackendError } from './cloudBackendTypes'
+import { createFileTextCache, type FileTextCache } from './fileTextCache'
 import { type BaseSnapshots, createBaseSnapshots } from './outbox/baseSnapshots'
 import { createMemoryOutboxStore } from './outbox/memoryOutboxStore'
 import { broadcastChanges } from './outbox/outboxChanges'
@@ -25,13 +26,18 @@ export interface CloudOutboxConfig {
   account: string
 }
 
-/** The looper hooks that keep `bases` equal to the last text the server has. */
-export function baseSnapshotHooks(bases: BaseSnapshots) {
+/** The looper hooks that keep `bases` equal to the last text the server has,
+ * and `texts` holding that text at the revision the server answered. */
+export function baseSnapshotHooks(bases: BaseSnapshots, texts: FileTextCache) {
   return {
-    async onAcknowledged(request: SendRequest): Promise<void> {
+    async onAcknowledged(
+      request: SendRequest,
+      revision: bigint,
+    ): Promise<void> {
       const { message, fileId } = request
       if (message.tag === 'save-content' || message.tag === 'create-file') {
         await bases.recordBase(fileId, message.val.content)
+        await texts.write(fileId, Number(revision), message.val.content)
       } else if (message.tag === 'trash-file') {
         await bases.dropBase(fileId)
       }
@@ -40,46 +46,54 @@ export function baseSnapshotHooks(bases: BaseSnapshots) {
   }
 }
 
-/** Records the listed text of every file as its base, except for files with
- * unsent messages: their base must stay the last text the server is known to
- * have for them. */
-export async function recordListedBases(
+/** Records the server revision of every listed file, except for files with
+ * unsent messages: their recorded revision is what conflict detection
+ * compares against. */
+export async function recordServerRevisions(
   looper: OutboxLooper,
-  bases: BaseSnapshots,
-  files: ReadonlyArray<{ id: string; content: string }>,
+  files: ReadonlyArray<{ id: string; revision: number }>,
 ): Promise<void> {
-  const unsent = new Set(
+  const pending = new Set(
     looper
       .snapshot()
       .queue.lanes.filter((lane) => lane.messages.length > 0)
       .map((lane) => lane.fileId),
   )
   for (const file of files) {
-    if (!unsent.has(file.id)) await bases.recordBase(file.id, file.content)
+    if (!pending.has(file.id)) {
+      await looper.recordRevision(file.id, BigInt(file.revision))
+    }
   }
 }
 
 /** The looper and bases to use: injected ones (tests) or the production pair. */
 export function createCloudOutbox(
   config: CloudOutboxConfig,
-  injected: { looper?: OutboxLooper; bases?: BaseSnapshots },
+  injected: {
+    looper?: OutboxLooper
+    bases?: BaseSnapshots
+    texts?: FileTextCache
+  },
 ): CloudOutbox {
   if (!injected.looper) {
     const production = createCloudOutboxLooper(config)
     return {
       looper: production.looper,
       bases: injected.bases ?? production.bases,
+      texts: injected.texts ?? production.texts,
     }
   }
   return {
     looper: injected.looper,
     bases: injected.bases ?? createBaseSnapshots(createMemoryOutboxStore()),
+    texts: injected.texts ?? createFileTextCache(createMemoryOutboxStore()),
   }
 }
 
 export interface CloudOutbox {
   looper: OutboxLooper
   bases: BaseSnapshots
+  texts: FileTextCache
 }
 
 /** The production looper: IndexedDB store, leader-tab lock, real timers.
@@ -87,10 +101,17 @@ export interface CloudOutbox {
 function createCloudOutboxLooper(config: CloudOutboxConfig): CloudOutbox {
   const store: OutboxStore = createIndexedDbOutboxStore(config.account)
   const bases = createBaseSnapshots(store)
+  const texts = createFileTextCache(store)
   const looper = createOutboxLooper({
-    ...baseSnapshotHooks(bases),
+    ...baseSnapshotHooks(bases, texts),
     store,
-    sendMessage: (request) => sendMessage(request, { app: config.app }),
+    sendMessage: (request) =>
+      sendMessage(request, {
+        app: config.app,
+        onServerText: (fileId, revision, text) => {
+          void texts.write(fileId, revision, text).catch(() => undefined)
+        },
+      }),
     createScheduler: (onWake) =>
       createScheduler({
         now: () => Date.now(),
@@ -103,7 +124,7 @@ function createCloudOutboxLooper(config: CloudOutboxConfig): CloudOutbox {
     now: () => Date.now(),
     random: () => Math.random(),
   })
-  return { looper, bases }
+  return { looper, bases, texts }
 }
 
 /** The save status the outbox implies, or null when it implies none. */
@@ -158,7 +179,9 @@ export function pendingContentByFileId(
   const pending = new Map<string, string>()
   for (const lane of snapshot.queue.lanes) {
     const saves = lane.messages.flatMap(({ message }) =>
-      message.tag === 'save-content' ? [message.val.content] : [],
+      message.tag === 'save-content' || message.tag === 'create-file'
+        ? [message.val.content]
+        : [],
     )
     const newest = saves.at(-1)
     if (newest !== undefined) pending.set(lane.fileId, newest)
@@ -206,7 +229,7 @@ export function pendingNameByFileId(
 interface ListedFile {
   id: string
   name: string
-  content: string
+  content?: string
   revision: number
   trashedAt?: number | null
 }

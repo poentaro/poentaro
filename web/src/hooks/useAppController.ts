@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { fileIdForName, selectFile } from '../fileStore'
+import { fileIdForName } from '../fileStore'
 import type { EditorHandle } from '../types'
 import { useAppPanels } from './useAppPanels'
 import { useAppSelectionAndNavigation } from './useAppSelectionAndNavigation'
@@ -10,6 +10,7 @@ import { useFileImport } from './useFileImport'
 import { useFileOperations } from './useFileOperations'
 import { useFontsLoader } from './useFontsLoader'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
+import { useOpenFile } from './useOpenFile'
 import { usePartFocusSelectionRouting } from './usePartFocusSelectionRouting'
 import { usePartTogglePruning } from './usePartTogglePruning'
 import { usePartToggles } from './usePartToggles'
@@ -41,7 +42,6 @@ export function useAppController() {
     refreshSaveStatus,
   } = useStorageBackend()
   const [editorCollapsed, setEditorCollapsed] = useState(false)
-  useUrlFileSync(store, setStore, isLoadingCloud)
 
   const {
     creatingFile,
@@ -63,12 +63,20 @@ export function useAppController() {
     handleDeleteSelection,
     handleRestore,
   } = useFileOperations(store, setStore, backend)
+  const { openFile, opening, loadFolderText } = useOpenFile(
+    store,
+    setStore,
+    backend,
+    setFileOpError,
+  )
+  useUrlFileSync(store, openFile, isLoadingCloud)
   const {
     sharedPreview,
     sharedFolder,
     syncedShareViewerActive,
     source,
-    readOnly,
+    readOnly: sourceReadOnly,
+    textLoading,
     syncedShare,
   } = useScoreSource(
     store,
@@ -78,6 +86,8 @@ export function useAppController() {
     setEditorCollapsed,
     saveStatus,
   )
+  // Typing into the open file while another one is being read would race it.
+  const readOnly = sourceReadOnly || opening
   const fileId = sharedFolder?.fileId ?? fileIdForName(store, store.active)
   useDocumentTitle(store.active)
   const editorRef = useRef<EditorHandle>(null)
@@ -156,9 +166,9 @@ export function useAppController() {
   const handleSelect = useCallback(
     (name: string) => {
       flushPendingSave()
-      setStore((prev) => selectFile(prev, name))
+      void openFile(name)
     },
-    [setStore, flushPendingSave],
+    [openFile, flushPendingSave],
   )
   const handleFormatScore = useCallback(() => {
     void formatScore(source).then(handleSourceChange)
@@ -292,6 +302,8 @@ export function useAppController() {
     syncedShareViewerActive,
     source,
     readOnly,
+    fileTextLoading: textLoading || opening,
+    loadFolderText,
     syncedShare,
     fileId,
     editorRef,

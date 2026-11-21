@@ -1,9 +1,11 @@
 import {
   DEMO_FILE_NAMES,
   type FileStoreState,
-  fileContent,
   fileIdForName,
   isReadOnlyFile,
+  loadedFileText,
+  loadedText,
+  NOT_LOADED,
   createFile as pureCreateFile,
   deleteFile as pureDeleteFile,
   duplicateFile as pureDuplicateFile,
@@ -28,9 +30,10 @@ import {
   outboxSaveStatus,
   pendingContentByFileId,
   pendingNameByFileId,
-  recordListedBases,
+  recordServerRevisions,
 } from './cloudBackendOutbox'
 import { createPlaceholders } from './cloudBackendPlaceholders'
+import { createTextLoader } from './cloudBackendTextLoading'
 import type {
   CloudBackend,
   CloudBackendConfig,
@@ -38,6 +41,7 @@ import type {
   LocalRename,
 } from './cloudBackendTypes'
 import { createVersionCalls } from './cloudBackendVersions'
+import type { FileTextCache } from './fileTextCache'
 import type { BaseSnapshots } from './outbox/baseSnapshots'
 import { type ConflictFlow, createConflictFlow } from './outbox/conflictFlow'
 import type { OutboxLooper, OutboxSnapshot } from './outbox/outboxLooper'
@@ -67,6 +71,7 @@ export interface CloudBackendDependencies {
   app?: (options: ClientOptions) => Promise<AppFileCalls>
   looper?: OutboxLooper
   bases?: BaseSnapshots
+  texts?: FileTextCache
   ensureWasm?: () => Promise<void>
 }
 
@@ -101,7 +106,7 @@ export function createCloudBackend(
     return trashedIdByName.get(name) ?? fileIdForName(state, name)
   }
 
-  const { looper, bases } = createCloudOutbox(
+  const { looper, bases, texts } = createCloudOutbox(
     { app, account: config.account },
     dependencies,
   )
@@ -117,7 +122,20 @@ export function createCloudBackend(
     activeIdByName,
     trashedIdByName,
   })
-  const { fetchServerFile, listFiles } = createServerReads(() => app({}))
+  const { fetchServerFile, listFiles } = createServerReads(() => app({}), texts)
+
+  const revisionById = new Map<string, number>()
+  const textLoader = createTextLoader({
+    looper,
+    bases,
+    texts,
+    fetchServerFile,
+    revisionById,
+    idOf: (state, name) =>
+      name in state.userFiles
+        ? activeFileId(state, name)
+        : trashedFileId(state, name),
+  })
 
   const noticeListeners = new Set<(message: string) => void>()
   let conflictFlow: ConflictFlow | null = null
@@ -171,30 +189,14 @@ export function createCloudBackend(
    * persisted locally -- delivery happens in the background. */
   async function saveContent(state: FileStoreState): Promise<void> {
     if (isReadOnlyFile(state.active)) return
+    // A file whose text has not loaded must never be saved as empty.
+    const content = loadedText(state, state.active)
+    if (content === undefined) return
     await whenReady()
     await looper.enqueue(fileIdForName(state, state.active), {
       tag: 'save-content',
-      val: { content: fileContent(state, state.active) },
+      val: { content },
     })
-  }
-
-  /** Tells the outbox each file's server revision, except for files with
-   * unsent messages: their recorded revision is what conflict detection
-   * compares against. */
-  async function recordServerRevisions(
-    files: ReadonlyArray<{ id: string; revision: number }>,
-  ): Promise<void> {
-    const pending = new Set(
-      looper
-        .snapshot()
-        .queue.lanes.filter((lane) => lane.messages.length > 0)
-        .map((lane) => lane.fileId),
-    )
-    for (const file of files) {
-      if (!pending.has(file.id)) {
-        await looper.recordRevision(file.id, BigInt(file.revision))
-      }
-    }
   }
 
   /** Queues the creation of the file `nextState` added relative to `state`
@@ -205,12 +207,15 @@ export function createCloudBackend(
   ): Promise<FileStoreState> {
     const name = addedName(state, nextState)
     if (!name) return nextState
+    const content = loadedText(nextState, name)
+    // A new file is always loaded; there is nothing to create without text.
+    if (content === undefined) return nextState
     const id = fileIdForName(nextState, name)
     activeIdByName.set(name, id)
     await whenReady()
     await looper.enqueue(id, {
       tag: 'create-file',
-      val: { name, content: nextState.userFiles[name] ?? '' },
+      val: { name, content },
     })
     return nextState
   }
@@ -225,8 +230,8 @@ export function createCloudBackend(
       // the older text, so the edit must be laid over it from this snapshot.
       const pendingSnapshot = looper.snapshot()
       const response = { files: await listFiles() }
-      const userFiles: Record<string, string> = {}
-      const bin: Record<string, string> = {}
+      const userFiles: FileStoreState['userFiles'] = {}
+      const bin: FileStoreState['bin'] = {}
       const fileIds: Record<string, string> = {}
       activeIdByName.clear()
       trashedIdByName.clear()
@@ -235,24 +240,25 @@ export function createCloudBackend(
           ? response.files
           : applyPendingStructure(response.files, pendingSnapshot),
       )
+      revisionById.clear()
       for (const file of listed) {
         fileIds[file.name] = file.id
+        revisionById.set(file.id, file.revision)
         if (file.trashedAt === null) {
-          userFiles[file.name] = file.content
+          userFiles[file.name] = NOT_LOADED
           activeIdByName.set(file.name, file.id)
         } else {
-          bin[file.name] = file.content
+          bin[file.name] = NOT_LOADED
           trashedIdByName.set(file.name, file.id)
         }
       }
       // An unreadable outbox must not stop the files from loading.
       if (!looper.snapshot().halted) {
-        await recordServerRevisions(response.files)
-        await recordListedBases(looper, bases, response.files)
+        await recordServerRevisions(looper, response.files)
       }
       for (const [id, content] of pendingContentByFileId(pendingSnapshot)) {
         const name = [...activeIdByName].find(([, value]) => value === id)?.[0]
-        if (name !== undefined) userFiles[name] = content
+        if (name !== undefined) userFiles[name] = loadedFileText(content)
       }
       return {
         active: DEMO_FILE_NAMES[0] ?? '',
@@ -263,6 +269,8 @@ export function createCloudBackend(
       }
     },
 
+    ensureLoaded: textLoader.ensureLoaded,
+
     createFile: (state, folder, name) =>
       ensureWasm().then(() =>
         createRemoteFile(state, pureCreateFile(state, folder, name)),
@@ -270,10 +278,12 @@ export function createCloudBackend(
     importFile: (state, filename, content) =>
       createRemoteFile(state, pureImportSharedFile(state, filename, content)),
 
-    duplicateFile: (state) =>
-      ensureWasm().then(() =>
-        createRemoteFile(state, pureDuplicateFile(state)),
-      ),
+    async duplicateFile(state) {
+      await ensureWasm()
+      // A copy of a file that was never read would be empty.
+      const loaded = await textLoader.ensureLoaded(state, state.active)
+      return createRemoteFile(loaded, pureDuplicateFile(loaded))
+    },
 
     async renameFile(
       state: FileStoreState,

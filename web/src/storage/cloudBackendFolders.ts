@@ -61,12 +61,12 @@ export function createFolderOperations({
       const nextState = importSharedFolderState(state, snapshot)
       await whenReady()
       for (const [name, content] of Object.entries(nextState.userFiles)) {
-        if (name in state.userFiles) continue
+        if (name in state.userFiles || content.tag !== 'loaded') continue
         const id = fileIdForName(nextState, name)
         activeIdByName.set(name, id)
         await looper.enqueue(id, {
           tag: 'create-file',
-          val: { name, content },
+          val: { name, content: content.val },
         })
       }
       const before = state.folders ?? []

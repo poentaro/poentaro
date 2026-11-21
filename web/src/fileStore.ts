@@ -15,12 +15,21 @@ import type {
   FileOperationContext,
   FileStoreFailure,
   FileStoreResponse,
+  FileText,
   PathChange,
   FileStoreState as WasmFileStoreState,
 } from './poentaroWasm'
 import { poentaroWasm } from './poentaroWasm'
 
+export { mergeBackendResult, mergeLoadedTexts } from './fileStoreMerge'
+export {
+  loadedFiles,
+  loadedFileText,
+  NOT_LOADED,
+} from './fileText'
 export { DEMO_FILE_NAMES }
+
+import { loadedFileText, NOT_LOADED } from './fileText'
 
 const DEMO_FILE_NAME_SET = new Set(DEMO_FILE_NAMES)
 
@@ -48,8 +57,8 @@ export function generateFileId(): string {
 
 export interface FileStoreState {
   active: string
-  userFiles: Record<string, string>
-  bin: Record<string, string>
+  userFiles: Record<string, FileText>
+  bin: Record<string, FileText>
   /** Stable ID per file name (active and binned); survives renames. */
   fileIds: Record<string, string>
   /** Explicitly created (possibly empty) folders. Optional so stores saved
@@ -68,9 +77,30 @@ function isDemoFile(name: string): boolean {
   return DEMO_FILE_NAME_SET.has(name)
 }
 
-export function fileContent(state: FileStoreState, name: string): string {
-  if (isDemoFile(name)) return DEMO_FILE_CONTENT[name] ?? ''
-  return state.userFiles[name] ?? ''
+/** The text of a file, or `not-loaded` when it has not been fetched yet. A
+ * name that is in neither the demo files nor the store is `not-loaded` too,
+ * never an empty score. */
+export function fileContent(state: FileStoreState, name: string): FileText {
+  if (isDemoFile(name)) return loadedFileText(DEMO_FILE_CONTENT[name] ?? '')
+  return state.userFiles[name] ?? NOT_LOADED
+}
+
+/** The text of a file when it is loaded; `undefined` while it is not. */
+export function loadedText(
+  state: FileStoreState,
+  name: string,
+): string | undefined {
+  const text = fileContent(state, name)
+  return text.tag === 'loaded' ? text.val : undefined
+}
+
+/** The text of a binned file when it is loaded. */
+export function loadedBinText(
+  state: FileStoreState,
+  name: string,
+): string | undefined {
+  const text = state.bin[name]
+  return text?.tag === 'loaded' ? text.val : undefined
 }
 
 /** Names shown in the top level of the file-switcher dropdown — user files
@@ -124,9 +154,14 @@ export function updateActiveContent(
   content: string,
 ): FileStoreState {
   if (isDemoFile(state.active)) return state
+  // Text typed against a file that never loaded would overwrite it.
+  if (state.userFiles[state.active]?.tag === 'not-loaded') return state
   return {
     ...state,
-    userFiles: { ...state.userFiles, [state.active]: content },
+    userFiles: {
+      ...state.userFiles,
+      [state.active]: loadedFileText(content),
+    },
   }
 }
 
@@ -287,84 +322,6 @@ export function deleteFolder(
   )
 }
 
-function mergeAddedRemoved(
-  prevRecord: Record<string, string>,
-  baseRecord: Record<string, string>,
-  nextRecord: Record<string, string>,
-  resolveAdded: (key: string) => string,
-): Record<string, string> {
-  const result = { ...prevRecord }
-  for (const key of Object.keys(baseRecord)) {
-    if (!(key in nextRecord)) delete result[key]
-  }
-  for (const key of Object.keys(nextRecord)) {
-    if (!(key in baseRecord)) result[key] = resolveAdded(key)
-  }
-  return result
-}
-
-/**
- * Reconciles the result of an async structural operation (create/duplicate/
- * rename/delete/restore) with whatever the store has become since the
- * operation's `base` snapshot was read — instead of blindly replacing state
- * with `next`, which would discard any edits or other operations applied to
- * `prev` while the async call was in flight. Only the keys the operation
- * actually added or removed (relative to `base`) are applied to `prev`;
- * every other key is left exactly as `prev` has it. For a moved key (e.g.
- * rename's `from` -> `to`), the destination's content is taken from `prev`'s
- * current value of the source key when still present, so a concurrent edit
- * to the file being renamed/restored isn't lost either.
- */
-export function mergeBackendResult(
-  prev: FileStoreState,
-  base: FileStoreState,
-  next: FileStoreState,
-): FileStoreState {
-  const removedFrom = (record: 'userFiles' | 'bin'): string[] =>
-    Object.keys(base[record]).filter((key) => !(key in next[record]))
-
-  const findMovedSource = (content: string): string | undefined => {
-    const fromUserFiles = removedFrom('userFiles').find(
-      (key) => base.userFiles[key] === content,
-    )
-    if (fromUserFiles !== undefined) {
-      return prev.userFiles[fromUserFiles] ?? prev.bin[fromUserFiles]
-    }
-    const fromBin = removedFrom('bin').find((key) => base.bin[key] === content)
-    if (fromBin !== undefined) {
-      return prev.userFiles[fromBin] ?? prev.bin[fromBin]
-    }
-    return undefined
-  }
-
-  const foldersChanged =
-    JSON.stringify(next.folders ?? []) !== JSON.stringify(base.folders ?? [])
-  const folders = foldersChanged ? next.folders : prev.folders
-  return {
-    ...(folders && folders.length > 0 ? { folders } : {}),
-    active: next.active !== base.active ? next.active : prev.active,
-    userFiles: mergeAddedRemoved(
-      prev.userFiles,
-      base.userFiles,
-      next.userFiles,
-      (key) =>
-        findMovedSource(next.userFiles[key] ?? '') ?? next.userFiles[key] ?? '',
-    ),
-    bin: mergeAddedRemoved(
-      prev.bin,
-      base.bin,
-      next.bin,
-      (key) => findMovedSource(next.bin[key] ?? '') ?? next.bin[key] ?? '',
-    ),
-    fileIds: mergeAddedRemoved(
-      prev.fileIds,
-      base.fileIds,
-      next.fileIds,
-      (key) => next.fileIds[key] ?? '',
-    ),
-  }
-}
-
 export function isReadOnlyFile(name: string): boolean {
   return isDemoFile(name)
 }
@@ -385,7 +342,7 @@ export function importSharedFile(
   return {
     ...state,
     active: name,
-    userFiles: { ...state.userFiles, [name]: content },
+    userFiles: { ...state.userFiles, [name]: loadedFileText(content) },
     fileIds: { ...state.fileIds, [name]: generateFileId() },
   }
 }

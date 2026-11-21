@@ -1,4 +1,4 @@
-import { displayFileName, type FileStoreState, fileContent } from '../fileStore'
+import { displayFileName, type FileStoreState, loadedText } from '../fileStore'
 import { binEntries } from '../fileStoreQueries'
 import type { FileOpError } from '../hooks/useFileOperations'
 import type { PendingDownload } from '../hooks/usePoentaroWorkerTypes'
@@ -92,6 +92,7 @@ export function AppOverlays({
 }: AppOverlaysProps) {
   /** A store that already matches the server is not a user edit, so it must
    * not arm an autosave (which would show "Unsaved" and re-send it). */
+  const activeText = loadedText(store, store.active)
   const applySyncedStore = (next: FileStoreState) => {
     setStore(next)
     refreshSaveStatus(next)
@@ -142,14 +143,14 @@ export function AppOverlays({
           setStore((previous) => withRenamedKey(previous, from, to))
         }
       />
-      {backend.kind === 'cloud' ? (
+      {backend.kind === 'cloud' && activeText !== undefined ? (
         <FileHistoryModal
           open={historyOpen}
           onOpenChange={setHistoryOpen}
           backend={backend as CloudBackend}
           fileId={fileId}
           fileName={displayFileName(store.active)}
-          currentContent={fileContent(store, store.active)}
+          currentContent={activeText}
           onRestore={onRestoreVersion}
         />
       ) : null}

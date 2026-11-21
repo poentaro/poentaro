@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { FileStoreState } from '../fileStore'
 import { folderShareInfo } from '../fileStoreQueries'
 import type { FolderShares } from '../hooks/useFolderShares'
@@ -20,6 +21,8 @@ interface FolderShareModalProps {
   isSignedIn: boolean
   accountEmail: string | null
   onSignIn: () => void
+  /** Reads the text of the folder's files, which the snapshot holds. */
+  onLoadFolderText?: (folder: string) => Promise<void>
 }
 
 /** The Share dialog of one folder: wires `ShareModal` to the owner's share
@@ -33,13 +36,28 @@ export function FolderShareModal({
   isSignedIn,
   accountEmail,
   onSignIn,
+  onLoadFolderText,
 }: FolderShareModalProps) {
   const folder = target?.folder ?? null
+  useEffect(() => {
+    if (folder !== null) void onLoadFolderText?.(folder)
+  }, [folder, onLoadFolderText])
   const info =
     folder === null
       ? undefined
       : folderShareInfo(store, folderShares.overview, folder)
-  const staticLink = useFolderStaticShareLink(target !== null, store, folder)
+  // A link made before every file is read would leave some of them out.
+  const textsPending = Object.entries(store.userFiles).some(
+    ([name, text]) =>
+      folder !== null &&
+      name.startsWith(`${folder}/`) &&
+      text.tag === 'not-loaded',
+  )
+  const staticLink = useFolderStaticShareLink(
+    target !== null && !textsPending,
+    store,
+    folder,
+  )
   return (
     <ShareModal
       open={target !== null}

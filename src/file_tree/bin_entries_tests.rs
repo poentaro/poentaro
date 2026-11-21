@@ -4,7 +4,7 @@ fn store(bin: &[&str]) -> FileStoreState {
     FileStoreState {
         bin: bin
             .iter()
-            .map(|name| (name.to_string(), String::new()))
+            .map(|name| (name.to_string(), String::new().into()))
             .collect(),
         ..Default::default()
     }

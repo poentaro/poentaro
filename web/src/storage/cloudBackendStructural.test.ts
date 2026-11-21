@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEMO_FILE_NAMES, type FileStoreState } from '../fileStore'
+import { DEMO_FILE_NAMES, type FileStoreState, loadedFiles } from '../fileStore'
 import { createTestBackend } from './cloudBackendTestHelpers'
 
 const CREATE = 'create file _ at _ content _'
@@ -7,15 +7,15 @@ const WRITE = 'write file _ at revision _ content _'
 
 const emptyState: FileStoreState = {
   active: DEMO_FILE_NAMES[0] ?? '',
-  userFiles: {},
-  bin: {},
+  userFiles: loadedFiles({}),
+  bin: loadedFiles({}),
   fileIds: {},
 }
 
 const stateWithFile: FileStoreState = {
   active: 'a.poentaro',
-  userFiles: { 'a.poentaro': 'content' },
-  bin: { 'binned.poentaro': 'old' },
+  userFiles: loadedFiles({ 'a.poentaro': 'content' }),
+  bin: loadedFiles({ 'binned.poentaro': 'old' }),
   fileIds: { 'a.poentaro': 'id-a', 'binned.poentaro': 'id-binned' },
 }
 
@@ -88,7 +88,10 @@ describe('createCloudBackend: ordering within a file', () => {
     )
     await harness.backend.saveContent({
       ...created,
-      userFiles: { ...created.userFiles, 'untitled.poentaro': 'edited' },
+      userFiles: loadedFiles({
+        ...created.userFiles,
+        'untitled.poentaro': 'edited',
+      }),
     })
     await harness.looper.whenIdle()
     return { ...harness, id: created.fileIds['untitled.poentaro'] ?? '' }

@@ -55,7 +55,7 @@ pub use selection::{
     CheckState, SelectionDeleteSummary, SelectionMove, SelectionMovePlan, SelectionUnit,
 };
 pub use shared_folder::{import_shared_folder, shared_folder_first_file, shared_folder_view};
-pub use store_state::{DemoFile, FileOperationContext, FileStoreError, FileStoreState};
+pub use store_state::{DemoFile, FileOperationContext, FileStoreError, FileStoreState, FileText};
 pub use tree::{FileNode, FileTree, FileTreeError, FolderContents, FolderNode, TreeRow};
 pub use unique_name::{
     folder_after_collision, path_after_collision, unique_folder_path, unique_path,

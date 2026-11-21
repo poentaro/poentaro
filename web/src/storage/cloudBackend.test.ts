@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { DEMO_FILE_NAMES, type FileStoreState } from '../fileStore'
+import {
+  DEMO_FILE_NAMES,
+  type FileStoreState,
+  loadedFiles,
+  NOT_LOADED,
+} from '../fileStore'
 import { SessionEnded } from '../protocol/transport'
 import { WorkerRequestError } from '../syncedShare/workerClient'
 import { createTestBackend } from './cloudBackendTestHelpers'
@@ -19,8 +24,9 @@ describe('createCloudBackend: load()', () => {
     const state = await backend.load()
 
     expect(server.callsTo('list files')).toHaveLength(1)
-    expect(state.userFiles).toEqual({ 'a.poentaro': '1 2 3' })
-    expect(state.bin).toEqual({ 'b.poentaro': 'x' })
+    expect(server.callsTo('read file _')).toHaveLength(0)
+    expect(state.userFiles).toEqual({ 'a.poentaro': NOT_LOADED })
+    expect(state.bin).toEqual({ 'b.poentaro': NOT_LOADED })
     expect(state.fileIds).toEqual({
       'a.poentaro': 'id-a',
       'b.poentaro': 'id-b',
@@ -33,8 +39,8 @@ describe('createCloudBackend: createFile()', () => {
     const { backend, looper, server } = createTestBackend()
     const state: FileStoreState = {
       active: DEMO_FILE_NAMES[0] ?? '',
-      userFiles: {},
-      bin: {},
+      userFiles: loadedFiles({}),
+      bin: loadedFiles({}),
       fileIds: {},
     }
     const nextState = await backend.createFile(state, undefined, 'untitled')
@@ -51,8 +57,8 @@ describe('createCloudBackend: saveContent()', () => {
   function seededState(): FileStoreState {
     return {
       active: 'a.poentaro',
-      userFiles: { 'a.poentaro': 'new content' },
-      bin: {},
+      userFiles: loadedFiles({ 'a.poentaro': 'new content' }),
+      bin: loadedFiles({}),
       fileIds: { 'a.poentaro': 'id-a' },
     }
   }
@@ -186,9 +192,11 @@ describe('createCloudBackend: base snapshots', () => {
     { id: 'id-a', path: 'a.poentaro', content, revision: 1 },
   ]
 
-  it('records each listed file text as its base on load', async () => {
+  it('records a file text as its base when the text is loaded', async () => {
     const { backend } = createTestBackend(fileA('1 2 3'))
-    await backend.load()
+    const state = await backend.load()
+    expect(await backend.bases().readBase('id-a')).toBeUndefined()
+    await backend.ensureLoaded(state, 'a.poentaro')
     expect(await backend.bases().readBase('id-a')).toBe('1 2 3')
   })
 

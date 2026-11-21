@@ -9,7 +9,7 @@ fn store(files: &[&str], folders: &[&str]) -> FileStoreState {
         active: String::new(),
         user_files: files
             .iter()
-            .map(|name| (name.to_string(), String::new()))
+            .map(|name| (name.to_string(), String::new().into()))
             .collect(),
         bin: Default::default(),
         file_ids: Default::default(),

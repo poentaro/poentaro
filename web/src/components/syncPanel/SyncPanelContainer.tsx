@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { FileStoreState } from '../../fileStore'
+import { type FileStoreState, loadedBinText, loadedText } from '../../fileStore'
 import { useFocusRevisionCheck } from '../../hooks/useFocusRevisionCheck'
 import type { CloudBackend, LocalRename } from '../../storage/cloudBackendTypes'
 import type { ConflictDetails } from '../../storage/outbox/conflictFlow'
@@ -84,9 +84,11 @@ function CloudSyncPanel(
   }
   const lanes = toLaneViews(snapshot, (fileId) => nameOfFile(store, fileId))
 
-  const download = (fileId: string) => {
+  const download = async (fileId: string) => {
     const name = nameOfFile(store, fileId)
-    downloadLocalCopy(name, store.userFiles[name] ?? store.bin[name] ?? '')
+    const loaded = await backend.ensureLoaded(store, name)
+    const text = loadedText(loaded, name) ?? loadedBinText(loaded, name)
+    if (text !== undefined) downloadLocalCopy(name, text)
   }
 
   const discard = async (fileId: string) => {
@@ -120,7 +122,7 @@ function CloudSyncPanel(
           onReviewAndMerge: setMergingFileId,
           onKeepBoth: (fileId) => void keepBothVersions(fileId),
           onDiscard: setDiscardingFileId,
-          onDownloadCopy: download,
+          onDownloadCopy: (fileId: string) => void download(fileId),
         }}
       />
       <MergeEditorContainer
@@ -135,7 +137,7 @@ function CloudSyncPanel(
         open={discardingFileId !== null}
         fileName={nameOfFile(store, discardingFileId ?? '')}
         onDownloadFirst={() => {
-          if (discardingFileId) download(discardingFileId)
+          if (discardingFileId) void download(discardingFileId)
         }}
         onConfirm={() => {
           if (discardingFileId) void discard(discardingFileId)

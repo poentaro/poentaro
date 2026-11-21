@@ -8,7 +8,7 @@ use super::folder_share::ShareOverview;
 use super::folder_snapshot::FolderSnapshot;
 use super::path::TreePath;
 use super::placeholder::PLACEHOLDER_LEAF;
-use super::store_state::{FileOperationContext, FileStoreError, FileStoreState};
+use super::store_state::{FileOperationContext, FileStoreError, FileStoreState, FileText};
 use super::unique_name::unique_folder_path;
 use super::view::{TreeViewInput, TreeViewRow};
 
@@ -27,7 +27,7 @@ fn viewer_state(snapshot: &FolderSnapshot, active: &str) -> Result<FileStoreStat
             .files
             .iter()
             .filter(|file| !is_placeholder(&file.path))
-            .map(|file| (file.path.clone(), file.content.clone()))
+            .map(|file| (file.path.clone(), FileText::Loaded(file.content.clone())))
             .collect(),
         folders: snapshot
             .empty_folders
@@ -102,7 +102,8 @@ pub fn import_shared_folder(
             .get(index)
             .cloned()
             .unwrap_or_else(|| format!("{}-{index}", context.new_file_id));
-        next.user_files.insert(path.clone(), file.content.clone());
+        next.user_files
+            .insert(path.clone(), FileText::Loaded(file.content.clone()));
         next.file_ids.insert(path, id);
     }
     let empty_folders = snapshot

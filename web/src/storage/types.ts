@@ -23,6 +23,10 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline'
 export interface StorageBackend {
   readonly kind: 'local' | 'cloud'
   load(): Promise<FileStoreState>
+  /** `state` with the text of the file `name` in memory: the same state when
+   * it already is. The cloud backend lists files without their text and reads
+   * it here, when the file is first needed. */
+  ensureLoaded(state: FileStoreState, name: string): Promise<FileStoreState>
   /** New file `name` in `folder` (top level when omitted). */
   createFile(
     state: FileStoreState,

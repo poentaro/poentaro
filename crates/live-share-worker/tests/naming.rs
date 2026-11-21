@@ -151,7 +151,7 @@ proptest! {
             .map(|name| FileNameRow { id: format!("id:{name}"), name: name.clone() })
             .collect();
         let state = FileStoreState {
-            user_files: names.iter().map(|name| (name.clone(), String::new())).collect(),
+            user_files: names.iter().map(|name| (name.clone(), String::new().into())).collect(),
             file_ids: rows.iter().map(|row| (row.name.clone(), row.id.clone())).collect(),
             ..FileStoreState::default()
         };

@@ -50,11 +50,15 @@ export interface FileSwitcherProps {
   /** Whether the cloud backend is still fetching its file list — shows a
    * spinner on the trigger and a loading hint instead of the demo hint. */
   isLoadingCloud?: boolean
+  /** The open file's text is being read: the trigger shows the spinner. */
+  fileTextLoading?: boolean
   /** Set while a failed cloud load waits to be retried. */
   cloudLoadFailure?: CloudLoadFailure | null
   importing?: boolean
   /** `folder` is the folder to import into (the top level when omitted). */
   onImportFile?: (file: File, folder?: string) => void
+  /** Reads the text of every file under a folder before it is shared. */
+  onLoadFolderText?: (folder: string) => Promise<void>
   /** Names of files currently in the trash — used for the "Bin (N)" menu
    * item's count and to decide whether it renders at all. */
   binNames: string[]

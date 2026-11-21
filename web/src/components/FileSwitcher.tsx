@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fileContent, sortedUserFileNames } from '../fileStore'
+import { loadedText, sortedUserFileNames } from '../fileStore'
 import {
   fileMoveTargets,
   moveDestination,
@@ -48,9 +48,11 @@ export function FileSwitcher({
   duplicating = false,
   renamingName = null,
   isLoadingCloud = false,
+  fileTextLoading = false,
   cloudLoadFailure = null,
   importing = false,
   onImportFile,
+  onLoadFolderText,
   binNames,
   onOpenBin,
   onOpenSyncPanel,
@@ -105,7 +107,7 @@ export function FileSwitcher({
   const fileStaticLink = useFileStaticShareLink(
     shareModalOpen,
     store.active,
-    fileContent(store, store.active),
+    loadedText(store, store.active),
   )
   const folderActions = useFolderRowActions({
     folderShares,
@@ -136,7 +138,7 @@ export function FileSwitcher({
           trigger={
             <FileSwitcherTrigger
               activeLabel={activeLabel}
-              isLoadingCloud={isLoadingCloud}
+              isLoadingCloud={isLoadingCloud || fileTextLoading}
             />
           }
           activePath={store.active}
@@ -262,6 +264,7 @@ export function FileSwitcher({
         isSignedIn={isSignedIn}
         accountEmail={accountEmail}
         onSignIn={onSignIn}
+        onLoadFolderText={onLoadFolderText}
       />
     </div>
   )

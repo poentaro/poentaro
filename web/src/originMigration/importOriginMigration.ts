@@ -1,5 +1,8 @@
 import { FILE_STORE_KEY, mergeMigratedFileStore } from '../fileStore'
-import { parseStoredFileStore } from '../fileStorePersistence'
+import {
+  parseStoredFileStore,
+  serializeFileStore,
+} from '../fileStorePersistence'
 import { MigrationId } from '../generated/protocol/public'
 import {
   currentLocalStorageKey,
@@ -76,7 +79,7 @@ async function saveMergedFileStore(existing: string, carried: string) {
     localStorage.setItem(UNMERGED_FILE_STORE_KEY, carried)
     return
   }
-  localStorage.setItem(FILE_STORE_KEY, JSON.stringify(merged))
+  localStorage.setItem(FILE_STORE_KEY, serializeFileStore(merged))
 }
 
 /** Restores one account's cloud outbox, unless this origin already queued

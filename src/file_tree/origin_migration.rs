@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, HashSet};
 
 use super::extension::rename_legacy_extensions;
 use super::path::TreePath;
-use super::store_state::{FileOperationContext, FileStoreError, FileStoreState};
+use super::store_state::{FileOperationContext, FileStoreError, FileStoreState, FileText};
 use super::unique_name::unique_folder_path;
 
 /// The top-level folder carried files go under when the new origin already
@@ -54,7 +54,7 @@ pub fn merge_migrated_file_store(
             Ok((under_root(path)?.as_str().to_string(), id))
         })
         .collect::<Result<BTreeMap<_, _>, FileStoreError>>()?;
-    let moved = |entries: &BTreeMap<String, String>| {
+    let moved = |entries: &BTreeMap<String, FileText>| {
         entries
             .iter()
             .map(|(path, content)| Ok((under_root(path)?.as_str().to_string(), content.clone())))

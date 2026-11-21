@@ -17,7 +17,7 @@ fn created(folder: Option<&str>, name: &str, content: &str) -> String {
         &context(),
     )
     .unwrap();
-    next.user_files[&next.active].clone()
+    next.user_files[&next.active].loaded().unwrap().to_string()
 }
 
 #[test]
