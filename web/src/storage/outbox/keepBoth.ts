@@ -32,10 +32,13 @@ function conflictedCopyName(name: string, today: string): string {
  * both files present, the original still the open one.
  */
 export async function keepBoth(input: KeepBothInput): Promise<FileStoreState> {
-  const { backend, state, fileId, today } = input
-  const name = nameOfFile(state, fileId)
-  const localText = name === undefined ? undefined : loadedText(state, name)
-  if (name === undefined || localText === undefined) return state
+  const { backend, fileId, today } = input
+  const name = nameOfFile(input.state, fileId)
+  if (name === undefined) return input.state
+  // The local text may never have been read, or exist only in unsent edits.
+  const state = await backend.ensureLoaded(input.state, name)
+  const localText = loadedText(state, name)
+  if (localText === undefined) return state
   const withCopy = await backend.importFile(
     state,
     conflictedCopyName(name, today),

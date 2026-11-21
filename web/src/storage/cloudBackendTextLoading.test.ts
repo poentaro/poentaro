@@ -97,4 +97,10 @@ describe('createCloudBackend: ensureLoaded()', () => {
     expect(loadedText(next, 'c.poentaro')).toBe('B text')
     expect(server.callsTo(READ)).toHaveLength(1)
   })
+
+  it('duplicates a file whose text was never read with that text', async () => {
+    const { backend, state } = await loaded()
+    const next = await backend.duplicateFile({ ...state, active: 'a.poentaro' })
+    expect(loadedText(next, 'a 2.poentaro')).toBe('A text')
+  })
 })

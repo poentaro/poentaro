@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FileStoreState } from '../../fileStore'
-import { loadedFiles, loadedText } from '../../fileStore'
+import { loadedFiles, loadedText, NOT_LOADED } from '../../fileStore'
 import { createTestBackend } from '../cloudBackendTestHelpers'
 import { keepBoth } from './keepBoth'
 
@@ -45,5 +45,20 @@ describe('keepBoth', () => {
     const { next } = await run()
     expect(loadedText(next, 'a.poentaro')).toBe('server text')
     expect(next.active).toBe('a.poentaro')
+  })
+
+  it('reads the text of a file that was never loaded before copying it', async () => {
+    const harness = createTestBackend([
+      { id: 'id-a', path: 'a.poentaro', content: 'server text', revision: 4 },
+    ])
+    const next = await keepBoth({
+      backend: harness.backend,
+      state: { ...state, userFiles: { 'a.poentaro': NOT_LOADED } },
+      fileId: 'id-a',
+      today: '2026-10-10',
+    })
+    expect(loadedText(next, 'a (conflicted copy 2026-10-10).poentaro')).toBe(
+      'server text',
+    )
   })
 })

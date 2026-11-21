@@ -4,6 +4,7 @@ import { seedCloudFile } from '../../cloudFileHelpers'
 import {
   fileSwitcherTrigger,
   fileTabByExactName,
+  openFileActions,
   openFileList,
 } from '../../fileSwitcherHelpers'
 import { currentSignedInEmail } from './cloud-account.steps'
@@ -168,3 +169,8 @@ Given(
     await expect(page).toHaveURL(new RegExp(encodeURIComponent(name)))
   },
 )
+
+When('the user duplicates the open file', async ({ page }) => {
+  await openFileActions(page)
+  await page.getByRole('menuitem', { name: 'Duplicate' }).click()
+})

@@ -56,3 +56,11 @@ Feature: Cloud files load their text only when opened
     And I open and edit "lazy7-first" with suffix " 5"
     When the app reloads with "lazy7-first.poentaro" open
     Then the editor contains "1 2 3 4 5"
+
+  Scenario: A duplicate of a file opened from the list carries its text
+    Given a cloud file named "lazy8-first.poentaro" is seeded for the signed-in account with the text "title: First"
+    And a cloud file named "lazy8-second.poentaro" is seeded for the signed-in account with the text "title: Second"
+    And the app loads with "lazy8-first.poentaro" open
+    And the user has opened "lazy8-second.poentaro" from the file list
+    When the user duplicates the open file
+    Then the editor contains "title: Second"

@@ -25,25 +25,25 @@ describe('resolveCloudConflict', () => {
     expect(result).toBe(store)
   })
 
-  it('discard-mine reloads and replaces the active file content with the remote version', async () => {
-    const load = vi.fn().mockResolvedValue({
-      active: 'a.poentaro',
-      userFiles: loadedFiles({ 'a.poentaro': 'theirs' }),
-      bin: loadedFiles({}),
-      fileIds: {},
-    })
+  it('discard-mine reads the file from the server and replaces the active file content with the remote version', async () => {
+    const fetchServerFile = vi
+      .fn()
+      .mockResolvedValue({ id: 'id-1', content: 'theirs', revision: 3 })
     const updateActiveContent = vi.fn(
       (state: FileStoreState, content: string) => ({
         ...state,
         userFiles: loadedFiles({ [state.active]: content }),
       }),
     )
-    const backend = { load, updateActiveContent } as unknown as CloudBackend
+    const backend = {
+      fetchServerFile,
+      updateActiveContent,
+    } as unknown as CloudBackend
     const store = makeStore('a.poentaro', 'mine')
 
     const result = await resolveCloudConflict('discard-mine', backend, store)
 
-    expect(load).toHaveBeenCalled()
+    expect(fetchServerFile).toHaveBeenCalledWith('id-1')
     expect(updateActiveContent).toHaveBeenCalledWith(store, 'theirs')
     expect(loadedText(result, 'a.poentaro')).toBe('theirs')
   })

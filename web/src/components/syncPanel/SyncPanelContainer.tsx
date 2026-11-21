@@ -84,9 +84,10 @@ function CloudSyncPanel(
   }
   const lanes = toLaneViews(snapshot, (fileId) => nameOfFile(store, fileId))
 
-  const download = (fileId: string) => {
+  const download = async (fileId: string) => {
     const name = nameOfFile(store, fileId)
-    const text = loadedText(store, name) ?? loadedBinText(store, name)
+    const loaded = await backend.ensureLoaded(store, name)
+    const text = loadedText(loaded, name) ?? loadedBinText(loaded, name)
     if (text !== undefined) downloadLocalCopy(name, text)
   }
 
@@ -121,7 +122,7 @@ function CloudSyncPanel(
           onReviewAndMerge: setMergingFileId,
           onKeepBoth: (fileId) => void keepBothVersions(fileId),
           onDiscard: setDiscardingFileId,
-          onDownloadCopy: download,
+          onDownloadCopy: (fileId: string) => void download(fileId),
         }}
       />
       <MergeEditorContainer
@@ -136,7 +137,7 @@ function CloudSyncPanel(
         open={discardingFileId !== null}
         fileName={nameOfFile(store, discardingFileId ?? '')}
         onDownloadFirst={() => {
-          if (discardingFileId) download(discardingFileId)
+          if (discardingFileId) void download(discardingFileId)
         }}
         onConfirm={() => {
           if (discardingFileId) void discard(discardingFileId)

@@ -278,10 +278,12 @@ export function createCloudBackend(
     importFile: (state, filename, content) =>
       createRemoteFile(state, pureImportSharedFile(state, filename, content)),
 
-    duplicateFile: (state) =>
-      ensureWasm().then(() =>
-        createRemoteFile(state, pureDuplicateFile(state)),
-      ),
+    async duplicateFile(state) {
+      await ensureWasm()
+      // A copy of a file that was never read would be empty.
+      const loaded = await textLoader.ensureLoaded(state, state.active)
+      return createRemoteFile(loaded, pureDuplicateFile(loaded))
+    },
 
     async renameFile(
       state: FileStoreState,
