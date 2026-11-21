@@ -278,10 +278,17 @@ export function useStorageBackend(): UseStorageBackendResult {
     return () => window.removeEventListener('beforeunload', handler)
   }, [backend, debouncedSave])
 
+  // Ctrl+S can arrive before React has rendered the last keystroke, so the
+  // save waits one task and then takes the newest store, not this render's.
+  const latestStoreRef = useRef(store)
+  latestStoreRef.current = store
   const forceSave = useCallback(() => {
     debouncedSave.cancel()
-    runSave(store)
-  }, [debouncedSave, runSave, store])
+    setTimeout(() => {
+      debouncedSave.cancel()
+      runSave(latestStoreRef.current)
+    }, 0)
+  }, [debouncedSave, runSave])
 
   const flushPendingSave = useCallback(() => {
     if (backend.kind === 'cloud' && debouncedSave.isPending()) {

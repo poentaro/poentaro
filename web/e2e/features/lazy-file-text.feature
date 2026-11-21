@@ -54,6 +54,7 @@ Feature: Cloud files load their text only when opened
     Given a cloud file named "lazy7-first.poentaro" is seeded for the signed-in account
     And every content-save request will be aborted as a network failure
     And I open and edit "lazy7-first" with suffix " 5"
+    Then the save badge shows "1 change waiting"
     When the app reloads with "lazy7-first.poentaro" open
     Then the editor contains "1 2 3 4 5"
 
