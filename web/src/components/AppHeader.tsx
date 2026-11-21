@@ -145,6 +145,7 @@ interface AppHeaderProps {
   partsCount?: number
   importing?: boolean
   onImportFile?: (file: File, folder?: string) => void
+  onLoadFolderText?: (folder: string) => Promise<void>
   syncedShare: SyncedShareHeaderProps
   /** The header account chip's only action -- see `App.tsx`'s
    * `handleAccountSignOut`. Everything else `ProfileControl` needs comes
@@ -220,6 +221,7 @@ export function AppHeader({
   partsCount,
   importing,
   onImportFile,
+  onLoadFolderText,
   syncedShare,
   onSignOut,
 }: AppHeaderProps) {
@@ -316,6 +318,7 @@ export function AppHeader({
             cloudLoadFailure={cloudLoadFailure}
             importing={importing}
             onImportFile={onImportFile}
+            onLoadFolderText={onLoadFolderText}
             binNames={sortedBinNames(store)}
             onOpenBin={onOpenBin}
             onOpenSyncPanel={onOpenSyncPanel}

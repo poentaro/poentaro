@@ -63,7 +63,7 @@ export function useAppController() {
     handleDeleteSelection,
     handleRestore,
   } = useFileOperations(store, setStore, backend)
-  const { openFile, opening } = useOpenFile(
+  const { openFile, opening, loadFolderText } = useOpenFile(
     store,
     setStore,
     backend,
@@ -303,6 +303,7 @@ export function useAppController() {
     source,
     readOnly,
     fileTextLoading: textLoading || opening,
+    loadFolderText,
     syncedShare,
     fileId,
     editorRef,

@@ -52,6 +52,7 @@ export function FileSwitcher({
   cloudLoadFailure = null,
   importing = false,
   onImportFile,
+  onLoadFolderText,
   binNames,
   onOpenBin,
   onOpenSyncPanel,
@@ -263,6 +264,7 @@ export function FileSwitcher({
         isSignedIn={isSignedIn}
         accountEmail={accountEmail}
         onSignIn={onSignIn}
+        onLoadFolderText={onLoadFolderText}
       />
     </div>
   )

@@ -69,5 +69,26 @@ export function useOpenFile(
     }
   }, [activeUnloaded, active, backend, setStore, setFileOpError])
 
-  return { openFile, opening }
+  /** Reads the text of every file under `folder`, for what needs them all
+   * (the folder's static link). */
+  const loadFolderText = useCallback(
+    async (folder: string): Promise<void> => {
+      const base = storeRef.current
+      const names = Object.keys(base.userFiles).filter((name) =>
+        name.startsWith(`${folder}/`),
+      )
+      try {
+        const loaded = await names.reduce(
+          async (state, name) => backend.ensureLoaded(await state, name),
+          Promise.resolve(base),
+        )
+        setStore((prev) => mergeLoadedTexts(prev, loaded))
+      } catch (error) {
+        setFileOpError(openError(error))
+      }
+    },
+    [backend, setStore, setFileOpError],
+  )
+
+  return { openFile, opening, loadFolderText }
 }

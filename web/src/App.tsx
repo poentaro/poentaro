@@ -27,6 +27,7 @@ export default function App() {
     backend,
     isLoadingCloud,
     fileTextLoading,
+    loadFolderText,
     cloudLoadFailure,
     saveStatus,
     saveLabel,
@@ -246,6 +247,7 @@ export default function App() {
         partsCount={parts.length}
         importing={importingFile}
         onImportFile={handleImportFile}
+        onLoadFolderText={loadFolderText}
         syncedShare={syncedShare}
         onSignOut={handleAccountSignOut}
       />

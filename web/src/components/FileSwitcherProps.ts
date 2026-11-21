@@ -57,6 +57,8 @@ export interface FileSwitcherProps {
   importing?: boolean
   /** `folder` is the folder to import into (the top level when omitted). */
   onImportFile?: (file: File, folder?: string) => void
+  /** Reads the text of every file under a folder before it is shared. */
+  onLoadFolderText?: (folder: string) => Promise<void>
   /** Names of files currently in the trash — used for the "Bin (N)" menu
    * item's count and to decide whether it renders at all. */
   binNames: string[]
