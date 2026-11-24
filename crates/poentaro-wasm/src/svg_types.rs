@@ -134,6 +134,8 @@ pub enum TagOut {
     Measure {
         index: usize,
         end: usize,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        sequence_entry_index: Option<usize>,
     },
     BarNumber {
         index: usize,

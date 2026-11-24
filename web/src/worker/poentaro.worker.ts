@@ -258,6 +258,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const result = poentaroWasm().renderSvgWithHighlightRange(
       msg.source,
       msg.ranges,
+      msg.sequenceEntries,
       msg.visibility,
       GM_INSTRUMENTS,
       {

@@ -96,9 +96,14 @@ fn font_weight_to_out(weight: &FontWeight) -> FontWeightOut {
 
 fn tag_to_out(tag: &Tag) -> TagOut {
     match tag {
-        Tag::Measure { index, end } => TagOut::Measure {
+        Tag::Measure {
+            index,
+            end,
+            sequence_entry_index,
+        } => TagOut::Measure {
             index: *index,
             end: *end,
+            sequence_entry_index: *sequence_entry_index,
         },
         Tag::BarNumber { index, end } => TagOut::BarNumber {
             index: *index,

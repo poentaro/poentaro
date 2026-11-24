@@ -1,15 +1,12 @@
 import { type RefObject, useEffect } from 'react'
+import type { ScoreOrder } from '../poentaroWasm'
+import type { MeasureSelection } from '../types'
 import type { StaffScore } from '../worker/messages'
 import type { PreviewAnchorState } from './previewAnchorState'
-import type { MeasureRange } from './previewSelection'
 import {
   applyStaffMeasureHighlights,
   applyStaffMeasureHitTargets,
 } from './previewStaffMeasures'
-
-export interface SelectedMeasures extends MeasureRange {
-  highlightRanges?: MeasureRange[]
-}
 
 /** The staff view's counterpart of the numbered measure highlight: paints the
  * editor's selected measures (a `sequence` chain's exact disjoint ranges
@@ -22,7 +19,8 @@ export interface SelectedMeasures extends MeasureRange {
 export function useStaffMeasureHighlights(
   previewPagesRef: RefObject<HTMLDivElement | null>,
   staffScore: StaffScore | null,
-  selectedMeasureRange: SelectedMeasures | null,
+  selectedMeasureRange: MeasureSelection | null,
+  scoreOrder: ScoreOrder,
   anchorStateRef: RefObject<PreviewAnchorState>,
 ): void {
   // Before the highlight effect below, so its rects size to the same box.
@@ -38,6 +36,19 @@ export function useStaffMeasureHighlights(
     const ranges = selectedMeasureRange
       ? (selectedMeasureRange.highlightRanges ?? [selectedMeasureRange])
       : []
-    applyStaffMeasureHighlights(container, staffScore.measures, ranges)
-  }, [previewPagesRef, staffScore, selectedMeasureRange, anchorStateRef])
+    applyStaffMeasureHighlights(
+      container,
+      staffScore.measures,
+      ranges,
+      scoreOrder === 'expanded'
+        ? selectedMeasureRange?.sequenceSelection?.entryRange
+        : undefined,
+    )
+  }, [
+    previewPagesRef,
+    staffScore,
+    selectedMeasureRange,
+    scoreOrder,
+    anchorStateRef,
+  ])
 }

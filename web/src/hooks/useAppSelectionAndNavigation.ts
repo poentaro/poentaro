@@ -9,6 +9,7 @@ import type {
   RangeEditOperation,
   SectionRange,
   SequenceEntry,
+  SequenceSelection,
 } from '../types'
 import type { NoteCell } from '../utils/noteSpanSelection'
 import { useLyricSelection } from './useLyricSelection'
@@ -33,6 +34,7 @@ export function useAppSelectionAndNavigation(
     revealLine?: number,
     measureRanges?: { start: number; end: number }[],
     immediate?: boolean,
+    sequenceSelection?: SequenceSelection,
   ) => void,
   sequenceEntries: SequenceEntry[],
   measureSpans: MeasureSpan[],

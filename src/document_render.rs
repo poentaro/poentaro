@@ -7,8 +7,9 @@ use crate::ast::grouped::Score;
 use crate::compiler::NoteLabels;
 use crate::error::IrrecoverableError;
 use crate::filters::ResolvedPartVisibility;
-use crate::grid_layout::PageLayout;
+use crate::grid_layout::{MeasureRange, PageLayout};
 use crate::part_info::PartInfo;
+use std::ops::RangeInclusive;
 
 /// Output of a successful render: typed SVG document tree and any diagnostics.
 #[derive(Debug)]
@@ -32,7 +33,7 @@ struct DocumentsResult {
 fn render_documents(
     score: &Score,
     parts: &[PartInfo],
-    highlighted_measure_ranges: Option<Vec<crate::grid_layout::MeasureRange>>,
+    highlighted_measure_ranges: Option<Vec<MeasureRange>>,
     note_labels: NoteLabels,
     page_layout: PageLayout,
     expanded: Option<&ExpandedScore>,
@@ -156,12 +157,18 @@ pub fn render_documents_from_source_with_visibility(
     render_documents_from_source(source, filename, None, visibility, instruments, view)
 }
 
-/// Like [`render_documents_from_source_with_visibility`], with `measure_ranges`
-/// (disjoint, inclusive) highlighted.
+/// Which measures the preview highlights in each score order.
+pub struct MeasureHighlight<'a> {
+    pub written_ranges: &'a [MeasureRange],
+    pub sequence_entries: Option<RangeInclusive<usize>>,
+}
+
+/// Like [`render_documents_from_source_with_visibility`], with measure
+/// highlights. Expanded order can highlight specific sequence occurrences.
 pub fn render_documents_with_highlight_range_and_visibility(
     source: &str,
     filename: &str,
-    measure_ranges: &[crate::grid_layout::MeasureRange],
+    highlight: MeasureHighlight<'_>,
     visibility: &ResolvedPartVisibility,
     instruments: &[crate::parser::parts_parser::InstrumentInfo],
     view: RenderView,
@@ -169,7 +176,7 @@ pub fn render_documents_with_highlight_range_and_visibility(
     render_documents_from_source(
         source,
         filename,
-        Some(measure_ranges.to_vec()),
+        Some(highlight),
         visibility,
         instruments,
         view,
@@ -179,7 +186,7 @@ pub fn render_documents_with_highlight_range_and_visibility(
 fn render_documents_from_source(
     source: &str,
     filename: &str,
-    highlighted_measure_ranges: Option<Vec<crate::grid_layout::MeasureRange>>,
+    highlight: Option<MeasureHighlight<'_>>,
     visibility: &ResolvedPartVisibility,
     instruments: &[crate::parser::parts_parser::InstrumentInfo],
     view: RenderView,
@@ -198,9 +205,12 @@ fn render_documents_from_source(
     crate::apply_track_filter(&mut score, enabled_tracks);
     let mut diagnostics = crate::collect_measure_diagnostics(&score);
     let expanded = view.score_order.expand(&score)?;
-    let highlighted_measure_ranges = highlighted_measure_ranges.map(|ranges| match &expanded {
-        Some(expanded) => expanded.highlight_ranges(&ranges),
-        None => ranges,
+    let highlighted_measure_ranges = highlight.map(|highlight| match &expanded {
+        Some(expanded) => expanded.highlight_ranges(
+            highlight.written_ranges,
+            highlight.sequence_entries.as_ref(),
+        ),
+        None => highlight.written_ranges.to_vec(),
     });
     let mut result = render_documents(
         &score,

@@ -226,6 +226,7 @@ pub(super) fn render_svg(
 pub(super) fn render_svg_with_highlight_range(
     source: String,
     raw_measure_ranges: Vec<MeasureRangeIn>,
+    sequence_entries: Option<SequenceEntryRange>,
     visibility: ResolvedPartVisibility,
     raw_instruments: Vec<InstrumentInfo>,
     view: RenderView,
@@ -240,7 +241,11 @@ pub(super) fn render_svg_with_highlight_range(
         .collect();
     render_response_to_wit(crate::responses::render_with_highlight_range_response(
         &source,
-        &measure_ranges,
+        poentaro::MeasureHighlight {
+            written_ranges: &measure_ranges,
+            sequence_entries: sequence_entries
+                .map(|range| range.start as usize..=range.end as usize),
+        },
         &resolved_part_visibility_from_wit(visibility),
         &instruments,
         render_view_from_wit(view),
@@ -277,6 +282,7 @@ pub(super) fn render_mei(
                 .map(|measure| StaffMeasure {
                     element_id: measure.element_id,
                     measure_index: measure.measure_index as u32,
+                    sequence_entry_index: measure.sequence_entry_index.map(|index| index as u32),
                 })
                 .collect(),
         }),

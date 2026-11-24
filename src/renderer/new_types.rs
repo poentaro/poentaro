@@ -136,6 +136,7 @@ pub enum Tag {
     Measure {
         index: usize,
         end: usize,
+        sequence_entry_index: Option<usize>,
     },
     /// Identifies one measure's own bar-number click target — see
     /// `AbsoluteContent::BarNumberClickTarget`. A distinct tag from

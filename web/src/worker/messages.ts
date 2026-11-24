@@ -1,8 +1,10 @@
 import type {
   FontBytesByFamily,
+  MeasureRangeIn,
   NoteTiming,
   PageLayout,
   ScoreOrder,
+  SequenceEntryRange,
   StaffClef,
   StaffMeasure,
   SvgDocument,
@@ -190,7 +192,8 @@ export type WorkerRequest =
        * sequence` chain selection spanning out-of-order entries can
        * highlight several disjoint measures at once (e.g. "C" and a later
        * repeat of "A", but not "B" in between). */
-      ranges: { start: number; end: number }[]
+      ranges: MeasureRangeIn[]
+      sequenceEntries?: SequenceEntryRange
       visibility: ResolvedPartVisibility
       notation: Notation
       pageLayout: PageLayout

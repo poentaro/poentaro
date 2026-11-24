@@ -19,6 +19,7 @@ export type { LyricCell, NoteCell } from './previewSelection'
 
 export function Preview({
   documents,
+  scoreOrder = 'written',
   staffScore = null,
   floatingControls = null,
   maxView = false,
@@ -91,6 +92,7 @@ export function Preview({
     onMeasureRangeSelect,
     staffScore,
     selectedMeasureRange,
+    scoreOrder,
   )
   useEffect(() => {
     onPendingSecondClickChange?.(pendingSecondClick)
@@ -166,6 +168,7 @@ export function Preview({
         container,
         selectedMeasureRange,
         staffScore,
+        scoreOrder,
       )
       target?.scrollIntoView({
         block: 'center',
@@ -174,7 +177,19 @@ export function Preview({
     })
 
     return () => cancelAnimationFrame(frameId)
-  }, [selectedMeasureRange, documents, highlightedDocuments, staffScore])
+  }, [
+    selectedMeasureRange,
+    documents,
+    highlightedDocuments,
+    staffScore,
+    scoreOrder,
+  ])
+
+  // A sequence selection is painted by occurrence. The editor's note and
+  // lyric selections use written identities shared by every copy.
+  const expandedSequenceSelected =
+    scoreOrder === 'expanded' &&
+    selectedMeasureRange?.sequenceSelection !== undefined
 
   // Re-applies the note range-select highlight declaratively from
   // `selectedNoteCells` on every relevant render, rather than leaving it as
@@ -186,13 +201,15 @@ export function Preview({
   useEffect(() => {
     const container = previewPagesRef.current
     if (!container) return
-    applyPersistedNoteHighlights(container, selectedNoteCells)
-    applyPersistedPartLabelHighlights(
-      container,
-      noteSpansRef.current,
-      selectedNoteCells,
-    )
-  }, [selectedNoteCells, documents, highlightedDocuments])
+    const cells = expandedSequenceSelected ? [] : selectedNoteCells
+    applyPersistedNoteHighlights(container, cells)
+    applyPersistedPartLabelHighlights(container, noteSpansRef.current, cells)
+  }, [
+    selectedNoteCells,
+    expandedSequenceSelected,
+    documents,
+    highlightedDocuments,
+  ])
 
   // Mirrors the effect above for lyric syllable selection — independent of
   // `selectedNoteCells`, since a lyric selection never drives note
@@ -201,13 +218,15 @@ export function Preview({
   useEffect(() => {
     const container = previewPagesRef.current
     if (!container) return
-    applyPersistedLyricHighlights(container, selectedLyricCells)
-    applyPersistedLyricLabelHighlights(
-      container,
-      lyricSpansRef.current,
-      selectedLyricCells,
-    )
-  }, [selectedLyricCells, documents, highlightedDocuments])
+    const cells = expandedSequenceSelected ? [] : selectedLyricCells
+    applyPersistedLyricHighlights(container, cells)
+    applyPersistedLyricLabelHighlights(container, lyricSpansRef.current, cells)
+  }, [
+    selectedLyricCells,
+    expandedSequenceSelected,
+    documents,
+    highlightedDocuments,
+  ])
 
   const activeDocs =
     highlightedDocuments.length > 0 ? highlightedDocuments : documents

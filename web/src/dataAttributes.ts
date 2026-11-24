@@ -78,7 +78,11 @@ type TagValue<K extends Tag['tag']> = Extract<Tag, { tag: K }>['val']
  * derive their attribute names from this one table.
  */
 const TAG_FIELD_ATTRIBUTES = {
-  measure: { index: 'data-measure-index', end: 'data-measure-index-end' },
+  measure: {
+    index: 'data-measure-index',
+    end: 'data-measure-index-end',
+    sequenceEntryIndex: 'data-sequence-entry-index',
+  },
   'bar-number': {
     index: 'data-measure-index',
     end: 'data-measure-index-end',
@@ -221,6 +225,21 @@ export function tagFromElement(el: Element): Tag | undefined {
       const index = readIntField(el, tagType, 'index')
       const end = readIntField(el, tagType, 'end')
       if (index === undefined || end === undefined) return undefined
+      if (tagType === 'measure') {
+        const sequenceEntryIndex = readIntField(
+          el,
+          tagType,
+          'sequenceEntryIndex',
+        )
+        return {
+          tag: tagType,
+          val: {
+            index,
+            end,
+            ...(sequenceEntryIndex === undefined ? {} : { sequenceEntryIndex }),
+          },
+        }
+      }
       return { tag: tagType, val: { index, end } }
     }
     case 'section-label': {

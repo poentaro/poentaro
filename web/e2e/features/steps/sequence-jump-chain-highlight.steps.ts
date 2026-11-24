@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import { STAFF_MEASURE_HIGHLIGHT_TEST_ID } from '../../../src/components/previewStaffMeasures'
 import { tagSelector } from '../../../src/dataAttributes'
 import { waitForAssetLoadingBannerGone } from '../../assetLoadingHelpers'
 import { stableBoundingBox } from '../../rangeSelectHelpers'
@@ -7,19 +8,19 @@ import { Given, Then, When } from './fixtures'
 const SOURCE = [
   'metadata { title "test" },',
   '',
-  'parts ["M": notes],',
+  'parts ["Melody" [M]: notes],',
   '',
   'sequence ["A", "B", "C", "A"],',
   '',
   'score """',
   '    time=4/4 key=C4 bpm=120 label="A"',
-  '    1 2 3 4',
+  '    [M] 1 2 3 4',
   '',
   '    label="B"',
-  "    5 6 7 1'",
+  "    [M] 5 6 7 1'",
   '',
   '    label="C"',
-  "    1' 7 6 5",
+  "    [M] 1' 7 6 5",
   '    """,',
 ].join('\n')
 
@@ -155,5 +156,62 @@ Then(
     expect(highlightBoxes.some((h) => matchesBox(h, cBox))).toBe(true)
     expect(highlightBoxes.some((h) => matchesBox(h, aBox))).toBe(true)
     expect(highlightBoxes.some((h) => matchesBox(h, bBox))).toBe(false)
+  },
+)
+
+When(
+  'the chain-highlight preview is set to Expanded order with {string} notation',
+  async ({ page }, notation: 'Numbered' | 'Violin') => {
+    await page.getByRole('button', { name: 'Score order: Written' }).click()
+    await page.getByRole('menuitem', { name: 'Expanded' }).click()
+    if (notation === 'Violin') {
+      await page.getByTestId('notation-toggle').click()
+      await page.getByRole('menuitem', { name: /Violin/ }).click()
+      await expect(
+        page.locator('[data-testid="staff-page"] g.measure'),
+      ).toHaveCount(4, { timeout: 30_000 })
+    } else {
+      await expect(
+        page.locator(tagSelector('measure', { index: 0 })),
+      ).toHaveCount(2)
+    }
+  },
+)
+
+When(
+  'I click the final sequence entry in the chain-highlight toolbar',
+  async ({ page }) => {
+    await sequenceToolbarButtons(page).last().click()
+  },
+)
+
+Then(
+  'only the final occurrence of {string} is highlighted in the chain-highlight {string} preview',
+  async ({ page }, _label: string, notation: 'Numbered' | 'Violin') => {
+    if (notation === 'Violin') {
+      await expect(
+        page.getByTestId(STAFF_MEASURE_HIGHLIGHT_TEST_ID),
+      ).toHaveCount(1)
+      await expect(
+        page
+          .locator('[data-testid="staff-page"] g.measure')
+          .last()
+          .getByTestId(STAFF_MEASURE_HIGHLIGHT_TEST_ID),
+      ).toHaveCount(1)
+      return
+    }
+
+    const repeatedMeasure = page
+      .locator(tagSelector('measure', { index: 0 }))
+      .last()
+    const highlight = page.getByTestId('measure-highlight')
+    await expect(highlight).toHaveCount(1)
+    await expect
+      .poll(async () => {
+        const rect = await highlight.boundingBox()
+        const measure = await repeatedMeasure.boundingBox()
+        return rect && measure ? Math.abs(rect.y - measure.y) : Infinity
+      })
+      .toBeLessThan(5)
   },
 )

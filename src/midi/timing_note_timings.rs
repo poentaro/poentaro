@@ -307,6 +307,7 @@ pub fn note_timings_seconds_for_literal_range(
         .enumerate()
         .map(|(measure_offset, measure)| ExpandedMeasureOrigin {
             written_measure_index: start_index + measure_offset,
+            sequence_entry_index: None,
             part_written_indices: (0..measure.parts.len()).collect(),
         })
         .collect();

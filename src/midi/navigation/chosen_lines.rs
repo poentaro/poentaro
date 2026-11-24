@@ -11,15 +11,18 @@ use crate::ast::grouped::{
 pub(super) struct PlaybackMeasure<'a> {
     pub written_index: usize,
     pub span: &'a SequenceSpan,
+    pub sequence_entry_index: usize,
 }
 
 pub(super) fn playback_measures(spans: &[SequenceSpan]) -> Vec<PlaybackMeasure<'_>> {
     spans
         .iter()
-        .flat_map(|span| {
+        .enumerate()
+        .flat_map(|(sequence_entry_index, span)| {
             (span.start..=span.end).map(move |written_index| PlaybackMeasure {
                 written_index,
                 span,
+                sequence_entry_index,
             })
         })
         .collect()

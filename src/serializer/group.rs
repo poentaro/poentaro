@@ -4,7 +4,7 @@ use super::{escape_xml, serialize_element};
 
 pub(super) fn serialize_group(out: &mut String, children: &[SvgElement], tag: &Option<Tag>) {
     match tag {
-        Some(Tag::Measure { index, end }) => {
+        Some(Tag::Measure { index, end, .. }) => {
             out.push_str(&format!(
                 r#"<g data-tag="measure" data-measure-index="{index}" data-measure-index-end="{end}">"#
             ));

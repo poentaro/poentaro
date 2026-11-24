@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
-import type { NoteTiming, SvgDocument } from '../poentaroWasm'
-import type { LyricSpan, NoteSpan } from '../types'
+import type { NoteTiming, ScoreOrder, SvgDocument } from '../poentaroWasm'
+import type { LyricSpan, MeasureSelection, NoteSpan } from '../types'
 import type { StaffScore } from '../worker/messages'
 import type { LyricCell, NoteCell } from './previewSelection'
 
 export interface PreviewProps {
+  scoreOrder?: ScoreOrder
   documents: SvgDocument[]
   /** Verovio's staff notation (`useStaffNotation`); replaces `documents`. */
   staffScore?: StaffScore | null
@@ -89,26 +90,8 @@ export interface PreviewProps {
     noteCells: NoteCell[],
     lyricCells: LyricCell[],
   ) => void
-  /** The measure range backing the current selection (caret or range),
-   * regardless of whether it's caret-only — used to scroll the preview to
-   * the selection even when `highlightedDocuments` isn't populated (e.g. a
-   * section/sequence jump, which selects a real range and therefore opts
-   * out of the amber caret-only highlight). See `selectedNoteCells` above
-   * for the note/lyric-level analogue. `revealMeasureIndex` is which
-   * measure to scroll to, when it isn't `start` — a section/sequence chain
-   * selection can resolve to a written-measure range whose document-order
-   * start isn't where the user actually navigated to. */
-  selectedMeasureRange?: {
-    start: number
-    end: number
-    revealMeasureIndex: number
-    /** The exact disjoint measure ranges highlighted in the SVG preview for
-     * this selection (a `sequence` chain), when it differs from the
-     * single `[start, end]` span above. `Preview` only checks whether it's
-     * set (see `findRevealTarget`); the highlight rects it drives come back
-     * through `highlightedDocuments`, already rendered. */
-    highlightRanges?: { start: number; end: number }[]
-  } | null
+  /** The measure selection to highlight and scroll into view. */
+  selectedMeasureRange?: MeasureSelection | null
   /** Fired whenever a click-and-click gesture starts or stops waiting on its
    * second click, so the pitch drawer can hold off until it commits. */
   onPendingSecondClickChange?: (pending: boolean) => void

@@ -34,6 +34,8 @@ pub fn expand_navigation_with_origins(
 pub struct ExpandedMeasureOrigin {
     /// Index into the original written `score.measures`.
     pub written_measure_index: usize,
+    /// Index of the sequence entry that produced this occurrence.
+    pub sequence_entry_index: Option<usize>,
     /// `part_written_indices[i]` is the index this expanded measure's
     /// `parts[i]` had in the written measure's `parts`, before any
     /// `(-abbrev ...)` omission dropped some entries and shifted the rest —
@@ -65,6 +67,7 @@ pub fn expand_navigation_with_note_positions(
         .enumerate()
         .map(|(i, measure)| ExpandedMeasureOrigin {
             written_measure_index: i,
+            sequence_entry_index: None,
             part_written_indices: (0..measure.parts.len()).collect(),
         })
         .collect();
@@ -144,6 +147,7 @@ fn build_expanded(
             });
             origins.push(ExpandedMeasureOrigin {
                 written_measure_index: i,
+                sequence_entry_index: Some(playback_measure.sequence_entry_index),
                 part_written_indices,
             });
             Some(measure)

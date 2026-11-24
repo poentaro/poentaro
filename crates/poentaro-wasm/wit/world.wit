@@ -142,6 +142,7 @@ world poentaro-wasm {
     record measure-tag {
         index: u32,
         end: u32,
+        sequence-entry-index: option<u32>,
     }
 
     record bar-number-tag {
@@ -536,7 +537,13 @@ world poentaro-wasm {
     // distinct — this was the first single-word export.
     export render-svg: func(source: string, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, view: render-view) -> render-response;
 
-    export render-svg-with-highlight-range: func(source: string, raw-measure-ranges: list<measure-range-in>, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, view: render-view) -> render-response;
+    /// Inclusive indices into the resolved sequence.
+    record sequence-entry-range {
+        start: u32,
+        end: u32,
+    }
+
+    export render-svg-with-highlight-range: func(source: string, raw-measure-ranges: list<measure-range-in>, sequence-entries: option<sequence-entry-range>, visibility: resolved-part-visibility, raw-instruments: list<instrument-info>, view: render-view) -> render-response;
 
     /// Which `<measure>` in the MEI (and so which `id` in Verovio's SVG)
     /// engraves which score measure — the staff view's only way to map
@@ -544,6 +551,7 @@ world poentaro-wasm {
     record staff-measure {
         element-id: string,
         measure-index: u32,
+        sequence-entry-index: option<u32>,
     }
 
     record render-mei-success {
@@ -1429,8 +1437,7 @@ world poentaro-wasm {
     // (not wrapped in a record), matching group 3/4's convention for
     // multi-param exports rather than introducing a new
     // `measure-range-selection`-shaped record. `sequence-entry-start-index`/
-    // `sequence-entry-end-index` mirror `render-svg-with-highlight-range`'s
-    // sibling functions' `Option<usize>` pair (recombined into a
+    // `sequence-entry-end-index` form an optional pair (recombined into a
     // `RangeInclusive` on the Rust side via `crate::sequence_entry_range`);
     // `trim-start-s`/`trim-end-s`/`trim-next-note-start-s` likewise recombine
     // via `crate::trim_window` — both helpers were previously reachable only

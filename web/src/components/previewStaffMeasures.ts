@@ -1,6 +1,7 @@
 import {
   type BoundingBox,
   poentaroWasm,
+  type SequenceEntryRange,
   type StaffMeasure,
   type StaffMeasureGeometry,
 } from '../poentaroWasm'
@@ -14,9 +15,8 @@ export const STAFF_MEASURE_HIGHLIGHT_TEST_ID = 'staff-measure-highlight'
 /** `data-testid` of each staff measure's transparent hover/click target. */
 export const STAFF_MEASURE_HIT_TARGET_TEST_ID = 'staff-measure-hit-target'
 
-interface StaffMeasureElement {
+interface StaffMeasureElement extends StaffMeasure {
   element: SVGGraphicsElement
-  measureIndex: number
 }
 
 /** Each measure's group in Verovio's SVG, found by the element id Rust
@@ -25,11 +25,11 @@ function staffMeasureElements(
   container: HTMLElement,
   measures: StaffMeasure[],
 ): StaffMeasureElement[] {
-  return measures.flatMap(({ elementId, measureIndex }) => {
+  return measures.flatMap((measure) => {
     const element = container.querySelector<SVGGraphicsElement>(
-      `#${CSS.escape(elementId)}`,
+      `#${CSS.escape(measure.elementId)}`,
     )
-    return element ? [{ element, measureIndex }] : []
+    return element ? [{ ...measure, element }] : []
   })
 }
 
@@ -83,9 +83,13 @@ export function staffMeasureElement(
   container: HTMLElement,
   measures: StaffMeasure[],
   measureIndex: number,
+  sequenceEntryIndex?: number,
 ): Element | undefined {
   return staffMeasureElements(container, measures).find(
-    (measure) => measure.measureIndex === measureIndex,
+    (measure) =>
+      measure.measureIndex === measureIndex &&
+      (sequenceEntryIndex === undefined ||
+        measure.sequenceEntryIndex === sequenceEntryIndex),
   )?.element
 }
 
@@ -132,13 +136,13 @@ export function applyStaffMeasureHitTargets(
   }
 }
 
-/** Paints a rect behind every staff measure in `measureIndices`, clearing
+/** Paints a rect behind every selected staff measure, clearing
  * the previous ones. Idempotent, so it's re-run whenever Verovio's pages are
  * swapped in. */
 function paintStaffMeasures(
   container: HTMLElement,
   measures: StaffMeasureElement[],
-  measureIndices: Uint32Array,
+  isSelected: (measure: StaffMeasureElement) => boolean,
 ): void {
   for (const rect of Array.from(
     container.querySelectorAll(
@@ -147,9 +151,8 @@ function paintStaffMeasures(
   )) {
     rect.remove()
   }
-  const painted = new Set(measureIndices)
   for (const measure of measures) {
-    if (!painted.has(measure.measureIndex)) continue
+    if (!isSelected(measure)) continue
     insertMeasureRect(
       measure,
       'staff-measure-highlight',
@@ -163,13 +166,25 @@ export function applyStaffMeasureHighlights(
   container: HTMLElement,
   measures: StaffMeasure[],
   ranges: MeasureRange[],
+  sequenceEntries?: SequenceEntryRange,
 ): void {
   const elements = staffMeasureElements(container, measures)
-  paintStaffMeasures(
-    container,
-    elements,
-    poentaroWasm().highlightedStaffMeasures(measureIndicesOf(elements), ranges),
+  const indexOf = (measure: StaffMeasureElement) =>
+    sequenceEntries ? measure.sequenceEntryIndex : measure.measureIndex
+  const indices = elements.flatMap((measure) => {
+    const index = indexOf(measure)
+    return index === undefined ? [] : [index]
+  })
+  const selected = new Set(
+    poentaroWasm().highlightedStaffMeasures(
+      Uint32Array.from(indices),
+      sequenceEntries ? [sequenceEntries] : ranges,
+    ),
   )
+  paintStaffMeasures(container, elements, (measure) => {
+    const index = indexOf(measure)
+    return index !== undefined && selected.has(index)
+  })
 }
 
 /** Paints the staff measures a click-and-click gesture spans, from its
@@ -181,14 +196,15 @@ export function applyPendingStaffMeasures(
   current: MeasureRange,
 ): void {
   const elements = staffMeasureElements(container, measures)
-  paintStaffMeasures(
-    container,
-    elements,
+  const selected = new Set(
     poentaroWasm().pendingStaffMeasures(
       measureIndicesOf(elements),
       anchor,
       current,
     ),
+  )
+  paintStaffMeasures(container, elements, ({ measureIndex }) =>
+    selected.has(measureIndex),
   )
 }
 
