@@ -43,6 +43,7 @@ export interface AppWorkspaceProps {
    * the `Editor` entirely and the pane-divider toggle, since there is
    * nothing to edit or expand back into. */
   hideEditor: boolean
+  fileSwitchLoading: boolean
   editorRef: RefObject<EditorHandle | null>
   /** Set by the part focus editor while it is open, so the preview selects
    * in it. */

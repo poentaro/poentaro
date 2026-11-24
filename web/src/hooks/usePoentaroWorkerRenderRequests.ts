@@ -27,6 +27,7 @@ interface UsePoentaroWorkerRenderRequestsParams {
   partsRequestIdRef: RefObject<number>
   latestPartsIdRef: RefObject<number>
   setRendering: (value: boolean) => void
+  requestedFileRef: RefObject<{ name: string; source: string } | null>
   renderRequestIdRef: RefObject<number>
   latestRenderIdRef: RefObject<number>
   selectedMeasureRange: {
@@ -85,6 +86,7 @@ export function usePoentaroWorkerRenderRequests({
   partsRequestIdRef,
   latestPartsIdRef,
   setRendering,
+  requestedFileRef,
   renderRequestIdRef,
   latestRenderIdRef,
   selectedMeasureRange,
@@ -148,6 +150,7 @@ export function usePoentaroWorkerRenderRequests({
 
     const id = ++renderRequestIdRef.current
     latestRenderIdRef.current = id
+    requestedFileRef.current = { name: activeFile, source }
     setRendering(true)
 
     const payload: WorkerRequest = {

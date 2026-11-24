@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { fileIdForName } from '../fileStore'
 import type { EditorHandle } from '../types'
+import { staffClefFor } from '../worker/staffClef'
 import { useAppPanels } from './useAppPanels'
 import { useAppSelectionAndNavigation } from './useAppSelectionAndNavigation'
 import { useAssetLoader } from './useAssetLoader'
@@ -63,12 +64,13 @@ export function useAppController() {
     handleDeleteSelection,
     handleRestore,
   } = useFileOperations(store, setStore, backend)
-  const { openFile, opening, loadFolderText } = useOpenFile(
-    store,
-    setStore,
-    backend,
-    setFileOpError,
-  )
+  const {
+    openFile,
+    opening,
+    openedOnDemand,
+    setOpenedOnDemand,
+    loadFolderText,
+  } = useOpenFile(store, setStore, backend, setFileOpError)
   useUrlFileSync(store, openFile, isLoadingCloud)
   const {
     sharedPreview,
@@ -155,6 +157,18 @@ export function useAppController() {
     selectedSequenceRangeRef,
     measureRangeSelectedPartNamesRef,
   )
+  const previewRendering =
+    wasm.status === 'loading' ||
+    (wasm.status === 'ready' &&
+      (staffClefFor(staffNotation.notation) !== undefined
+        ? staffNotation.loading
+        : workerResults.rendering))
+  const waitingForPreview = openedOnDemand === store.active && previewRendering
+  const fileSwitchLoading =
+    !sharedPreview && !syncedShareViewerActive && (opening || waitingForPreview)
+  useEffect(() => {
+    if (openedOnDemand !== null && !waitingForPreview) setOpenedOnDemand(null)
+  }, [openedOnDemand, waitingForPreview, setOpenedOnDemand])
   usePartTogglePruning(parts, setDisabledParts, setSoloedParts)
 
   const handleSourceChange = useCallback(
@@ -303,6 +317,7 @@ export function useAppController() {
     source,
     readOnly,
     fileTextLoading: textLoading || opening,
+    fileSwitchLoading,
     loadFolderText,
     syncedShare,
     fileId,

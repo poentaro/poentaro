@@ -120,6 +120,7 @@
 /* Shared by `.pane--editor` and `.pane--preview`, which collapse to make
    room for the other pane on mobile (see AppWorkspace.tsx). */
 .pane--collapsible {
+  position: relative;
   flex: 1 1 0%;
   overflow: hidden;
   opacity: 1;
@@ -355,4 +356,22 @@
 
 .editor-main-source {
   display: contents;
+}
+
+.preview-pane-content {
+  display: contents;
+}
+
+.pane-file-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: inherit;
+}
+
+.editor-layout[inert],
+.preview-pane-content[inert] {
+  visibility: hidden;
 }

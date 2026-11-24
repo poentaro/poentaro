@@ -21,15 +21,19 @@ Feature: Cloud files load their text only when opened
     And the server was asked for the text of "lazy2-second.poentaro" once
 
   Scenario: A file whose text is still loading is not shown as empty
-    Given a cloud file named "lazy3-first.poentaro" is seeded for the signed-in account with the text "title: First"
-    And a cloud file named "lazy3-second.poentaro" is seeded for the signed-in account with the text "title: Second"
+    Given a cloud score named "lazy3-first.poentaro" is seeded with the title "First score"
+    And a cloud score named "lazy3-second.poentaro" is seeded with the title "Second score"
     And the app loads with "lazy3-first.poentaro" open
+    And the score preview shows "First score"
     And reading the text of "lazy3-second.poentaro" is delayed by 3 seconds
     When the user opens "lazy3-second.poentaro" from the file list
     Then the file switcher shows a loading spinner
+    And both panes show the file loading indicator
     And the editor is read-only
     When the text of "lazy3-second.poentaro" arrives
-    Then the editor contains "title: Second"
+    Then the editor contains "Second score"
+    And the score preview shows "Second score"
+    And neither pane shows the file loading indicator
     And the editor is editable
 
   Scenario: An unchanged file reopens from the local cache

@@ -69,6 +69,11 @@ export function usePoentaroWorkerState(
     DiagnosticViewZone[]
   >([])
   const [rendering, setRendering] = useState(false)
+  const [renderedFile, setRenderedFile] = useState<{
+    name: string
+    source: string
+  } | null>(null)
+  const requestedFileRef = useRef(renderedFile)
   const [audioGenerating, setAudioGenerating] = useState(false)
   const [selectedMeasureRange, setSelectedMeasureRange] = useState<{
     start: number
@@ -294,8 +299,13 @@ export function usePoentaroWorkerState(
     setDiagnostics,
     diagnosticViewZones,
     setDiagnosticViewZones,
-    rendering,
+    rendering:
+      rendering ||
+      renderedFile?.name !== activeFile ||
+      renderedFile?.source !== source,
     setRendering,
+    setRenderedFile,
+    requestedFileRef,
     audioGenerating,
     setAudioGenerating,
     selectedMeasureRange,

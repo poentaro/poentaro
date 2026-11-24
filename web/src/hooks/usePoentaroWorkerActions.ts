@@ -149,7 +149,10 @@ export function usePoentaroWorkerActions({
     latestSplitMp3IdRef: state.latestSplitMp3IdRef,
     setSplitMp3Exporting: state.setSplitMp3Exporting,
     latestRenderIdRef: state.latestRenderIdRef,
-    setRendering: state.setRendering,
+    finishRendering: () => {
+      state.setRenderedFile(state.requestedFileRef.current)
+      state.setRendering(false)
+    },
     setDocuments: state.setDocuments,
     setDiagnosticViewZones: state.setDiagnosticViewZones,
     latestAudioIdRef: state.latestAudioIdRef,
@@ -208,6 +211,7 @@ export function usePoentaroWorkerActions({
     partsRequestIdRef: state.partsRequestIdRef,
     latestPartsIdRef: state.latestPartsIdRef,
     setRendering: state.setRendering,
+    requestedFileRef: state.requestedFileRef,
     renderRequestIdRef: state.renderRequestIdRef,
     latestRenderIdRef: state.latestRenderIdRef,
     selectedMeasureRange: state.selectedMeasureRange,

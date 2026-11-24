@@ -61,6 +61,40 @@ Given(
   },
 )
 
+Given(
+  'a cloud score named {string} is seeded with the title {string}',
+  async ({}, name: string, title: string) => {
+    const source = `metadata { title "${title}" },
+parts ["Melody": notes],
+score """
+    [Melody] 1 2 3 4
+    """,`
+    const file = await seedCloudFile(currentSignedInEmail(), name, source)
+    seededIdByName.set(name, file.id)
+  },
+)
+
+Then('the score preview shows {string}', async ({ page }, title: string) => {
+  await expect(
+    page.locator('.preview-page').getByText(title, { exact: true }),
+  ).toBeVisible()
+})
+
+Then('both panes show the file loading indicator', async ({ page }) => {
+  for (const pane of ['.pane--editor', '.pane--preview']) {
+    await expect(
+      page
+        .locator(pane)
+        .getByRole('status')
+        .filter({ hasText: 'Loading file…' }),
+    ).toBeVisible()
+  }
+})
+
+Then('neither pane shows the file loading indicator', async ({ page }) => {
+  await expect(page.locator('.pane-file-loading')).toHaveCount(0)
+})
+
 Given('the app loads with {string} open', async ({ page }, name: string) => {
   await loadWithFileOpen(page, name)
   await page.waitForSelector('.monaco-editor .view-lines', { timeout: 15_000 })
