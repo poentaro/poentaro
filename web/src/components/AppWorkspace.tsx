@@ -11,6 +11,7 @@ import { EditMetadataModal } from './EditMetadataModal'
 import { Editor } from './Editor'
 import { EditorToolbarButton } from './EditorToolbarButton'
 import { EditPartsModal } from './EditPartsModal'
+import { FileLoadingIndicator } from './FileLoadingIndicator'
 import { NotationToggle } from './NotationToggle'
 import { PageViewToggle } from './PageViewToggle'
 import { PitchDrawer } from './PitchDrawer'
@@ -25,6 +26,7 @@ export function AppWorkspace({
   editorCollapsed,
   setEditorCollapsed,
   hideEditor,
+  fileSwitchLoading,
   editorRef,
   partFocusHandleRef,
   fileId,
@@ -169,16 +171,9 @@ export function AppWorkspace({
   return (
     <main className="workspace">
       <section
-        className={[
-          'pane',
-          'pane--editor',
-          'pane--collapsible',
-          editorCollapsed ? 'pane--editor-collapsed' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
+        className={`pane pane--editor pane--collapsible${editorCollapsed ? ' pane--editor-collapsed' : ''}`}
       >
-        <div className="editor-layout">
+        <div className="editor-layout" inert={fileSwitchLoading}>
           <div className="editor-main" ref={setEditorPaneEl}>
             {hideEditor ? null : (
               // Stays mounted under the part focus editor, so its model and
@@ -313,6 +308,7 @@ export function AppWorkspace({
             />
           </div>
         </div>
+        {fileSwitchLoading && <FileLoadingIndicator />}
       </section>
       <div className="pane-divider">
         {hideEditor ? null : (
@@ -338,62 +334,62 @@ export function AppWorkspace({
         )}
       </div>
       <section
-        className={[
-          'pane',
-          'pane--preview',
-          'pane--collapsible',
-          previewCollapsed ? 'pane--preview-collapsed' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
+        className={`pane pane--preview pane--collapsible${previewCollapsed ? ' pane--preview-collapsed' : ''}`}
       >
-        <Preview
-          documents={documents}
-          floatingControls={
-            <>
-              <PageViewToggle
-                view={previewLayout.view}
-                onChange={previewLayout.setView}
-              />
-              <NotationToggle
-                notation={staffNotation.notation}
-                onChange={staffNotation.setNotation}
-              />
-              <ScoreOrderToggle layout={previewLayout} />
-            </>
-          }
-          maxView={previewLayout.view === 'max'}
-          onPagesWidthChange={previewLayout.setContainerWidth}
-          staffScore={staffView ? staffNotation.score : null}
-          highlightedDocuments={highlightedDocuments}
-          rendering={staffView ? staffNotation.loading : rendering}
-          onSectionLabelClick={handleSectionJump}
-          onNoteRangeSelect={handleNoteRangeSelect}
-          selectedNoteCells={selectedNoteCells}
-          noteSpans={noteSpans}
-          onLyricRangeSelect={handleLyricRangeSelect}
-          selectedLyricCells={selectedLyricCells}
-          lyricSpans={lyricSpans}
-          onMeasureRangeSelect={handleMeasureRangeSelect}
-          selectedMeasureRange={selectedMeasureRange}
-          audioGenerating={audioGenerating}
-          wavUrl={wavUrl}
-          wavFilename={wavFilename}
-          mp3Exporting={mp3Exporting}
-          mp3Url={mp3Url}
-          mp3Filename={mp3Filename}
-          onRequestAudioDownload={onRequestAudioDownload}
-          noteTimings={noteTimings}
-          measureAudioNoteTimings={measureAudioNoteTimings}
-          measureAudioElement={measureAudioElement}
-          emptyMessage={
-            noPartsSelected
-              ? 'No parts selected.'
-              : ((staffView ? staffNotation.error : null) ?? 'No preview yet.')
-          }
-          onPendingSecondClickChange={setPreviewSelectionPending}
-        />
-        <PitchDrawer described={describedSelection} />
+        <div className="preview-pane-content" inert={fileSwitchLoading}>
+          <Preview
+            documents={documents}
+            floatingControls={
+              <>
+                <PageViewToggle
+                  view={previewLayout.view}
+                  onChange={previewLayout.setView}
+                />
+                <NotationToggle
+                  notation={staffNotation.notation}
+                  onChange={staffNotation.setNotation}
+                />
+                <ScoreOrderToggle layout={previewLayout} />
+              </>
+            }
+            maxView={previewLayout.view === 'max'}
+            onPagesWidthChange={previewLayout.setContainerWidth}
+            staffScore={staffView ? staffNotation.score : null}
+            highlightedDocuments={highlightedDocuments}
+            rendering={
+              !fileSwitchLoading &&
+              (staffView ? staffNotation.loading : rendering)
+            }
+            onSectionLabelClick={handleSectionJump}
+            onNoteRangeSelect={handleNoteRangeSelect}
+            selectedNoteCells={selectedNoteCells}
+            noteSpans={noteSpans}
+            onLyricRangeSelect={handleLyricRangeSelect}
+            selectedLyricCells={selectedLyricCells}
+            lyricSpans={lyricSpans}
+            onMeasureRangeSelect={handleMeasureRangeSelect}
+            selectedMeasureRange={selectedMeasureRange}
+            audioGenerating={audioGenerating}
+            wavUrl={wavUrl}
+            wavFilename={wavFilename}
+            mp3Exporting={mp3Exporting}
+            mp3Url={mp3Url}
+            mp3Filename={mp3Filename}
+            onRequestAudioDownload={onRequestAudioDownload}
+            noteTimings={noteTimings}
+            measureAudioNoteTimings={measureAudioNoteTimings}
+            measureAudioElement={measureAudioElement}
+            emptyMessage={
+              noPartsSelected
+                ? 'No parts selected.'
+                : ((staffView ? staffNotation.error : null) ??
+                  'No preview yet.')
+            }
+            onPendingSecondClickChange={setPreviewSelectionPending}
+          />
+          <PitchDrawer described={describedSelection} />
+        </div>
+        {fileSwitchLoading && <FileLoadingIndicator />}
       </section>
     </main>
   )

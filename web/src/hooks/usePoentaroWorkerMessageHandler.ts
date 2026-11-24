@@ -62,7 +62,7 @@ export interface WorkerMessageHandlerDeps {
   latestSplitMp3IdRef: RefObject<number>
   setSplitMp3Exporting: (value: boolean) => void
   latestRenderIdRef: RefObject<number>
-  setRendering: (value: boolean) => void
+  finishRendering: () => void
   setDocuments: (value: SvgDocument[]) => void
   setDiagnosticViewZones: (value: DiagnosticViewZone[]) => void
   latestAudioIdRef: RefObject<number>
@@ -201,7 +201,7 @@ export function createWorkerMessageHandler(deps: WorkerMessageHandlerDeps) {
 
     if (msg.type === 'ok') {
       if (msg.id !== deps.latestRenderIdRef.current) return
-      deps.setRendering(false)
+      deps.finishRendering()
       deps.setDocuments(msg.documents)
       deps.setDiagnostics(msg.diagnostics)
       deps.setDiagnosticViewZones(msg.diagnosticViewZones)
@@ -318,7 +318,7 @@ export function createWorkerMessageHandler(deps: WorkerMessageHandlerDeps) {
 
     if (msg.type === 'err') {
       if (msg.id !== deps.latestRenderIdRef.current) return
-      deps.setRendering(false)
+      deps.finishRendering()
       deps.setDiagnostics(msg.diagnostics)
       deps.setDiagnosticViewZones(msg.diagnosticViewZones)
     }

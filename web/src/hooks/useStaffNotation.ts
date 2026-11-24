@@ -85,6 +85,7 @@ export function useStaffNotation({
   const notation = pickedNotations[pickKey] ?? fromPreset ?? 'numbered'
   const [score, setScore] = useState<StaffScore>(EMPTY_SCORE)
   const [loading, setLoading] = useState(false)
+  const [renderedSource, setRenderedSource] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -92,16 +93,18 @@ export function useStaffNotation({
     const clef = staffClefFor(notation)
     if (!clef || !worker) return
     setLoading(true)
+    const id = ++requestIdRef.current
+    latestIdRef.current = id
     const timer = window.setTimeout(() => {
-      const id = ++requestIdRef.current
-      latestIdRef.current = id
       pendingRequestsRef.current.set(id, (result: StaffRenderResult) => {
+        setRenderedSource(source)
         setLoading(false)
         if (result.status === 'ok') {
           setScore(result.score)
           setError(null)
           return
         }
+        setScore(EMPTY_SCORE)
         setError(result.message)
       })
       worker.postMessage({
@@ -128,5 +131,13 @@ export function useStaffNotation({
     pendingRequestsRef,
   ])
 
-  return { notation, setNotation, score, loading, error }
+  return {
+    notation,
+    setNotation,
+    score,
+    loading:
+      staffClefFor(notation) !== undefined &&
+      (loading || renderedSource !== source),
+    error,
+  }
 }

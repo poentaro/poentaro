@@ -19,7 +19,6 @@ import './preview.css'
 import './shared-viewer.css'
 import './preview-toolbar.css'
 import './preview-play-controls.css'
-
 export default function App() {
   const {
     store,
@@ -27,6 +26,7 @@ export default function App() {
     backend,
     isLoadingCloud,
     fileTextLoading,
+    fileSwitchLoading,
     loadFolderText,
     cloudLoadFailure,
     saveStatus,
@@ -319,6 +319,7 @@ export default function App() {
         <AppWorkspace
           editorCollapsed={editorCollapsed}
           setEditorCollapsed={setEditorCollapsed}
+          fileSwitchLoading={fileSwitchLoading}
           hideEditor={sharedPreview !== null || syncedShareViewerActive}
           editorRef={editorRef}
           partFocusHandleRef={partFocusHandleRef}

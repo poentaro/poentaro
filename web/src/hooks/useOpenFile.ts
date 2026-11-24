@@ -31,20 +31,27 @@ export function useOpenFile(
   setFileOpError: (error: FileOpError | null) => void,
 ) {
   const [opening, setOpening] = useState(false)
+  const [openedOnDemand, setOpenedOnDemand] = useState<string | null>(null)
+  const latestOpenRef = useRef(0)
   const storeRef = useRef(store)
   storeRef.current = store
 
   const openFile = useCallback(
     async (name: string): Promise<void> => {
+      const request = ++latestOpenRef.current
       const base = storeRef.current
-      setOpening(true)
+      const needsText = base.userFiles[name]?.tag === 'not-loaded'
+      setOpenedOnDemand(null)
+      setOpening(needsText)
       try {
         const next = await backend.ensureLoaded(base, name)
+        if (request !== latestOpenRef.current) return
         setStore((prev) => selectFile(mergeLoadedTexts(prev, next), name))
+        if (needsText) setOpenedOnDemand(name)
       } catch (error) {
-        setFileOpError(openError(error))
+        if (request === latestOpenRef.current) setFileOpError(openError(error))
       } finally {
-        setOpening(false)
+        if (request === latestOpenRef.current) setOpening(false)
       }
     },
     [backend, setStore, setFileOpError],
@@ -90,5 +97,11 @@ export function useOpenFile(
     [backend, setStore, setFileOpError],
   )
 
-  return { openFile, opening, loadFolderText }
+  return {
+    openFile,
+    opening,
+    openedOnDemand,
+    setOpenedOnDemand,
+    loadFolderText,
+  }
 }
