@@ -17,14 +17,16 @@ description: Work on the next open GitHub issue that no agent has taken yet — 
 
 Do this for the initial PR handoff and whenever the user asks to start or
 restart the dev server to try the PR. Start both the web app and the local
-live-share worker from the PR worktree. Follow “Running the app locally”
+live-share worker from the PR worktree. Confirm any instance you reuse serves
+that worktree, and leave the verified instance running for the user. Follow “Running the app locally”
 and “Set up the test fixture for the user” in that worktree’s `AGENTS.md`.
 
 1. Once the worker is ready, run `just copy-prod-db` from the worktree on
    every startup. The recipe reuses an existing local copy. Read from
    production and write fixture changes only to the worktree’s local database.
-2. Prepare the local state that demonstrates the PR. Create or update the
-   relevant local file, records, or settings as needed. Automatically sign
+2. Prepare the local state that demonstrates the PR. Reuse the screenshot or
+   regression fixture when possible. Create or update the relevant local file,
+   records, or settings as needed. Automatically sign
    in as `hou32hou@gmail.com` using that account's identity in the local copy
    of production, even when the fixture can be opened anonymously. Follow
    the local session setup in `AGENTS.md` with a fresh token bound to the
@@ -32,10 +34,13 @@ and “Set up the test fixture for the user” in that worktree’s `AGENTS.md`.
    scratch configuration out of the PR.
 3. Build the URL using the actual Vite port. If the fixture is a file, include
    its URL-encoded name in `?file=<name>` and add any other supported URL
-   state that opens the relevant view.
+   state that opens the relevant view. If the chat client drops a URL fragment,
+   use a temporary local path that opens the fixture.
 4. Open the exact URL in a fresh browser and confirm it reaches the prepared
-   fixture already signed in as the requested account. Give the user that URL
-   and any remaining steps to see the change.
+   fixture already signed in as the requested account. Verify it without
+   relying on state seeded by a test runner. Give the user that URL, a plain
+   address they can paste if the chat client blocks the link, and any
+   remaining steps to see the change.
 
 ## Once the user approves the PR
 
