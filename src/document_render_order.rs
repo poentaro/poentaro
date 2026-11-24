@@ -79,13 +79,22 @@ impl ExpandedScore {
             .map_or(expanded_index, |origin| origin.written_measure_index)
     }
 
-    pub(super) fn highlight_ranges(&self, ranges: &[MeasureRange]) -> Vec<MeasureRange> {
+    pub(super) fn highlight_ranges(
+        &self,
+        ranges: &[MeasureRange],
+        sequence_entries: Option<&std::ops::RangeInclusive<usize>>,
+    ) -> Vec<MeasureRange> {
         use itertools::Itertools;
 
         self.origins
             .iter()
             .enumerate()
             .chunk_by(|(_, origin)| {
+                if let Some(entries) = sequence_entries {
+                    return origin
+                        .sequence_entry_index
+                        .is_some_and(|index| entries.contains(&index));
+                }
                 let index = origin.written_measure_index;
                 ranges
                     .iter()
@@ -109,7 +118,19 @@ impl ExpandedScore {
                 continue;
             };
             match tag {
-                Some(Tag::Measure { index, end } | Tag::BarNumber { index, end }) => {
+                Some(Tag::Measure {
+                    index,
+                    end,
+                    sequence_entry_index,
+                }) => {
+                    *sequence_entry_index = self
+                        .origins
+                        .get(*index)
+                        .and_then(|origin| origin.sequence_entry_index);
+                    *index = self.written_index(*index);
+                    *end = self.written_index(*end);
+                }
+                Some(Tag::BarNumber { index, end }) => {
                     *index = self.written_index(*index);
                     *end = self.written_index(*end);
                 }
@@ -143,7 +164,10 @@ impl ExpandedScore {
 
     pub(super) fn remap_staff_measures(&self, measures: &mut [crate::mei_export::StaffMeasure]) {
         for measure in measures {
-            measure.measure_index = self.written_index(measure.measure_index);
+            if let Some(origin) = self.origins.get(measure.measure_index) {
+                measure.measure_index = origin.written_measure_index;
+                measure.sequence_entry_index = origin.sequence_entry_index;
+            }
         }
     }
 }

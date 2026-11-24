@@ -1,3 +1,5 @@
+import type { MeasureRangeIn, SequenceEntryRange } from './poentaroWasm'
+
 export type {
   Diagnostic,
   DiagnosticMessage,
@@ -25,6 +27,20 @@ export type {
   SequenceEntry,
   Span as ByteSpan,
 } from './poentaroWasm'
+
+export interface SequenceSelection {
+  entryRange: SequenceEntryRange
+  revealEntryIndex: number
+}
+
+export interface MeasureSelection extends MeasureRangeIn {
+  /** Written measure to reveal, even if the selection starts elsewhere. */
+  revealMeasureIndex: number
+  /** Disjoint written measures covered by a sequence toolbar selection. */
+  highlightRanges?: MeasureRangeIn[]
+  /** Entries of the sequence toolbar selection in playback order. */
+  sequenceSelection?: SequenceSelection
+}
 
 export interface EditorSelection {
   start: number

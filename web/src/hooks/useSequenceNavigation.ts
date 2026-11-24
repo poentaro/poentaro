@@ -1,6 +1,11 @@
 import type { RefObject } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { EditorHandle, MeasureSpan, SequenceEntry } from '../types'
+import type {
+  EditorHandle,
+  MeasureSpan,
+  SequenceEntry,
+  SequenceSelection,
+} from '../types'
 
 export interface SelectedSequenceRange {
   start: number
@@ -135,6 +140,7 @@ export function useSequenceNavigation(
     revealLine?: number,
     measureRanges?: { start: number; end: number }[],
     immediate?: boolean,
+    sequenceSelection?: SequenceSelection,
   ) => void,
   /**
    * Owned by the caller (`useAppController`) rather than this hook, and
@@ -269,6 +275,7 @@ export function useSequenceNavigation(
         revealRange.startLine,
         measureRanges,
         true,
+        { entryRange: { start, end }, revealEntryIndex: indexB },
       )
     },
     [

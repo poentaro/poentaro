@@ -5,6 +5,7 @@ import type {
   DiagnosticViewZone,
   EditorSelection,
   LyricSpan,
+  MeasureSelection,
   MeasureSpan,
   NoteSpan,
   PartDeclaration,
@@ -15,6 +16,7 @@ import type {
   ResolvedPartVisibility,
   SectionRange,
   SequenceEntry,
+  SequenceSelection,
 } from '../types'
 import type { NoteCell } from '../utils/noteSpanSelection'
 import type { StaffRenderResult } from '../worker/messages'
@@ -131,24 +133,7 @@ export interface PoentaroWorkerState {
   exportMp3: () => void
   exportSplitMp3: () => void
   generateFullAudio: () => void
-  selectedMeasureRange: {
-    start: number
-    end: number
-    /** Which measure the preview should scroll to for this selection, when
-     * it differs from `start` — a section/sequence chain selection can
-     * resolve to a written-measure range whose start (in document order)
-     * isn't where the user actually navigated to (e.g. dragging from an
-     * early section down to a later one out of chain order). See
-     * `notifySelection`'s `revealLine` parameter. */
-    revealMeasureIndex: number
-    /** The exact disjoint measure ranges to highlight in the SVG preview,
-     * when they differ from the single `[start, end]` span above — a `#
-     * sequence` chain selection spanning out-of-order entries (e.g. "C" and
-     * a later repeat of "A", but not "B" in between). Only ever populated
-     * by a sequence-chain selection; every other selection kind leaves this
-     * unset and falls back to the caret-only single-range highlight. */
-    highlightRanges?: { start: number; end: number }[]
-  } | null
+  selectedMeasureRange: MeasureSelection | null
   measureAudioGenerating: boolean
   measureAudioPlaying: boolean
   /** Elapsed-seconds start/end of every sounding note/rest for the selected range's audio, keyed by `(source_part_index, note_id)`. */
@@ -160,16 +145,17 @@ export interface PoentaroWorkerState {
     endLine: number,
     isEmpty: boolean,
     /** The line the preview should scroll to, if it differs from
-     * `startLine` — see `revealMeasureIndex` above. Defaults to
+     * `startLine`. Defaults to
      * `startLine`. */
     revealLine?: number,
     /** The exact disjoint measure ranges to highlight in the SVG preview —
-     * see `highlightRanges` above. */
+     * see `MeasureSelection.highlightRanges`. */
     measureRanges?: { start: number; end: number }[],
     /** Skip the debounce and update the preview highlight right away. For
      * discrete clicks (section/sequence buttons) that have no rapid-fire
      * stream of events to coalesce. */
     immediate?: boolean,
+    sequenceSelection?: SequenceSelection,
   ) => void
   playSelectedMeasures: () => void
   playFromCurrentMeasure: () => void

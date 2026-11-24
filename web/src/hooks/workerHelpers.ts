@@ -2,10 +2,12 @@ import { findIndex, findLastIndex } from 'remeda'
 import { stripFileExtension } from '../fileExtension'
 import { poentaroWasm } from '../poentaroWasm'
 import type {
+  MeasureSelection,
   MeasureSpan,
   PartInfo,
   PartToggleState,
   ResolvedPartVisibility,
+  SequenceSelection,
 } from '../types'
 
 export function measureRangeInSpan(
@@ -40,12 +42,8 @@ export function measureRangeInSpanWithReveal(
   endLine: number,
   revealLine: number,
   measureRanges?: { start: number; end: number }[],
-): {
-  start: number
-  end: number
-  revealMeasureIndex: number
-  highlightRanges?: { start: number; end: number }[]
-} | null {
+  sequenceSelection?: SequenceSelection,
+): MeasureSelection | null {
   const range = measureRangeInSpan(spans, startLine, endLine)
   if (!range) return null
   const revealMeasureIndex =
@@ -53,6 +51,7 @@ export function measureRangeInSpanWithReveal(
   return {
     ...range,
     revealMeasureIndex,
+    ...(sequenceSelection ? { sequenceSelection } : {}),
     ...(measureRanges ? { highlightRanges: measureRanges } : {}),
   }
 }

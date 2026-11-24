@@ -4,6 +4,7 @@ import type {
   Diagnostic,
   DiagnosticViewZone,
   LyricSpan,
+  MeasureSelection,
   MeasureSpan,
   NoteSpan,
   PartDeclaration,
@@ -12,6 +13,7 @@ import type {
   ResolvedPartVisibility,
   SectionRange,
   SequenceEntry,
+  SequenceSelection,
 } from '../types'
 import type {
   DescribeSelectionRequestTracker,
@@ -75,16 +77,8 @@ export function usePoentaroWorkerState(
   } | null>(null)
   const requestedFileRef = useRef(renderedFile)
   const [audioGenerating, setAudioGenerating] = useState(false)
-  const [selectedMeasureRange, setSelectedMeasureRange] = useState<{
-    start: number
-    end: number
-    /** Which measure the preview should scroll to for this selection, when
-     * it differs from `start` — see `measureRangeInSpanWithReveal`. */
-    revealMeasureIndex: number
-    /** The exact disjoint measure ranges to highlight in the SVG preview —
-     * see `measureRangeInSpanWithReveal`. */
-    highlightRanges?: { start: number; end: number }[]
-  } | null>(null)
+  const [selectedMeasureRange, setSelectedMeasureRange] =
+    useState<MeasureSelection | null>(null)
   const [highlightedDocuments, setHighlightedDocuments] = useState<
     SvgDocument[]
   >([])
@@ -183,6 +177,8 @@ export function usePoentaroWorkerState(
     end: number
     isEmpty: boolean
     revealLine: number
+    measureRanges?: { start: number; end: number }[]
+    sequenceSelection?: SequenceSelection
   } | null>(null)
 
   /** Opens the rename-before-download modal for `url`/`filename` instead of

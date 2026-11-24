@@ -102,9 +102,14 @@ pub(super) fn tspan_to_wit(tspan: &crate::svg_types::TspanOut) -> Tspan {
 
 pub(super) fn tag_to_wit(tag: &crate::svg_types::TagOut) -> Tag {
     match tag {
-        crate::svg_types::TagOut::Measure { index, end } => Tag::Measure(MeasureTag {
+        crate::svg_types::TagOut::Measure {
+            index,
+            end,
+            sequence_entry_index,
+        } => Tag::Measure(MeasureTag {
             index: *index as u32,
             end: *end as u32,
+            sequence_entry_index: sequence_entry_index.map(|index| index as u32),
         }),
         crate::svg_types::TagOut::BarNumber { index, end } => Tag::BarNumber(BarNumberTag {
             index: *index as u32,

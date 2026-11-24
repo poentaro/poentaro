@@ -148,8 +148,7 @@ export function AppWorkspace({
     handleLyricEditorSelectionChange(ranges)
     setSelectionByteRanges(isEmpty ? null : ranges)
   }
-  // Below the mobile breakpoint only one pane is visible at a time, so
-  // showing the editor must collapse the preview instead of sitting beside it.
+  // On mobile, showing the editor collapses the preview.
   const previewCollapsed = isMobile && !hideEditor && !editorCollapsed
   // On mobile the divider sits between a stacked editor (above) and preview
   // (below), so the chevron points up/down instead of left/right.
@@ -339,6 +338,7 @@ export function AppWorkspace({
         <div className="preview-pane-content" inert={fileSwitchLoading}>
           <Preview
             documents={documents}
+            scoreOrder={previewLayout.scoreOrder}
             floatingControls={
               <>
                 <PageViewToggle

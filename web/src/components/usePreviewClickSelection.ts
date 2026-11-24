@@ -1,7 +1,7 @@
 import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import type { ClickableElementId } from '../poentaroWasm'
-import type { LyricSpan, NoteSpan } from '../types'
+import type { ClickableElementId, ScoreOrder } from '../poentaroWasm'
+import type { LyricSpan, MeasureSelection, NoteSpan } from '../types'
 import type { StaffScore } from '../worker/messages'
 import { clickableElementIdFromElement } from './clickableElementId'
 import type { PreviewAnchorState } from './previewAnchorState'
@@ -17,10 +17,7 @@ import {
   resolveSelection,
 } from './previewSelectionResolver'
 import { hoverStaffMeasure } from './previewStaffClickHandler'
-import {
-  type SelectedMeasures,
-  useStaffMeasureHighlights,
-} from './useStaffMeasureHighlights'
+import { useStaffMeasureHighlights } from './useStaffMeasureHighlights'
 
 export type { PreviewAnchorState } from './previewAnchorState'
 
@@ -92,7 +89,8 @@ export function usePreviewClickSelection(
   // painted here too (`useStaffMeasureHighlights`), since it has to yield
   // to an anchored gesture.
   staffScore: StaffScore | null = null,
-  selectedMeasureRange: SelectedMeasures | null = null,
+  selectedMeasureRange: MeasureSelection | null = null,
+  scoreOrder: ScoreOrder = 'written',
 ) {
   // The mouseover/mouseout/keydown handlers below live in a
   // `useEffect(() => {...}, [previewPagesRef])`, so they'd otherwise close
@@ -121,6 +119,7 @@ export function usePreviewClickSelection(
     previewPagesRef,
     staffScore,
     selectedMeasureRange,
+    scoreOrder,
     anchorStateRef,
   )
 

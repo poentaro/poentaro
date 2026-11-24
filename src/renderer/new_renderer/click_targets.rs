@@ -238,6 +238,7 @@ pub(super) fn render_measure_click_target(
         Tag::Measure {
             index: measure_index,
             end: measure_index_end,
+            sequence_entry_index: None,
         },
     )
 }

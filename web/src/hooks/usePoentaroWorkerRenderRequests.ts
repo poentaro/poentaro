@@ -1,7 +1,13 @@
 import type { RefObject } from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import type { PageLayout, ScoreOrder, SvgDocument } from '../poentaroWasm'
-import type { Diagnostic, MeasureSpan, ResolvedPartVisibility } from '../types'
+import type {
+  Diagnostic,
+  MeasureSelection,
+  MeasureSpan,
+  ResolvedPartVisibility,
+  SequenceSelection,
+} from '../types'
 import type { Notation } from '../worker/messages'
 import type { WorkerRequest } from '../worker/poentaro.worker'
 import { measureRangeInSpanWithReveal } from './workerHelpers'
@@ -30,20 +36,8 @@ interface UsePoentaroWorkerRenderRequestsParams {
   requestedFileRef: RefObject<{ name: string; source: string } | null>
   renderRequestIdRef: RefObject<number>
   latestRenderIdRef: RefObject<number>
-  selectedMeasureRange: {
-    start: number
-    end: number
-    revealMeasureIndex: number
-    highlightRanges?: { start: number; end: number }[]
-  } | null
-  setSelectedMeasureRange: (
-    value: {
-      start: number
-      end: number
-      revealMeasureIndex: number
-      highlightRanges?: { start: number; end: number }[]
-    } | null,
-  ) => void
+  selectedMeasureRange: MeasureSelection | null
+  setSelectedMeasureRange: (value: MeasureSelection | null) => void
   setHighlightedDocuments: (value: SvgDocument[]) => void
   highlightRenderRequestIdRef: RefObject<number>
   latestHighlightRenderIdRef: RefObject<number>
@@ -62,6 +56,7 @@ interface UsePoentaroWorkerRenderRequestsParams {
     isEmpty: boolean
     revealLine: number
     measureRanges?: { start: number; end: number }[]
+    sequenceSelection?: SequenceSelection
   } | null>
 }
 
@@ -174,6 +169,7 @@ export function usePoentaroWorkerRenderRequests({
       revealLine: number = startLine,
       measureRanges?: { start: number; end: number }[],
       immediate = false,
+      sequenceSelection?: SequenceSelection,
     ) => {
       lastSelectionRef.current = {
         start: startLine,
@@ -181,6 +177,7 @@ export function usePoentaroWorkerRenderRequests({
         isEmpty,
         revealLine,
         measureRanges,
+        sequenceSelection,
       }
       if (cursorOffsetTimerRef.current !== null) {
         window.clearTimeout(cursorOffsetTimerRef.current)
@@ -195,6 +192,7 @@ export function usePoentaroWorkerRenderRequests({
             endLine,
             revealLine,
             measureRanges,
+            sequenceSelection,
           ),
         )
       }
@@ -219,6 +217,7 @@ export function usePoentaroWorkerRenderRequests({
         sel.end,
         sel.revealLine,
         sel.measureRanges,
+        sel.sequenceSelection,
       ),
     )
   }, [measureSpans])
@@ -240,6 +239,7 @@ export function usePoentaroWorkerRenderRequests({
         ? [{ start: selectedMeasureRange.start, end: selectedMeasureRange.end }]
         : null)
     if (!highlightRanges) {
+      latestHighlightRenderIdRef.current = ++highlightRenderRequestIdRef.current
       setHighlightedDocuments([])
       return
     }
@@ -252,6 +252,7 @@ export function usePoentaroWorkerRenderRequests({
       source: sourceRef.current,
       id,
       ranges: highlightRanges,
+      sequenceEntries: selectedMeasureRange?.sequenceSelection?.entryRange,
       visibility,
       notation,
       pageLayout,

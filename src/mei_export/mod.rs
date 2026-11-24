@@ -61,6 +61,7 @@ pub struct MeiDocument {
 pub struct StaffMeasure {
     pub element_id: String,
     pub measure_index: usize,
+    pub sequence_entry_index: Option<usize>,
 }
 
 fn measure_element_id(measure_index: usize) -> String {
@@ -133,6 +134,7 @@ pub(crate) fn score_to_mei_with_staves(
             .map(|measure_index| StaffMeasure {
                 element_id: measure_element_id(measure_index),
                 measure_index,
+                sequence_entry_index: None,
             })
             .collect(),
     }

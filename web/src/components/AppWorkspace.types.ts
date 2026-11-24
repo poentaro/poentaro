@@ -14,6 +14,7 @@ import type {
   EditorHandle,
   EditorSelection,
   LyricSpan,
+  MeasureSelection,
   MeasureSpan,
   NoteSpan,
   PartDeclaration,
@@ -24,17 +25,6 @@ import type {
   RangeEditOperation,
 } from '../types'
 import type { LyricCell, NoteCell } from './Preview'
-
-export interface MeasureRange {
-  start: number
-  end: number
-  /** Which measure the preview should scroll to for this selection, when
-   * it differs from `start` — see `Preview`'s matching prop doc comment. */
-  revealMeasureIndex: number
-  /** The exact disjoint measure ranges to highlight in the SVG preview —
-   * see `Preview`'s matching prop doc comment. */
-  highlightRanges?: { start: number; end: number }[]
-}
 
 export interface AppWorkspaceProps {
   editorCollapsed: boolean
@@ -92,7 +82,7 @@ export interface AppWorkspaceProps {
   forceSave: () => void
   measureAudioPlaying: boolean
   stopMeasurePlayback: () => void
-  selectedMeasureRange: MeasureRange | null
+  selectedMeasureRange: MeasureSelection | null
   measureAudioGenerating: boolean
   soundfontReady: boolean
   playSelectedMeasures: () => void

@@ -3,7 +3,8 @@ use poentaro::{
     compile, find_measure_at_byte_offset, list_lyric_spans_from_source,
     list_measure_spans_from_source, list_note_spans_from_source,
     render_documents_from_source_with_visibility,
-    render_documents_with_highlight_range_and_visibility, RenderView, ResolvedPartVisibility,
+    render_documents_with_highlight_range_and_visibility, MeasureHighlight, RenderView,
+    ResolvedPartVisibility,
 };
 
 use crate::diagnostics::{
@@ -91,7 +92,7 @@ pub(crate) fn render_response(
 
 pub(crate) fn render_with_highlight_range_response(
     source: &str,
-    measure_ranges: &[poentaro::grid_layout::MeasureRange],
+    highlight: MeasureHighlight<'_>,
     visibility: &ResolvedPartVisibility,
     instruments: &[InstrumentInfo],
     view: RenderView,
@@ -101,7 +102,7 @@ pub(crate) fn render_with_highlight_range_response(
         render_documents_with_highlight_range_and_visibility(
             source,
             "input.poentaro",
-            measure_ranges,
+            highlight,
             visibility,
             instruments,
             view,
