@@ -9,7 +9,9 @@ pub(in crate::renderer::new_renderer) fn render_fermata(
     width: f32,
 ) -> [SvgElement; 2] {
     let center = elem.x + width * 0.5;
-    let y = elem.y - size * (0.68 + 0.3 * f32::from(octave.max(0)));
+    // SVG middle alignment can place the ink above the nominal half-em.
+    // Raise the dot and arc together to leave a visible gap over the glyph.
+    let y = elem.y - size * (1.10 + 0.30 * f32::from(octave.max(0)));
     let half_width = size * 0.30;
     [
         SvgElement {

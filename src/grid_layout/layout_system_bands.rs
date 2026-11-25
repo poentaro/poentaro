@@ -69,7 +69,7 @@ impl SystemBands {
     pub(crate) fn fermata_clearance(&self, part_idx: usize, base: f32) -> f32 {
         self.fermata_octaves
             .get(&part_idx)
-            .map_or(0.0, |&octave| base * (0.50 + 0.30 * f32::from(octave)))
+            .map_or(0.0, |&octave| base * (0.92 + 0.30 * f32::from(octave)))
     }
 
     pub(crate) fn has_tuplet_bracket(&self, part_idx: usize) -> bool {
