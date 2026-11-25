@@ -46,7 +46,7 @@ pub(crate) fn system_musical_height_pt(
             } else {
                 0.0
             };
-            musical + diagrams
+            musical + diagrams + bands.fermata_clearance(idx, base)
         })
         .sum()
 }
@@ -151,6 +151,7 @@ fn make_padding_row(template_row: &MeasureRow, block: &MeasureBlock) -> MeasureR
         content: ElementContent::Rest {
             dotted: false,
             double_dotted: false,
+            fermata: false,
             implicit_fill: true,
         },
         note_id: None,

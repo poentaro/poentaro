@@ -107,6 +107,7 @@ fn make_block_with_lyric_part(bar_col: u32) -> MeasureBlock {
                             octave: 0,
                             dotted: false,
                             double_dotted: false,
+                            fermata: false,
                             head_label: None,
                         },
                         note_id: None,

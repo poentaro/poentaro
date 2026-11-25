@@ -325,3 +325,54 @@ fn the_cello_view_puts_every_staff_in_bass_clef() {
     );
     assert!(!mei.contains(r#"clef.shape="G""#), "{mei}");
 }
+
+#[test]
+fn fermatas_stay_on_the_marked_note_and_rest() {
+    let marked = include_str!("../../demo/17-fermata.poentaro");
+    let output = crate::render_svgs_from_source(marked, "fermata.poentaro", &[]).unwrap();
+    assert!(output.diagnostics.is_empty());
+    let svg = output.svgs.join("");
+    assert_eq!(svg.matches("data-variant=\"fermata\"").count(), 4);
+    let mei = mei_of(marked);
+    assert!(mei
+        .lines()
+        .any(|line| line.contains("pname=\"e\"") && line.contains("fermata=\"above\"")));
+    assert!(mei.contains("<rest dur=\"4\" fermata=\"above\"/>"));
+    assert_eq!(mei.matches("fermata=\"above\"").count(), 2);
+
+    #[cfg(feature = "midi")]
+    {
+        let marked_score = crate::compile(marked, "fermata.poentaro", &[]).unwrap();
+        let unmarked_score =
+            crate::compile(&marked.replace('^', ""), "fermata.poentaro", &[]).unwrap();
+        assert_eq!(
+            crate::midi::write_midi(&marked_score).unwrap(),
+            crate::midi::write_midi(&unmarked_score).unwrap(),
+        );
+    }
+}
+
+#[test]
+fn a_fermata_keeps_a_rest_measure_visible() {
+    let source = r#"metadata { title "Fermatas" },
+parts ["Melody" [M]: notes],
+score """
+    [M] 0---
+
+    [M] 0---^
+
+    [M] 0---
+    """,
+"#;
+    let output = crate::render_svgs_from_source(source, "fermata.poentaro", &[]).unwrap();
+    assert!(output.diagnostics.is_empty());
+    assert_eq!(
+        output
+            .svgs
+            .join("")
+            .matches("data-variant=\"fermata\"")
+            .count(),
+        2
+    );
+    assert!(mei_of(source).contains("<rest dur=\"1\" fermata=\"above\"/>"));
+}

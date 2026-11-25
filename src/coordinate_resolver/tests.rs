@@ -90,6 +90,7 @@ fn note_head_halign_center_is_flush_left_plus_fixed_padding() {
             octave: 0,
             dotted: false,
             double_dotted: false,
+            fermata: false,
             head_label: None,
         },
     };
@@ -153,6 +154,7 @@ fn note_head_anchor_shifts_by_its_own_configured_padding_not_chords_or_lyrics() 
             octave: 0,
             dotted: false,
             double_dotted: false,
+            fermata: false,
             head_label: None,
         },
     };
@@ -221,6 +223,7 @@ fn column_weight_test_page(column_weight: f32) -> GridPage {
             octave: 0,
             dotted: false,
             double_dotted: false,
+            fermata: false,
             head_label: None,
         },
     };

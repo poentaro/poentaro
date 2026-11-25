@@ -212,6 +212,7 @@ fn pad_incomplete_measure(
                 duration: deficit,
                 dotted: false,
                 double_dotted: false,
+                fermata: false,
                 group_membership: 0,
                 group_continuation: 0,
                 tuplet: None,

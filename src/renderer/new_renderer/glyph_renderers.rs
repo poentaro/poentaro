@@ -313,6 +313,10 @@ pub(super) fn render_underline(elem: &AbsoluteElement, width: &f32) -> Vec<SvgEl
     }]
 }
 
+#[path = "glyph_renderers_fermata.rs"]
+mod fermata;
+pub(super) use fermata::render_fermata;
+
 pub(super) fn render_tie_or_slur(
     elem: &AbsoluteElement,
     width: &f32,

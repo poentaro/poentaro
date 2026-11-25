@@ -196,30 +196,6 @@ pub(super) fn grid_to_absolute(
     }
 
     Ok(match content {
-        PostArcGridContent::NoteHead {
-            pitch,
-            accidental,
-            octave,
-            dotted,
-            double_dotted,
-            head_label,
-        } => Some(AbsoluteContent::NoteHead {
-            pitch: pitch.clone(),
-            accidental: accidental.clone(),
-            octave: *octave,
-            dotted: *dotted,
-            double_dotted: *double_dotted,
-            head_label: head_label.clone(),
-        }),
-        PostArcGridContent::Rest {
-            dotted,
-            double_dotted,
-            implicit_fill,
-        } => Some(AbsoluteContent::Rest {
-            dotted: *dotted,
-            double_dotted: *double_dotted,
-            implicit_fill: *implicit_fill,
-        }),
         PostArcGridContent::MultiMeasureRest { count } => Some(AbsoluteContent::MultiMeasureRest {
             count: *count,
             width: span_width,
@@ -261,6 +237,40 @@ pub(super) fn grid_to_absolute(
             note_id: *note_id,
         }),
         PostArcGridContent::LyricLine(s) => Some(AbsoluteContent::LyricLine(s.clone())),
-        _ => None,
+        _ => note_or_rest_to_absolute(content),
     })
+}
+
+fn note_or_rest_to_absolute(content: &PostArcGridContent) -> Option<AbsoluteContent> {
+    match content {
+        PostArcGridContent::NoteHead {
+            pitch,
+            accidental,
+            octave,
+            dotted,
+            double_dotted,
+            fermata,
+            head_label,
+        } => Some(AbsoluteContent::NoteHead {
+            pitch: pitch.clone(),
+            accidental: accidental.clone(),
+            octave: *octave,
+            dotted: *dotted,
+            double_dotted: *double_dotted,
+            fermata: *fermata,
+            head_label: head_label.clone(),
+        }),
+        PostArcGridContent::Rest {
+            dotted,
+            double_dotted,
+            fermata,
+            implicit_fill,
+        } => Some(AbsoluteContent::Rest {
+            dotted: *dotted,
+            double_dotted: *double_dotted,
+            fermata: *fermata,
+            implicit_fill: *implicit_fill,
+        }),
+        _ => None,
+    }
 }

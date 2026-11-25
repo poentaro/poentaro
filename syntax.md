@@ -705,6 +705,16 @@ Rules:
 
 A tie differs from a slur `(…)` in that it requires identical pitch, and carries distinct semantic meaning (duration extension vs. phrasing).
 
+### Fermata (`^`)
+
+Add `^` to a note or rest digit to place a fermata (𝄐) above it. The mark
+asks performers to hold the sound or silence beyond its written duration.
+Poentaro plays the written duration.
+
+In `1 2 3^ 0^`, both note 3 and the following rest have a fermata.
+Place the mark after any octave and duration suffixes, as in `5'_^`.
+A repeat atom after a marked note starts an unmarked note.
+
 ### Repeat the last note/chord (`r`, bare `_`/`=`)
 
 `r` repeats the last sounded pitch/chord as a fresh one-beat attack (a new note, not a tie/sustain). A bare `_` or `=` — one **not** glued directly after a digit — repeats it as an eighth-note or sixteenth-note attack respectively:

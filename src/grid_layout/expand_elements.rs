@@ -114,6 +114,7 @@ fn push_implicit_fill_rest(
             content: GridContent::Rest {
                 dotted,
                 double_dotted,
+                fermata: false,
                 implicit_fill: true,
             },
         });
@@ -158,6 +159,7 @@ pub(crate) fn expand_measure_elements(
             dotted,
             double_dotted,
             implicit_fill: true,
+            ..
         } = &el.content
         {
             let start_column = el.column;
@@ -274,6 +276,7 @@ fn push_low_octave_note_head(
         octave,
         dotted,
         double_dotted,
+        fermata,
         head_label,
     } = content
     else {
@@ -293,6 +296,7 @@ fn push_low_octave_note_head(
             octave: 0,
             dotted: *dotted,
             double_dotted: *double_dotted,
+            fermata: *fermata,
             head_label: head_label.clone(),
         },
     );
@@ -308,8 +312,6 @@ fn push_low_octave_note_head(
     );
 }
 
-/// The note/rest/chord-symbol half of [`expand_measure_elements`]'s dispatch,
-/// split out to stay under the file's line-count cap per function.
 fn push_note_element(
     sub_rows: &mut [GridRow],
     head_sub: usize,
@@ -323,6 +325,7 @@ fn push_note_element(
             octave,
             dotted,
             double_dotted,
+            fermata,
             head_label,
         } => push_head(
             sub_rows,
@@ -334,12 +337,14 @@ fn push_note_element(
                 octave: *octave,
                 dotted: *dotted,
                 double_dotted: *double_dotted,
+                fermata: *fermata,
                 head_label: head_label.clone(),
             },
         ),
         ElementContent::Rest {
             dotted,
             double_dotted,
+            fermata,
             implicit_fill,
         } => push_head(
             sub_rows,
@@ -348,6 +353,7 @@ fn push_note_element(
             GridContent::Rest {
                 dotted: *dotted,
                 double_dotted: *double_dotted,
+                fermata: *fermata,
                 implicit_fill: *implicit_fill,
             },
         ),

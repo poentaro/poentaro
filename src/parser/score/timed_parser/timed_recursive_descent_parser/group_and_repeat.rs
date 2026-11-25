@@ -40,6 +40,7 @@ impl<'a, H: TimedUnitHead> TimedRecursiveDescentParser<'a, H> {
             ScoreEvent::Note(note) => {
                 note.duration = duration;
                 note.dotted = false;
+                note.fermata = false;
                 note.tie_to_next_span = None;
                 note.group_membership = 0;
                 note.group_continuation = 0;

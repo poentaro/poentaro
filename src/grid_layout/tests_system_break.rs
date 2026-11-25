@@ -21,6 +21,7 @@ fn make_block(row_id: &str, bar_col: u32, system_break: bool) -> MeasureBlock {
                         octave: 0,
                         dotted: false,
                         double_dotted: false,
+                        fermata: false,
                         head_label: None,
                     },
                     note_id: None,

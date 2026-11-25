@@ -197,6 +197,7 @@ fn slurred_same_pitch_notes_produce_two_note_ons() {
             group_continuation: if slur { 1 } else { 0 },
             dotted: false,
             double_dotted: false,
+            fermata: false,
             slur_group_close_at_duration: None,
             tuplet: None,
         })

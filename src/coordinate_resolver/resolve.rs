@@ -231,6 +231,7 @@ fn resolve_row_element(
             dotted,
             double_dotted,
             implicit_fill: true,
+            ..
         } => Ok(Some(resolve_implicit_fill_rest(
             *dotted,
             *double_dotted,

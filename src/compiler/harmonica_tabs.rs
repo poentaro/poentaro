@@ -207,6 +207,7 @@ fn with_tab(element: ColumnElement, fingering: Option<Fingering>) -> ColumnEleme
             octave: _,
             dotted,
             double_dotted,
+            fermata,
             head_label: _,
         } => ColumnElement {
             content: ElementContent::NoteHead {
@@ -219,6 +220,7 @@ fn with_tab(element: ColumnElement, fingering: Option<Fingering>) -> ColumnEleme
                 octave: 0,
                 dotted,
                 double_dotted,
+                fermata,
             },
             ..element
         },

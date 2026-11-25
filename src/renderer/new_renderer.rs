@@ -194,6 +194,32 @@ fn render_note_glyph(
     content: &AbsoluteContent,
     params: &RenderElementParams,
 ) -> Vec<SvgElement> {
+    let mut glyphs = render_note_body(elem, content, params);
+    let octave = match content {
+        AbsoluteContent::NoteHead {
+            fermata: true,
+            octave,
+            ..
+        } => Some(*octave),
+        AbsoluteContent::Rest { fermata: true, .. } => Some(0),
+        _ => None,
+    };
+    if let Some(octave) = octave {
+        glyphs.extend(glyph_renderers::render_fermata(
+            elem,
+            octave,
+            params.notes_font_size,
+            params.note_number_width,
+        ));
+    }
+    glyphs
+}
+
+fn render_note_body(
+    elem: &AbsoluteElement,
+    content: &AbsoluteContent,
+    params: &RenderElementParams,
+) -> Vec<SvgElement> {
     let RenderElementParams {
         notes_font_size,
         note_dash_font_size,
@@ -210,6 +236,7 @@ fn render_note_glyph(
             dotted,
             double_dotted,
             head_label,
+            ..
         } => render_note_head(
             elem,
             &NoteHeadGlyph {
@@ -232,6 +259,7 @@ fn render_note_glyph(
             dotted,
             double_dotted,
             implicit_fill,
+            ..
         } => render_rest(
             elem,
             &DotState::new(*dotted, *double_dotted),

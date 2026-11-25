@@ -49,6 +49,7 @@ fn block_with_note(head_label: Option<NoteHeadLabel>, accidental: Accidental) ->
                         octave: 0,
                         dotted: false,
                         double_dotted: false,
+                        fermata: false,
                         head_label,
                     },
                     note_id: None,

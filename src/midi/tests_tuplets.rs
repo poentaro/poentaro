@@ -31,6 +31,7 @@ fn triplet_eighth_note_event() -> NoteEvent {
         group_continuation: 0,
         dotted: false,
         double_dotted: false,
+        fermata: false,
         slur_group_close_at_duration: None,
         tuplet: None,
     })
@@ -50,6 +51,7 @@ fn plain_quarter_note_event() -> NoteEvent {
         group_continuation: 0,
         dotted: false,
         double_dotted: false,
+        fermata: false,
         slur_group_close_at_duration: None,
         tuplet: None,
     })

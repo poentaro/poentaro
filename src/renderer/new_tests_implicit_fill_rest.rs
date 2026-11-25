@@ -51,6 +51,7 @@ fn implicit_fill_rest_draws_a_vector_glyph_instead_of_zero_text() {
     let page = make_page(AbsoluteContent::Rest {
         dotted: false,
         double_dotted: false,
+        fermata: false,
         implicit_fill: true,
     });
     let docs = render_new(&[page], &cfg());

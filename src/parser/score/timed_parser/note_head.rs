@@ -83,11 +83,16 @@ impl TimedUnitHead for NoteHead {
         true
     }
 
+    fn allows_fermata() -> bool {
+        true
+    }
+
     fn to_event(head: &Self, attrs: EventAttrs) -> ScoreEvent {
         let EventAttrs {
             duration,
             dotted,
             double_dotted,
+            fermata,
             octave,
             group_membership,
             group_continuation,
@@ -98,6 +103,7 @@ impl TimedUnitHead for NoteHead {
                 duration,
                 dotted,
                 double_dotted,
+                fermata,
                 group_membership: 0,
                 group_continuation: 0,
                 tuplet,
@@ -116,6 +122,7 @@ impl TimedUnitHead for NoteHead {
                 group_continuation,
                 dotted,
                 double_dotted,
+                fermata,
                 slur_group_close_at_duration: None,
                 tuplet,
             })

@@ -72,6 +72,7 @@ fn note_head_produces_text_element() {
         octave: 0,
         dotted: false,
         double_dotted: false,
+        fermata: false,
         head_label: None,
     });
     let docs = render_new(&[page], &cfg());
@@ -135,6 +136,7 @@ fn rest_produces_zero_text() {
     let page = make_page(AbsoluteContent::Rest {
         dotted: false,
         double_dotted: false,
+        fermata: false,
         implicit_fill: false,
     });
     let docs = render_new(&[page], &cfg());
@@ -157,6 +159,7 @@ fn sharp_accidental_renders_left_of_the_digit_in_the_note_s_own_text_run() {
         octave: 0,
         dotted: false,
         double_dotted: false,
+        fermata: false,
         head_label: None,
     });
     let note_x = 100.0_f32;
@@ -258,6 +261,7 @@ fn upper_octave_note_produces_dot_glyph() {
         octave: 1,
         dotted: false,
         double_dotted: false,
+        fermata: false,
         head_label: None,
     });
     let docs = render_new(&[page], &cfg());
@@ -279,6 +283,7 @@ fn dotted_note_produces_dot_circles_not_appended_text() {
         octave: 0,
         dotted: true,
         double_dotted: true,
+        fermata: false,
         head_label: None,
     });
     let docs = render_new(&[page], &cfg());

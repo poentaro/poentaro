@@ -96,6 +96,10 @@ pub trait TimedUnitHead: Sized {
         true
     }
 
+    fn allows_fermata() -> bool {
+        false
+    }
+
     fn to_event(head: &Self, attrs: EventAttrs) -> ScoreEvent;
 }
 
@@ -106,6 +110,7 @@ pub struct EventAttrs {
     pub duration: u32,
     pub dotted: bool,
     pub double_dotted: bool,
+    pub fermata: bool,
     pub octave: i8,
     pub group_membership: u8,
     pub group_continuation: u8,

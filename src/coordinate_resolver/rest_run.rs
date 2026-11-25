@@ -65,6 +65,7 @@ pub(super) fn resolve_implicit_fill_rest(
         content: AbsoluteContent::Rest {
             dotted,
             double_dotted,
+            fermata: false,
             implicit_fill: true,
         },
     }

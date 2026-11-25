@@ -54,6 +54,7 @@ impl TimedUnit for GroupedNote {
             octave: self.octave,
             dotted: self.dotted,
             double_dotted: self.double_dotted,
+            fermata: self.fermata,
             head_label: None,
         }
     }

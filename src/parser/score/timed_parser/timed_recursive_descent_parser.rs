@@ -322,6 +322,7 @@ impl<'a, H: TimedUnitHead> TimedRecursiveDescentParser<'a, H> {
                 duration: duration_meta.duration,
                 dotted: duration_meta.dotted,
                 double_dotted: duration_meta.double_dotted,
+                fermata: duration_meta.fermata,
                 octave,
                 group_membership: 0,
                 group_continuation: 0,

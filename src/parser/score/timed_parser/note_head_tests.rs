@@ -47,6 +47,7 @@ fn parse_to_note(input: &str) -> (NumberedPitch, Accidental, usize) {
             duration: 4,
             dotted: false,
             double_dotted: false,
+            fermata: false,
             octave: 0,
             group_membership: 0,
             group_continuation: 0,

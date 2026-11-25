@@ -66,7 +66,7 @@ pub(super) fn layer_xml(
     let events = &slice.notes.events;
     if events
         .iter()
-        .all(|event| matches!(event, NoteEvent::Rest(_)))
+        .all(|event| matches!(event, NoteEvent::Rest(rest) if !rest.fermata))
     {
         state.tied_in = false;
         return "<mRest/>".to_string();
@@ -92,7 +92,8 @@ pub(super) fn layer_xml(
             }
             NoteEvent::Rest(_) | NoteEvent::Chord(_) | NoteEvent::Percussion(_) => {
                 state.tied_in = false;
-                pieces.extend(rest_pieces(start, &durations));
+                let fermata = matches!(event, NoteEvent::Rest(rest) if rest.fermata);
+                pieces.extend(rest_pieces(start, &durations, fermata));
             }
         }
         start += durations
@@ -138,8 +139,9 @@ fn note_pieces(
             *start += duration.sixteenths;
             let first = index == 0;
             let tie = tie_attribute(state.tied_in || !first, note.tie_to_next() || index < last);
+            let fermata = fermata_attribute(first && note.fermata);
             let open = format!(
-                "<note xml:id=\"{}\" pname=\"{}\" oct=\"{}\" dur=\"{}\"{}{}{tie}",
+                "<note xml:id=\"{}\" pname=\"{}\" oct=\"{}\" dur=\"{}\"{}{}{tie}{fermata}",
                 if first {
                     id.clone()
                 } else {
@@ -175,17 +177,27 @@ fn tie_attribute(tied_in: bool, tied_out: bool) -> &'static str {
     }
 }
 
-fn rest_pieces(start: u32, durations: &[SimpleDuration]) -> Vec<Piece> {
+fn fermata_attribute(marked: bool) -> &'static str {
+    if marked {
+        " fermata=\"above\""
+    } else {
+        ""
+    }
+}
+
+fn rest_pieces(start: u32, durations: &[SimpleDuration], fermata: bool) -> Vec<Piece> {
     durations
         .iter()
-        .scan(start, |start, duration| {
+        .enumerate()
+        .scan(start, |start, (index, duration)| {
             let piece_start = *start;
             *start += duration.sixteenths;
             Some(Piece {
                 xml: format!(
-                    "<rest dur=\"{}\"{}/>",
+                    "<rest dur=\"{}\"{}{}/>",
                     duration.dur,
-                    duration.dots_attribute()
+                    duration.dots_attribute(),
+                    fermata_attribute(index == 0 && fermata)
                 ),
                 start: piece_start,
                 sixteenths: duration.sixteenths,

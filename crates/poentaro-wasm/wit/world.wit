@@ -323,6 +323,7 @@ world poentaro-wasm {
         lyric,
         directive-line,
         guitar-diagram,
+        fermata,
     }
 
     // `variant` is a reserved WIT keyword, so the field named `variant` in

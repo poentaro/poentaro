@@ -53,6 +53,7 @@ pub(super) fn svg_variant_to_wit(variant: crate::svg_types::SvgVariantOut) -> Sv
         SvgVariantOut::Lyric => SvgVariant::Lyric,
         SvgVariantOut::DirectiveLine => SvgVariant::DirectiveLine,
         SvgVariantOut::GuitarDiagram => SvgVariant::GuitarDiagram,
+        SvgVariantOut::Fermata => SvgVariant::Fermata,
     }
 }
 

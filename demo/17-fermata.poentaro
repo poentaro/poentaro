@@ -1,0 +1,7 @@
+metadata { title "Fermatas", max measures per system 1 },
+
+parts ["Melody" [M]: notes],
+
+score """
+    [M] 1 2 3^ 0^
+    """,

@@ -31,6 +31,7 @@ pub(crate) struct NotePartParams<'a> {
     /// Whether this part draws a guitar-diagram band above everything else
     /// in this system (see `SystemBands`).
     pub(crate) has_guitar_diagrams: bool,
+    pub(crate) fermata_clearance: f32,
     pub(crate) measure_layout: &'a [MeasureColumnLayout],
     /// See `Metadata::notes.vertical_padding_pt` / `note_part_sub_row_heights`.
     pub(crate) notes_vertical_padding_pt: f32,
@@ -68,13 +69,14 @@ fn build_part_sub_rows(
     column_count: u32,
     measure_layout: &[MeasureColumnLayout],
     notes_vertical_padding_pt: f32,
+    fermata_clearance: f32,
 ) -> PartSubRows {
     let PartBands {
         is_chord_only,
         has_tuplet,
         has_guitar_diagrams,
     } = bands;
-    let musical_heights: Vec<f32> = if is_chord_only {
+    let mut musical_heights: Vec<f32> = if is_chord_only {
         chord_part_sub_row_heights(base).to_vec()
     } else if has_tuplet {
         note_part_sub_row_heights(base, notes_vertical_padding_pt).to_vec()
@@ -84,6 +86,18 @@ fn build_part_sub_rows(
         // `note_part_height_pt`, which mirrors this for system-height math).
         note_part_sub_row_heights(base, notes_vertical_padding_pt)[1..].to_vec()
     };
+    let (arc_sub, head_sub) = if is_chord_only {
+        (0, 1)
+    } else if has_tuplet {
+        (1, 3)
+    } else {
+        (0, 2)
+    };
+    if !is_chord_only {
+        if let Some(above_head) = musical_heights.get_mut(head_sub - 1) {
+            *above_head += fermata_clearance;
+        }
+    }
     let guitar_diagram_heights =
         has_guitar_diagrams.then(crate::font_metrics::guitar_diagram::band_height_pt);
     let rows: Vec<GridRow> = guitar_diagram_heights
@@ -97,13 +111,6 @@ fn build_part_sub_rows(
             elements: vec![],
         })
         .collect();
-    let (arc_sub, head_sub) = if is_chord_only {
-        (0, 1)
-    } else if has_tuplet {
-        (1, 3)
-    } else {
-        (0, 2)
-    };
     let offset = usize::from(has_guitar_diagrams);
     PartSubRows {
         rows,
@@ -142,6 +149,7 @@ pub(crate) fn expand_note_part(
         column_count,
         params.measure_layout,
         params.notes_vertical_padding_pt,
+        params.fermata_clearance,
     );
     if !part_template.label.is_empty() {
         if let Some(row) = sub_rows.get_mut(head_sub) {
@@ -254,6 +262,7 @@ pub(crate) fn expand_system_to_rows(
                     part_arcs,
                     part_tuplet_brackets,
                     has_guitar_diagrams: bands.has_guitar_diagrams(part_idx),
+                    fermata_clearance: bands.fermata_clearance(part_idx, base),
                     measure_layout,
                     notes_vertical_padding_pt: lyric_sizing.notes_vertical_padding_pt,
                 },

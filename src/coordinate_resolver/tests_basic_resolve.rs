@@ -184,6 +184,7 @@ fn low_octave_dots_resolve_to_the_same_x_as_their_note_head() {
             octave: 0,
             dotted: false,
             double_dotted: false,
+            fermata: false,
             head_label: None,
         },
         ..el

@@ -60,6 +60,7 @@ fn svg_variant_to_out(variant: SvgVariant) -> SvgVariantOut {
         SvgVariant::Lyric => SvgVariantOut::Lyric,
         SvgVariant::DirectiveLine => SvgVariantOut::DirectiveLine,
         SvgVariant::GuitarDiagram => SvgVariantOut::GuitarDiagram,
+        SvgVariant::Fermata => SvgVariantOut::Fermata,
     }
 }
 

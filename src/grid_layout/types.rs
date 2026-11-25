@@ -143,11 +143,13 @@ pub enum GridContent {
         octave: i8,
         dotted: bool,
         double_dotted: bool,
+        fermata: bool,
         head_label: Option<crate::compiler::NoteHeadLabel>,
     },
     Rest {
         dotted: bool,
         double_dotted: bool,
+        fermata: bool,
         implicit_fill: bool,
     },
     /// A single wide rest bar standing in for `count` consecutive
