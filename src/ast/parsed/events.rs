@@ -94,6 +94,7 @@ pub struct ParsedNote {
     /// Whether `..` was present as a double-dotted-note suffix. Only ever `true` when
     /// `dotted` is also `true`.
     pub double_dotted: bool,
+    pub fermata: bool,
     /// When the slur group closes on an extension within this note (e.g. `(5 -)`),
     /// this holds the offset in quarter-beats from the note's start where the slur arc
     /// should end. `None` means the slur closes at the note's head position (normal case).
@@ -168,6 +169,7 @@ pub struct ParsedRest {
     pub dotted: bool,
     /// Whether `..` was present as a double-dotted-rest suffix.
     pub double_dotted: bool,
+    pub fermata: bool,
     pub group_membership: u8,
     pub group_continuation: u8,
     /// The innermost `{...}` tuplet bracket this rest belongs to, if any.

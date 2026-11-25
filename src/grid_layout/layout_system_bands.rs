@@ -17,6 +17,7 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct SystemBands {
     pub(crate) tuplet_part_indices: HashSet<usize>,
+    fermata_octaves: HashMap<usize, i8>,
     pub(crate) guitar_diagram_part_indices: HashSet<usize>,
 }
 
@@ -26,6 +27,25 @@ impl SystemBands {
         let part_count = system.first().map_or(0, |first| first.rows.len());
         SystemBands {
             tuplet_part_indices,
+            fermata_octaves: (0..part_count)
+                .filter_map(|idx| {
+                    let octave = system
+                        .iter()
+                        .filter_map(|block| block.rows.get(idx))
+                        .flat_map(|row| &row.elements)
+                        .filter_map(|element| match element.content {
+                            ElementContent::NoteHead {
+                                fermata: true,
+                                octave,
+                                ..
+                            } => Some(octave.max(0)),
+                            ElementContent::Rest { fermata: true, .. } => Some(0),
+                            _ => None,
+                        })
+                        .max()?;
+                    Some((idx, octave))
+                })
+                .collect(),
             guitar_diagram_part_indices: (0..part_count)
                 .filter(|&idx| {
                     system.iter().any(|block| {
@@ -44,6 +64,12 @@ impl SystemBands {
                 })
                 .collect(),
         }
+    }
+
+    pub(crate) fn fermata_clearance(&self, part_idx: usize, base: f32) -> f32 {
+        self.fermata_octaves
+            .get(&part_idx)
+            .map_or(0.0, |&octave| base * (0.50 + 0.30 * f32::from(octave)))
     }
 
     pub(crate) fn has_tuplet_bracket(&self, part_idx: usize) -> bool {

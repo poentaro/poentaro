@@ -74,6 +74,7 @@ pub struct GroupedNote {
     /// True if this note was written with a second dot (double-dotted duration).
     /// Only ever `true` when `dotted` is also `true`.
     pub double_dotted: bool,
+    pub fermata: bool,
     pub slur_group_close_at_duration: Option<u32>,
     /// The innermost `{...}` tuplet bracket this note belonged to before rescaling,
     /// if any.
@@ -130,6 +131,7 @@ pub struct GroupedRest {
     pub dotted: bool,
     /// True if this rest was written with a second dot (double-dotted duration).
     pub double_dotted: bool,
+    pub fermata: bool,
     /// Byte range of this rest token in the original source.
     pub event_span: Span,
     pub group_membership: u8,

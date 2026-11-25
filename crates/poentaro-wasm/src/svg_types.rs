@@ -36,6 +36,7 @@ pub enum SvgVariantOut {
     Lyric,
     DirectiveLine,
     GuitarDiagram,
+    Fermata,
 }
 
 #[derive(Debug, Clone, Serialize)]

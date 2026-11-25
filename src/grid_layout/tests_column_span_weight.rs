@@ -72,6 +72,7 @@ fn note_head(column: u32) -> ColumnElement {
             octave: 0,
             dotted: false,
             double_dotted: false,
+            fermata: false,
             head_label: None,
         },
         note_id: None,
@@ -84,6 +85,7 @@ fn rest(column: u32) -> ColumnElement {
         content: ElementContent::Rest {
             dotted: false,
             double_dotted: false,
+            fermata: false,
             implicit_fill: false,
         },
         note_id: None,

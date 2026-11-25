@@ -21,6 +21,7 @@ fn note_row(id: &str, source_part_index: usize) -> MeasureRow {
                 octave: 0,
                 dotted: false,
                 double_dotted: false,
+                fermata: false,
                 head_label: None,
             },
             note_id: Some(0),

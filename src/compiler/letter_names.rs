@@ -168,6 +168,7 @@ fn spell_content(
             octave,
             dotted,
             double_dotted,
+            fermata,
             head_label: _,
         } => ElementContent::NoteHead {
             head_label: Some(NoteHeadLabel {
@@ -179,6 +180,7 @@ fn spell_content(
             octave,
             dotted,
             double_dotted,
+            fermata,
         },
         ElementContent::ChordSymbol {
             text,

@@ -5,6 +5,7 @@ pub struct DurationParse {
     pub duration: u32,
     pub dotted: bool,
     pub double_dotted: bool,
+    pub fermata: bool,
     pub octave_up: i8,
     pub octave_down: i8,
     pub tie_to_next_span: Option<Span>,
@@ -22,6 +23,7 @@ struct DurationSuffixState {
     /// behavior purposes when computing `dotted`/`double_dotted` below — typing
     /// 3+ dots silently behaves the same as typing exactly 2, with no error.
     dot_count: u32,
+    fermata: bool,
     octave_up: i8,
     octave_down: i8,
     tie_to_next_span: Option<Span>,
@@ -35,6 +37,7 @@ struct DurationSuffixContext<'a> {
     span: &'a Span,
     is_rest: bool,
     allows_octave: bool,
+    allows_fermata: bool,
     state: DurationSuffixState,
 }
 
@@ -62,6 +65,10 @@ impl DurationSuffixContext<'_> {
             }
             '.' => {
                 self.state.dot_count += 1;
+                Ok(Some(index + 1))
+            }
+            '^' if self.allows_fermata => {
+                self.state.fermata = true;
                 Ok(Some(index + 1))
             }
             '~' => {
@@ -123,9 +130,11 @@ pub fn parse_duration_suffixes<H: TimedUnitHead>(
         span,
         is_rest,
         allows_octave: H::allows_octave_suffixes(),
+        allows_fermata: H::allows_fermata(),
         state: DurationSuffixState {
             duration: 4,
             dot_count: 0,
+            fermata: false,
             octave_up: 0,
             octave_down: 0,
             tie_to_next_span: None,
@@ -189,6 +198,7 @@ pub fn parse_duration_suffixes<H: TimedUnitHead>(
         duration,
         dotted,
         double_dotted,
+        fermata: context.state.fermata,
         octave_up: context.state.octave_up,
         octave_down: context.state.octave_down,
         tie_to_next_span: context.state.tie_to_next_span,

@@ -24,11 +24,13 @@ pub enum AbsoluteContent {
         octave: i8,
         dotted: bool,
         double_dotted: bool,
+        fermata: bool,
         head_label: Option<crate::compiler::NoteHeadLabel>,
     },
     Rest {
         dotted: bool,
         double_dotted: bool,
+        fermata: bool,
         implicit_fill: bool,
     },
     MultiMeasureRest {

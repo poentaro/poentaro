@@ -306,6 +306,7 @@ fn compile_rest(
         content: ElementContent::Rest {
             dotted: rest.dotted,
             double_dotted: rest.double_dotted,
+            fermata: rest.fermata,
             implicit_fill: rest.implicit_fill,
         },
         note_id: Some(note_id),

@@ -70,6 +70,7 @@ fn make_block_with_accidental_note(
                         octave: 0,
                         dotted: false,
                         double_dotted: false,
+                        fermata: false,
                         head_label: None,
                     },
                     note_id: None,

@@ -97,6 +97,7 @@ fn note_head(dotted: bool, double_dotted: bool) -> ElementContent {
         octave: 0,
         dotted,
         double_dotted,
+        fermata: false,
         head_label: None,
     }
 }
@@ -105,6 +106,7 @@ fn rest(dotted: bool, double_dotted: bool) -> ElementContent {
     ElementContent::Rest {
         dotted,
         double_dotted,
+        fermata: false,
         implicit_fill: false,
     }
 }

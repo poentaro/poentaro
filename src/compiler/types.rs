@@ -179,11 +179,13 @@ pub enum ElementContent {
         octave: i8,
         dotted: bool,
         double_dotted: bool,
+        fermata: bool,
         head_label: Option<NoteHeadLabel>,
     },
     Rest {
         dotted: bool,
         double_dotted: bool,
+        fermata: bool,
         /// True when this rest fills a part not mentioned in this measure
         /// rather than being written by the composer — rendered with a
         /// distinct glyph. See `ParsedRest::implicit_fill`.

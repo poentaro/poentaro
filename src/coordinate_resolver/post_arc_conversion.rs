@@ -16,6 +16,7 @@ pub(super) fn to_post_arc_content(content: &GridContent) -> Option<PostArcGridCo
             octave,
             dotted,
             double_dotted,
+            fermata,
             head_label,
         } => Some(PostArcGridContent::NoteHead {
             pitch: pitch.clone(),
@@ -23,15 +24,18 @@ pub(super) fn to_post_arc_content(content: &GridContent) -> Option<PostArcGridCo
             octave: *octave,
             dotted: *dotted,
             double_dotted: *double_dotted,
+            fermata: *fermata,
             head_label: head_label.clone(),
         }),
         GridContent::Rest {
             dotted,
             double_dotted,
+            fermata,
             implicit_fill,
         } => Some(PostArcGridContent::Rest {
             dotted: *dotted,
             double_dotted: *double_dotted,
+            fermata: *fermata,
             implicit_fill: *implicit_fill,
         }),
         GridContent::MultiMeasureRest { count } => {

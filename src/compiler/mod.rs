@@ -180,7 +180,10 @@ pub(crate) fn is_resting(part_row: &PartRow) -> bool {
 
     // A non-lyric part is resting if all its notes are rests
     let events = slice.timing_events();
-    !events.is_empty() && events.iter().all(|e| matches!(e, NoteEvent::Rest(_)))
+    !events.is_empty()
+        && events
+            .iter()
+            .all(|e| matches!(e, NoteEvent::Rest(rest) if !rest.fermata))
 }
 
 /// Whether a lyric part's note ids advance past this measure: when the part
