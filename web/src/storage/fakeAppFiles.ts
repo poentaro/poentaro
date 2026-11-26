@@ -1,4 +1,4 @@
-import type { File, FileSummary, Version } from '../generated/protocol/app'
+import type { File, FileSummary, Version } from '../generated/protocol/api'
 import type { AppFileCalls } from '../protocol/clients'
 import type { CallOutcome } from '../protocol/outcome'
 
@@ -35,17 +35,21 @@ interface StoredFile {
   versions: Array<{ revision: number; savedAt: number; content: string }>
 }
 
-const value = <T>(value: T) => ({ kind: 'value', value }) as const
-const error = <E>(error: E) => ({ kind: 'error', error }) as const
+const value = <T>(value: T) => ({ kind: 'answered', value }) as const
+const error = <E>(problem: E) => ({ kind: 'failed', problem }) as const
+
+const MISSING = { kind: 'missing' } as const
+const PATH_TAKEN = { kind: 'taken' } as const
+const FILE_KIND = 'file with content'
+const VERSION_KIND = 'version saved at'
 
 function summaryOf(file: StoredFile): FileSummary {
   return {
+    kind: 'summary of file at revision trashed at',
     id: file.id,
     path: file.path,
     revision: file.revision,
-    ...(file.trashedAt === undefined
-      ? {}
-      : { trashedAt: new Date(file.trashedAt) }),
+    trashedAt: file.trashedAt === undefined ? null : new Date(file.trashedAt),
   }
 }
 
@@ -134,10 +138,11 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
         const file = files.get(id)
         return file
           ? value<File>({
+              kind: FILE_KIND,
               summary: summaryOf(file),
               content: file.content,
             })
-          : error({ kind: 'missing' })
+          : error(MISSING)
       }),
     writeFileAtRevisionContent: (id, revision, content) =>
       call(
@@ -145,11 +150,18 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
         [id, revision, content],
         () => {
           const file = files.get(id)
-          if (!file) return error({ kind: 'missing' })
-          if (file.trashedAt) return error({ kind: 'trashed' })
+          if (!file) {
+            return error({
+              kind: 'write refused',
+              error: { kind: 'not found', error: MISSING },
+            })
+          }
+          if (file.trashedAt) {
+            return error({ kind: 'write refused', error: { kind: 'trashed' } })
+          }
           if (file.revision !== revision) {
             return error({
-              kind: 'conflictAtRevisionContent',
+              kind: 'conflict at revision content',
               revision: file.revision,
               content: file.content,
             })
@@ -159,8 +171,10 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
       ),
     createFileAtContent: (id, path, content) =>
       call('create file _ at _ content _', [id, path, content], () => {
-        if (files.has(id)) return error({ kind: 'idTaken' })
-        if (holder(path)) return error({ kind: 'taken' })
+        if (files.has(id)) return error({ kind: 'id taken' })
+        if (holder(path)) {
+          return error({ kind: 'create refused', error: PATH_TAKEN })
+        }
         const file = { id, path, content, revision: 0, versions: [] }
         files.set(id, file)
         return value(summaryOf(file))
@@ -168,24 +182,26 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
     moveFileTo: (id, path) =>
       call('move file _ to _', [id, path], () => {
         const file = files.get(id)
-        if (!file) return error({ kind: 'missing' })
+        if (!file) return error({ kind: 'move not found', error: MISSING })
         const other = holder(path)
-        if (other && other.id !== id) return error({ kind: 'taken' })
+        if (other && other.id !== id) {
+          return error({ kind: 'move refused', error: PATH_TAKEN })
+        }
         file.path = path
         return value(undefined)
       }),
     trashFile: (id) =>
       call('trash file _', [id], () => {
         const file = files.get(id)
-        if (!file) return error({ kind: 'missing' })
+        if (!file) return error(MISSING)
         file.trashedAt ??= clock++
         return value(undefined)
       }),
     restoreFile: (id) =>
       call('restore file _', [id], () => {
         const file = files.get(id)
-        if (!file) return error({ kind: 'missing' })
-        if (!file.trashedAt) return error({ kind: 'notTrashed' })
+        if (!file) return error({ kind: 'restore not found', error: MISSING })
+        if (!file.trashedAt) return error({ kind: 'not trashed' })
         file.path = freePath(file.path, (path) => !!holder(path))
         file.trashedAt = undefined
         return value(file.path)
@@ -196,22 +212,23 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
         return file
           ? value<Version[]>(
               file.versions.map(({ revision, savedAt }) => ({
+                kind: VERSION_KIND,
                 revision,
                 savedAt: new Date(savedAt),
               })),
             )
-          : error({ kind: 'missing' })
+          : error(MISSING)
       }),
     readFileAtRevision: (id, revision) =>
       call('read file _ at revision _', [id, revision], () => {
         const file = files.get(id)
-        if (!file) return error({ kind: 'missing' })
+        if (!file) return error({ kind: 'version not found', error: MISSING })
         const version = file.versions.find(
           (saved) => saved.revision === revision,
         )
         return version
           ? value(version.content)
-          : error({ kind: 'noSuchVersion' })
+          : error({ kind: 'no such version' })
       }),
     batch: (build) => Promise.all(build(app)),
     moveFolderTo: (from, to) =>
@@ -222,10 +239,13 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
         if (moving.length === 0) {
           return live().some(inside(to))
             ? value(live().filter(inside(to)).map(summaryOf))
-            : error({ kind: 'noSuchFolder' })
+            : error({
+                kind: 'folder not found',
+                error: { kind: 'no such folder' },
+              })
         }
         if (live().some(inside(to))) {
-          return error({ kind: 'takenByOtherFiles', paths: [to] })
+          return error({ kind: 'taken by other files', paths: [to] })
         }
         for (const file of moving) {
           file.path = `${to}${file.path.slice(from.length)}`

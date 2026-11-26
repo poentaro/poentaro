@@ -13,11 +13,9 @@
 // with no way to run this, so share links opened there keep the generic
 // preview.
 
-import core from '../../crates/poentaro-wasm/pkg-component/poentaro_wasm.core.wasm'
-import { instantiate } from '../../crates/poentaro-wasm/pkg-component/poentaro_wasm.js'
 import deployConfig from '../src/generated/live-share-worker/deployConfig.json'
 import shareIdFormat from '../src/generated/live-share-worker/shareIdFormat.json'
-import { Client, SCHEMA_HASH } from '../src/generated/protocol/public'
+import { Client, SCHEMA_HASH } from '../src/generated/protocol/api'
 import { SHARE_QUERY_PARAM } from '../src/shareQueryParam'
 
 // Generated from `crates/live-share-worker/src/share_id.rs`
@@ -25,8 +23,6 @@ import { SHARE_QUERY_PARAM } from '../src/shareQueryParam'
 // importing it pulls nothing of the SPA's bundle into this edge function.
 const SHARE_ID_LENGTH = shareIdFormat.length
 const SHARE_ID_PATTERN = new RegExp(shareIdFormat.pattern)
-
-const root = instantiate(() => core, {})
 
 export const onRequestGet: PagesFunction = async (context) => {
   const response = await context.next()
@@ -38,30 +34,21 @@ export const onRequestGet: PagesFunction = async (context) => {
   const shareId = payload.slice(0, SHARE_ID_LENGTH)
   if (!SHARE_ID_PATTERN.test(shareId)) return response
 
-  const wasm = await root
-  const codec = wasm
-  const client = new Client(
-    {
-      encodeRequest: (calls) => codec.protocolEncodeRequest('public', calls),
-      decodeResponse: (methods, response) =>
-        codec.protocolDecodeResponse('public', methods, response),
-    },
-    async (body) => {
-      const result = await fetch(`https://${deployConfig.workerHost}/public`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain',
-          'Poentaro-Schema': SCHEMA_HASH,
-        },
-        body,
-        cache: 'no-store',
-      })
-      if (!result.ok) throw new Error(`share preview: ${result.status}`)
-      return result.text()
-    },
-  )
+  const client = new Client(async (body) => {
+    const result = await fetch(`https://${deployConfig.workerHost}/api`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Poentaro-Schema': SCHEMA_HASH,
+      },
+      body,
+      cache: 'no-store',
+    })
+    if (!result.ok) throw new Error(`share preview: ${result.status}`)
+    return result.text()
+  })
   const outcome = await client.openSharedLink(shareId).catch(() => undefined)
-  if (outcome?.kind !== 'value' || outcome.value.kind === 'ended')
+  if (outcome?.kind !== 'answered' || outcome.value.kind === 'ended')
     return response
   const shared = outcome.value
   const name = shared.kind === 'file' ? shared.file.name : shared.folder.name

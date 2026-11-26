@@ -1,18 +1,18 @@
-//! Poentaro's anyx protocols, one per audience, each generated at build
-//! time from an entry in `schemas/`, following explicit `USE` imports:
+//! Poentaro's protocols, each generated at build time from `schemas/`:
 //!
+//! - `api`: what the web app calls (`POST /api`), from the anyx core schema
+//!   `schemas/api/api.anyx`. An endpoint needs a bearer session unless the
+//!   schema says `access (public)`, and the types enforce it: a handler
+//!   that needs an account only gets one from a verified token.
 //! - `agent`: what an account owner's AI agent calls with an API key
 //!   (`POST /agent`).
-//! - `app`: what the web app calls for a signed-in account (`POST /app`).
-//! - `public`: what anyone calls without signing in (`POST /public`).
 //! - `test`: what end-to-end tests call to set up (`POST /test`).
 //!
-//! Each module holds a flat `Server` trait, `handle` and `Client`. The
-//! worker (`crates/live-share-worker`) implements the server traits over D1.
+//! The worker (`crates/live-share-worker`) implements their server traits
+//! over D1.
 
+include!(concat!(env!("OUT_DIR"), "/api.rs"));
 include!(concat!(env!("OUT_DIR"), "/agent.rs"));
-include!(concat!(env!("OUT_DIR"), "/app.rs"));
-include!(concat!(env!("OUT_DIR"), "/public.rs"));
 include!(concat!(env!("OUT_DIR"), "/test.rs"));
 
 /// What a generated type turns into and out of, for a server that needs to

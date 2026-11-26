@@ -114,7 +114,7 @@ describe('createCloudBackend: saveContent()', () => {
     server.failNext(WRITE, {
       kind: 'error',
       error: {
-        kind: 'conflictAtRevisionContent',
+        kind: 'conflict at revision content',
         revision: 7,
         content: 'theirs',
       },

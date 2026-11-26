@@ -184,7 +184,7 @@ export function useSyncedShareOwner(
       const share = result.data
       applyStatusFor(
         cloudFileId,
-        share.kind === 'neverShared'
+        share.kind === 'never shared'
           ? null
           : {
               fileId: cloudFileId,

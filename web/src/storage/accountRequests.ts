@@ -1,13 +1,11 @@
-import {
-  type ChangePasswordFromToError,
-  type CreatedKey,
-  type Key,
-  KeyId,
-} from '../generated/protocol/app'
 import type {
-  SignInPasswordError,
-  SignUpPasswordError,
-} from '../generated/protocol/public'
+  ChangePasswordError,
+  CreatedKey,
+  CredentialError,
+  Key,
+  SignInError,
+  SignUpError,
+} from '../generated/protocol/api'
 import {
   appClient,
   type ClientOptions,
@@ -45,10 +43,7 @@ export type AccountResult<T> =
   | { ok: false; failure: AccountFailure; traceId: string | null }
 
 /** Every error an account method can answer, by `kind`. */
-type AccountError =
-  | ChangePasswordFromToError
-  | SignInPasswordError
-  | SignUpPasswordError
+type AccountError = ChangePasswordError | SignInError | SignUpError
 
 const SOMETHING_WENT_WRONG: AccountFailure = {
   kind: 'message',
@@ -57,21 +52,31 @@ const SOMETHING_WENT_WRONG: AccountFailure = {
 
 function errorFailure(error: AccountError): AccountFailure {
   switch (error.kind) {
-    case 'emailTaken':
+    case 'email taken':
       return { kind: 'email-taken' }
-    case 'lockedFor':
+    case 'locked for':
+    case 'password locked for':
       return {
         kind: 'locked',
         retryAfterSeconds: Math.ceil(error.duration / 1000),
       }
-    case 'invalidEmail':
-      return { kind: 'message', message: 'Enter a valid email address.' }
-    case 'weakPassword':
+    case 'weak password':
+    case 'weak new password':
       return { kind: 'message', message: error.message }
     case 'incorrect':
-    case 'incorrectPassword':
+    case 'incorrect password':
       return { kind: 'incorrect-credentials' }
-    case 'tooManyRequests':
+    case 'sign up refused':
+    case 'sign in refused':
+      return credentialFailure(error.error)
+  }
+}
+
+function credentialFailure(error: CredentialError): AccountFailure {
+  switch (error.kind) {
+    case 'invalid email':
+      return { kind: 'message', message: 'Enter a valid email address.' }
+    case 'rate limited':
       return {
         kind: 'message',
         message: 'Too many attempts from this network. Wait a minute.',
@@ -209,7 +214,7 @@ export function revokeApiKey(
   id: string,
 ): Promise<AccountResult<null>> {
   return attemptValue(async () => {
-    settled(await (await appClient(identityToken)).revokeAgentKey(KeyId(id)))
+    settled(await (await appClient(identityToken)).revokeAgentKey(id))
     return null
   })
 }

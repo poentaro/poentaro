@@ -541,7 +541,8 @@ migrations (see "Storage" below), nothing else.
 - File names are slash paths: `files.name` holds the whole path (`Hymns/Advent/O Come.poentaro`) and `idx_files_owner_name` (unique on `(owner_user_id, name)`) is therefore a uniqueness constraint on the full path; the schema has no length cap or character filter. The worker depends on the root `poentaro` crate (`default-features = false`, same as `crates/poentaro-wasm`), and `files::validate_file_name` runs `file_tree::TreePath::parse` on the name of every `POST /files`, `/files/{id}/rename` and `/files/{id}/restore` before touching D1, so the web app and the worker share one rule set (no empty segments, no `.`/`..`, at most 1024 UTF-8 bytes for the whole path). A violation answers `ApiError::InvalidName` (400). `POST /files/rename-batch` (`{identityToken, moves:[{id,name}]}`, `RenameBatchRequest`) validates every name, then `files::plan_batch_rename` over the current rows decides `Apply`, `AlreadyApplied` (an ack-lost retry succeeds), `NotFound`, `Invalid` or `NamesTaken`; the move itself is one `UPDATE ... json_each(?1)` statement (`queries/rename_files_batch.sql`), atomic by statement semantics and free of D1's per-invocation query limit. Create, rename, restore and batch rename also enforce that a path is not both a file and a folder: the handler loads the owner's live file names (`queries/list_live_file_names.sql`) and `files::find_file_folder_conflict` judges the final state (a batch is evaluated as a whole; `<folder>/.keep` is an ordinary file, so it only conflicts with a file named `<folder>`). A violation answers `ApiError::FileFolderConflict { path }` (409), which the outbox treats as a permanent failure. The check is read-then-write, not atomic, so two concurrent writes can still race past it. `share::to_public_doc` returns only the last path segment as `filename`, so a viewer of one shared file never sees the owner's folder names.
 - Folder shares (`src/folder_share.rs`, pure; handlers in `handlers/shares.rs`; migration `0005_folder_shares.sql`): a `shares` row is either a file share (`file_id`) or a folder share (`folder_prefix`, the folder path without trailing slash), exactly one (CHECK), and now carries its own `owner_user_id` (file shares used to derive it from the file). A folder has at most one row per owner (unique `(owner_user_id, folder_prefix)`), so stop-then-start reuses the `share_id`. The worker still knows nothing about folders as entities: a folder share covers every active, non-binned file whose name starts with `<prefix>/` at read time (matched with `substr`, whole segments, so `Hymns` never covers `Hymns 2/...`; `%`/`_` are literal), so files added, edited, moved in or out and deleted show on the viewer's next load (no push, no polling). Shared folders are read-only for viewers. Routes: `POST /folders/share` (`FolderShareRequest {identityToken, folder}` -> `{shareId}`; `folder` validated with `TreePath` rules plus "no `.keep` segment" -> `invalid_name`; `not_found` when the folder has no active file, a `.keep` placeholder counts; `shared_folder_too_large` (413) over the limits), `/folders/share/stop` (204, or `not_found` if never shared; works on a folder that has since emptied), `/folders/share/status` (`{share: {shareId, ended} | null}`, same shape as the file status). `POST /shares/overview` (`{identityToken}` -> `{files: [{shareId, fileId, name}], folders: [{shareId, folder}]}`, live links only, binned files excluded) is the one read the share UI derives everything from: own-link markers, "shared via <ancestor>" (a `folders` entry that is a path-segment prefix of the file/folder) and the "this folder contains files with their own link" warning. Viewer: `GET /shares/{share_id}` falls through from the file-share view to `get_folder_share_header`; for a folder share `SyncedDoc.folder` (`SharedFolder {name, files: [{path (relative to the shared folder), content, revision}], emptyFolders}`) holds the tree, `filename` repeats the folder name, `content` is `""` and `revision` 0; `.keep` rows are never files, and `emptyFolders` are placeholder folders with no file under them. `folder` is absent (skipped, not `null`) for file shares, ended shares and unknown ids, so those responses are unchanged. A stopped share answers `ended: true` with nothing else; a live folder with no files is an empty live tree (trashing every file does not end the share). Size limit: `folder_share::MAX_SHARED_FOLDER_FILES` (300 files, placeholders included) and `MAX_SHARED_FOLDER_BYTES` (10 MiB of content), checked by `get_folder_files_stats.sql` both when starting and when a viewer loads; over it answers `ApiError::SharedFolderTooLarge`, never a truncated tree. Renames: `POST /files/rename-batch` reads the owner's folder-share prefixes (live or stopped), and `folder_share::plan_prefix_rewrites` treats a prefix as moved when the batch moves every active file under it to one common new folder keeping the rest of each path (a folder rename/move); nested shared folders get their own rewrite, partial moves leave the share alone (it follows the prefix, not file ids). The file renames and `rewrite_folder_share_prefix.sql` updates go out in one D1 `batch` (one transaction), so the link keeps its `share_id`; a rewrite onto a folder that already has its own share hits the unique index and answers `name_taken`.
 - Protocol clients: AnyX schemas generate Rust servers and TypeScript clients,
-  with Rust wasm codecs. The worker serves `/public`, `/app`, `/agent`, and
+  with Rust wasm codecs, except `api`, an anyx core schema whose generated
+  clients speak JSON themselves. The worker serves `/api`, `/agent`, and
   test-only `/test`; former REST URLs return 404. `build:worker-types` runs
   `tests/export_web_config.rs` for share-id format, deployment settings and
   test-worker configuration, then generates the AnyX clients. It produces no
@@ -793,23 +794,33 @@ text, and the methods are declared in a schema.
   (`useFocusRevisionCheck`), so an agent's save shows up; unsaved edits are
   never replaced, and their save goes through the outbox's conflict flow.
 
-### Web app protocols (`/public`, `/app`, `/test`)
+### Web app protocols (`/api`, `/test`)
 
-The web app uses three AnyX protocols generated from
-`crates/poentaro-protocol/schemas`. The REST routes have been removed.
+The web app calls `api`, generated by `anyx-core-generate` from the anyx
+core schema `crates/poentaro-protocol/schemas/api/api.anyx`, and the
+end-to-end tests call the AnyX protocol `test`.
 
+- Access is a type, not a route: every endpoint is a constructor of
+  `Endpoint returning _ failing with _ access _ effect _`, and the schema's
+  alias makes `access (bearer)` the default, so only an endpoint that says
+  `access (public)` takes no session. Each call carries a `Credential for`
+  its endpoint's access (`anonymous` or `bearer token`), so a mismatch
+  cannot be written, and `serve` (written in the schema) turns a bearer
+  token into an `Account` with `account from` before the endpoint's handler
+  runs. A token naming no live session answers that call `unauthenticated`.
 - Route (`src/handlers/protocols.rs`, `handlers::protocol_endpoint` /
-  `serve_protocol`): `POST /public` needs no credential; `POST /app` needs a
-  session token as `Authorization: Bearer`, and a token that names no live
-  session is a `401` before any method runs; `POST /test` exists only when
-  `SYNCED_SHARE_E2E_RESET_EMAILS` is set. A client that sends a
-  `Poentaro-Schema` hash other than the schema's own (`SCHEMA_HASH`) gets a
-  `409`, and the web app asks to reload.
-- Servers: `PublicServer` (`protocols/public.rs`), `AppServer`
-  (`protocols/app.rs`, with `app/server.rs` delegating to `app/files.rs` and `app/links.rs`) and
-  `TestServer` (`protocols/test.rs`). They call the service cores: `handlers::file_store` for file writes, `shares::start_file_link`
-  and friends, `api_keys::create_key`/`revoke_key`, `auth::create_account`,
-  `start_session`, `end_session`, `replace_password`.
+  `serve_protocol`): `POST /api` takes a JSON list of calls and answers a
+  `Reply` per call (`answered`, `failed`, `unauthenticated`, `internal
+  error`); `POST /test` exists only when `SYNCED_SHARE_E2E_RESET_EMAILS` is
+  set. A client that sends a `Poentaro-Schema` hash other than the schema's
+  own (`SCHEMA_HASH`) gets a `409`, and the web app asks to reload.
+- Servers: `ApiServer` (`protocols/api.rs`) implements the generated
+  `api::Server` (`type Account = SignedIn`) by delegating to `PublicServer`
+  (`protocols/public.rs`) and `AppServer` (`protocols/app.rs`,
+  `app/files.rs`, `app/links.rs`); `TestServer` (`protocols/test.rs`). They
+  call the service cores: `handlers::file_store` for file writes,
+  `shares::start_file_link` and friends, `api_keys::create_key`/`revoke_key`,
+  `auth::create_account`, `start_session`, `end_session`, `replace_password`.
 - The app addresses files by id. `list files` returns summaries without
   content (`db::list_file_summaries`, `naming::FileSummaryRow`); content
   comes from `read file`.
@@ -821,9 +832,11 @@ The web app uses three AnyX protocols generated from
   name of the request and whether one failed, or `Refused` with the status.
 - Web: the generated clients (`web/src/generated/protocol/`) go through
   `web/src/protocol/` (`clients.ts`: `publicClient`, `appClient`,
-  `testClient`; `transport.ts`: `codecFor`, `sendTo`), with the text encoded
-  and decoded in Rust (WIT `protocol-encode-request` takes every call of a
-  request, `protocol-decode-response` gives an outcome per call). A
+  `testClient`; `signedIn.ts`: an `api` client with the session token given
+  to every endpoint that takes one; `outcome.ts`: `settled` reads a `Reply`
+  or a `test` outcome; `transport.ts`: `codecFor`, `sendTo`). `test`'s text
+  is encoded and decoded in Rust (WIT `protocol-encode-request`,
+  `protocol-decode-response`). A
   client's `batch(build)` sends every call `build` makes as one request;
   `cloudBackendListing.ts` reads the account's `list files` without any file
   text; `cloudBackendTextLoading.ts`'s `ensureLoaded` reads one file's text
@@ -833,9 +846,8 @@ The web app uses three AnyX protocols generated from
   which the unit tests replace with `createFakeAppFiles`
   (`web/src/storage/fakeAppFiles.ts`, an in-memory server).
 - E2e: `web/e2e/protocolClients.ts` gives the Node side the same clients.
-  `web/e2e/appCalls.ts` matches the page's `POST /app` requests by method,
-  decoding them in Rust (WIT `protocol-decode-request`), and answers or
-  rewrites them with an outcome encoded in Rust (`protocol-encode-response`):
+  `web/e2e/appCalls.ts` matches the page's `POST /api` requests by the
+  endpoint's kind in the JSON, and answers or rewrites them with a `Reply`:
   `routeAppCall`, `answerCall`, `refuseCall`, `rewriteAnswers`.
 
 ### Version history
@@ -1250,7 +1262,7 @@ The shell only does I/O, timers and rendering; every decision is a wasm call.
 - Existing: `outboxStore.ts` (persists `StoredRecord`s), `memoryOutboxStore.ts`
   (in-memory store), `outboxLock.ts` (single-tab lock), `outboxScheduler.ts`
   (timer driven by `next_wake_ms`).
-- `sendMessage.ts` (performs a `SendRequest` through `poentaro app`'s file
+- `sendMessage.ts` (performs a `SendRequest` through `api`'s file
   calls and maps each method error to a `SendResult`; an error the outbox
   can't fix is `Permanent { status, reason: <error kind> }`), `outboxLooper.ts` (the Looper; runs on the
   leader tab only), `baseSnapshots.ts` (Base snapshot storage under

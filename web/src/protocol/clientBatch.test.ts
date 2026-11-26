@@ -1,49 +1,62 @@
-import { beforeAll, describe, expect, it } from 'vitest'
-import { Client } from '../generated/protocol/app'
-import { poentaroWasm } from '../poentaroWasm'
-import { installRealWasm } from '../storage/cloudBackendTestHelpers'
-import { codecFor } from './transport'
+import { describe, expect, it } from 'vitest'
+import { Client } from '../generated/protocol/api'
+import { signedIn } from './signedIn'
 
-beforeAll(installRealWasm)
-
-/** A client whose worker answers each call with `outcomes`, in order, and
- * records every request it was sent. */
-function clientAnswering(outcomes: unknown[]) {
-  const requests: string[] = []
-  const client = new Client(codecFor('app'), async (request) => {
-    requests.push(request)
-    const calls = JSON.parse(
-      poentaroWasm().protocolDecodeRequest('app', request),
-    ) as unknown[]
-    return poentaroWasm().protocolEncodeResponse(
-      'app',
-      request,
-      JSON.stringify(outcomes.splice(0, calls.length)),
-    )
+/** A signed-in client whose worker answers each call with `replies`, in
+ * order, and records every request it was sent. */
+function clientAnswering(replies: unknown[]) {
+  const requests: unknown[][] = []
+  const api = new Client(async (request) => {
+    const calls = JSON.parse(request) as unknown[]
+    requests.push(calls)
+    return JSON.stringify(replies.splice(0, calls.length))
   })
-  return { client, requests }
+  return { client: signedIn(api, 'token'), requests }
 }
 
 const file = (id: string) => ({
-  kind: 'value',
-  value: { summary: { id, path: `${id}.poentaro`, revision: 1 }, content: id },
+  kind: 'answered',
+  value: {
+    kind: 'file with content',
+    summary: {
+      kind: 'summary of file at revision trashed at',
+      id,
+      path: `${id}.poentaro`,
+      revision: 1,
+      trashedAt: null,
+    },
+    content: id,
+  },
 })
 
 describe('the generated client batch', () => {
   it('sends every call made in the batch as one request', async () => {
     const { client, requests } = clientAnswering([
       file('a'),
-      { kind: 'error', error: { kind: 'missing' } },
+      { kind: 'failed', problem: { kind: 'missing' } },
       file('c'),
     ])
-    const outcomes = await client.batch((calls) =>
+    const replies = await client.batch((calls) =>
       ['a', 'b', 'c'].map((id) => calls.readFile(id)),
     )
     expect(requests).toHaveLength(1)
-    expect(outcomes.map((outcome) => outcome.kind)).toEqual([
-      'value',
-      'error',
-      'value',
+    expect(replies.map((reply) => reply.kind)).toEqual([
+      'answered',
+      'failed',
+      'answered',
+    ])
+  })
+
+  it('sends the session token as each signed-in call’s credential', async () => {
+    const { client, requests } = clientAnswering([file('a')])
+    await client.readFile('a')
+    expect(requests[0]).toMatchObject([
+      {
+        arguments: {
+          endpoint: { kind: 'read file', id: 'a' },
+          credential: { kind: 'bearer token', token: 'token' },
+        },
+      },
     ])
   })
 
@@ -61,8 +74,9 @@ describe('the generated client batch', () => {
   })
 
   it('fails every call of the batch when the request fails', async () => {
-    const client = new Client(codecFor('app'), () =>
-      Promise.reject(new Error('offline')),
+    const client = signedIn(
+      new Client(() => Promise.reject(new Error('offline'))),
+      'token',
     )
     await expect(
       client.batch((calls) => [calls.readFile('a'), calls.readFile('b')]),

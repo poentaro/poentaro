@@ -1,13 +1,9 @@
-//! Writes each audience's generated TypeScript client into the folder given
+//! Writes each generated TypeScript client into the folder given
 //! as the only argument, as `<audience>.ts`. The web app runs it before it
 //! builds (`build:protocol` in `web/package.json`).
 
-const CLIENTS: [(&str, &str); 3] = [
-    ("app", include_str!(concat!(env!("OUT_DIR"), "/app.ts"))),
-    (
-        "public",
-        include_str!(concat!(env!("OUT_DIR"), "/public.ts")),
-    ),
+const CLIENTS: [(&str, &str); 2] = [
+    ("api", include_str!(concat!(env!("OUT_DIR"), "/api.ts"))),
     ("test", include_str!(concat!(env!("OUT_DIR"), "/test.ts"))),
 ];
 

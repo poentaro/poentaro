@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import type { File, FileSummary } from '../../../src/generated/protocol/app'
+import type { File, FileSummary } from '../../../src/generated/protocol/api'
 import type { AppOutcome } from '../../appCalls'
 import { rewriteAnswers } from '../../appCalls'
 import { seedCloudFile, trashCloudFile } from '../../cloudFileHelpers'
@@ -64,7 +64,7 @@ Given(
     // Only while still trashed: once restored, its real name shows.
     type Summary = FileSummary
     const relabel = (summary: Summary): Summary =>
-      summary.id === trashSource.id && summary.trashedAt !== undefined
+      summary.id === trashSource.id && summary.trashedAt !== null
         ? { ...summary, path: 'original.poentaro' }
         : summary
     await rewriteAnswers(

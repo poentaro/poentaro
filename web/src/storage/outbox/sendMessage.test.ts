@@ -236,7 +236,7 @@ describe('sendMessage folder move race', () => {
     ])
     server.failNext('move folder _ to _', {
       kind: 'error',
-      error: { kind: 'takenByOtherFiles', paths: ['New/a.poentaro'] },
+      error: { kind: 'taken by other files', paths: ['New/a.poentaro'] },
     })
     const result = await sendMessage(
       requestFor({

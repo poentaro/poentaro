@@ -1,7 +1,4 @@
-import type {
-  CreateFileAtContentError,
-  MoveFileToError,
-} from '../src/generated/protocol/app'
+import type { CreateError, MoveFileError } from '../src/generated/protocol/api'
 import { settled } from '../src/protocol/outcome'
 import { signInE2eAccount } from './e2eAccounts.ts'
 import { appClient, publicClient, valueOrFail } from './protocolClients'
@@ -81,7 +78,10 @@ export async function seedCloudFile(
       revision: result.value.revision,
       trashedAt: null,
     }
-  if (result.error.kind === 'taken')
+  if (
+    result.error.kind === 'create refused' &&
+    result.error.error.kind === 'taken'
+  )
     return reseedExistingFile(email, name, content)
   throw new Error(`seedCloudFile: ${JSON.stringify(result.error)}`)
 }
@@ -99,7 +99,7 @@ async function reseedExistingFile(
   const files = await valueOrFail('list files', client.listFiles())
   const existing = files.find((file) => file.path === name)
   if (!existing) throw new Error(`No existing file at ${name}`)
-  if (existing.trashedAt !== undefined)
+  if (existing.trashedAt !== null)
     await valueOrFail('restore file', client.restoreFile(existing.id))
   const revision = await valueOrFail(
     'write file',
@@ -108,11 +108,18 @@ async function reseedExistingFile(
   return { id: existing.id, name, content, revision, trashedAt: null }
 }
 
-/** What the worker answered a write: `ok`, or the `ApiError` code. */
-export type CloudWriteOutcome =
-  | 'ok'
-  | CreateFileAtContentError['kind']
-  | MoveFileToError['kind']
+/** What the worker answered a write: `ok`, or the innermost error's kind
+ * (`taken`, `invalid path`, ...). */
+export type CloudWriteOutcome = 'ok' | string
+
+/** The innermost error of a nested one: `create refused` of `bad path` of
+ * `invalid path` is `invalid path`. */
+function innermost(
+  error: CreateError | MoveFileError | { kind: string },
+): string {
+  const inner = (error as { error?: { kind: string } }).error
+  return inner ? innermost(inner) : error.kind
+}
 
 export async function tryCreateCloudFile(
   email: string,
@@ -126,7 +133,7 @@ export async function tryCreateCloudFile(
       DEFAULT_CLOUD_FILE_CONTENT,
     ),
   )
-  return result.kind === 'error' ? result.error.kind : 'ok'
+  return result.kind === 'error' ? innermost(result.error) : 'ok'
 }
 export async function tryRenameCloudFile(
   email: string,
@@ -135,7 +142,7 @@ export async function tryRenameCloudFile(
 ): Promise<CloudWriteOutcome> {
   const client = await appClient(await seedTokenFor(email))
   const result = settled(await client.moveFileTo(id, name))
-  return result.kind === 'error' ? result.error.kind : 'ok'
+  return result.kind === 'error' ? innermost(result.error) : 'ok'
 }
 export async function trashCloudFile(email: string, id: string): Promise<void> {
   await valueOrFail(

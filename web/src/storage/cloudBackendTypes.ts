@@ -1,5 +1,5 @@
 import type { FileStoreState } from '../fileStore'
-import type { Version } from '../generated/protocol/app'
+import type { Version } from '../generated/protocol/api'
 import type { BaseSnapshots } from './outbox/baseSnapshots'
 import type { ConflictFlow } from './outbox/conflictFlow'
 import type { OutboxLooper } from './outbox/outboxLooper'

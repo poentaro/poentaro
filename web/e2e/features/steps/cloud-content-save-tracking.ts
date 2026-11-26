@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import type { FileSummary } from '../../../src/generated/protocol/app'
+import type { FileSummary } from '../../../src/generated/protocol/api'
 import { appCallTo, outcomesOf } from '../../appCalls'
 
 const WRITE = 'write file _ at revision _ content _'

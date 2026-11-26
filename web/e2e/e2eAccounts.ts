@@ -28,8 +28,8 @@ export async function signInE2eAccount(email: string): Promise<string> {
   assertKnownEmail(email)
   const client = await publicClient()
   const signUp = await client.signUpPassword(email, E2E_PASSWORD)
-  if (signUp.kind === 'value') return signUp.value.token
-  if (signUp.kind !== 'error' || signUp.error.kind !== 'emailTaken') {
+  if (signUp.kind === 'answered') return signUp.value.token
+  if (signUp.kind !== 'failed' || signUp.problem.kind !== 'email taken') {
     throw new Error(
       `e2eAccounts: sign-up for ${email} failed: ${JSON.stringify(signUp)}`,
     )

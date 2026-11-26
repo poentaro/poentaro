@@ -1,4 +1,4 @@
-import type { Codec } from '../generated/protocol/public'
+import type { Codec } from '../generated/protocol/test'
 import { type Protocol, poentaroWasm } from '../poentaroWasm'
 import { NetworkFailure, WorkerRequestError } from '../syncedShare/workerClient'
 import { syncedShareWorkerOrigin } from '../syncedShare/workerUrl'
@@ -8,7 +8,7 @@ import { markSchemaOutdated } from './schemaOutdated'
  * when it serves another schema. */
 export const SCHEMA_HEADER = 'Poentaro-Schema'
 
-/** `/app` refused the session token: it names no live session. */
+/** The session token names no live session. */
 export class SessionEnded extends Error {}
 
 /** The worker serves a newer schema than this tab was built from. */
@@ -27,10 +27,9 @@ export function codecFor(protocol: Protocol): Codec {
 export interface Endpoint {
   /** The worker's host, as `VITE_SYNCED_SHARE_HOST` names it. */
   host: string
-  protocol: Protocol
+  /** The worker's path: `api`, or a protocol of `codecFor`. */
+  protocol: 'api' | Protocol
   schemaHash: string
-  /** The session token, for `app`. */
-  token?: string
   /** Told the trace ID of each response that carries one, so a method error
    * can name its request in the worker's `app_log`. */
   onTraceId?: (traceId: string) => void
@@ -47,11 +46,11 @@ export function sendTo(
 ): (request: string) => Promise<string> {
   const url = `${syncedShareWorkerOrigin(endpoint.host)}/${endpoint.protocol}`
   const headers: Record<string, string> = {
-    'Content-Type': 'text/plain; charset=utf-8',
+    'Content-Type':
+      endpoint.protocol === 'api'
+        ? 'application/json'
+        : 'text/plain; charset=utf-8',
     [SCHEMA_HEADER]: endpoint.schemaHash,
-  }
-  if (endpoint.token !== undefined) {
-    headers.Authorization = `Bearer ${endpoint.token}`
   }
   return async (request) => {
     let response: Response
