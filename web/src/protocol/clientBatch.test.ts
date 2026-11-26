@@ -17,9 +17,7 @@ function clientAnswering(replies: unknown[]) {
 const file = (id: string) => ({
   kind: 'answered',
   value: {
-    kind: 'file with content',
     summary: {
-      kind: 'summary of file at revision trashed at',
       id,
       path: `${id}.poentaro`,
       revision: 1,

@@ -66,27 +66,30 @@ DATA Reply of (response: Type) or (error: Type) RETURNS Type WITH [
 ## ---------------------------------------------------------------------------
 ## Records.
 
-DATA Session RETURNS Type WITH [
+RECORD Session RETURNS Type WITH [
   ## Send `token` as a bearer token to every endpoint that isn't public.
-  session with token (token: Text) email (email: Text) RETURNS Session,
+  token (token: Text),
+  email (email: Text),
 ],
 
-DATA Shared file RETURNS Type WITH [
-  shared file named (name: Text) content (content: Text) revision (revision: Integer)
-    RETURNS Shared file,
+RECORD Shared file RETURNS Type WITH [
+  named (name: Text),
+  content (content: Text),
+  revision (revision: Integer),
 ],
 
-DATA Folder file RETURNS Type WITH [
-  ## `path` is relative to the shared folder, such as `Advent/O Come.poentaro`.
-  folder file at (path: Text) content (content: Text) revision (revision: Integer)
-    RETURNS Folder file,
+RECORD Folder file RETURNS Type WITH [
+  ## Relative to the shared folder, such as `Advent/O Come.poentaro`.
+  at (path: Text),
+  content (content: Text),
+  revision (revision: Integer),
 ],
 
-DATA Shared folder RETURNS Type WITH [
-  ## `empty folders` are the folders with no file in them.
-  shared folder named (name: Text) files (files: List of (Folder file))
-    empty folders (empty folders: List of (Text))
-    RETURNS Shared folder,
+RECORD Shared folder RETURNS Type WITH [
+  named (name: Text),
+  files (files: List of (Folder file)),
+  ## The folders with no file in them.
+  empty folders (empty folders: List of (Text)),
 ],
 
 DATA Shared RETURNS Type WITH [
@@ -99,34 +102,40 @@ DATA Shared RETURNS Type WITH [
 FUNCTION Migration id RETURNS Type IS Text,
 FUNCTION Key id RETURNS Type IS Text,
 
-DATA File summary RETURNS Type WITH [
-  ## `id` is made by the browser that created the file and never changes.
-  ## `path` is a slash path, such as `Hymns/hymn.poentaro`.
-  summary of file (id: Text) at (path: Text) revision (revision: Integer)
-    trashed at (trashed at: Optional (Instant))
-    RETURNS File summary,
+RECORD File summary RETURNS Type WITH [
+  ## Made by the browser that created the file. It never changes.
+  id (id: Text),
+  ## A slash path, such as `Hymns/hymn.poentaro`.
+  at (path: Text),
+  revision (revision: Integer),
+  trashed at (trashed at: Optional (Instant)),
 ],
 
-DATA File RETURNS Type WITH [
-  file (summary: File summary) with content (content: Text) RETURNS File,
+RECORD File RETURNS Type WITH [
+  summary (summary: File summary),
+  content (content: Text),
 ],
 
-DATA Version RETURNS Type WITH [
-  version (revision: Integer) saved at (saved at: Instant) RETURNS Version,
+RECORD Version RETURNS Type WITH [
+  revision (revision: Integer),
+  saved at (saved at: Instant),
 ],
 
-DATA Key RETURNS Type WITH [
-  ## `prefix` is the start of the key, such as `poe_AbCd1234`. `expired`
-  ## says whether it had stopped working when it was listed.
-  key (id: Key id) prefix (prefix: Text) created at (created at: Instant)
-    last used at (last used at: Optional (Instant)) expires at (expires at: Instant)
-    expired (expired: Boolean)
-    RETURNS Key,
+RECORD Key RETURNS Type WITH [
+  id (id: Key id),
+  ## The start of the key, such as `poe_AbCd1234`.
+  prefix (prefix: Text),
+  created at (created at: Instant),
+  last used at (last used at: Optional (Instant)),
+  expires at (expires at: Instant),
+  ## Whether it had stopped working when it was listed.
+  expired (expired: Boolean),
 ],
 
-DATA Created key RETURNS Type WITH [
-  ## `prompt` is what the owner pastes into their agent. It holds the whole key.
-  created (key: Key) with prompt (prompt: Text) RETURNS Created key,
+RECORD Created key RETURNS Type WITH [
+  key (key: Key),
+  ## What the owner pastes into their agent. It holds the whole key.
+  prompt (prompt: Text),
 ],
 
 DATA Status RETURNS Type WITH [
@@ -137,17 +146,20 @@ DATA Status RETURNS Type WITH [
   stopped (share id: Text) RETURNS Status,
 ],
 
-DATA File link RETURNS Type WITH [
-  file link (share id: Text) for file (file id: Text) named (name: Text) RETURNS File link,
+RECORD File link RETURNS Type WITH [
+  share id (share id: Text),
+  for file (file id: Text),
+  named (name: Text),
 ],
 
-DATA Folder link RETURNS Type WITH [
-  folder link (share id: Text) for folder (folder: Text) RETURNS Folder link,
+RECORD Folder link RETURNS Type WITH [
+  share id (share id: Text),
+  for folder (folder: Text),
 ],
 
-DATA Links RETURNS Type WITH [
-  links to files (files: List of (File link)) and folders (folders: List of (Folder link))
-    RETURNS Links,
+RECORD Links RETURNS Type WITH [
+  files (files: List of (File link)),
+  folders (folders: List of (Folder link)),
 ],
 
 ## ---------------------------------------------------------------------------

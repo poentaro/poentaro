@@ -40,12 +40,9 @@ const error = <E>(problem: E) => ({ kind: 'failed', problem }) as const
 
 const MISSING = { kind: 'missing' } as const
 const PATH_TAKEN = { kind: 'taken' } as const
-const FILE_KIND = 'file with content'
-const VERSION_KIND = 'version saved at'
 
 function summaryOf(file: StoredFile): FileSummary {
   return {
-    kind: 'summary of file at revision trashed at',
     id: file.id,
     path: file.path,
     revision: file.revision,
@@ -138,7 +135,6 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
         const file = files.get(id)
         return file
           ? value<File>({
-              kind: FILE_KIND,
               summary: summaryOf(file),
               content: file.content,
             })
@@ -212,7 +208,6 @@ export function createFakeAppFiles(seed: FakeFile[] = []) {
         return file
           ? value<Version[]>(
               file.versions.map(({ revision, savedAt }) => ({
-                kind: VERSION_KIND,
                 revision,
                 savedAt: new Date(savedAt),
               })),
