@@ -16,6 +16,7 @@ Feature: An AI agent edits the owner's scores with an API key
     When the agent sends "SCHEMA"
     Then the agent's last result contains "PROTOCOL poentaro VERSION 1"
     And the agent's last result contains "READ ONLY METHOD score syntax"
+    And the agent's last result contains "METHOD move file"
     When the agent sends "score syntax"
     Then the agent's last result is not an error
     And the agent's last result contains "Syntax Reference"
@@ -60,6 +61,36 @@ Feature: An AI agent edits the owner's scores with an API key
     When the agent writes "agent-rejected.poentaro" at the revision it first saw with the content "parts [oops"
     Then the agent's last result starts with "ERROR rejected"
     And the cloud file "agent-rejected.poentaro" contains "1 2 3 4"
+
+  Scenario: A renamed score keeps its identity and content
+    Given a cloud file named "agent-rename.poentaro" is seeded for the signed-in account
+    And the signed-in account has an API key
+    And the agent writes "agent-rename.poentaro" at the revision it first saw with the last line "5 6 7 1"
+    When the agent sends "move file \"agent-rename.poentaro\" to \"Agent Choir/Renamed.poentaro\""
+    Then the agent's last result is not an error
+    And the file first seen as "agent-rename.poentaro" is now at "Agent Choir/Renamed.poentaro"
+    And the cloud file "Agent Choir/Renamed.poentaro" contains "5 6 7 1"
+
+  Scenario: A rename onto an existing score is refused and overwrites nothing
+    Given a cloud file named "agent-rename-onto.poentaro" is seeded for the signed-in account
+    And a cloud file named "agent-rename-from.poentaro" is seeded for the signed-in account
+    And the signed-in account has an API key
+    And the agent writes "agent-rename-from.poentaro" at the revision it first saw with the last line "5 6 7 1"
+    When the agent sends "move file \"agent-rename-from.poentaro\" to \"agent-rename-onto.poentaro\""
+    Then the agent's last result starts with "ERROR taken"
+    And the cloud file "agent-rename-onto.poentaro" contains "1 2 3 4"
+    And the cloud file "agent-rename-from.poentaro" contains "5 6 7 1"
+
+  Scenario: A rename from a missing score or to an invalid path is refused
+    Given a cloud file named "agent-rename-invalid.poentaro" is seeded for the signed-in account
+    And the signed-in account has an API key
+    When the agent sends "move file \"agent-no-such-score.poentaro\" to \"agent-anything.poentaro\""
+    Then the agent's last result starts with "ERROR missing"
+    When the agent sends "move file \"agent-rename-invalid.poentaro\" to \"../agent-escaped.poentaro\""
+    Then the agent's last result starts with "ERROR invalid path"
+    When the agent sends "move file \"agent-rename-invalid.poentaro\" to \"agent-renamed.txt\""
+    Then the agent's last result starts with "ERROR invalid path"
+    And the cloud file "agent-rename-invalid.poentaro" contains "1 2 3 4"
 
   Scenario: The key never reaches another account's files
     Given a cloud file named "agent-private.poentaro" is seeded for "e2e-agent-other@poentaro.test"

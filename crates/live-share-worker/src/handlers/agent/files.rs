@@ -7,7 +7,7 @@
 use std::cell::RefCell;
 
 use poentaro_protocol::agent::{
-    CreateFileContentError, File, FileSummary, ReadFileError, Saved,
+    CreateFileContentError, File, FileSummary, MoveFileToError, ReadFileError, Saved,
     WriteFileAtRevisionContentError,
 };
 use poentaro_protocol::agent::{ExportMidiError, ExportSvgError};
@@ -17,8 +17,8 @@ use worker::D1Database;
 use crate::agent::{export_midi, export_svg, file_id, new_file_path_problem, score_diagnostics};
 use crate::db;
 use crate::files::{self, ContentWriteAttempt, StoredFile};
-use crate::handlers::file_store::{proposed_name, record_version};
-use crate::handlers::{is_unique_constraint_violation, now_millis};
+use crate::handlers::file_store::{self, proposed_name, record_version};
+use crate::handlers::{is_unique_constraint_violation, now_millis, ApiError};
 
 /// The score syntax, which `score syntax` answers.
 const SYNTAX: &str = include_str!("../../../../../syntax.md");
@@ -136,8 +136,9 @@ impl AgentFiles<'_> {
         let id = file_id(random_id_bytes()?);
         let live = db::list_live_file_names(self.d1, &self.user_id).await?;
         if let Some(clash) = files::find_file_folder_conflict(&live, &proposed_name(&id, &path)) {
-            let message = format!("found `{clash}` as both a file and a folder; expected a path that is only one of them");
-            return Ok(Err(CreateFileContentError::InvalidPath { message }));
+            return Ok(Err(CreateFileContentError::InvalidPath {
+                message: file_and_folder(&clash),
+            }));
         }
         let diagnostics = score_diagnostics(&content);
         if !diagnostics.errors.is_empty() {
@@ -171,6 +172,41 @@ impl AgentFiles<'_> {
             Err(error) => Err(error),
         }
     }
+
+    /// The app's own rename, so the file keeps its id, and with it its
+    /// version history and links.
+    async fn move_file(&self, path: &str, destination: &str) -> Outcome<(), MoveFileToError> {
+        if let Some(message) = new_file_path_problem(destination) {
+            return Ok(Err(MoveFileToError::InvalidPath { message }));
+        }
+        let file = match self.file_at(path).await? {
+            None => return Ok(Err(MoveFileToError::Missing)),
+            Some(file) if file.trashed_at.is_some() => return Ok(Err(MoveFileToError::Trashed)),
+            Some(file) => file,
+        };
+        Ok(Err(
+            match file_store::rename(self.d1, &self.user_id, &file.id, destination).await {
+                Ok(()) => return Ok(Ok(())),
+                Err(ApiError::NotFound) => MoveFileToError::Missing,
+                Err(ApiError::NameTaken) => MoveFileToError::Taken,
+                Err(ApiError::InvalidName { message }) => MoveFileToError::InvalidPath { message },
+                Err(ApiError::FileFolderConflict { path }) => MoveFileToError::InvalidPath {
+                    message: file_and_folder(&path),
+                },
+                Err(error) => {
+                    let message = error.message().unwrap_or_default();
+                    return Err(worker::Error::RustError(format!(
+                        "{}: {message}",
+                        error.code()
+                    )));
+                }
+            },
+        ))
+    }
+}
+
+fn file_and_folder(path: &str) -> String {
+    format!("found `{path}` as both a file and a folder; expected a path that is only one of them")
 }
 
 fn internal_error(error: &worker::Error) -> String {
@@ -244,6 +280,16 @@ impl poentaro_protocol::agent::Server for AgentFiles<'_> {
     ) -> Outcome<Saved, CreateFileContentError> {
         let outcome = self.create_file(path, content).await;
         self.note("create file _ content _", &outcome);
+        outcome
+    }
+
+    async fn move_file_to(
+        &self,
+        path: String,
+        destination: String,
+    ) -> Outcome<(), MoveFileToError> {
+        let outcome = self.move_file(&path, &destination).await;
+        self.note("move file _ to _", &outcome);
         outcome
     }
 
