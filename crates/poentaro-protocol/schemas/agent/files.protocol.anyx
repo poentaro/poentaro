@@ -28,6 +28,12 @@ PUBLIC ERRORS file errors [
     missing,
 ],
 
+ERRORS new path errors [
+    # The path isn't valid, such as an empty folder name or a `..`, or it
+    # doesn't end in `.poentaro`.
+    invalid path (message: Text),
+],
+
 ERRORS score errors [
     # The score has errors, so nothing was saved. Fix them and send it again.
     rejected (diagnostics: LIST Diagnostic),
@@ -56,6 +62,17 @@ METHOD create file (path: Text) content (content: Text)
     ERRORS [
         # A file already has this path. Read it, or create under another path.
         already exists at revision (revision: Integer),
-        # The path isn't valid, such as an empty folder name or a `..`.
-        invalid path (message: Text),
-    ] + score errors,
+    ] + new path errors + score errors,
+
+# Renames or moves a score, and its folders if they don't exist. It keeps
+# its content, revision, version history and links.
+METHOD move file (path: Text) to (destination: Text)
+    RETURNS NOTHING
+    ERRORS [
+        # Another file, in the trash or not, has `destination`. Nothing was
+        # overwritten: pick another path.
+        taken,
+    ] + new path errors + file errors
+    EXAMPLES [
+        move file "choir/Untitled.poentaro" to "choir/New Title.poentaro" RETURNS NOTHING,
+    ],

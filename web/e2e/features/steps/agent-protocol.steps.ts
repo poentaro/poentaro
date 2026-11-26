@@ -25,12 +25,13 @@ interface AgentAnswer {
 
 let key: CreatedKey | null = null
 let lastAnswer: AgentAnswer | null = null
-const firstSeenRevisions = new Map<string, number>()
+/** Each file as the agent first saw it in this scenario, by path. */
+const firstSeen = new Map<string, { id: string; revision: number }>()
 
 BeforeScenario(() => {
   key = null
   lastAnswer = null
-  firstSeenRevisions.clear()
+  firstSeen.clear()
 })
 
 /** The key in a prompt the worker wrote: what the agent saves to its key file. */
@@ -76,10 +77,10 @@ async function ownersFile(path: string) {
 /** The revision the agent first saw `path` at in this scenario, so a later
  * write at it is a write at a stale revision. */
 async function firstSeenRevision(path: string): Promise<number> {
-  const seen = firstSeenRevisions.get(path)
-  if (seen !== undefined) return seen
-  const { revision } = await ownersFile(path)
-  firstSeenRevisions.set(path, revision)
+  const seen = firstSeen.get(path)
+  if (seen !== undefined) return seen.revision
+  const { id, revision } = await ownersFile(path)
+  firstSeen.set(path, { id, revision })
   return revision
 }
 
@@ -147,6 +148,15 @@ Then(
 Then("the agent's last result contains {string}", async ({}, part: string) => {
   expect(lastAnswer?.body).toContain(part)
 })
+
+Then(
+  'the file first seen as {string} is now at {string}',
+  async ({}, before: string, after: string) => {
+    const seen = firstSeen.get(before)
+    if (!seen) throw new Error(`the agent never saw ${before}`)
+    expect((await ownersFile(after)).id).toBe(seen.id)
+  },
+)
 
 Then('the agent is refused for its key', async () => {
   expect(lastAnswer?.status).toBe(401)

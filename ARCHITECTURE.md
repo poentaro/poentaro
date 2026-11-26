@@ -717,7 +717,8 @@ text, and the methods are declared in a schema.
   relative `USE` imports. Each protocol has one flat namespace; moving a
   method between files does not change its API. The agent calls `list files`,
   `read file _`, `write file _ at revision _ content _`,
-  `create file _ content _`, `export svg _`, `export midi _` and `score syntax`.
+  `create file _ content _`, `move file _ to _`, `export svg _`,
+  `export midi _` and `score syntax`.
   Records include `File Summary`, `File`, `Diagnostic` and `Saved`.
   Errors are defined once, in a method or shared `ERRORS` group; other files
   directly import public types and groups by their plain names. Imports do
@@ -752,6 +753,9 @@ text, and the methods are declared in a schema.
   `create` wants a valid path ending in `.poentaro`
   (`agent::new_file_path_problem`) that is not also a folder, and gives the
   file a version 4 UUID (`agent::file_id`), the id form the web app uses.
+  `move` wants the same kind of destination and renames through the app's
+  own rename (`file_store::rename`), so the file keeps its id, history and
+  links; a destination held by any file, trashed or not, is `taken`.
   `export svg` and `export midi`
   (`agent::export_svg`/`export_midi`) answer
   a live file's SVG pages and Standard MIDI File (a `BYTES` value, base64
