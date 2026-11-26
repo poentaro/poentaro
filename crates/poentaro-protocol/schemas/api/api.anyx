@@ -68,28 +68,27 @@ DATA Reply of (response: Type) or (error: Type) RETURNS Type WITH [
 
 RECORD Session RETURNS Type WITH [
   ## Send `token` as a bearer token to every endpoint that isn't public.
-  token (token: Text),
-  email (email: Text),
+  signed in as (email: Text) with token (token: Text),
 ],
 
 RECORD Shared file RETURNS Type WITH [
   named (name: Text),
-  content (content: Text),
-  revision (revision: Integer),
+  with content (content: Text),
+  at revision (revision: Integer),
 ],
 
 RECORD Folder file RETURNS Type WITH [
   ## Relative to the shared folder, such as `Advent/O Come.poentaro`.
   at (path: Text),
-  content (content: Text),
-  revision (revision: Integer),
+  with content (content: Text),
+  at revision (revision: Integer),
 ],
 
 RECORD Shared folder RETURNS Type WITH [
   named (name: Text),
-  files (files: List of (Folder file)),
+  with files (files: List of (Folder file)),
   ## The folders with no file in them.
-  empty folders (empty folders: List of (Text)),
+  with empty folders (empty folders: List of (Text)),
 ],
 
 DATA Shared RETURNS Type WITH [
@@ -103,28 +102,25 @@ FUNCTION Migration id RETURNS Type IS Text,
 FUNCTION Key id RETURNS Type IS Text,
 
 RECORD File summary RETURNS Type WITH [
-  ## Made by the browser that created the file. It never changes.
-  id (id: Text),
-  ## A slash path, such as `Hymns/hymn.poentaro`.
-  at (path: Text),
-  revision (revision: Integer),
+  ## `id` is made by the browser that created the file, and never changes.
+  ## `path` is a slash path, such as `Hymns/hymn.poentaro`.
+  file (id: Text) at (path: Text),
+  at revision (revision: Integer),
   trashed at (trashed at: Optional (Instant)),
 ],
 
 RECORD File RETURNS Type WITH [
-  summary (summary: File summary),
-  content (content: Text),
+  (summary: File summary),
+  with content (content: Text),
 ],
 
 RECORD Version RETURNS Type WITH [
-  revision (revision: Integer),
-  saved at (saved at: Instant),
+  revision (revision: Integer) saved at (saved at: Instant),
 ],
 
 RECORD Key RETURNS Type WITH [
-  id (id: Key id),
-  ## The start of the key, such as `poe_AbCd1234`.
-  prefix (prefix: Text),
+  ## `prefix` is the start of the key, such as `poe_AbCd1234`.
+  key (id: Key id) starting with (prefix: Text),
   created at (created at: Instant),
   last used at (last used at: Optional (Instant)),
   expires at (expires at: Instant),
@@ -133,9 +129,9 @@ RECORD Key RETURNS Type WITH [
 ],
 
 RECORD Created key RETURNS Type WITH [
-  key (key: Key),
+  (key: Key),
   ## What the owner pastes into their agent. It holds the whole key.
-  prompt (prompt: Text),
+  with prompt (prompt: Text),
 ],
 
 DATA Status RETURNS Type WITH [
@@ -147,19 +143,16 @@ DATA Status RETURNS Type WITH [
 ],
 
 RECORD File link RETURNS Type WITH [
-  share id (share id: Text),
-  for file (file id: Text),
-  named (name: Text),
+  link (share id: Text) for file (file id: Text) named (name: Text),
 ],
 
 RECORD Folder link RETURNS Type WITH [
-  share id (share id: Text),
-  for folder (folder: Text),
+  link (share id: Text) for folder (folder: Text),
 ],
 
 RECORD Links RETURNS Type WITH [
-  files (files: List of (File link)),
-  folders (folders: List of (Folder link)),
+  file links (files: List of (File link)),
+  folder links (folders: List of (Folder link)),
 ],
 
 ## ---------------------------------------------------------------------------
