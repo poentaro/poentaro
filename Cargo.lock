@@ -97,7 +97,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "anyx"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyx?rev=14c24fd330d6780a49c9f4e941ede191605d78e3#14c24fd330d6780a49c9f4e941ede191605d78e3"
+source = "git+https://github.com/wongjiahau/anyx?rev=a5b9b4fe4c5a7093d6ccd9940040d92164fd3da9#a5b9b4fe4c5a7093d6ccd9940040d92164fd3da9"
 
 [[package]]
 name = "anyx"
@@ -107,18 +107,18 @@ source = "git+https://github.com/wongjiahau/anyx?rev=e7bb1c27121cc4a8b5bc5713d2e
 [[package]]
 name = "anyx-core"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyx?rev=14c24fd330d6780a49c9f4e941ede191605d78e3#14c24fd330d6780a49c9f4e941ede191605d78e3"
+source = "git+https://github.com/wongjiahau/anyx?rev=a5b9b4fe4c5a7093d6ccd9940040d92164fd3da9#a5b9b4fe4c5a7093d6ccd9940040d92164fd3da9"
 dependencies = [
- "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=14c24fd330d6780a49c9f4e941ede191605d78e3)",
+ "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=a5b9b4fe4c5a7093d6ccd9940040d92164fd3da9)",
  "regex",
 ]
 
 [[package]]
 name = "anyx-core-generate"
 version = "0.1.0"
-source = "git+https://github.com/wongjiahau/anyx?rev=14c24fd330d6780a49c9f4e941ede191605d78e3#14c24fd330d6780a49c9f4e941ede191605d78e3"
+source = "git+https://github.com/wongjiahau/anyx?rev=a5b9b4fe4c5a7093d6ccd9940040d92164fd3da9#a5b9b4fe4c5a7093d6ccd9940040d92164fd3da9"
 dependencies = [
- "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=14c24fd330d6780a49c9f4e941ede191605d78e3)",
+ "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=a5b9b4fe4c5a7093d6ccd9940040d92164fd3da9)",
  "anyx-core",
 ]
 

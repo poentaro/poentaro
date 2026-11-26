@@ -3,21 +3,13 @@
 ## An endpoint needs a bearer session unless it says `access (public)`.
 
 ## ---------------------------------------------------------------------------
-## Prelude: stand-ins until the core has a prelude with literals.
+## Prelude. `Text`, `Integer`, `Natural` and `List of _` are built in.
 
-DATA Text RETURNS Type WITH [],
-DATA Integer RETURNS Type WITH [],
 DATA Instant RETURNS Type WITH [],
 DATA Duration RETURNS Type WITH [],
 DATA Boolean RETURNS Type WITH [true RETURNS Boolean, false RETURNS Boolean],
 DATA Nothing RETURNS Type WITH [done RETURNS Nothing],
 DATA Never RETURNS Type WITH [],
-
-DATA List of (item: Type) RETURNS Type WITH [
-  empty list of (item: Type) RETURNS List of (item),
-  list of (item: Type) starting (first: item) then (rest: List of (item))
-    RETURNS List of (item),
-],
 
 DATA Optional (item: Type) RETURNS Type WITH [
   nothing of (item: Type) RETURNS Optional (item),
