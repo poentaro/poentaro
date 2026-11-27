@@ -41,7 +41,7 @@ async function changeServerCopy(
   const client = await appClient(identityToken)
   const files = await valueOrFail('list files', client.listFiles())
   const file = files.find(
-    (file) => file.path === fileName && file.trashedAt === undefined,
+    (file) => file.path === fileName && file.trashedAt === null,
   )
   if (!file) throw new Error(`no server file named ${fileName}`)
   await valueOrFail(
@@ -56,7 +56,7 @@ async function serverContentOf(fileName: string): Promise<string> {
   const client = await appClient(identityToken)
   const files = await valueOrFail('list files', client.listFiles())
   const file = files.find(
-    (file) => file.path === fileName && file.trashedAt === undefined,
+    (file) => file.path === fileName && file.trashedAt === null,
   )
   return file
     ? (await valueOrFail('read file', client.readFile(file.id))).content

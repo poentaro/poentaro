@@ -156,11 +156,6 @@ export async function answerCall(
   )
 }
 
-/** Answers the routed call with the endpoint error `kind`, e.g. `trashed`. */
-export function refuseCall(route: Route, kind: AppRefusal): Promise<void> {
-  return answerCall(route, { kind: 'error', error: { kind } })
-}
-
 /** Lets the worker answer every request whose calls are of `method`, then
  * hands the page `rewrite`'s version of each call's answer instead. */
 export function rewriteAnswers(
