@@ -5,13 +5,13 @@
 ## ---------------------------------------------------------------------------
 ## Prelude. `Text`, `Integer`, `Natural` and `List of _` are built in.
 
-DATA Instant RETURNS Type WITH [],
-DATA Duration RETURNS Type WITH [],
-DATA Boolean RETURNS Type WITH [true RETURNS Boolean, false RETURNS Boolean],
-DATA Nothing RETURNS Type WITH [done RETURNS Nothing],
-DATA Never RETURNS Type WITH [],
+DATA Instant WITH [],
+DATA Duration WITH [],
+DATA Boolean WITH [true, false],
+DATA Nothing WITH [nothing],
+DATA Never WITH [],
 
-DATA Optional (item: Type) RETURNS Type WITH [
+DATA Optional (item: Type) WITH [
   nothing of (item: Type) RETURNS Optional (item),
   something of (item: Type) is (value: item) RETURNS Optional (item),
 ],
@@ -19,30 +19,30 @@ DATA Optional (item: Type) RETURNS Type WITH [
 ## ---------------------------------------------------------------------------
 ## Framework: who may call an endpoint, and what a call can end in.
 
-DATA Access RETURNS Type WITH [public RETURNS Access, bearer RETURNS Access],
+DATA Access WITH [public, bearer],
 
-DATA Effect RETURNS Type WITH [
-  reads RETURNS Effect,
-  idempotent RETURNS Effect,
-  writes RETURNS Effect,
+DATA Effect WITH [
+  reads,
+  idempotent,
+  writes,
 ],
 
 ## What the client sends.
-DATA Credential for (access: Access) RETURNS Type WITH [
+DATA Credential for (access: Access) WITH [
   anonymous RETURNS Credential for (public),
   bearer token (token: Text) RETURNS Credential for (bearer),
 ],
 
 ## The server's own record of a signed-in account.
-DATA Account RETURNS Type WITH [],
+DATA Account WITH [],
 
 ## What a handler receives.
-DATA Caller for (access: Access) RETURNS Type WITH [
+DATA Caller for (access: Access) WITH [
   nobody RETURNS Caller for (public),
   signed in as (account: Account) RETURNS Caller for (bearer),
 ],
 
-DATA Reply of (response: Type) or (error: Type) RETURNS Type WITH [
+DATA Reply of (response: Type) or (error: Type) WITH [
   answered (response: Type) or (error: Type) with (value: response)
     RETURNS Reply of (response) or (error),
   failed (response: Type) or (error: Type) with (problem: error)
@@ -58,42 +58,42 @@ DATA Reply of (response: Type) or (error: Type) RETURNS Type WITH [
 ## ---------------------------------------------------------------------------
 ## Records.
 
-RECORD Session RETURNS Type WITH [
+RECORD Session WITH [
   ## Send `token` as a bearer token to every endpoint that isn't public.
   signed in as (email: Text) with token (token: Text),
 ],
 
-RECORD Shared file RETURNS Type WITH [
+RECORD Shared file WITH [
   named (name: Text),
   with content (content: Text),
   at revision (revision: Integer),
 ],
 
-RECORD Folder file RETURNS Type WITH [
+RECORD Folder file WITH [
   ## Relative to the shared folder, such as `Advent/O Come.poentaro`.
   at (path: Text),
   with content (content: Text),
   at revision (revision: Integer),
 ],
 
-RECORD Shared folder RETURNS Type WITH [
+RECORD Shared folder WITH [
   named (name: Text),
   with files (files: List of (Folder file)),
   ## The folders with no file in them.
   with empty folders (empty folders: List of (Text)),
 ],
 
-DATA Shared RETURNS Type WITH [
+DATA Shared WITH [
   ## The link was stopped, the file is in the trash, or no link has this id.
-  ended RETURNS Shared,
-  file (file: Shared file) RETURNS Shared,
-  folder (folder: Shared folder) RETURNS Shared,
+  ended,
+  file (file: Shared file),
+  folder (folder: Shared folder),
 ],
 
 FUNCTION Migration id RETURNS Type IS Text,
 FUNCTION Key id RETURNS Type IS Text,
 
-RECORD File summary RETURNS Type WITH [
+RECORD File summary WITH [
   ## `id` is made by the browser that created the file, and never changes.
   ## `path` is a slash path, such as `Hymns/hymn.poentaro`.
   file (id: Text) at (path: Text),
@@ -101,16 +101,16 @@ RECORD File summary RETURNS Type WITH [
   trashed at (trashed at: Optional (Instant)),
 ],
 
-RECORD File RETURNS Type WITH [
+RECORD File WITH [
   (summary: File summary),
   with content (content: Text),
 ],
 
-RECORD Version RETURNS Type WITH [
+RECORD Version WITH [
   revision (revision: Integer) saved at (saved at: Instant),
 ],
 
-RECORD Key RETURNS Type WITH [
+RECORD Key WITH [
   ## `prefix` is the start of the key, such as `poe_AbCd1234`.
   key (id: Key id) starting with (prefix: Text),
   created at (created at: Instant),
@@ -120,29 +120,29 @@ RECORD Key RETURNS Type WITH [
   expired (expired: Boolean),
 ],
 
-RECORD Created key RETURNS Type WITH [
+RECORD Created key WITH [
   (key: Key),
   ## What the owner pastes into their agent. It holds the whole key.
   with prompt (prompt: Text),
 ],
 
-DATA Status RETURNS Type WITH [
-  never shared RETURNS Status,
+DATA Status WITH [
+  never shared,
   ## Anyone with the link sees the score as it changes.
-  live (share id: Text) RETURNS Status,
+  live (share id: Text),
   ## The link shows nothing until it's started again.
-  stopped (share id: Text) RETURNS Status,
+  stopped (share id: Text),
 ],
 
-RECORD File link RETURNS Type WITH [
+RECORD File link WITH [
   link (share id: Text) for file (file id: Text) named (name: Text),
 ],
 
-RECORD Folder link RETURNS Type WITH [
+RECORD Folder link WITH [
   link (share id: Text) for folder (folder: Text),
 ],
 
-RECORD Links RETURNS Type WITH [
+RECORD Links WITH [
   file links (files: List of (File link)),
   folder links (folders: List of (Folder link)),
 ],
@@ -150,150 +150,150 @@ RECORD Links RETURNS Type WITH [
 ## ---------------------------------------------------------------------------
 ## Errors shared by several endpoints.
 
-DATA Rate limit error RETURNS Type WITH [
+DATA Rate limit error WITH [
   ## Too many requests from this address in the last minute.
-  too many requests RETURNS Rate limit error,
+  too many requests,
 ],
 
-DATA Size error RETURNS Type WITH [
+DATA Size error WITH [
   ## The payload or shared folder exceeds its limit; `message` explains it.
-  too large (message: Text) RETURNS Size error,
+  too large (message: Text),
 ],
 
-DATA Credential error RETURNS Type WITH [
+DATA Credential error WITH [
   ## This isn't shaped like an email.
-  invalid email RETURNS Credential error,
-  rate limited (error: Rate limit error) RETURNS Credential error,
+  invalid email,
+  rate limited (error: Rate limit error),
 ],
 
-DATA Lookup error RETURNS Type WITH [
+DATA Lookup error WITH [
   ## This account has no file with this id.
-  missing RETURNS Lookup error,
+  missing,
 ],
 
-DATA File error RETURNS Type WITH [
+DATA File error WITH [
   ## The file is in the trash. Restore it first.
-  trashed RETURNS File error,
-  not found (error: Lookup error) RETURNS File error,
+  trashed,
+  not found (error: Lookup error),
 ],
 
-DATA Conflict error RETURNS Type WITH [
-  (path: Text) would be both file and folder RETURNS Conflict error,
+DATA Conflict error WITH [
+  (path: Text) would be both file and folder,
 ],
 
-DATA Bad path RETURNS Type WITH [
+DATA Bad path WITH [
   ## The path isn't valid, such as an empty folder name or a `..`.
-  invalid path (message: Text) RETURNS Bad path,
+  invalid path (message: Text),
 ],
 
-DATA Path error RETURNS Type WITH [
+DATA Path error WITH [
   ## Another file, in the trash or not, has this path.
-  taken RETURNS Path error,
-  path conflict (error: Conflict error) RETURNS Path error,
-  bad path (error: Bad path) RETURNS Path error,
+  taken,
+  path conflict (error: Conflict error),
+  bad path (error: Bad path),
 ],
 
-DATA Folder lookup error RETURNS Type WITH [
+DATA Folder lookup error WITH [
   ## No file is in this folder.
-  no such folder RETURNS Folder lookup error,
+  no such folder,
 ],
 
-DATA Stop sharing error RETURNS Type WITH [
+DATA Stop sharing error WITH [
   ## There is no link to stop.
-  no link to stop RETURNS Stop sharing error,
+  no link to stop,
 ],
 
 ## ---------------------------------------------------------------------------
 ## Errors of one endpoint each.
 
-DATA Sign up error RETURNS Type WITH [
+DATA Sign up error WITH [
   ## This email already has an account. Sign in instead.
-  email taken RETURNS Sign up error,
+  email taken,
   ## The password isn't strong enough; `message` says why.
-  weak password (message: Text) RETURNS Sign up error,
-  sign up refused (error: Credential error) RETURNS Sign up error,
+  weak password (message: Text),
+  sign up refused (error: Credential error),
 ],
 
-DATA Sign in error RETURNS Type WITH [
+DATA Sign in error WITH [
   ## The email has no account, or the password is wrong.
-  incorrect RETURNS Sign in error,
+  incorrect,
   ## Too many wrong passwords for this email.
-  locked for (duration: Duration) RETURNS Sign in error,
-  sign in refused (error: Credential error) RETURNS Sign in error,
+  locked for (duration: Duration),
+  sign in refused (error: Credential error),
 ],
 
-DATA Upload handoff error RETURNS Type WITH [
-  handoff too large (error: Size error) RETURNS Upload handoff error,
-  handoff rate limited (error: Rate limit error) RETURNS Upload handoff error,
+DATA Upload handoff error WITH [
+  handoff too large (error: Size error),
+  handoff rate limited (error: Rate limit error),
 ],
 
-DATA Claim handoff error RETURNS Type WITH [
+DATA Claim handoff error WITH [
   ## No handoff has this id, or it was claimed already.
-  no such handoff RETURNS Claim handoff error,
+  no such handoff,
 ],
 
-DATA Change password error RETURNS Type WITH [
+DATA Change password error WITH [
   ## `current password` isn't the account's password.
-  incorrect password RETURNS Change password error,
+  incorrect password,
   ## Too many wrong passwords for this email.
-  password locked for (duration: Duration) RETURNS Change password error,
+  password locked for (duration: Duration),
   ## The new password isn't strong enough; `message` says why.
-  weak new password (message: Text) RETURNS Change password error,
+  weak new password (message: Text),
 ],
 
-DATA Write error RETURNS Type WITH [
+DATA Write error WITH [
   ## Someone saved first. The file is now at `revision`, with `content`.
-  conflict at revision (revision: Integer) content (content: Text) RETURNS Write error,
-  write refused (error: File error) RETURNS Write error,
+  conflict at revision (revision: Integer) content (content: Text),
+  write refused (error: File error),
 ],
 
-DATA Create error RETURNS Type WITH [
+DATA Create error WITH [
   ## Another file already has this id.
-  id taken RETURNS Create error,
-  create refused (error: Path error) RETURNS Create error,
+  id taken,
+  create refused (error: Path error),
 ],
 
-DATA Move file error RETURNS Type WITH [
-  move refused (error: Path error) RETURNS Move file error,
-  move not found (error: Lookup error) RETURNS Move file error,
+DATA Move file error WITH [
+  move refused (error: Path error),
+  move not found (error: Lookup error),
 ],
 
-DATA Restore error RETURNS Type WITH [
+DATA Restore error WITH [
   ## The file isn't in the trash.
-  not trashed RETURNS Restore error,
-  restore conflict (error: Conflict error) RETURNS Restore error,
-  restore not found (error: Lookup error) RETURNS Restore error,
+  not trashed,
+  restore conflict (error: Conflict error),
+  restore not found (error: Lookup error),
 ],
 
-DATA Read version error RETURNS Type WITH [
+DATA Read version error WITH [
   ## The file has no earlier version at this revision.
-  no such version RETURNS Read version error,
-  version not found (error: Lookup error) RETURNS Read version error,
+  no such version,
+  version not found (error: Lookup error),
 ],
 
-DATA Move folder error RETURNS Type WITH [
+DATA Move folder error WITH [
   ## Nothing moved.
-  (paths: List of (Text)) taken by other files RETURNS Move folder error,
-  folder not found (error: Folder lookup error) RETURNS Move folder error,
-  folder conflict (error: Conflict error) RETURNS Move folder error,
-  bad folder path (error: Bad path) RETURNS Move folder error,
+  (paths: List of (Text)) taken by other files,
+  folder not found (error: Folder lookup error),
+  folder conflict (error: Conflict error),
+  bad folder path (error: Bad path),
 ],
 
-DATA Revoke key error RETURNS Type WITH [
+DATA Revoke key error WITH [
   ## No key of this account has this id.
-  missing key RETURNS Revoke key error,
+  missing key,
 ],
 
-DATA Share folder error RETURNS Type WITH [
+DATA Share folder error WITH [
   ## The folder holds too much to share; `message` says how much.
-  folder too large (message: Text) RETURNS Share folder error,
-  shared folder not found (error: Folder lookup error) RETURNS Share folder error,
-  bad shared folder path (error: Bad path) RETURNS Share folder error,
+  folder too large (message: Text),
+  shared folder not found (error: Folder lookup error),
+  bad shared folder path (error: Bad path),
 ],
 
-DATA Stop sharing folder error RETURNS Type WITH [
-  folder never shared (error: Stop sharing error) RETURNS Stop sharing folder error,
-  bad stopped folder path (error: Bad path) RETURNS Stop sharing folder error,
+DATA Stop sharing folder error WITH [
+  folder never shared (error: Stop sharing error),
+  bad stopped folder path (error: Bad path),
 ],
 
 ## ---------------------------------------------------------------------------
