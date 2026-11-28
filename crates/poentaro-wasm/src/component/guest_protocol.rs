@@ -7,23 +7,26 @@
 
 use super::Protocol;
 
-fn schema(protocol: Protocol) -> &'static anyx_protocol::Schema {
+/// `app` and `public` became `api`, whose generated client speaks JSON
+/// itself, so only `test` still goes through this codec.
+fn schema(protocol: Protocol) -> Result<&'static anyx_protocol::Schema, String> {
     match protocol {
-        Protocol::App => poentaro_protocol::app::schema(),
-        Protocol::Public => poentaro_protocol::public::schema(),
-        Protocol::Test => poentaro_protocol::test::schema(),
+        Protocol::App | Protocol::Public => {
+            Err("`app` and `public` are served by `api` now".to_string())
+        }
+        Protocol::Test => Ok(poentaro_protocol::test::schema()),
     }
 }
 
 pub(super) fn protocol_encode_request(protocol: Protocol, calls: String) -> Result<String, String> {
-    anyx_protocol::json::encode_requests_json(schema(protocol), &calls)
+    anyx_protocol::json::encode_requests_json(schema(protocol)?, &calls)
 }
 
 pub(super) fn protocol_decode_request(
     protocol: Protocol,
     request: String,
 ) -> Result<String, String> {
-    anyx_protocol::json::decode_request_json(schema(protocol), &request)
+    anyx_protocol::json::decode_request_json(schema(protocol)?, &request)
 }
 
 pub(super) fn protocol_encode_response(
@@ -31,7 +34,7 @@ pub(super) fn protocol_encode_response(
     request: String,
     outcomes: String,
 ) -> Result<String, String> {
-    anyx_protocol::json::encode_response_json(schema(protocol), &request, &outcomes)
+    anyx_protocol::json::encode_response_json(schema(protocol)?, &request, &outcomes)
 }
 
 pub(super) fn protocol_decode_response(
@@ -39,5 +42,5 @@ pub(super) fn protocol_decode_response(
     methods: String,
     response: String,
 ) -> Result<String, String> {
-    anyx_protocol::json::decode_responses_json(schema(protocol), &methods, &response)
+    anyx_protocol::json::decode_responses_json(schema(protocol)?, &methods, &response)
 }

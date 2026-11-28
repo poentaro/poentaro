@@ -1,11 +1,9 @@
-//! `poentaro public`: what anyone calls without signing in. It runs the
-//! same code as the REST routes it replaces.
+//! The public endpoints of `api`: what anyone calls without signing in.
 
-use poentaro_protocol::public::{ClaimOriginHandoffError, MigrationId, UploadOriginHandoffError};
-use poentaro_protocol::public::{
-    FolderFile, OpenSharedLinkError, Shared, SharedFile, SharedFolder,
-};
-use poentaro_protocol::public::{Session, SignInPasswordError, SignUpPasswordError};
+use poentaro_protocol::api::{ClaimHandoffError, SizeError, UploadHandoffError};
+use poentaro_protocol::api::{CredentialError, RateLimitError};
+use poentaro_protocol::api::{FolderFile, Shared, SharedFile, SharedFolder};
+use poentaro_protocol::api::{Session, SignInError, SignUpError};
 use worker::{D1Database, Env};
 
 use super::internal;
@@ -22,76 +20,88 @@ pub(super) struct PublicServer<'a> {
     pub(super) meta: &'a RequestMeta,
 }
 
-impl poentaro_protocol::public::Server for PublicServer<'_> {
-    type Error = worker::Error;
-
-    async fn sign_up_password(
+impl PublicServer<'_> {
+    pub(super) async fn sign_up_password(
         &self,
         email: String,
         password: String,
-    ) -> Outcome<Session, SignUpPasswordError> {
+    ) -> Outcome<Session, SignUpError> {
         match auth::create_account(self.env, self.d1, &email, &password, self.meta).await {
             Ok(response) => Ok(Ok(session(response))),
-            Err(ApiError::EmailTaken) => Ok(Err(SignUpPasswordError::EmailTaken)),
+            Err(ApiError::EmailTaken) => Ok(Err(SignUpError::EmailTaken)),
             Err(ApiError::WeakPassword { message }) => {
-                Ok(Err(SignUpPasswordError::WeakPassword { message }))
+                Ok(Err(SignUpError::WeakPassword { message }))
             }
-            Err(ApiError::InvalidEmail) => Ok(Err(SignUpPasswordError::InvalidEmail)),
-            Err(ApiError::RateLimited) => Ok(Err(SignUpPasswordError::TooManyRequests)),
+            Err(ApiError::InvalidEmail) => Ok(Err(SignUpError::SignUpRefused {
+                error: CredentialError::InvalidEmail,
+            })),
+            Err(ApiError::RateLimited) => Ok(Err(SignUpError::SignUpRefused {
+                error: CredentialError::RateLimited {
+                    error: RateLimitError {},
+                },
+            })),
             Err(error) => Err(internal(error)),
         }
     }
 
-    async fn sign_in_password(
+    pub(super) async fn sign_in_password(
         &self,
         email: String,
         password: String,
-    ) -> Outcome<Session, SignInPasswordError> {
+    ) -> Outcome<Session, SignInError> {
         match auth::start_session(self.env, self.d1, &email, &password, self.meta).await {
             Ok(response) => Ok(Ok(session(response))),
-            Err(ApiError::IncorrectCredentials) => Ok(Err(SignInPasswordError::Incorrect)),
+            Err(ApiError::IncorrectCredentials) => Ok(Err(SignInError::Incorrect)),
             Err(ApiError::SignInLocked {
                 retry_after_seconds,
-            }) => Ok(Err(SignInPasswordError::LockedFor {
+            }) => Ok(Err(SignInError::LockedFor {
                 duration: std::time::Duration::from_secs(retry_after_seconds.unsigned_abs()),
             })),
-            Err(ApiError::InvalidEmail) => Ok(Err(SignInPasswordError::InvalidEmail)),
-            Err(ApiError::RateLimited) => Ok(Err(SignInPasswordError::TooManyRequests)),
+            Err(ApiError::InvalidEmail) => Ok(Err(SignInError::SignInRefused {
+                error: CredentialError::InvalidEmail,
+            })),
+            Err(ApiError::RateLimited) => Ok(Err(SignInError::SignInRefused {
+                error: CredentialError::RateLimited {
+                    error: RateLimitError {},
+                },
+            })),
             Err(error) => Err(internal(error)),
         }
     }
 
-    async fn open_shared_link(&self, share_id: String) -> Outcome<Shared, OpenSharedLinkError> {
+    pub(super) async fn open_shared_link(&self, share_id: String) -> Outcome<Shared, SizeError> {
         match shares::read_share(self.d1, &share_id).await {
             Ok(doc) => Ok(Ok(shared(doc))),
-            Err(ApiError::SharedFolderTooLarge { message }) => {
-                Ok(Err(OpenSharedLinkError::TooLarge { message }))
-            }
+            Err(ApiError::SharedFolderTooLarge { message }) => Ok(Err(SizeError { message })),
             Err(error) => Err(internal(error)),
         }
     }
 
-    async fn upload_origin_handoff(
+    pub(super) async fn upload_origin_handoff(
         &self,
         payload: String,
-    ) -> Outcome<MigrationId, UploadOriginHandoffError> {
+    ) -> Outcome<String, UploadHandoffError> {
         match origin_migrations::store(self.env, self.d1, &payload, self.meta).await {
-            Ok(id) => Ok(Ok(id.into())),
+            Ok(id) => Ok(Ok(id)),
             Err(ApiError::OriginMigrationTooLarge { message }) => {
-                Ok(Err(UploadOriginHandoffError::TooLarge { message }))
+                Ok(Err(UploadHandoffError::HandoffTooLarge {
+                    error: SizeError { message },
+                }))
             }
-            Err(ApiError::RateLimited) => Ok(Err(UploadOriginHandoffError::TooManyRequests)),
+            Err(ApiError::RateLimited) => Ok(Err(UploadHandoffError::HandoffRateLimited {
+                error: RateLimitError {},
+            })),
             Err(error) => Err(internal(error)),
         }
     }
 
-    async fn claim_origin_handoff(
+    pub(super) async fn claim_origin_handoff(
         &self,
-        id: MigrationId,
-    ) -> Outcome<String, ClaimOriginHandoffError> {
-        match origin_migrations::take(self.d1, &id.0).await {
+        id: String,
+    ) -> Outcome<String, ClaimHandoffError> {
+        match origin_migrations::take(self.d1, &id).await {
             Ok(payload) => Ok(Ok(payload)),
-            Err(ApiError::NotFound) => Ok(Err(ClaimOriginHandoffError::Missing)),
+            Err(ApiError::NotFound) => Ok(Err(ClaimHandoffError {})),
             Err(error) => Err(internal(error)),
         }
     }

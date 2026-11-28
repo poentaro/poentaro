@@ -25,31 +25,27 @@ function sent(): { url: unknown; init: RequestInit | undefined } {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('sendTo', () => {
-  it('posts the request to the endpoint with the schema hash and the token', async () => {
+  it('posts the request to the endpoint with the schema hash', async () => {
     answer(200, 'RESULTS')
     const send = sendTo({
       host: 'localhost:8787',
-      protocol: 'app',
+      protocol: 'api',
       schemaHash: 'abc',
-      token: 'tok',
     })
-    expect(await send('list files')).toBe('RESULTS')
+    expect(await send('[]')).toBe('RESULTS')
     const { url, init } = sent()
-    expect(url).toBe('http://localhost:8787/app')
+    expect(url).toBe('http://localhost:8787/api')
     expect(init?.method).toBe('POST')
-    expect(init?.body).toBe('list files')
+    expect(init?.body).toBe('[]')
     const headers = init?.headers as Record<string, string>
     expect(headers[SCHEMA_HEADER]).toBe('abc')
-    expect(headers.Authorization).toBe('Bearer tok')
   })
 
-  it('sends no credential to the public endpoint', async () => {
+  it('sends no Authorization header: a call carries its own credential', async () => {
     answer(200)
-    await sendTo({ host: 'h.example', protocol: 'public', schemaHash: 'abc' })(
-      'x',
-    )
+    await sendTo({ host: 'h.example', protocol: 'api', schemaHash: 'abc' })('x')
     const { url, init } = sent()
-    expect(url).toBe('https://h.example/public')
+    expect(url).toBe('https://h.example/api')
     expect(
       (init?.headers as Record<string, string>).Authorization,
     ).toBeUndefined()
@@ -57,12 +53,7 @@ describe('sendTo', () => {
 
   it('turns a 401 into an ended session', async () => {
     answer(401)
-    const send = sendTo({
-      host: 'h',
-      protocol: 'app',
-      schemaHash: 'a',
-      token: 't',
-    })
+    const send = sendTo({ host: 'h', protocol: 'api', schemaHash: 'a' })
     await expect(send('x')).rejects.toBeInstanceOf(SessionEnded)
   })
 

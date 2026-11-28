@@ -160,8 +160,8 @@ Then(
       E2E_PASSWORD,
     )
     expect(outcome).toMatchObject({
-      kind: 'error',
-      error: { kind: 'lockedFor' },
+      kind: 'failed',
+      problem: { kind: 'locked for' },
     })
   },
 )

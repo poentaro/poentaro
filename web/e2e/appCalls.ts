@@ -1,34 +1,38 @@
 import type { Page, Request, Response, Route } from '@playwright/test'
-import type { Client, EFFECTS, Outcome } from '../src/generated/protocol/app'
-import { poentaroWasm } from '../src/poentaroWasm'
-import { ensureWasm, WORKER_HOST } from './protocolClients'
+import { endpointKind, WORKER_HOST } from './protocolClients'
 
-// Watching and faking the page's `poentaro app` calls: every one is a
-// `POST /app` whose text names the method, so steps match on the method
-// (read back in Rust) instead of on a URL.
+// Watching and faking the page's signed-in `api` calls: every one is a
+// `POST /api` whose JSON names the endpoint, so steps match on the
+// endpoint instead of on a URL.
 
-/** Where the page sends `poentaro app` requests. */
-export const APP_ENDPOINT = `http://${WORKER_HOST}/app`
+/** Where the page sends `api` requests. */
+export const APP_ENDPOINT = `http://${WORKER_HOST}/api`
 
-/** Method names are generated from the schema, including SCHEMA. */
-export type AppMethod = keyof typeof EFFECTS
+/** An endpoint as the old protocol named it, slots included: `read file _`.
+ * Matched against the wire's endpoint kind (`read file`). */
+export type AppMethod = string
 
-/** One call of a request, as the generated client names it. */
+/** One call of a request. */
 export interface AppCall {
-  /** The method's full name, e.g. `write file _ at revision _ content _`. */
-  method: AppMethod
+  /** The endpoint's kind on the wire, e.g. `write file at revision content`. */
+  method: string
+  /** The endpoint's fields, in the schema's order. */
   arguments: unknown[]
 }
 
-/** The calls `request` makes, or none when it is not a `poentaro app`
- * request. */
+interface WireCall {
+  arguments?: { endpoint?: { kind?: string } & Record<string, unknown> }
+}
+
+/** The calls `request` makes, or none when it is not an `api` request. */
 export async function appCallsOf(request: Request): Promise<AppCall[]> {
   if (request.method() !== 'POST' || request.url() !== APP_ENDPOINT) return []
-  await ensureWasm()
   try {
-    return JSON.parse(
-      poentaroWasm().protocolDecodeRequest('app', request.postData() ?? ''),
-    ) as AppCall[]
+    const calls = JSON.parse(request.postData() ?? '') as WireCall[]
+    return calls.map((call) => {
+      const { kind = '', ...fields } = call.arguments?.endpoint ?? {}
+      return { method: kind, arguments: Object.values(fields) }
+    })
   } catch {
     return []
   }
@@ -40,12 +44,12 @@ export async function appCallTo(
   method: AppMethod,
 ): Promise<AppCall | undefined> {
   const [call] = await appCallsOf(request)
-  return call?.method === method ? call : undefined
+  return call?.method === endpointKind(method) ? call : undefined
 }
 
-/** Sends every `poentaro app` request whose call is `method` to `handler`;
- * the rest go on to the worker (or an earlier route). Resolves to a
- * function that removes the route. */
+/** Sends every `api` request whose call is `method` to `handler`; the rest
+ * go on to the worker (or an earlier route). Resolves to a function that
+ * removes the route. */
 export async function routeAppCall(
   page: Page,
   method: AppMethod,
@@ -60,61 +64,83 @@ export async function routeAppCall(
   return () => page.unroute(APP_ENDPOINT, routed)
 }
 
-/** The outcome of each call of `methods`, read from a response's text. */
+/** One call's outcome, in the shape steps write: `{ kind: 'value', value }`,
+ * `{ kind: 'error', error: { kind, ... } }`, ... Instants are milliseconds,
+ * as on the wire. */
+export type AppOutcome =
+  | { kind: 'value'; value: unknown }
+  | { kind: 'error'; error: { kind: string } & Record<string, unknown> }
+  | { kind: 'unauthenticated' }
+  | { kind: 'internalError' }
+
+type WireReply =
+  | { kind: 'answered'; value: unknown }
+  | { kind: 'failed'; problem: { kind: string } & Record<string, unknown> }
+  | { kind: 'unauthenticated' }
+  | { kind: 'internal error' }
+
+function fromWire(reply: WireReply): AppOutcome {
+  switch (reply.kind) {
+    case 'answered':
+      return { kind: 'value', value: reply.value }
+    case 'failed':
+      return { kind: 'error', error: reply.problem }
+    case 'unauthenticated':
+      return reply
+    case 'internal error':
+      return { kind: 'internalError' }
+  }
+}
+
+function toWire(outcome: AppOutcome): WireReply {
+  switch (outcome.kind) {
+    case 'value':
+      return { kind: 'answered', value: outcome.value }
+    case 'error':
+      return { kind: 'failed', problem: outcome.error }
+    case 'unauthenticated':
+      return outcome
+    case 'internalError':
+      return { kind: 'internal error' }
+  }
+}
+
+/** The outcome of each call, read from a response's text. */
 export async function outcomesOf(
-  methods: AppMethod[],
+  _methods: AppMethod[],
   text: string,
 ): Promise<AppOutcome[]> {
-  await ensureWasm()
-  return JSON.parse(
-    poentaroWasm().protocolDecodeResponse('app', JSON.stringify(methods), text),
-  ) as AppOutcome[]
+  return (JSON.parse(text) as WireReply[]).map(fromWire)
 }
 
 /** What the worker answered a request of one call of `method`: `value`,
- * the method error's kind in words (`taken by other files`), or how the call
+ * the endpoint error's kind (`taken by other files`), or how the call
  * failed. */
 export async function answerOf(
   method: AppMethod,
   response: Response,
 ): Promise<string> {
   const [outcome] = await outcomesOf([method], await response.text())
-  const words = (camel: string) =>
-    camel.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`)
-  return outcome?.kind === 'error' && outcome.error
-    ? words(outcome.error.kind)
-    : words(outcome?.kind ?? 'missing')
+  if (outcome?.kind === 'error') return outcome.error.kind
+  return outcome?.kind ?? 'missing'
 }
 
-/** One call's outcome, as the generated client reads it: `{ kind:
- * 'value', value }`, `{ kind: 'error', error: { kind, ... } }`, ... */
-type ClientOutcome = Awaited<ReturnType<Client[Exclude<keyof Client, 'batch'>]>>
-type AppValue = Extract<ClientOutcome, { kind: 'value' }>['value']
-export type AppOutcome = Outcome<AppValue, AppError>
+/** An endpoint error's kind, e.g. `trashed`. */
+export type AppRefusal = string
 
-type AppError = Extract<ClientOutcome, { kind: 'error' }>['error']
-type SimpleAppError = {
-  [Kind in AppError['kind']]: { kind: Kind } extends AppError
-    ? { kind: Kind }
-    : never
-}[AppError['kind']]
-export type AppRefusal = SimpleAppError['kind']
-
-/** Answers the routed request with `outcomes`, one per call, written in
- * Rust as the worker would. */
+/** Answers the routed request with `outcomes`, one per call, as the worker
+ * would. */
 export async function answerCalls(
   route: Route,
   outcomes: AppOutcome[],
 ): Promise<void> {
-  await ensureWasm()
   await route.fulfill({
     status: 200,
-    contentType: 'text/plain; charset=utf-8',
-    body: poentaroWasm().protocolEncodeResponse(
-      'app',
-      route.request().postData() ?? '',
-      JSON.stringify(outcomes),
-    ),
+    contentType: 'application/json; charset=utf-8',
+    body: JSON.stringify(outcomes.map(toWire), function (key, value) {
+      const raw = (this as Record<string, unknown>)[key]
+      return raw instanceof Date ? raw.getTime() : value
+    }),
   })
 }
 
@@ -128,11 +154,6 @@ export async function answerCall(
     route,
     calls.map(() => outcome),
   )
-}
-
-/** Answers the routed call with the method error `kind`, e.g. `trashed`. */
-export function refuseCall(route: Route, kind: AppRefusal): Promise<void> {
-  return answerCall(route, { kind: 'error', error: { kind } })
 }
 
 /** Lets the worker answer every request whose calls are of `method`, then

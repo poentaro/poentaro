@@ -1,4 +1,0 @@
-PUBLIC ERRORS bad path [
-    # The path isn't valid, such as an empty folder name or a `..`.
-    invalid path (message: Text),
-]

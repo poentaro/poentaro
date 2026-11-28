@@ -1,21 +1,24 @@
-//! `POST /public`, `/app` and `/test`: the web app's anyx protocols, each
-//! generated from its schema in `crates/poentaro-protocol/schemas`.
+//! `POST /api` and `/test`: the web app's protocols, each generated from
+//! its schema in `crates/poentaro-protocol/schemas`.
 //!
-//! - `/public` needs no credential: sign up, sign in, open a link, the
-//!   origin handoff.
-//! - `/app` needs a session token as `Authorization: Bearer <token>`. One
-//!   that names no live session is a `401` before anything runs, which the
-//!   web app turns into "session ended".
+//! - `/api` is the anyx core schema `api`: a JSON list of calls. Each call
+//!   carries its credential, and the schema decides which endpoints need a
+//!   bearer session (see `api.rs`). A token that names no live session
+//!   answers that call `unauthenticated`, which the web app turns into
+//!   "session ended".
 //! - `/test` sets up end-to-end tests, and exists only when
 //!   `e2e_reset::EMAILS_VAR` is set.
 //!
 //! A generated client sends its schema's hash as `Poentaro-Schema`. A tab
 //! built from another schema gets a `409`, and the web app asks to reload.
-//! Responses are anyx text, and each request writes one `app_log` row.
+//! Each request writes one `app_log` row.
 
+mod api;
 mod app;
 mod public;
 mod test;
+
+use std::cell::Cell;
 
 use worker::{console_error, D1Database, Env, Method, Request, Response, Result};
 
@@ -24,9 +27,7 @@ use crate::api_error::ApiError;
 use crate::app_log::{LogEvent, ProtocolCalled, ProtocolEvent, ProtocolRefused, RequestMeta};
 use crate::db;
 use crate::e2e_reset;
-use crate::identity::resolve_verified_user_id;
-use app::AppServer;
-use public::PublicServer;
+use api::ApiServer;
 use test::TestServer;
 
 /// The header a generated client sends its schema's hash in.
@@ -34,32 +35,21 @@ pub(crate) const SCHEMA_HEADER: &str = "Poentaro-Schema";
 
 #[derive(Clone, Copy)]
 pub(crate) enum Endpoint {
-    Public,
-    App,
+    Api,
     Test,
 }
 
 impl Endpoint {
     fn name(self) -> &'static str {
         match self {
-            Endpoint::Public => "public",
-            Endpoint::App => "app",
+            Endpoint::Api => "api",
             Endpoint::Test => "test",
-        }
-    }
-
-    fn schema(self) -> &'static poentaro_protocol::Schema {
-        match self {
-            Endpoint::Public => poentaro_protocol::public::schema(),
-            Endpoint::App => poentaro_protocol::app::schema(),
-            Endpoint::Test => poentaro_protocol::test::schema(),
         }
     }
 
     fn schema_hash(self) -> &'static str {
         match self {
-            Endpoint::Public => poentaro_protocol::public::SCHEMA_HASH,
-            Endpoint::App => poentaro_protocol::app::SCHEMA_HASH,
+            Endpoint::Api => poentaro_protocol::api::SCHEMA_HASH,
             Endpoint::Test => poentaro_protocol::test::SCHEMA_HASH,
         }
     }
@@ -68,8 +58,7 @@ impl Endpoint {
 /// The endpoint `path` names, if this worker serves it.
 pub(crate) fn endpoint(path: &str, env: &Env) -> Option<Endpoint> {
     match path {
-        "/public" => Some(Endpoint::Public),
-        "/app" => Some(Endpoint::App),
+        "/api" => Some(Endpoint::Api),
         "/test" if env.var(e2e_reset::EMAILS_VAR).is_ok() => Some(Endpoint::Test),
         _ => None,
     }
@@ -89,60 +78,36 @@ pub(crate) async fn serve(mut req: Request, env: &Env, endpoint: Endpoint) -> Re
         refuse(&d1, endpoint, 409, &meta).await;
         return text("Poentaro was updated. Reload to keep going.\n", 409);
     }
-    // `/app` acts for the session's account; a token that names none is a
-    // `401` for the whole request (`resolve_verified_user_id` logs why).
-    let session = match endpoint {
-        Endpoint::App => {
-            let authorization = req.headers().get("Authorization")?;
-            let token = bearer_token(authorization.as_deref()).unwrap_or_default();
-            match resolve_verified_user_id(&d1, token, &meta).await? {
-                Ok(user_id) => Some(Session {
-                    token: token.to_string(),
-                    user_id,
-                }),
-                Err(_) => {
-                    refuse(&d1, endpoint, 401, &meta).await;
-                    return text("Your session ended. Sign in again.\n", 401);
-                }
-            }
-        }
-        Endpoint::Public | Endpoint::Test => None,
-    };
     let request = req.text().await?;
-    let mut failed = false;
-    let on_internal_error = |error: worker::Error| {
-        console_error!("{}: internal error: {error}", endpoint.name());
-        failed = true;
-    };
-    let response = match endpoint {
-        Endpoint::Public => {
-            let server = PublicServer {
+    let (response, calls, failed) = match endpoint {
+        Endpoint::Api => {
+            let server = ApiServer {
                 d1: &d1,
                 env,
                 meta: &meta,
+                failed: Cell::new(false),
             };
-            poentaro_protocol::public::handle(&server, &request, on_internal_error).await
-        }
-        Endpoint::App => {
-            let Some(Session { token, user_id }) = session else {
-                return Err(worker::Error::RustError("no session".to_string()));
-            };
-            let server = AppServer {
-                d1: &d1,
-                meta: &meta,
-                token,
-                user_id,
-            };
-            poentaro_protocol::app::handle(&server, &request, on_internal_error).await
+            let response = poentaro_protocol::api::handle_request(&server, &request).await;
+            let calls = poentaro_protocol::api::called(&request);
+            (response, calls, server.failed.get())
         }
         Endpoint::Test => {
+            let mut failed = false;
+            let on_internal_error = |error: worker::Error| {
+                console_error!("test: internal error: {error}");
+                failed = true;
+            };
             let server = TestServer { d1: &d1, env };
-            poentaro_protocol::test::handle(&server, &request, on_internal_error).await
+            let response =
+                poentaro_protocol::test::handle(&server, &request, on_internal_error).await;
+            let calls =
+                poentaro_protocol::method_names(poentaro_protocol::test::schema(), &request);
+            (response, calls, failed)
         }
     };
     let event = ProtocolEvent::Called(ProtocolCalled {
         protocol: endpoint.name().to_string(),
-        calls: poentaro_protocol::method_names(endpoint.schema(), &request),
+        calls,
         failed,
     });
     log(&d1, event, &meta).await;
@@ -151,17 +116,6 @@ pub(crate) async fn serve(mut req: Request, env: &Env, endpoint: Endpoint) -> Re
         response.headers_mut().set(TRACE_ID_HEADER, trace_id)?;
     }
     Ok(response)
-}
-
-/// The signed-in caller of `/app`.
-struct Session {
-    token: String,
-    user_id: String,
-}
-
-/// The token in an `Authorization: Bearer <token>` header.
-fn bearer_token(authorization: Option<&str>) -> Option<&str> {
-    authorization?.trim().strip_prefix("Bearer ").map(str::trim)
 }
 
 /// An `ApiError` no method answers as one of its errors. By value, so it

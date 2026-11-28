@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import type { Request } from '@playwright/test'
-import * as app from '../src/generated/protocol/app'
-import * as publicProtocol from '../src/generated/protocol/public'
+import * as api from '../src/generated/protocol/api'
 import * as test from '../src/generated/protocol/test'
-import { poentaroWasm, setWasmRoot } from '../src/poentaroWasm'
+import { setWasmRoot } from '../src/poentaroWasm'
 import { type CallOutcome, settled } from '../src/protocol/outcome'
+import { type AppClient, signedIn } from '../src/protocol/signedIn'
 import { codecFor, sendTo } from '../src/protocol/transport'
 
 // The web app's protocol clients, for the Node side of the e2e suite: the
@@ -36,29 +36,14 @@ export function ensureWasm(): Promise<void> {
   return wasmReady
 }
 
-export async function publicClient(): Promise<publicProtocol.Client> {
-  await ensureWasm()
-  return new publicProtocol.Client(
-    codecFor('public'),
-    sendTo({
-      host: WORKER_HOST,
-      protocol: 'public',
-      schemaHash: publicProtocol.SCHEMA_HASH,
-    }),
+export async function publicClient(): Promise<api.Client> {
+  return new api.Client(
+    sendTo({ host: WORKER_HOST, protocol: 'api', schemaHash: api.SCHEMA_HASH }),
   )
 }
 
-export async function appClient(token: string): Promise<app.Client> {
-  await ensureWasm()
-  return new app.Client(
-    codecFor('app'),
-    sendTo({
-      host: WORKER_HOST,
-      protocol: 'app',
-      schemaHash: app.SCHEMA_HASH,
-      token,
-    }),
-  )
+export async function appClient(token: string): Promise<AppClient> {
+  return signedIn(await publicClient(), token)
 }
 
 export async function testClient(): Promise<test.Client> {
@@ -100,19 +85,34 @@ export function answersCall(
   return request.postData()?.includes(method) ?? false
 }
 
-/** Whether a public-protocol request calls this generated method. */
-export async function publicCallTo(
-  request: Request,
-  method: keyof typeof publicProtocol.EFFECTS,
-): Promise<boolean> {
+/** The endpoint each call of an `api` request names, e.g. `open shared
+ * link`: its kind on the wire. None when it isn't an `api` request. */
+export function apiEndpointsOf(request: Request): string[] {
   if (
     request.method() !== 'POST' ||
-    request.url() !== `http://${WORKER_HOST}/public`
+    request.url() !== `http://${WORKER_HOST}/api`
   )
-    return false
-  await ensureWasm()
-  const calls: { method: keyof typeof publicProtocol.EFFECTS }[] = JSON.parse(
-    poentaroWasm().protocolDecodeRequest('public', request.postData() ?? ''),
-  )
-  return calls.some((call) => call.method === method)
+    return []
+  try {
+    const calls = JSON.parse(request.postData() ?? '') as {
+      arguments?: { endpoint?: { kind?: string } }
+    }[]
+    return calls.flatMap((call) => call.arguments?.endpoint?.kind ?? [])
+  } catch {
+    return []
+  }
+}
+
+/** An endpoint's name with its slots dropped: `open shared link _` is the
+ * wire's `open shared link`. */
+export function endpointKind(method: string): string {
+  return method.replaceAll(' _', '').replace(/^_ /, '')
+}
+
+/** Whether an `api` request calls `method` (`open shared link _`). */
+export async function publicCallTo(
+  request: Request,
+  method: string,
+): Promise<boolean> {
+  return apiEndpointsOf(request).includes(endpointKind(method))
 }

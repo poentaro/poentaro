@@ -284,9 +284,13 @@ export function useStorageBackend(): UseStorageBackendResult {
   latestStoreRef.current = store
   const forceSave = useCallback(() => {
     debouncedSave.cancel()
+    // The save is handed over from now, so closing the tab before the
+    // delayed task runs still warns.
+    handingOverRef.current += 1
     setTimeout(() => {
       debouncedSave.cancel()
       runSave(latestStoreRef.current)
+      handingOverRef.current -= 1
     }, 0)
   }, [debouncedSave, runSave])
 

@@ -58,7 +58,7 @@ describe('createCloudBackend: file text cache', () => {
     server.failNext('write file _ at revision _ content _', {
       kind: 'error',
       error: {
-        kind: 'conflictAtRevisionContent',
+        kind: 'conflict at revision content',
         revision: 7,
         content: 'theirs',
       },

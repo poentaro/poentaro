@@ -97,14 +97,38 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "anyx"
 version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyx?rev=b25890f9bf01614caa0a04a83d5e8e8009572752#b25890f9bf01614caa0a04a83d5e8e8009572752"
+
+[[package]]
+name = "anyx"
+version = "0.1.0"
 source = "git+https://github.com/wongjiahau/anyx?rev=e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4#e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4"
+
+[[package]]
+name = "anyx-core"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyx?rev=b25890f9bf01614caa0a04a83d5e8e8009572752#b25890f9bf01614caa0a04a83d5e8e8009572752"
+dependencies = [
+ "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=b25890f9bf01614caa0a04a83d5e8e8009572752)",
+ "regex",
+]
+
+[[package]]
+name = "anyx-core-generate"
+version = "0.1.0"
+source = "git+https://github.com/wongjiahau/anyx?rev=b25890f9bf01614caa0a04a83d5e8e8009572752#b25890f9bf01614caa0a04a83d5e8e8009572752"
+dependencies = [
+ "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=b25890f9bf01614caa0a04a83d5e8e8009572752)",
+ "anyx-core",
+ "serde_json",
+]
 
 [[package]]
 name = "anyx-generator"
 version = "0.1.0"
 source = "git+https://github.com/wongjiahau/anyx?rev=e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4#e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4"
 dependencies = [
- "anyx",
+ "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4)",
  "regex",
  "regex-automata",
 ]
@@ -114,7 +138,7 @@ name = "anyx-protocol"
 version = "0.1.0"
 source = "git+https://github.com/wongjiahau/anyx?rev=e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4#e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4"
 dependencies = [
- "anyx",
+ "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4)",
  "base64",
  "regex",
  "serde_json",
@@ -1628,7 +1652,7 @@ dependencies = [
 name = "migrate-comments"
 version = "0.1.0"
 dependencies = [
- "anyx",
+ "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4)",
  "live-share-worker",
  "poentaro",
  "serde",
@@ -1965,7 +1989,7 @@ dependencies = [
 name = "poentaro"
 version = "0.1.0"
 dependencies = [
- "anyx",
+ "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4)",
  "ariadne",
  "base64",
  "clap",
@@ -1992,7 +2016,7 @@ dependencies = [
 name = "poentaro-grammar"
 version = "0.1.0"
 dependencies = [
- "anyx",
+ "anyx 0.1.0 (git+https://github.com/wongjiahau/anyx?rev=e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4)",
  "anyx-generator",
 ]
 
@@ -2000,8 +2024,11 @@ dependencies = [
 name = "poentaro-protocol"
 version = "0.1.0"
 dependencies = [
+ "anyx-core-generate",
  "anyx-protocol",
  "anyx-protocol-generate",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

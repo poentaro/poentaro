@@ -7,6 +7,7 @@ import {
   openFileActions,
   openFileList,
 } from '../../fileSwitcherHelpers'
+import { endpointKind } from '../../protocolClients'
 import { currentSignedInEmail } from './cloud-account.steps'
 import { BeforeScenario, Given, Then, When } from './fixtures'
 
@@ -35,7 +36,7 @@ function recordReadFiles(page: Page): void {
   page.on('request', (request) => {
     void appCallsOf(request).then((calls) => {
       for (const call of calls) {
-        if (call.method === 'read file _')
+        if (call.method === endpointKind('read file _'))
           readIds.push(String(call.arguments[0]))
       }
     })

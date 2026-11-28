@@ -121,7 +121,7 @@ Then(
             (await appClient(identityToken)).listFiles(),
           )
           return files.some(
-            (file) => file.path === fileName && file.trashedAt === undefined,
+            (file) => file.path === fileName && file.trashedAt === null,
           )
         },
         { timeout: DELIVERY_TIMEOUT_MS },

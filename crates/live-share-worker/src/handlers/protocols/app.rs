@@ -1,13 +1,11 @@
-//! `poentaro app`: what the signed-in web app calls. The session token was
-//! checked before any method runs, so every method acts for `user_id`. It
-//! runs the same cores as the REST routes it replaces.
+//! The signed-in endpoints of `api`. `account from` verified the session
+//! token before any of them runs, so each acts for `user_id`.
 
 mod files;
 mod links;
-mod server;
 
-use poentaro_protocol::app::ChangePasswordFromToError;
-use poentaro_protocol::app::{CreatedKey, Key, KeyId, RevokeAgentKeyError};
+use poentaro_protocol::api::ChangePasswordError;
+use poentaro_protocol::api::{CreatedKey, Key, RevokeKeyError};
 use worker::D1Database;
 
 use super::{instant, internal};
@@ -38,7 +36,7 @@ impl AppServer<'_> {
         &self,
         current_password: String,
         new_password: String,
-    ) -> Outcome<(), ChangePasswordFromToError> {
+    ) -> Outcome<(), ChangePasswordError> {
         let session = SignedInSession {
             token: &self.token,
             user_id: &self.user_id,
@@ -49,16 +47,14 @@ impl AppServer<'_> {
         };
         match auth::replace_password(self.d1, session, passwords, self.meta).await {
             Ok(()) => Ok(Ok(())),
-            Err(ApiError::IncorrectCredentials) => {
-                Ok(Err(ChangePasswordFromToError::IncorrectPassword))
-            }
+            Err(ApiError::IncorrectCredentials) => Ok(Err(ChangePasswordError::IncorrectPassword)),
             Err(ApiError::SignInLocked {
                 retry_after_seconds,
-            }) => Ok(Err(ChangePasswordFromToError::LockedFor {
+            }) => Ok(Err(ChangePasswordError::PasswordLockedFor {
                 duration: std::time::Duration::from_secs(retry_after_seconds.unsigned_abs()),
             })),
             Err(ApiError::WeakPassword { message }) => {
-                Ok(Err(ChangePasswordFromToError::WeakPassword { message }))
+                Ok(Err(ChangePasswordError::WeakNewPassword { message }))
             }
             Err(error) => Err(internal(error)),
         }
@@ -67,7 +63,7 @@ impl AppServer<'_> {
 
 fn key(summary: ApiKeySummary) -> Key {
     Key {
-        id: summary.id.into(),
+        id: summary.id,
         prefix: summary.prefix,
         created_at: instant(summary.created_at),
         last_used_at: summary.last_used_at.map(instant),
@@ -99,10 +95,10 @@ impl AppServer<'_> {
         })
     }
 
-    pub(super) async fn revoke_agent_key(&self, id: KeyId) -> Outcome<(), RevokeAgentKeyError> {
-        match api_keys::revoke_key(self.d1, &self.user_id, &id.0, self.meta).await {
+    pub(super) async fn revoke_agent_key(&self, id: String) -> Outcome<(), RevokeKeyError> {
+        match api_keys::revoke_key(self.d1, &self.user_id, &id, self.meta).await {
             Ok(()) => Ok(Ok(())),
-            Err(ApiError::NotFound) => Ok(Err(RevokeAgentKeyError::MissingKey)),
+            Err(ApiError::NotFound) => Ok(Err(RevokeKeyError {})),
             Err(error) => Err(internal(error)),
         }
     }

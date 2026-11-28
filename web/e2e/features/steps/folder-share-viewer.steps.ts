@@ -347,7 +347,7 @@ Then('the cloud account holds the file {string}', async ({}, name: string) => {
       async () => {
         const files = await valueOrFail('list files', client.listFiles())
         return files.some(
-          (file) => file.path === name && file.trashedAt === undefined,
+          (file) => file.path === name && file.trashedAt === null,
         )
       },
       { timeout: 20_000 },

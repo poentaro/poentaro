@@ -3,7 +3,6 @@ import {
   parseStoredFileStore,
   serializeFileStore,
 } from '../fileStorePersistence'
-import { MigrationId } from '../generated/protocol/public'
 import {
   currentLocalStorageKey,
   currentOutboxDatabaseName,
@@ -44,7 +43,7 @@ export async function importOriginMigration(): Promise<void> {
 
   try {
     const payload = await expectValue(
-      (await publicClient()).claimOriginHandoff(MigrationId(id)),
+      (await publicClient()).claimOriginHandoff(id),
     )
     const carried = JSON.parse(payload) as OriginMigrationPayload
     await saveLocalStorage(carried.localStorage)

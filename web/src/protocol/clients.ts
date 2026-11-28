@@ -1,13 +1,14 @@
-import * as app from '../generated/protocol/app'
-import * as publicProtocol from '../generated/protocol/public'
+import * as api from '../generated/protocol/api'
 import * as test from '../generated/protocol/test'
 import { ensureWasmInit } from '../wasmInit'
+import { type AppClient, signedIn } from './signedIn'
 import { codecFor, sendTo } from './transport'
 
-/** The calls the cloud file store makes, so tests can stand in a fake.
- * `batch` sends several of them as one request. */
+export type { AppClient } from './signedIn'
+
+/** The calls the cloud file store makes, so tests can stand in a fake. */
 export type AppFileCalls = Pick<
-  app.Client,
+  AppClient,
   | 'readFileAtRevision'
   | 'listVersionsOfFile'
   | 'listFiles'
@@ -34,40 +35,29 @@ export function workerHost(): string {
   return import.meta.env.VITE_SYNCED_SHARE_HOST ?? ''
 }
 
-/** `poentaro public`: sign up, sign in, open a link, the origin handoff.
- * Requests are encoded in Rust, so this waits for the wasm. */
-export async function publicClient({
+function apiClient({
   host = workerHost(),
   onTraceId,
-}: ClientOptions = {}): Promise<publicProtocol.Client> {
-  await ensureWasmInit()
-  return new publicProtocol.Client(
-    codecFor('public'),
-    sendTo({
-      host,
-      protocol: 'public',
-      schemaHash: publicProtocol.SCHEMA_HASH,
-      onTraceId,
-    }),
+}: ClientOptions): api.Client {
+  return new api.Client(
+    sendTo({ host, protocol: 'api', schemaHash: api.SCHEMA_HASH, onTraceId }),
   )
 }
 
-/** `poentaro app`, acting as the session `token` names. */
+/** `api`'s public endpoints: sign up, sign in, open a link, the origin
+ * handoff. Calling a signed-in endpoint without a token is refused. */
+export async function publicClient(
+  options: ClientOptions = {},
+): Promise<api.Client> {
+  return apiClient(options)
+}
+
+/** `api`'s signed-in endpoints, acting as the session `token` names. */
 export async function appClient(
   token: string,
-  { host = workerHost(), onTraceId }: ClientOptions = {},
-): Promise<app.Client> {
-  await ensureWasmInit()
-  return new app.Client(
-    codecFor('app'),
-    sendTo({
-      host,
-      protocol: 'app',
-      schemaHash: app.SCHEMA_HASH,
-      token,
-      onTraceId,
-    }),
-  )
+  options: ClientOptions = {},
+): Promise<AppClient> {
+  return signedIn(apiClient(options), token)
 }
 
 /** `poentaro test`, served only to end-to-end tests. */

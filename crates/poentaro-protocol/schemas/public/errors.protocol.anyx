@@ -1,9 +1,0 @@
-PUBLIC ERRORS size errors [
-    # The payload or shared folder exceeds its limit; `message` explains it.
-    too large (message: Text),
-],
-
-PUBLIC ERRORS rate limit errors [
-    # Too many requests from this address in the last minute.
-    too many requests,
-],

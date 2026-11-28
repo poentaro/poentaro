@@ -45,7 +45,7 @@ function alreadyMigrated(): boolean {
 }
 
 function failureMessage(error: unknown): string {
-  if (error === 'tooLarge') {
+  if (error === 'handoff too large') {
     return 'Your saved files are too large to move automatically.'
   }
   return "We couldn't move your saved files. Check your connection and try again."

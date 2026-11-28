@@ -1,0 +1,427 @@
+## Poentaro's API for the web app, in the anyx core: one schema for what anyone
+## calls and what a signed-in account calls.
+## An endpoint needs a bearer session unless it says `access (public)`.
+
+## ---------------------------------------------------------------------------
+## Prelude. `Text`, `Integer`, `Natural` and `List of _` are built in.
+
+DATA Instant WITH [],
+DATA Duration WITH [],
+DATA Boolean WITH [true, false],
+DATA Nothing WITH [nothing],
+DATA Never WITH [],
+
+DATA Optional (item: Type) WITH [
+  nothing of (item: Type) : Optional (item),
+  something of (item: Type) is (value: item) : Optional (item),
+],
+
+## ---------------------------------------------------------------------------
+## Framework: who may call an endpoint, and what a call can end in.
+
+DATA Access WITH [public, bearer],
+
+DATA Effect WITH [
+  reads,
+  idempotent,
+  writes,
+],
+
+## What the client sends.
+DATA Credential for (access: Access) WITH [
+  anonymous : Credential for (public),
+  bearer token (token: Text) : Credential for (bearer),
+],
+
+## The server's own record of a signed-in account.
+DATA Account WITH [],
+
+## What a handler receives.
+DATA Caller for (access: Access) WITH [
+  nobody : Caller for (public),
+  signed in as (account: Account) : Caller for (bearer),
+],
+
+DATA Reply of (response: Type) or (error: Type) WITH [
+  answered (response: Type) or (error: Type) with (value: response)
+    : Reply of (response) or (error),
+  failed (response: Type) or (error: Type) with (problem: error)
+    : Reply of (response) or (error),
+  ## The bearer token names no session.
+  unauthenticated (response: Type) or (error: Type)
+    : Reply of (response) or (error),
+  ## The server's own failure.
+  internal error (response: Type) or (error: Type)
+    : Reply of (response) or (error),
+],
+
+## ---------------------------------------------------------------------------
+## Records.
+
+RECORD Session WITH [
+  ## Send `token` as a bearer token to every endpoint that isn't public.
+  signed in as (email: Text) with token (token: Text),
+],
+
+RECORD Shared file WITH [
+  named (name: Text),
+  with content (content: Text),
+  at revision (revision: Integer),
+],
+
+RECORD Folder file WITH [
+  ## Relative to the shared folder, such as `Advent/O Come.poentaro`.
+  at (path: Text),
+  with content (content: Text),
+  at revision (revision: Integer),
+],
+
+RECORD Shared folder WITH [
+  named (name: Text),
+  with files (files: List of (Folder file)),
+  ## The folders with no file in them.
+  with empty folders (empty folders: List of (Text)),
+],
+
+DATA Shared WITH [
+  ## The link was stopped, the file is in the trash, or no link has this id.
+  ended,
+  file (file: Shared file),
+  folder (folder: Shared folder),
+],
+
+FUNCTION Migration id : Type IS Text,
+FUNCTION Key id : Type IS Text,
+
+RECORD File summary WITH [
+  ## `id` is made by the browser that created the file, and never changes.
+  ## `path` is a slash path, such as `Hymns/hymn.poentaro`.
+  file (id: Text) at (path: Text),
+  at revision (revision: Integer),
+  trashed at (trashed at: Optional (Instant)),
+],
+
+RECORD File WITH [
+  .(summary: File summary),
+  with content (content: Text),
+],
+
+RECORD Version WITH [
+  revision (revision: Integer) saved at (saved at: Instant),
+],
+
+RECORD Key WITH [
+  ## `prefix` is the start of the key, such as `poe_AbCd1234`.
+  key (id: Key id) starting with (prefix: Text),
+  created at (created at: Instant),
+  last used at (last used at: Optional (Instant)),
+  expires at (expires at: Instant),
+  ## Whether it had stopped working when it was listed.
+  expired (expired: Boolean),
+],
+
+RECORD Created key WITH [
+  .(key: Key),
+  ## What the owner pastes into their agent. It holds the whole key.
+  with prompt (prompt: Text),
+],
+
+DATA Status WITH [
+  never shared,
+  ## Anyone with the link sees the score as it changes.
+  live (share id: Text),
+  ## The link shows nothing until it's started again.
+  stopped (share id: Text),
+],
+
+RECORD File link WITH [
+  link (share id: Text) for file (file id: Text) named (name: Text),
+],
+
+RECORD Folder link WITH [
+  link (share id: Text) for folder (folder: Text),
+],
+
+RECORD Links WITH [
+  file links (files: List of (File link)),
+  folder links (folders: List of (Folder link)),
+],
+
+## ---------------------------------------------------------------------------
+## Errors shared by several endpoints.
+
+DATA Rate limit error WITH [
+  ## Too many requests from this address in the last minute.
+  too many requests,
+],
+
+DATA Size error WITH [
+  ## The payload or shared folder exceeds its limit; `message` explains it.
+  too large (message: Text),
+],
+
+DATA Credential error WITH [
+  ## This isn't shaped like an email.
+  invalid email,
+  rate limited (error: Rate limit error),
+],
+
+DATA Lookup error WITH [
+  ## This account has no file with this id.
+  missing,
+],
+
+DATA File error WITH [
+  ## The file is in the trash. Restore it first.
+  trashed,
+  not found (error: Lookup error),
+],
+
+DATA Conflict error WITH [
+  (path: Text) would be both file and folder,
+],
+
+DATA Bad path WITH [
+  ## The path isn't valid, such as an empty folder name or a `..`.
+  invalid path (message: Text),
+],
+
+DATA Path error WITH [
+  ## Another file, in the trash or not, has this path.
+  taken,
+  path conflict (error: Conflict error),
+  bad path (error: Bad path),
+],
+
+DATA Folder lookup error WITH [
+  ## No file is in this folder.
+  no such folder,
+],
+
+DATA Stop sharing error WITH [
+  ## There is no link to stop.
+  no link to stop,
+],
+
+## ---------------------------------------------------------------------------
+## Errors of one endpoint each.
+
+DATA Sign up error WITH [
+  ## This email already has an account. Sign in instead.
+  email taken,
+  ## The password isn't strong enough; `message` says why.
+  weak password (message: Text),
+  sign up refused (error: Credential error),
+],
+
+DATA Sign in error WITH [
+  ## The email has no account, or the password is wrong.
+  incorrect,
+  ## Too many wrong passwords for this email.
+  locked for (duration: Duration),
+  sign in refused (error: Credential error),
+],
+
+DATA Upload handoff error WITH [
+  handoff too large (error: Size error),
+  handoff rate limited (error: Rate limit error),
+],
+
+DATA Claim handoff error WITH [
+  ## No handoff has this id, or it was claimed already.
+  no such handoff,
+],
+
+DATA Change password error WITH [
+  ## `current password` isn't the account's password.
+  incorrect password,
+  ## Too many wrong passwords for this email.
+  password locked for (duration: Duration),
+  ## The new password isn't strong enough; `message` says why.
+  weak new password (message: Text),
+],
+
+DATA Write error WITH [
+  ## Someone saved first. The file is now at `revision`, with `content`.
+  conflict at revision (revision: Integer) content (content: Text),
+  write refused (error: File error),
+],
+
+DATA Create error WITH [
+  ## Another file already has this id.
+  id taken,
+  create refused (error: Path error),
+],
+
+DATA Move file error WITH [
+  move refused (error: Path error),
+  move not found (error: Lookup error),
+],
+
+DATA Restore error WITH [
+  ## The file isn't in the trash.
+  not trashed,
+  restore conflict (error: Conflict error),
+  restore not found (error: Lookup error),
+],
+
+DATA Read version error WITH [
+  ## The file has no earlier version at this revision.
+  no such version,
+  version not found (error: Lookup error),
+],
+
+DATA Move folder error WITH [
+  ## Nothing moved.
+  (paths: List of (Text)) taken by other files,
+  folder not found (error: Folder lookup error),
+  folder conflict (error: Conflict error),
+  bad folder path (error: Bad path),
+],
+
+DATA Revoke key error WITH [
+  ## No key of this account has this id.
+  missing key,
+],
+
+DATA Share folder error WITH [
+  ## The folder holds too much to share; `message` says how much.
+  folder too large (message: Text),
+  shared folder not found (error: Folder lookup error),
+  bad shared folder path (error: Bad path),
+],
+
+DATA Stop sharing folder error WITH [
+  folder never shared (error: Stop sharing error),
+  bad stopped folder path (error: Bad path),
+],
+
+## ---------------------------------------------------------------------------
+## Endpoints. The short spellings are bearer endpoints: a public one spells
+## out `access (public)`.
+
+FUNCTION Endpoint returning (response: Type) failing with (error: Type) : Kind IS
+  ⁽Endpoint returning (response) failing with (error) access (bearer) effect (writes),
+FUNCTION Reading endpoint returning (response: Type) failing with (error: Type) : Kind IS
+  ⁽Endpoint returning (response) failing with (error) access (bearer) effect (reads),
+FUNCTION Idempotent endpoint returning (response: Type) failing with (error: Type) : Kind IS
+  ⁽Endpoint returning (response) failing with (error) access (bearer) effect (idempotent),
+
+DATA Endpoint returning (response: Type) failing with (error: Type)
+  access (access: Access) effect (effect: Effect) : Kind WITH [
+
+  ## Public: from `poentaro public`.
+
+  sign up (email: Text) password (password: Text)
+    : Endpoint returning (Session) failing with (Sign up error)
+      access (public) effect (writes),
+  sign in (email: Text) password (password: Text)
+    : Endpoint returning (Session) failing with (Sign in error)
+      access (public) effect (writes),
+  ## What a link shows. Open it again to see the owner's later saves.
+  open shared link (share id: Text)
+    : Endpoint returning (Shared) failing with (Size error)
+      access (public) effect (reads),
+  ## Hands what an old origin kept in the browser to the new origin. The
+  ## server never reads `payload`.
+  upload origin handoff (payload: Text)
+    : Endpoint returning (Migration id) failing with (Upload handoff error)
+      access (public) effect (writes),
+  ## The payload as it was uploaded. A handoff can be claimed once.
+  claim origin handoff (id: Migration id)
+    : Endpoint returning (Text) failing with (Claim handoff error)
+      access (public) effect (writes),
+
+  ## Signed in: from `poentaro app`.
+
+  ## Ends this session.
+  sign out : Idempotent endpoint returning (Nothing) failing with (Never),
+  ## Ends every other session of the account. This one stays signed in.
+  change password from (current password: Text) to (new password: Text)
+    : Endpoint returning (Nothing) failing with (Change password error),
+
+  ## Every file this account owns, the trash included.
+  list files : Reading endpoint returning (List of (File summary)) failing with (Never),
+  ## A file and its score. A file in the trash can be read too.
+  read file (id: Text) : Reading endpoint returning (File) failing with (Lookup error),
+  ## Saves the score, if the file is still at `revision`. A score that
+  ## doesn't parse is saved too.
+  write file (id: Text) at revision (revision: Integer) content (content: Text)
+    : Endpoint returning (Integer) failing with (Write error),
+  ## Makes a new file, and its folders if they don't exist.
+  create file (id: Text) at (path: Text) content (content: Text)
+    : Endpoint returning (File summary) failing with (Create error),
+  ## Moves or renames a file. Its link keeps working.
+  move file (id: Text) to (path: Text)
+    : Endpoint returning (Nothing) failing with (Move file error),
+  ## Moves the file to the trash. `restore file` brings it back.
+  trash file (id: Text)
+    : Idempotent endpoint returning (Nothing) failing with (Lookup error),
+  ## Brings a file back from the trash. If its path has been taken since, it
+  ## comes back under a free one, such as `hymn 2.poentaro`.
+  restore file (id: Text) : Endpoint returning (Text) failing with (Restore error),
+
+  ## The file's earlier versions, newest first.
+  list versions of file (id: Text)
+    : Reading endpoint returning (List of (Version)) failing with (Lookup error),
+  read file (id: Text) at revision (revision: Integer)
+    : Reading endpoint returning (Text) failing with (Read version error),
+
+  ## Moves a folder and every file in it that isn't in the trash: all of
+  ## them, or none. Moving a folder that is already at `new path` succeeds.
+  move folder (path: Text) to (new path: Text)
+    : Endpoint returning (List of (File summary)) failing with (Move folder error),
+
+  ## The account's keys, newest first.
+  list agent keys : Reading endpoint returning (List of (Key)) failing with (Never),
+  create agent key : Endpoint returning (Created key) failing with (Never),
+  revoke agent key (id: Key id)
+    : Idempotent endpoint returning (Nothing) failing with (Revoke key error),
+
+  ## A file has one link for good, so it's the same link every time.
+  start sharing file (id: Text) : Endpoint returning (Text) failing with (File error),
+  stop sharing file (id: Text)
+    : Endpoint returning (Nothing) failing with (Stop sharing error),
+  sharing status of file (id: Text)
+    : Reading endpoint returning (Status) failing with (Never),
+  start sharing folder (path: Text)
+    : Endpoint returning (Text) failing with (Share folder error),
+  stop sharing folder (path: Text)
+    : Endpoint returning (Nothing) failing with (Stop sharing folder error),
+  sharing status of folder (path: Text)
+    : Reading endpoint returning (Status) failing with (Bad path),
+  ## Every live link. A file or folder is also shared through any shared
+  ## folder it's in.
+  list shared links : Reading endpoint returning (Links) failing with (Never),
+],
+
+## ---------------------------------------------------------------------------
+## Served: the server implements these.
+
+FUNCTION account from (token: Text) : Optional (Account),
+
+FUNCTION handle (response: Type) failing with (error: Type) access (access: Access)
+  effect (effect: Effect)
+  at (endpoint: Endpoint returning (response) failing with (error) access (access) effect (effect))
+  as (caller: Caller for (access))
+  : Reply of (response) or (error),
+
+## ---------------------------------------------------------------------------
+## The one entry point. Generated for client and server alike.
+
+FUNCTION serve (response: Type) failing with (error: Type) access (access: Access)
+  effect (effect: Effect)
+  at (endpoint: Endpoint returning (response) failing with (error) access (access) effect (effect))
+  with (credential: Credential for (access))
+  : Reply of (response) or (error) IS
+  ⁽MATCH credential WITH [
+    WHEN anonymous THEN
+      handle (response) failing with (error) access (public) effect (effect)
+        at (endpoint) as (nobody),
+    WHEN bearer token (token) THEN ⁽MATCH account from (token) WITH [
+      WHEN nothing of (none) THEN unauthenticated (response) or (error),
+      WHEN something of (some) is (account) THEN
+        handle (response) failing with (error) access (bearer) effect (effect)
+          at (endpoint) as (signed in as (account)),
+    ],
+  ],

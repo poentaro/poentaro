@@ -91,16 +91,16 @@ async function moveEach(
   for (const move of moves) {
     const outcome = settled(await app.moveFileTo(move.fileId, move.to))
     if (outcome.kind === 'value') continue
-    switch (outcome.error.kind) {
+    if (outcome.error.kind === 'move not found') continue
+    const path = outcome.error.error
+    switch (path.kind) {
       case 'taken':
         taken.push(move.to)
         break
-      case 'missing':
-        break
-      case 'invalidPath':
-        return refused(outcome.error, 400)
-      case 'wouldBeBothFileAndFolder':
-        return refused(outcome.error, 409)
+      case 'bad path':
+        return refused(path.error, 400)
+      case 'path conflict':
+        return refused(path.error, 409)
     }
   }
   return taken.length > 0 ? namesTaken(taken) : ok(request.expectedRevision)
@@ -115,20 +115,20 @@ async function moveFolder(
   if (outcome.kind === 'value') return ok(request.expectedRevision)
   switch (outcome.error.kind) {
     // Nothing left in it: every file was moved or trashed since.
-    case 'noSuchFolder':
+    case 'folder not found':
       return ok(request.expectedRevision)
     // The destination folder exists already: move into the next numbered
     // folder instead. A file made inside it meanwhile is named on its own.
-    case 'takenByOtherFiles':
+    case 'taken by other files':
       return namesTaken(outcome.error.paths, (rejected) =>
         rejected === folder.to
           ? poentaroWasm().fileStoreFolderAfterCollision(rejected)
           : poentaroWasm().fileStoreNameAfterCollision(rejected),
       )
-    case 'invalidPath':
-      return refused(outcome.error, 400)
-    case 'wouldBeBothFileAndFolder':
-      return refused(outcome.error, 409)
+    case 'bad folder path':
+      return refused(outcome.error.error, 400)
+    case 'folder conflict':
+      return refused(outcome.error.error, 409)
   }
 }
 
@@ -141,20 +141,21 @@ async function createFile(
   const id = request.fileId
   const outcome = settled(await app.createFileAtContent(id, name, content))
   if (outcome.kind === 'value') return ok(outcome.value.revision)
-  switch (outcome.error.kind) {
+  // An earlier try made it and its answer was lost.
+  if (outcome.error.kind === 'id taken') {
+    const file = settled(await app.readFile(id))
+    return file.kind === 'value'
+      ? ok(file.value.summary.revision)
+      : refused(file.error, 409)
+  }
+  const path = outcome.error.error
+  switch (path.kind) {
     case 'taken':
       return nameTaken(request, name)
-    // An earlier try made it and its answer was lost.
-    case 'idTaken': {
-      const file = settled(await app.readFile(id))
-      return file.kind === 'value'
-        ? ok(file.value.summary.revision)
-        : refused(file.error, 409)
-    }
-    case 'invalidPath':
-      return refused(outcome.error, 400)
-    case 'wouldBeBothFileAndFolder':
-      return refused(outcome.error, 409)
+    case 'bad path':
+      return refused(path.error, 400)
+    case 'path conflict':
+      return refused(path.error, 409)
   }
 }
 
@@ -175,7 +176,7 @@ async function saveContent(
   switch (outcome.error.kind) {
     // The server holding exactly our text means the earlier answer was
     // lost, not the write.
-    case 'conflictAtRevisionContent': {
+    case 'conflict at revision content': {
       const current = outcome.error
       deps.onServerText?.(request.fileId, current.revision, current.content)
       return current.content === content
@@ -185,10 +186,10 @@ async function saveContent(
             val: { currentRevision: BigInt(current.revision) },
           }
     }
-    case 'missing':
-      return refused(outcome.error, 404)
-    case 'trashed':
-      return refused(outcome.error, 410)
+    case 'write refused':
+      return outcome.error.error.kind === 'trashed'
+        ? refused(outcome.error.error, 410)
+        : refused(outcome.error.error.error, 404)
   }
 }
 
@@ -199,15 +200,17 @@ async function renameFile(
 ): Promise<SendResult | Refusal> {
   const outcome = settled(await app.moveFileTo(request.fileId, to))
   if (outcome.kind === 'value') return ok(request.expectedRevision)
-  switch (outcome.error.kind) {
+  if (outcome.error.kind === 'move not found') {
+    return refused(outcome.error.error, 404)
+  }
+  const path = outcome.error.error
+  switch (path.kind) {
     case 'taken':
       return nameTaken(request, to)
-    case 'missing':
-      return refused(outcome.error, 404)
-    case 'invalidPath':
-      return refused(outcome.error, 400)
-    case 'wouldBeBothFileAndFolder':
-      return refused(outcome.error, 409)
+    case 'bad path':
+      return refused(path.error, 400)
+    case 'path conflict':
+      return refused(path.error, 409)
   }
 }
 
@@ -219,12 +222,12 @@ async function restoreFile(
   if (outcome.kind === 'value') return ok(request.expectedRevision)
   switch (outcome.error.kind) {
     // An earlier try restored it and its answer was lost.
-    case 'notTrashed':
+    case 'not trashed':
       return ok(request.expectedRevision)
-    case 'missing':
-      return refused(outcome.error, 404)
-    case 'wouldBeBothFileAndFolder':
-      return refused(outcome.error, 409)
+    case 'restore not found':
+      return refused(outcome.error.error, 404)
+    case 'restore conflict':
+      return refused(outcome.error.error, 409)
   }
 }
 

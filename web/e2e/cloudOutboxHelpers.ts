@@ -1,5 +1,5 @@
 import { expect, type Page, type Route } from '@playwright/test'
-import { type AppRefusal, refuseCall, routeAppCall } from './appCalls'
+import { type AppRefusal, answerCall, routeAppCall } from './appCalls'
 
 // Generic helpers for e2e scenarios about the cloud outbox (content saves,
 // and later the structural / visibility / conflict phases). Plain functions,
@@ -68,12 +68,29 @@ async function handleContentSave(
       })
       return
     case 'refuse':
-      await refuseCall(route, fault.error)
+      await answerCall(route, {
+        kind: 'error',
+        error: writeRefusal(fault.error),
+      })
       return
     case 'drop-response':
       await route.fetch()
       await route.abort('failed')
       return
+  }
+}
+
+/** A `write file` call's `Write error` for a file that is `trashed` or
+ * `missing`, as the worker writes it. */
+function writeRefusal(
+  refusal: AppRefusal,
+): { kind: string } & Record<string, unknown> {
+  return {
+    kind: 'write refused',
+    error:
+      refusal === 'trashed'
+        ? { kind: 'trashed' }
+        : { kind: 'not found', error: { kind: refusal } },
   }
 }
 
