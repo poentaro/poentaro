@@ -17,4 +17,4 @@ serde_json = "1"
 [build-dependencies]
 anyx-protocol = { git = "https://github.com/wongjiahau/anyx", rev = "e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4" }
 anyx-protocol-generate = { git = "https://github.com/wongjiahau/anyx", rev = "e7bb1c27121cc4a8b5bc5713d2e149e95d3731d4" }
-anyx-core-generate = { git = "https://github.com/wongjiahau/anyx", rev = "ff590f5aaebe99eb9045f7939663c94b664c8ccd" }
+anyx-core-generate = { git = "https://github.com/wongjiahau/anyx", rev = "859b98d7b0814dff7edda055a82c57bf57319eb7" }

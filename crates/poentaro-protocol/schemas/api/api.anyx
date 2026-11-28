@@ -102,7 +102,7 @@ RECORD File summary WITH [
 ],
 
 RECORD File WITH [
-  (summary: File summary),
+  .(summary: File summary),
   with content (content: Text),
 ],
 
@@ -121,7 +121,7 @@ RECORD Key WITH [
 ],
 
 RECORD Created key WITH [
-  (key: Key),
+  .(key: Key),
   ## What the owner pastes into their agent. It holds the whole key.
   with prompt (prompt: Text),
 ],
