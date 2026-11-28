@@ -12,8 +12,8 @@ DATA Nothing WITH [nothing],
 DATA Never WITH [],
 
 DATA Optional (item: Type) WITH [
-  nothing of (item: Type) RETURNS Optional (item),
-  something of (item: Type) is (value: item) RETURNS Optional (item),
+  nothing of (item: Type) : Optional (item),
+  something of (item: Type) is (value: item) : Optional (item),
 ],
 
 ## ---------------------------------------------------------------------------
@@ -29,8 +29,8 @@ DATA Effect WITH [
 
 ## What the client sends.
 DATA Credential for (access: Access) WITH [
-  anonymous RETURNS Credential for (public),
-  bearer token (token: Text) RETURNS Credential for (bearer),
+  anonymous : Credential for (public),
+  bearer token (token: Text) : Credential for (bearer),
 ],
 
 ## The server's own record of a signed-in account.
@@ -38,21 +38,21 @@ DATA Account WITH [],
 
 ## What a handler receives.
 DATA Caller for (access: Access) WITH [
-  nobody RETURNS Caller for (public),
-  signed in as (account: Account) RETURNS Caller for (bearer),
+  nobody : Caller for (public),
+  signed in as (account: Account) : Caller for (bearer),
 ],
 
 DATA Reply of (response: Type) or (error: Type) WITH [
   answered (response: Type) or (error: Type) with (value: response)
-    RETURNS Reply of (response) or (error),
+    : Reply of (response) or (error),
   failed (response: Type) or (error: Type) with (problem: error)
-    RETURNS Reply of (response) or (error),
+    : Reply of (response) or (error),
   ## The bearer token names no session.
   unauthenticated (response: Type) or (error: Type)
-    RETURNS Reply of (response) or (error),
+    : Reply of (response) or (error),
   ## The server's own failure.
   internal error (response: Type) or (error: Type)
-    RETURNS Reply of (response) or (error),
+    : Reply of (response) or (error),
 ],
 
 ## ---------------------------------------------------------------------------
@@ -90,8 +90,8 @@ DATA Shared WITH [
   folder (folder: Shared folder),
 ],
 
-FUNCTION Migration id RETURNS Type IS Text,
-FUNCTION Key id RETURNS Type IS Text,
+FUNCTION Migration id : Type IS Text,
+FUNCTION Key id : Type IS Text,
 
 RECORD File summary WITH [
   ## `id` is made by the browser that created the file, and never changes.
@@ -300,111 +300,111 @@ DATA Stop sharing folder error WITH [
 ## Endpoints. The short spellings are bearer endpoints: a public one spells
 ## out `access (public)`.
 
-FUNCTION Endpoint returning (response: Type) failing with (error: Type) RETURNS Kind IS
+FUNCTION Endpoint returning (response: Type) failing with (error: Type) : Kind IS
   ⁽Endpoint returning (response) failing with (error) access (bearer) effect (writes),
-FUNCTION Reading endpoint returning (response: Type) failing with (error: Type) RETURNS Kind IS
+FUNCTION Reading endpoint returning (response: Type) failing with (error: Type) : Kind IS
   ⁽Endpoint returning (response) failing with (error) access (bearer) effect (reads),
-FUNCTION Idempotent endpoint returning (response: Type) failing with (error: Type) RETURNS Kind IS
+FUNCTION Idempotent endpoint returning (response: Type) failing with (error: Type) : Kind IS
   ⁽Endpoint returning (response) failing with (error) access (bearer) effect (idempotent),
 
 DATA Endpoint returning (response: Type) failing with (error: Type)
-  access (access: Access) effect (effect: Effect) RETURNS Kind WITH [
+  access (access: Access) effect (effect: Effect) : Kind WITH [
 
   ## Public: from `poentaro public`.
 
   sign up (email: Text) password (password: Text)
-    RETURNS Endpoint returning (Session) failing with (Sign up error)
+    : Endpoint returning (Session) failing with (Sign up error)
       access (public) effect (writes),
   sign in (email: Text) password (password: Text)
-    RETURNS Endpoint returning (Session) failing with (Sign in error)
+    : Endpoint returning (Session) failing with (Sign in error)
       access (public) effect (writes),
   ## What a link shows. Open it again to see the owner's later saves.
   open shared link (share id: Text)
-    RETURNS Endpoint returning (Shared) failing with (Size error)
+    : Endpoint returning (Shared) failing with (Size error)
       access (public) effect (reads),
   ## Hands what an old origin kept in the browser to the new origin. The
   ## server never reads `payload`.
   upload origin handoff (payload: Text)
-    RETURNS Endpoint returning (Migration id) failing with (Upload handoff error)
+    : Endpoint returning (Migration id) failing with (Upload handoff error)
       access (public) effect (writes),
   ## The payload as it was uploaded. A handoff can be claimed once.
   claim origin handoff (id: Migration id)
-    RETURNS Endpoint returning (Text) failing with (Claim handoff error)
+    : Endpoint returning (Text) failing with (Claim handoff error)
       access (public) effect (writes),
 
   ## Signed in: from `poentaro app`.
 
   ## Ends this session.
-  sign out RETURNS Idempotent endpoint returning (Nothing) failing with (Never),
+  sign out : Idempotent endpoint returning (Nothing) failing with (Never),
   ## Ends every other session of the account. This one stays signed in.
   change password from (current password: Text) to (new password: Text)
-    RETURNS Endpoint returning (Nothing) failing with (Change password error),
+    : Endpoint returning (Nothing) failing with (Change password error),
 
   ## Every file this account owns, the trash included.
-  list files RETURNS Reading endpoint returning (List of (File summary)) failing with (Never),
+  list files : Reading endpoint returning (List of (File summary)) failing with (Never),
   ## A file and its score. A file in the trash can be read too.
-  read file (id: Text) RETURNS Reading endpoint returning (File) failing with (Lookup error),
+  read file (id: Text) : Reading endpoint returning (File) failing with (Lookup error),
   ## Saves the score, if the file is still at `revision`. A score that
   ## doesn't parse is saved too.
   write file (id: Text) at revision (revision: Integer) content (content: Text)
-    RETURNS Endpoint returning (Integer) failing with (Write error),
+    : Endpoint returning (Integer) failing with (Write error),
   ## Makes a new file, and its folders if they don't exist.
   create file (id: Text) at (path: Text) content (content: Text)
-    RETURNS Endpoint returning (File summary) failing with (Create error),
+    : Endpoint returning (File summary) failing with (Create error),
   ## Moves or renames a file. Its link keeps working.
   move file (id: Text) to (path: Text)
-    RETURNS Endpoint returning (Nothing) failing with (Move file error),
+    : Endpoint returning (Nothing) failing with (Move file error),
   ## Moves the file to the trash. `restore file` brings it back.
   trash file (id: Text)
-    RETURNS Idempotent endpoint returning (Nothing) failing with (Lookup error),
+    : Idempotent endpoint returning (Nothing) failing with (Lookup error),
   ## Brings a file back from the trash. If its path has been taken since, it
   ## comes back under a free one, such as `hymn 2.poentaro`.
-  restore file (id: Text) RETURNS Endpoint returning (Text) failing with (Restore error),
+  restore file (id: Text) : Endpoint returning (Text) failing with (Restore error),
 
   ## The file's earlier versions, newest first.
   list versions of file (id: Text)
-    RETURNS Reading endpoint returning (List of (Version)) failing with (Lookup error),
+    : Reading endpoint returning (List of (Version)) failing with (Lookup error),
   read file (id: Text) at revision (revision: Integer)
-    RETURNS Reading endpoint returning (Text) failing with (Read version error),
+    : Reading endpoint returning (Text) failing with (Read version error),
 
   ## Moves a folder and every file in it that isn't in the trash: all of
   ## them, or none. Moving a folder that is already at `new path` succeeds.
   move folder (path: Text) to (new path: Text)
-    RETURNS Endpoint returning (List of (File summary)) failing with (Move folder error),
+    : Endpoint returning (List of (File summary)) failing with (Move folder error),
 
   ## The account's keys, newest first.
-  list agent keys RETURNS Reading endpoint returning (List of (Key)) failing with (Never),
-  create agent key RETURNS Endpoint returning (Created key) failing with (Never),
+  list agent keys : Reading endpoint returning (List of (Key)) failing with (Never),
+  create agent key : Endpoint returning (Created key) failing with (Never),
   revoke agent key (id: Key id)
-    RETURNS Idempotent endpoint returning (Nothing) failing with (Revoke key error),
+    : Idempotent endpoint returning (Nothing) failing with (Revoke key error),
 
   ## A file has one link for good, so it's the same link every time.
-  start sharing file (id: Text) RETURNS Endpoint returning (Text) failing with (File error),
+  start sharing file (id: Text) : Endpoint returning (Text) failing with (File error),
   stop sharing file (id: Text)
-    RETURNS Endpoint returning (Nothing) failing with (Stop sharing error),
+    : Endpoint returning (Nothing) failing with (Stop sharing error),
   sharing status of file (id: Text)
-    RETURNS Reading endpoint returning (Status) failing with (Never),
+    : Reading endpoint returning (Status) failing with (Never),
   start sharing folder (path: Text)
-    RETURNS Endpoint returning (Text) failing with (Share folder error),
+    : Endpoint returning (Text) failing with (Share folder error),
   stop sharing folder (path: Text)
-    RETURNS Endpoint returning (Nothing) failing with (Stop sharing folder error),
+    : Endpoint returning (Nothing) failing with (Stop sharing folder error),
   sharing status of folder (path: Text)
-    RETURNS Reading endpoint returning (Status) failing with (Bad path),
+    : Reading endpoint returning (Status) failing with (Bad path),
   ## Every live link. A file or folder is also shared through any shared
   ## folder it's in.
-  list shared links RETURNS Reading endpoint returning (Links) failing with (Never),
+  list shared links : Reading endpoint returning (Links) failing with (Never),
 ],
 
 ## ---------------------------------------------------------------------------
 ## Served: the server implements these.
 
-FUNCTION account from (token: Text) RETURNS Optional (Account),
+FUNCTION account from (token: Text) : Optional (Account),
 
 FUNCTION handle (response: Type) failing with (error: Type) access (access: Access)
   effect (effect: Effect)
   at (endpoint: Endpoint returning (response) failing with (error) access (access) effect (effect))
   as (caller: Caller for (access))
-  RETURNS Reply of (response) or (error),
+  : Reply of (response) or (error),
 
 ## ---------------------------------------------------------------------------
 ## The one entry point. Generated for client and server alike.
@@ -413,7 +413,7 @@ FUNCTION serve (response: Type) failing with (error: Type) access (access: Acces
   effect (effect: Effect)
   at (endpoint: Endpoint returning (response) failing with (error) access (access) effect (effect))
   with (credential: Credential for (access))
-  RETURNS Reply of (response) or (error) IS
+  : Reply of (response) or (error) IS
   ⁽MATCH credential WITH [
     WHEN anonymous THEN
       handle (response) failing with (error) access (public) effect (effect)
